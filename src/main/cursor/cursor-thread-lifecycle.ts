@@ -1,5 +1,6 @@
 import type { ChatEvent, ChatSnapshot } from '../../shared/chat.js'
 import { applyProviderRotation, type RotationSettingsAccess } from '../chat-context/rotate-provider-session.js'
+import type { SessionRotator } from '../chat-context/session-rotation.js'
 import { messageOf } from '../chat-normalizers.js'
 import { ChatTranscript } from '../chat-transcript.js'
 import type { CursorSession } from './cursor-session.js'
@@ -9,6 +10,7 @@ export type CursorThreadHost = {
   settings: RotationSettingsAccess
   paneId: string | null
   transcript: ChatTranscript
+  rotator: SessionRotator
   session(): CursorSession | null
   threadName(): string | null
   setThreadName(name: string | null): void
@@ -44,6 +46,7 @@ export async function detachCursorThread(host: CursorThreadHost, session: Cursor
   host.transcript.clear()
   host.setThreadName(null)
   host.setActiveTurnId(null)
+  host.rotator.reset()
   await host.settings.set({ chatCursorSessionId: null })
 }
 
@@ -56,6 +59,7 @@ export async function rotateCursorProviderSession(host: CursorThreadHost, sessio
     items: host.transcript.snapshot()
   }, async () => {
     await session?.reset()
+    host.rotator.reset()
     await host.settings.set({ chatCursorSessionId: null })
     host.emitEvent({ type: 'thread', threadId: null, threadName: host.threadName() })
   }, null)

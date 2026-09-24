@@ -194,6 +194,17 @@ export type AppSettings = {
    * native Codex compaction. Default on; set false to restore compaction paths.
    */
   chatSeamlessRotation: boolean
+  /** Rotate after this many transcript items. 0 disables. */
+  chatRotateAtItems: number
+  /** Rotate after this many tool calls since the latest user message. 0 disables. */
+  chatRotateAtToolCallsSinceUser: number
+  /** Rotate after this many tool-output characters since the latest user message. 0 disables. */
+  chatRotateAtToolOutputChars: number
+  /**
+   * When seamless rotation is on, still let Claude Code precompute compaction summaries in the
+   * background. Default on.
+   */
+  chatClaudePrecomputeCompaction: boolean
 }
 
 /** A still of the page the user is looking at; `imageUrl` is a data URL. */

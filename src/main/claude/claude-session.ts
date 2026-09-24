@@ -35,6 +35,7 @@ export type ClaudeSessionDeps = {
   /** When set, every SDK message in either direction is recorded in the turn trace. */
   traceScope?: () => TraceScope
   seamlessRotation?: () => boolean
+  precomputeCompaction?: () => boolean
   idleMs?: number
 }
 
@@ -74,6 +75,7 @@ export class ClaudeSession {
       resume: this.sessionId,
       runtimeId: id,
       seamlessRotation: this.deps.seamlessRotation?.() === true,
+      precomputeCompaction: this.deps.precomputeCompaction?.() === true,
       mcpServers: this.deps.mcpServers(),
       stderr: (data) => { const text = data.trim(); if (text) console.warn('[claude]', text) }
     })

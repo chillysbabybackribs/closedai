@@ -3,16 +3,23 @@ import { idleDelayForContextTrigger, type ContextUsage, usagePercent } from './c
 // Invisible session rotation: same idle thresholds as compaction, but the provider thread is
 // reset with a thin seed on the next send instead of calling native compact.
 
+export type RotationTriggerReason = 'percent' | 'tokens' | 'items' | 'toolCalls' | 'toolOutputChars'
+
 export type SessionRotatorDeps = {
   enabled: () => boolean
   thresholdPercent: () => number
   thresholdTokens?: () => number
+  /** Task-aware triggers from the visible transcript (works without token usage). */
+  pressureTrigger?: () => 'items' | 'toolCalls' | 'toolOutputChars' | null
+  hasPressureThresholds?: () => boolean
   now?: () => number
   idleDelayMs?: number
   tokenIdleDelayMs?: number
   threadId: () => string | null
   turnActive: () => boolean
   rotate: () => Promise<void>
+  /** Fires when idle rotation is queued after a turn, before the grace timer elapses. */
+  onScheduled?: (reason: RotationTriggerReason) => void
 }
 
 const ROTATION_TIMEOUT_MS = 90_000
@@ -77,7 +84,9 @@ export class SessionRotator {
 
   private checkAfterTurn(): void {
     this.cancelScheduled()
-    if (!this.trigger()) return
+    const reason = this.trigger()
+    if (!reason) return
+    this.deps.onScheduled?.(reason)
     this.scheduled = setTimeout(() => {
       this.scheduled = null
       void this.maybeStart()
@@ -85,26 +94,28 @@ export class SessionRotator {
     this.scheduled.unref?.()
   }
 
-  private trigger(): 'percent' | 'tokens' | null {
-    if (!this.deps.enabled() || !this.armed || this.pending || !this.usage || !this.deps.threadId() || this.deps.turnActive()) return null
-    const percent = this.deps.thresholdPercent()
-    if (percent > 0 && usagePercent(this.usage) >= percent) return 'percent'
-    const budget = this.deps.thresholdTokens?.() ?? 0
-    if (budget <= 0 || this.usage.usedTokens < budget) return null
-    const last = this.lastTokenAttempt
-    if (last && last.budget === budget) {
-      const growth = this.usage.usedTokens - last.tokens
-      if (this.now() - last.at < TOKEN_ROTATION_COOLDOWN_MS || growth < Math.max(3_000, budget * 0.15)) return null
+  private trigger(): RotationTriggerReason | null {
+    if (!this.deps.enabled() || !this.armed || this.pending || !this.deps.threadId() || this.deps.turnActive()) return null
+    if (this.usage) {
+      const percent = this.deps.thresholdPercent()
+      if (percent > 0 && usagePercent(this.usage) >= percent) return 'percent'
+      const budget = this.deps.thresholdTokens?.() ?? 0
+      if (budget > 0 && this.usage.usedTokens >= budget) {
+        const last = this.lastTokenAttempt
+        if (!last || last.budget !== budget) return 'tokens'
+        const growth = this.usage.usedTokens - last.tokens
+        if (this.now() - last.at >= TOKEN_ROTATION_COOLDOWN_MS && growth >= Math.max(3_000, budget * 0.15)) return 'tokens'
+      }
     }
-    return 'tokens'
+    return this.deps.pressureTrigger?.() ?? null
   }
 
   private async maybeStart(): Promise<void> {
     const reason = this.trigger()
-    if (!reason || !this.deps.threadId() || !this.usage) return
+    if (!reason || !this.deps.threadId()) return
     this.armed = false
     const budget = this.deps.thresholdTokens?.() ?? 0
-    if (budget > 0) this.lastTokenAttempt = { at: this.now(), tokens: this.usage.usedTokens, budget }
+    if (budget > 0 && this.usage) this.lastTokenAttempt = { at: this.now(), tokens: this.usage.usedTokens, budget }
     const pending = this.begin()
     try {
       await this.deps.rotate()

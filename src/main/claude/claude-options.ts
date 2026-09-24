@@ -36,6 +36,8 @@ export type ClaudeQueryConfig = {
   runtimeId: string
   /** When true, ClosedAI rotates sessions instead of relying on Claude Code auto-compaction. */
   seamlessRotation?: boolean
+  /** When seamless rotation is on, still precompute compaction summaries in the background. */
+  precomputeCompaction?: boolean
   mcpServers: NonNullable<Options['mcpServers']>
   env?: NodeJS.ProcessEnv
   stderr?: (data: string) => void
@@ -54,7 +56,10 @@ export function claudeQueryOptions(config: ClaudeQueryConfig): Options {
     ...(config.adaptiveThinking ? { thinking: { type: 'adaptive', display: 'summarized' } } : {}),
     ...(config.resume ? { resume: config.resume } : {}),
     settings: config.seamlessRotation
-      ? { autoCompactEnabled: false, precomputeCompactionEnabled: false }
+      ? {
+        autoCompactEnabled: false,
+        precomputeCompactionEnabled: config.precomputeCompaction !== false
+      }
       : {
         // Keep context management inside Claude Code, and prepare its summary before the window is
         // full so the next user turn does not pay the entire compaction cost on the critical path.

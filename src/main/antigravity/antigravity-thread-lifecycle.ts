@@ -1,6 +1,7 @@
 import type { ChatEvent } from '../../shared/chat.js'
 import { applyProviderRotation, type RotationSettingsAccess } from '../chat-context/rotate-provider-session.js'
 import type { ContextUsage } from '../chat-context/context-compaction.js'
+import type { SessionRotator } from '../chat-context/session-rotation.js'
 import { ChatTranscript } from '../chat-transcript.js'
 import type { AntigravityHistory } from './antigravity-history.js'
 import type { AntigravitySession } from './antigravity-session.js'
@@ -15,6 +16,7 @@ export type AntigravityThreadHost = {
   cwd: string
   bridge: AntigravityToolBridge
   transcript: ChatTranscript
+  rotator: SessionRotator
   session(): AntigravitySession | null
   setSession(session: AntigravitySession | null): void
   createSession(): AntigravitySession
@@ -47,6 +49,7 @@ export async function detachAntigravityThread(host: AntigravityThreadHost): Prom
   host.setThreadName(null)
   host.setActiveTurnId(null)
   host.setContextUsage(null)
+  host.rotator.reset()
   await host.settings.set({ chatAntigravityConversationId: null })
 }
 
@@ -65,6 +68,7 @@ export async function rotateAntigravityProviderSession(host: AntigravityThreadHo
     else await host.session()!.reset()
     if (previous) host.bridge.unbind(previous)
     host.setContextUsage(null)
+    host.rotator.reset()
     await host.settings.set({ chatAntigravityConversationId: null })
     host.emitEvent({ type: 'thread', threadId: null, threadName: host.threadName() })
   }, usage)

@@ -37,12 +37,14 @@ const TOKEN_COMPACTION_COOLDOWN_MS = 3 * 60_000
 
 export function idleDelayForContextTrigger(deps: {
   thresholdTokens?: () => number
+  hasPressureThresholds?: () => boolean
   idleDelayMs?: number
   /** Production default 8s; tests pass 0 for immediate scheduling. */
   tokenIdleDelayMs?: number
 }): number {
   const tokenBudget = deps.thresholdTokens?.() ?? 0
-  if (tokenBudget > 0) {
+  const pressure = deps.hasPressureThresholds?.() ?? false
+  if (tokenBudget > 0 || pressure) {
     return deps.tokenIdleDelayMs ?? deps.idleDelayMs ?? TOKEN_TRIGGER_IDLE_MS
   }
   return deps.idleDelayMs ?? PERCENT_TRIGGER_IDLE_MS

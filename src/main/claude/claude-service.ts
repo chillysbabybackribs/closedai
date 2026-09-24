@@ -22,7 +22,8 @@ import {
   rotateClaudeProviderSession,
   type ClaudeThreadHost
 } from './claude-thread-lifecycle.js'
-import { SessionRotator } from '../chat-context/session-rotation.js'
+import { createSessionRotator } from '../chat-context/session-rotator-factory.js'
+import type { SessionRotator } from '../chat-context/session-rotation.js'
 import { applyPlanUsageSignal, planUsageUnavailable, type ClaudeRateLimitSignal } from '../chat-context/plan-usage.js'
 import {
   buildThreadHandoff,
@@ -103,12 +104,13 @@ export class ClaudeChatService extends EventEmitter {
   ) {
     super()
     this.transcript = new ChatTranscript(cwd, () => this.activeTurnId, (event) => this.emitEvent(event), (callId) => screenshots?.get(callId) ?? null)
-    this.rotator = new SessionRotator({
-      enabled: () => this.seamlessRotation(),
-      thresholdPercent: () => this.settings.get().chatCompactAtPercent,
-      thresholdTokens: () => this.settings.get().chatCompactAtTokens,
+    this.rotator = createSessionRotator({
+      settings: this.settings,
       threadId: () => (this.session?.sessionId ? claudeThreadId(this.session.sessionId) : null),
       turnActive: () => this.activeTurnId !== null,
+      transcriptItems: () => this.transcript.snapshot(),
+      currentUsage: () => this.contextUsage,
+      notice: (text) => this.addNotice(text, 'info', null),
       rotate: () => rotateClaudeProviderSession(this.threadHost(), this.session)
     })
   }
@@ -396,7 +398,8 @@ export class ClaudeChatService extends EventEmitter {
       },
       onPlanUsageSignal: (signal) => this.notePlanUsageSignal(signal),
       traceScope: () => ({ paneId: this.paneId, provider: 'claude', turnId: this.activeTurnId }),
-      seamlessRotation: () => this.seamlessRotation()
+      seamlessRotation: () => this.seamlessRotation(),
+      precomputeCompaction: () => this.claudePrecomputeCompaction()
     })
     return session
   }
@@ -412,6 +415,10 @@ export class ClaudeChatService extends EventEmitter {
 
   private seamlessRotation(): boolean {
     return this.settings.get().chatSeamlessRotation === true
+  }
+
+  private claudePrecomputeCompaction(): boolean {
+    return this.settings.get().chatClaudePrecomputeCompaction !== false
   }
 
   private async applyModelPreference(): Promise<void> {

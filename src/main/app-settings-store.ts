@@ -47,12 +47,19 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   chatCompactAtPercent: 80,
   chatCompactAtTokens: 28_000,
   chatMidTurnCompactTokens: 0,
-  chatSeamlessRotation: true
+  chatSeamlessRotation: true,
+  chatRotateAtItems: 100,
+  chatRotateAtToolCallsSinceUser: 24,
+  chatRotateAtToolOutputChars: 280_000,
+  chatClaudePrecomputeCompaction: true
 }
 
 const MAX_COMPACT_AT_PERCENT = 95
 const MIN_AUTO_COMPACT_TOKENS = 20_000
 const MAX_AUTO_COMPACT_TOKENS = 2_000_000
+const MAX_ROTATE_AT_ITEMS = 10_000
+const MAX_ROTATE_AT_TOOL_CALLS = 500
+const MAX_ROTATE_AT_TOOL_OUTPUT_CHARS = 10_000_000
 
 function normalize(parsed: unknown): AppSettings {
   if (!parsed || typeof parsed !== 'object') return { ...DEFAULT_APP_SETTINGS }
@@ -105,8 +112,36 @@ function normalize(parsed: unknown): AppSettings {
       : [],
     toolBatchMaxCalls: normalizeBatchMaxCalls(record.toolBatchMaxCalls),
     ...normalizeCompactionPolicy(record),
-    chatMidTurnCompactTokens: normalizeAutoCompactTokens(record.chatMidTurnCompactTokens, DEFAULT_APP_SETTINGS.chatMidTurnCompactTokens)
+    chatMidTurnCompactTokens: normalizeAutoCompactTokens(record.chatMidTurnCompactTokens, DEFAULT_APP_SETTINGS.chatMidTurnCompactTokens),
+    ...normalizeRotationPressure(record)
   }
+}
+
+function normalizeRotationPressure(record: Record<string, unknown>): Pick<
+  AppSettings,
+  'chatRotateAtItems' | 'chatRotateAtToolCallsSinceUser' | 'chatRotateAtToolOutputChars' | 'chatClaudePrecomputeCompaction'
+> {
+  return {
+    chatRotateAtItems: normalizeRotationThreshold(record.chatRotateAtItems, DEFAULT_APP_SETTINGS.chatRotateAtItems, MAX_ROTATE_AT_ITEMS),
+    chatRotateAtToolCallsSinceUser: normalizeRotationThreshold(
+      record.chatRotateAtToolCallsSinceUser,
+      DEFAULT_APP_SETTINGS.chatRotateAtToolCallsSinceUser,
+      MAX_ROTATE_AT_TOOL_CALLS
+    ),
+    chatRotateAtToolOutputChars: normalizeRotationThreshold(
+      record.chatRotateAtToolOutputChars,
+      DEFAULT_APP_SETTINGS.chatRotateAtToolOutputChars,
+      MAX_ROTATE_AT_TOOL_OUTPUT_CHARS
+    ),
+    chatClaudePrecomputeCompaction: record.chatClaudePrecomputeCompaction !== false
+  }
+}
+
+function normalizeRotationThreshold(value: unknown, fallback: number, max: number): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback
+  const rounded = Math.round(value)
+  if (rounded <= 0) return 0
+  return Math.min(max, rounded)
 }
 
 /** Token trigger off with seamless rotation off was a common eval preset; migrate to the Codex replay default. */

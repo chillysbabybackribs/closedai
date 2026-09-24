@@ -36,7 +36,8 @@ import {
   type ChatServiceThreadHost
 } from './chat-service-thread-lifecycle.js'
 import { ContextCompactor, describeUsage, type ContextUsage } from './chat-context/context-compaction.js'
-import { SessionRotator } from './chat-context/session-rotation.js'
+import { createSessionRotator } from './chat-context/session-rotator-factory.js'
+import type { SessionRotator } from './chat-context/session-rotation.js'
 import { codexPlanUsage } from './chat-context/plan-usage.js'
 import {
   buildThreadHandoff,
@@ -124,12 +125,13 @@ export class ChatService extends EventEmitter {
       request: (method, params) => this.client.request(method, params),
       notice: (text, tone) => this.addNotice(text, tone, null)
     })
-    this.rotator = new SessionRotator({
-      enabled: () => this.seamlessRotation(),
-      thresholdPercent: () => this.settings.get().chatCompactAtPercent,
-      thresholdTokens: () => this.settings.get().chatCompactAtTokens,
+    this.rotator = createSessionRotator({
+      settings: this.settings,
       threadId: () => this.threadId,
       turnActive: () => this.activeTurnId !== null,
+      transcriptItems: () => this.transcript.snapshot(),
+      currentUsage: () => this.contextManager().current,
+      notice: (text) => this.addNotice(text, 'info', null),
       rotate: () => rotateCodexProviderSession(this.threadHost())
     })
     this.client.on('notification', (notification: AppServerNotification) => this.onNotification(notification))
