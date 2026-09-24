@@ -44,11 +44,27 @@ function unionRect(rects: LayoutRect[]): LayoutRect {
   return { x, y, width, height }
 }
 
+const DIVIDER_GAP = 14
+
 function groupInRow(group: DockGroup, rowPanes: Array<{ id: string; tabs: string[] }>): boolean {
   return rowPanes.some((pane) => pane.id === group.id || (group.tabs ?? [group.id]).some((tab) => pane.tabs.includes(tab)))
 }
 
-/** One rail per horizontal row of chat tiles that contains a docked group; browser columns are excluded. */
+/** Consecutive chat tiles in one row; a browser column or split gap starts a new band. */
+function horizontalRuns(rowPanes: Array<{ id: string; tabs: string[]; rect: LayoutRect }>): typeof rowPanes[] {
+  const sorted = [...rowPanes].sort((left, right) => left.rect.x - right.rect.x)
+  const runs: typeof rowPanes[] = []
+  for (const pane of sorted) {
+    const run = runs.at(-1)
+    if (!run) { runs.push([pane]); continue }
+    const previous = run.at(-1)!
+    if (pane.rect.x <= previous.rect.x + previous.rect.width + DIVIDER_GAP + 1) run.push(pane)
+    else runs.push([pane])
+  }
+  return runs
+}
+
+/** One rail per horizontal band of chat tiles that contains a docked group. */
 export function dockRowRails(
   panes: Array<{ id: string; tabs: string[]; rect: LayoutRect }>,
   docked: DockGroup[],
@@ -64,17 +80,19 @@ export function dockRowRails(
   }
   const rails: DockRail[] = []
   for (const rowPanes of rows.values()) {
-    const groups = docked.filter((group) => groupInRow(group, rowPanes))
-    if (!groups.length) continue
-    const boundary = unionRect(rowPanes.map((pane) => pane.rect))
-    rails.push({
-      id: `dock-row-${boundary.y}`,
-      groups,
-      boundary,
-      rect: { ...boundary, y: boundary.y + boundary.height - DOCK_HEIGHT, height: DOCK_HEIGHT },
-    })
+    for (const run of horizontalRuns(rowPanes)) {
+      const groups = docked.filter((group) => groupInRow(group, run))
+      if (!groups.length) continue
+      const boundary = unionRect(run.map((pane) => pane.rect))
+      rails.push({
+        id: `dock-row-${boundary.y}-${boundary.x}`,
+        groups,
+        boundary,
+        rect: { ...boundary, y: boundary.y + boundary.height - DOCK_HEIGHT, height: DOCK_HEIGHT },
+      })
+    }
   }
-  return rails.sort((left, right) => left.boundary.y - right.boundary.y)
+  return rails.sort((left, right) => left.boundary.y - right.boundary.y || left.boundary.x - right.boundary.x)
 }
 
 export function setGroupDocked(tree: ChatLayout, id: string, docked: boolean): ChatLayout {

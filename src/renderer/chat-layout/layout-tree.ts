@@ -159,16 +159,25 @@ function visitLayout(
   visitLayout(node.second, second, panes, dividers, splitRatios, clampMinimums)
 }
 
-function applyDockBandInsets(
-  panes: LayoutPane[],
-  rails: Array<{ boundary: Rect }>,
-  reference: LayoutPane[],
-): void {
+function paneOverlapsBand(pane: Rect, band: Rect): boolean {
+  return pane.x < band.x + band.width && pane.x + pane.width > band.x
+}
+
+function finalizeDockRails(panes: LayoutPane[], rails: Array<{ groups: DockGroup[]; rect: Rect; boundary: Rect }>): void {
+  const browser = panes.find((pane) => pane.id === BROWSER_PANE_ID)
   for (const rail of rails) {
-    const rowIds = new Set(reference.filter((pane) => pane.id !== BROWSER_PANE_ID
-      && pane.rect.y === rail.boundary.y && pane.rect.height === rail.boundary.height).map((pane) => pane.id))
+    if (browser && browser.rect.x > rail.rect.x
+      && browser.rect.y < rail.boundary.y + rail.boundary.height) {
+      rail.rect.width = Math.min(rail.rect.width, browser.rect.x - rail.rect.x)
+      rail.boundary = { ...rail.boundary, width: rail.rect.width }
+    }
     for (const pane of panes) {
-      if (rowIds.has(pane.id)) pane.rect = { ...pane.rect, height: pane.rect.height - DOCK_HEIGHT }
+      if (pane.id === BROWSER_PANE_ID) continue
+      const bottom = pane.rect.y + pane.rect.height
+      const bandBottom = rail.boundary.y + rail.boundary.height
+      if (paneOverlapsBand(pane.rect, rail.boundary) && bottom >= bandBottom - 1 && pane.rect.y <= rail.boundary.y) {
+        pane.rect = { ...pane.rect, height: pane.rect.height - DOCK_HEIGHT }
+      }
     }
   }
 }
@@ -186,7 +195,7 @@ export function layoutGeometry(tree: ChatLayout, width: number, height: number, 
   const dividers: LayoutDivider[] = []
   if (placement) {
     visitLayout(placement, canvas, panes, dividers, splitRatios, true)
-    applyDockBandInsets(panes, rails, reference)
+    finalizeDockRails(panes, rails)
   }
   return { panes, dividers, minimum, rails }
 }
