@@ -21,6 +21,7 @@ export type ChatStoreChange = { ids: string[]; checkpointIds: string[] }
 
 export class ChatStore extends EventEmitter {
   private readonly chats = new Map<string, ChatRecord>()
+  private readonly byThreadId = new Map<string, string>()
   private writeTimer: NodeJS.Timeout | null = null
   private writing: Promise<void> = Promise.resolve()
   private dirty = false
@@ -36,7 +37,7 @@ export class ChatStore extends EventEmitter {
     const parsed = await readStoreFile(filePath, '[chat-store]', (text) => JSON.parse(text) as Partial<ChatStoreFile>)
     for (const candidate of Array.isArray(parsed?.chats) ? parsed.chats : []) {
       const record = normalizeChatRecord(candidate)
-      if (record && !store.chats.has(record.id)) store.chats.set(record.id, record)
+      if (record && !store.chats.has(record.id)) store.indexRecord(record)
     }
     return store
   }
@@ -44,7 +45,7 @@ export class ChatStore extends EventEmitter {
   /** A store that never touches disk, for tests and headless runs. */
   static inMemory(records: ChatRecord[] = []): ChatStore {
     const store = new ChatStore(null)
-    for (const record of records) store.chats.set(record.id, record)
+    for (const record of records) store.indexRecord(record)
     return store
   }
 
@@ -75,10 +76,8 @@ export class ChatStore extends EventEmitter {
   }
 
   findByThreadId(threadId: string): ChatRecord | undefined {
-    for (const record of this.chats.values()) {
-      if (record.threadId === threadId) return record
-    }
-    return undefined
+    const id = this.byThreadId.get(threadId)
+    return id ? this.chats.get(id) : undefined
   }
 
   create(seed: ChatRecordSeed): ChatRecord {
@@ -115,7 +114,7 @@ export class ChatStore extends EventEmitter {
       agentRun: seed.agentRun ?? null
     }
     if (this.chats.has(record.id)) throw new Error(`Chat already exists: ${record.id}`)
-    this.chats.set(record.id, record)
+    this.indexRecord(record)
     this.changed([record.id])
     return record
   }
@@ -131,6 +130,7 @@ export class ChatStore extends EventEmitter {
     const merged: ChatRecord = { ...current, ...patch, modelId, provider, id, createdAt: current.createdAt }
     merged.threadId = chatRecordThreadId(provider, merged)
     merged.preview = merged.preview.slice(0, CHAT_STORE_MAX_PREVIEW)
+    this.reindexThreadId(current, merged)
     this.chats.set(id, merged)
     // The active checkpoint is the saved one only while it belongs to the record's thread, so a
     // thread change can retire it without the checkpoint field itself changing.
@@ -152,7 +152,11 @@ export class ChatStore extends EventEmitter {
 
   /** Forget a chat that never became one: no thread, no title, no continuation. */
   remove(id: string): void {
-    if (this.chats.delete(id)) this.changed([id])
+    const record = this.chats.get(id)
+    if (!record) return
+    this.unindexThreadId(record)
+    this.chats.delete(id)
+    this.changed([id])
   }
 
   /**
@@ -196,6 +200,20 @@ export class ChatStore extends EventEmitter {
       this.persist()
     }
     await this.writing
+  }
+
+  private indexRecord(record: ChatRecord): void {
+    this.chats.set(record.id, record)
+    if (record.threadId) this.byThreadId.set(record.threadId, record.id)
+  }
+
+  private reindexThreadId(previous: ChatRecord, next: ChatRecord): void {
+    if (previous.threadId && previous.threadId !== next.threadId) this.byThreadId.delete(previous.threadId)
+    if (next.threadId) this.byThreadId.set(next.threadId, next.id)
+  }
+
+  private unindexThreadId(record: ChatRecord): void {
+    if (record.threadId && this.byThreadId.get(record.threadId) === record.id) this.byThreadId.delete(record.threadId)
   }
 
   private changed(ids: string[], checkpointIds: string[] = ids): void {

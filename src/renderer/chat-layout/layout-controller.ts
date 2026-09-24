@@ -11,7 +11,11 @@ const ERROR_TTL_MS = 8000
 const CONFIRM_TIMEOUT_MS = 5000
 
 /** The component owning this hook is keyed by project directory. */
-export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
+export function useChatLayout(
+  getSnapshot: () => ChatWorkspaceSnapshot,
+  layoutRevision: string
+) {
+  const snapshot = getSnapshot()
   const cwd = snapshot.workspace?.cwd ?? snapshot.selected.cwd
   const [layout, setLayout] = useState(() => {
     const saved = readLayout(window.localStorage, cwd)
@@ -30,8 +34,8 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
   // Objects rather than strings: repeating the same message restarts its dismissal timer.
   const [error, setError] = useState<{ text: string } | null>(null)
   const [notice, setNotice] = useState<{ text: string } | null>(null)
-  const latestSnapshot = useRef(snapshot)
-  latestSnapshot.current = snapshot
+  const latestSnapshot = useRef(getSnapshot)
+  latestSnapshot.current = getSnapshot
   useEffect(() => {
     if (!notice) return
     const timer = window.setTimeout(() => setNotice(null), 4500)
@@ -45,7 +49,7 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
   const fail = useCallback((reason: unknown) => setError({ text: errorMessage(reason) }), [])
   const clearError = useCallback(() => setError(null), [])
   const reportRemoval = useCallback((ids: string[], label: string) => {
-    const rows = latestSnapshot.current.chats.filter((row) => ids.includes(row.paneId))
+    const rows = latestSnapshot.current().chats.filter((row) => ids.includes(row.paneId))
     setNotice({ text: removalNotice(label, rows) })
   }, [])
   const [busy, setBusy] = useState(false)
@@ -88,10 +92,10 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
   }, [cwd, idsKey, tabsKey, hasTiles, fail])
 
   const chatIdsKey = useMemo(() => {
-    const ids = snapshot.chats.map((chat) => chat.paneId)
+    const ids = getSnapshot().chats.map((chat) => chat.paneId)
     ids.sort()
     return ids.join('\0')
-  }, [snapshot.chats.map((chat) => chat.paneId).sort().join('\0')])
+  }, [layoutRevision])
 
   // Drop archived or removed chats from the saved tree without touching tab focus.
   useEffect(() => {
@@ -111,12 +115,12 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
     // Workspace events are delivered in a React transition. An IPC reply can arrive
     // first; do not prune the new tab against the previous workspace snapshot.
     if (selectionToConfirm) {
-      const chats = latestSnapshot.current.chats
-      if (snapshot.selectedPaneId !== selectionToConfirm ||
+      const chats = latestSnapshot.current().chats
+      if (getSnapshot().selectedPaneId !== selectionToConfirm ||
           !chats.some((chat) => chat.paneId === selectionToConfirm)) return
       release()
     } else if (pending.current) return
-    const next = snapshot.selectedPaneId
+    const next = getSnapshot().selectedPaneId
     const previous = selected.current
     selected.current = next
     setLayout((value) => {
@@ -133,7 +137,7 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
       }
       return tree === value.tree ? value : { ...value, tree: tree! }
     })
-  }, [snapshot.selectedPaneId, busy, cwd, selectionToConfirm, release])
+  }, [layoutRevision, busy, cwd, selectionToConfirm, release])
 
   // A confirmation that never arrives would leave every structural control disabled. Releasing
   // re-runs the reconciliation above against the latest snapshot, which drops any tab main never opened.
@@ -148,8 +152,8 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
 
   // Focusing a view tile selects the chat it shows; the guard above keeps the view in front.
   const selectViewChat = useCallback(async (viewId: string): Promise<void> => {
-    const { chatId } = viewScope(current.current.tree, viewId, current.current.views, latestSnapshot.current.selectedPaneId)
-    if (chatId === latestSnapshot.current.selectedPaneId) return
+    const { chatId } = viewScope(current.current.tree, viewId, current.current.views, latestSnapshot.current().selectedPaneId)
+    if (chatId === latestSnapshot.current().selectedPaneId) return
     selected.current = chatId
     await window.closedai.chat.selectPane(chatId)
   }, [])
@@ -192,7 +196,7 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
       setLayout((value) => {
         // A following view leaving its tile is pinned to the chat it showed; whole-tile moves keep their chats.
         const views = view && (singleTab || !edge)
-          ? pinOnMove(value.tree, added, edge ? null : tabOwner(value.tree, target), value.views, latestSnapshot.current.selectedPaneId)
+          ? pinOnMove(value.tree, added, edge ? null : tabOwner(value.tree, target), value.views, latestSnapshot.current().selectedPaneId)
           : value.views
         if (singleTab || (id && !edge)) return { ...value, views,
           tree: moveTab(value.tree, added, target, edge, crypto.randomUUID()) }
@@ -266,7 +270,7 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
     setLayout((value) => {
       const target = neighborTile(value.tree, id, direction)
       if (!target) return value
-      const views = pinOnMove(value.tree, id, target, value.views, latestSnapshot.current.selectedPaneId)
+      const views = pinOnMove(value.tree, id, target, value.views, latestSnapshot.current().selectedPaneId)
       return { ...value, views, tree: moveTab(value.tree, id, target, null, crypto.randomUUID()) }
     })
   }, [])

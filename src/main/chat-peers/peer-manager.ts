@@ -43,6 +43,7 @@ import {
   peerManagerWorkspace,
   type PeerManagerSupportHost
 } from './peer-manager-support.js'
+import { PeerChatRowsCache } from './peer-chat-rows-cache.js'
 import { PeerIdleParking } from './peer-idle-parking.js'
 import { PeerLifecycle, type ChatPeerFactory, type PeerEntry } from './peer-lifecycle.js'
 import { PeerProjectChanges, projectConversationPatch, rememberChatProjects } from './peer-project.js'
@@ -69,6 +70,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   /** Tail of each pane's operation chain, so callers on one pane cannot interleave. */
   private readonly paneOperations = new Map<ChatPaneId, Promise<void>>()
   private readonly chatsEmit = new PeerEmitThrottle(() => this.emitChats())
+  private readonly chatRowsCache = new PeerChatRowsCache()
   private readonly archives: PeerArchives
 
   constructor(
@@ -136,8 +138,14 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       cancelSwitch: (reason, chatId) => { this.projectSwitch.cancel(reason, chatId) },
       store,
       attached: (chatId) => this.lifecycle.get(chatId) !== undefined,
-      attach: (record) => this.lifecycle.attach(record),
-      detach: (chatId) => this.lifecycle.detach(chatId),
+      attach: (record) => {
+        this.lifecycle.attach(record)
+        this.chatRowsCache.invalidateDetached()
+      },
+      detach: (chatId) => {
+        this.lifecycle.detach(chatId)
+        this.chatRowsCache.invalidateDetached()
+      },
       withAwake: (chatId, fn) => this.withAwake(chatId, fn),
       closePeer: (chatId) => this.closePeer(chatId, { keepRecord: true }),
       forgetTranscript: (chatId) => this.transcripts.forget(chatId),
@@ -155,6 +163,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     // writes happen inside turn handling and must not re-enter it.
     store.on('change', (c?: { ids: string[]; checkpointIds?: string[] }) => {
       this.chatsEmit.schedule()
+      if (c?.ids.some((id) => !this.lifecycle.get(id))) this.chatRowsCache.invalidateDetached()
       if (c?.checkpointIds?.length) syncStoreCheckpoint(this.store, this.lifecycle, c.checkpointIds, (p, e) => this.onPaneEvent(p, e))
     })
   }
@@ -280,6 +289,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     // Retain empty tabs without waking them or subscribing to their token stream.
     this.retainedTabIds = new Set(retainedTabIds)
     for (const record of records) if (record) this.lifecycle.attach(record)
+    this.chatRowsCache.invalidateDetached()
     await Promise.all(paneIds.map((id) => this.transcripts.load(id)))
     if (revision !== this.visibilityRevision || cwd !== this.workspace().cwd) return
     this.emitWorkspace()
@@ -347,6 +357,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       ...options?.seed
     })
     this.lifecycle.attach(record)
+    this.chatRowsCache.invalidateDetached()
     if (options?.selectPane !== false) this.selectedPaneId = record.id
     this.parking.schedule(previousPaneId)
     this.lifecycle.parkExcessIdle(record.id)
@@ -364,6 +375,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     const closing = this.lifecycle.require(paneId).surface.snapshot({ limit: 0 })
     if (options?.keepRecord) this.lifecycle.detach(paneId)
     else if (!this.lifecycle.discardIfBlank(paneId)) this.lifecycle.detach(paneId)
+    this.chatRowsCache.invalidateDetached()
     const localIds = this.lifecycle.ids()
     if (localIds.length === 0) {
       // Closing the last chat opens an empty one; it keeps the model the workspace was on
@@ -373,6 +385,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
         cwd, projectPath, provider: chatProviderOfId(closing.selectedModel), modelId: closing.selectedModel, reasoningEffort: closing.selectedReasoningEffort
       })
       this.lifecycle.attach(fresh)
+      this.chatRowsCache.invalidateDetached()
       this.selectedPaneId = fresh.id
     } else if (this.selectedPaneId === paneId) {
       this.selectedPaneId = localIds[0]!
@@ -404,6 +417,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     // that empty pane behind; anything else keeps its conversation and the chat opens beside it.
     const previousPaneId = this.selectedPaneId
     this.lifecycle.attach(record)
+    this.chatRowsCache.invalidateDetached()
     this.selectedPaneId = chatId
     // The chat's last known messages, model, and context reading paint now; the provider's
     // replay lands behind them rather than in front of an empty pane.
@@ -542,7 +556,8 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       selectedPaneId: () => this.selectedPaneId,
       visiblePaneIds: () => this.visiblePaneIds,
       retainedTabIds: () => this.retainedTabIds,
-      emitWorkspaceEvent: (event) => { this.emit('event', event) }
+      emitWorkspaceEvent: (event) => { this.emit('event', event) },
+      chatRowsCache: this.chatRowsCache
     }
   }
 

@@ -26,6 +26,7 @@ import type { DeferredProjectSwitch } from './deferred-project-switch.js'
 import { PeerProjectChanges } from './peer-project.js'
 import type { ChatWorkspaceSelection, ChatWorkspaceSelector } from './peer-workspace.js'
 import type { PeerEmitThrottle } from './peer-events.js'
+import type { PeerChatRowsCache } from './peer-chat-rows-cache.js'
 export type PeerManagerSupportHost = {
   lifecycle: PeerLifecycle
   store: ChatStore
@@ -43,6 +44,7 @@ export type PeerManagerSupportHost = {
   visiblePaneIds: () => Set<ChatPaneId>
   retainedTabIds: () => Set<ChatPaneId>
   emitWorkspaceEvent: (event: ChatWorkspaceEvent) => void
+  chatRowsCache?: PeerChatRowsCache
 }
 
 export function peerManagerReadable(host: PeerManagerSupportHost): ReadablePeerHost {
@@ -147,6 +149,7 @@ export function peerManagerSummaries(host: PeerManagerSupportHost): ChatPeerSumm
 }
 
 export function peerManagerChatRows(host: PeerManagerSupportHost): ChatRowSummary[] {
+  if (host.chatRowsCache) return host.chatRowsCache.rows(host)
   return host.store.ids().map((id) => host.store.require(id))
     .sort((a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id))
     .filter((record) => host.lifecycle.get(record.id) || record.pinnedAt !== null || !chatRecordIsBlank(record))

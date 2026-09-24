@@ -19,6 +19,7 @@ import type { ChatReviewQueue } from '../chat-history/review-queue.js'
 import type { ViewHints } from './pane-add-menu.js'
 import { WorkspaceChat } from './workspace-chat.js'
 import { WorkspaceViewContext, WorkspaceViewHost, type WorkspaceViewContextValue } from './workspace-view-host.js'
+import { chatLayoutRevision } from './layout-revision.js'
 
 export type ChatLayoutHandle = {
   splitChat: (chatId: string, edge: 'right' | 'bottom') => Promise<void>
@@ -47,7 +48,10 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
   archiveChat?: (chatId: string) => Promise<void>
   ref?: Ref<ChatLayoutHandle>
 }) {
-  const layout = useChatLayout(chat.snapshot)
+  const workspaceSnapshotRef = useRef(chat.snapshot)
+  workspaceSnapshotRef.current = chat.snapshot
+  const layoutRevision = chatLayoutRevision(chat.snapshot)
+  const layout = useChatLayout(() => workspaceSnapshotRef.current, layoutRevision)
   useEffect(() => onBrowserVisibilityChange(layout.browserVisible), [layout.browserVisible, onBrowserVisibilityChange])
   const agentsViewOpen = hasWorkspaceView(layout.tree, 'agents')
   useEffect(() => onAgentsViewOpenChange?.(agentsViewOpen), [agentsViewOpen, onAgentsViewOpenChange])
@@ -59,7 +63,7 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
       event.dataTransfer.effectAllowed = 'move'
     }}><span className="browser-layout-drag-dots" aria-hidden="true" /></button>, [layout.busy])
   const [dragging, setDragging] = useState(false)
-  const browser = useBrowserController(JSON.stringify([layout.browserVisible, layout.tree]), layout.browserVisible, dragging)
+  const browser = useBrowserController(`${layoutRevision}\0${layout.browserVisible ? '1' : '0'}`, layout.browserVisible, dragging)
   const imageTabId = browser.browser.image?.tabId
   const [browserRevealVersion, setBrowserRevealVersion] = useState(0)
   const [presetsOpen, setPresetsOpen] = useState(false)
