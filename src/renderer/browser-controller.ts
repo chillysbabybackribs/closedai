@@ -14,7 +14,7 @@ export function useBrowserController(layoutKey?: string, visible = true, occlude
   const [isEditingUrl, setIsEditingUrl] = useState(false)
   const state = useBrowserSnapshot(isEditingUrl)
   const omnibox = useOmnibox(state.browser, state.location, state.setLocation, setIsEditingUrl)
-  const omniboxCoversPage = isEditingUrl && omnibox.suggestionsOpen && omnibox.suggestions.length > 0
+  const omniboxCoversPage = isEditingUrl && omnibox.suggestionsOpen
   const titlebarOverlay = useTitlebarBrowserFreeze(omniboxCoversPage)
   const browserHostRef = useBrowserBounds(
     layoutKey,

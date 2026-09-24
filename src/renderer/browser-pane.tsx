@@ -254,9 +254,9 @@ function BrowserToolbar({
           aria-label="Address"
           role="combobox"
           aria-autocomplete="both"
-          aria-expanded={controller.suggestionsOpen && controller.suggestions.length > 0}
+          aria-expanded={controller.suggestionsOpen}
           aria-controls="browser-suggestions"
-          aria-activedescendant={controller.suggestionsOpen && controller.selected >= 0 ? `browser-suggestion-${controller.selected}` : undefined}
+          aria-activedescendant={controller.suggestionsOpen && controller.selected >= 0 && controller.suggestions.length > 0 ? `browser-suggestion-${controller.selected}` : undefined}
           data-ui="browser.address"
           onFocus={focus}
           onBlur={blur}
@@ -269,7 +269,7 @@ function BrowserToolbar({
             <span className="og-suggest">{ghost.remainder}</span>
           </div>
         ) : null}
-        {controller.suggestionsOpen && controller.suggestions.length > 0 ? (
+        {controller.suggestionsOpen ? (
           <div className="browser-suggestions" id="browser-suggestions" role="listbox" aria-label="Address suggestions">
             {controller.suggestions.map((row, index) => (
               <div className={`browser-suggestion ${index === controller.selected ? 'is-selected' : ''}`} key={row.kind + row.url}>

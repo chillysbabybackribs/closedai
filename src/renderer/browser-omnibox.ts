@@ -19,10 +19,14 @@ export function useOmnibox(
   const [revision, setRevision] = useState(0)
   const request = useRef(0)
   useEffect(() => {
+    if (!suggestionsOpen) {
+      setMatches([])
+      return
+    }
     const id = ++request.current
-    setMatches([])
-    setSelected(-1)
-    if (!suggestionsOpen) return
+    // Keep the previous rows visible until the next search lands. Clearing synchronously on
+    // every keystroke left the list empty whenever query.trim() was empty for a frame and
+    // whenever history IPC was still in flight — the dropdown unmounted and felt like it blinked.
     void window.closedai.browser.searchHistory(location).then((rows) => {
       if (request.current === id) setMatches(rows)
     }).catch(() => {})
