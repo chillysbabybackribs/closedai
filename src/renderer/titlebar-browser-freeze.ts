@@ -4,7 +4,9 @@ import type { BrowserShot } from '../shared/types.js'
 // DOM surfaces that may paint over the browser column.
 // Modal backdrops cover the browser even before async content (such as an image) has
 // given the dialog its final size. Native views must also stay behind that backdrop.
-const OVERLAY_SELECTOR = '.header-chat-search-popup, .header-chat-search-error, .browser-suggestions, .browser-downloads, [data-slot="dialog-overlay"], [role="dialog"], [role="menu"], [data-slot="tooltip-content"]'
+// Omnibox suggestions are handled separately: their list mutates on every keystroke and must
+// not drive the generic overlay scanner or the native page occludes/restores in a loop.
+const OVERLAY_SELECTOR = '.header-chat-search-popup, .header-chat-search-error, .browser-downloads, [data-slot="dialog-overlay"], [role="dialog"], [role="menu"], [data-slot="tooltip-content"]'
 const BROWSER_HOST_SELECTOR = '#browser-page'
 const EAGER_CAPTURE_TRIGGER = '[data-ui="titlebar.chat-search"], [data-ui="titlebar.menu"][data-ui-key="view"], [data-ui="browser.address"], [data-ui="browser.saved-sites"], [aria-label="Downloads"], [aria-label="Tools"]'
 // Right-clicking browser chrome opens a menu over the page, and unlike the triggers above it
@@ -60,7 +62,7 @@ export function overlayBlocksBrowser(root: ParentNode = document): boolean {
 // view attached. The native pixels stay visible until the still is ready; hiding them first
 // leaves a blank compositor gap while the capture round-trip is in flight. Closing the overlay
 // restores the live surface on the same bounds.
-export function useTitlebarBrowserFreeze(): {
+export function useTitlebarBrowserFreeze(omniboxCoversPage = false): {
   open: boolean
   shot: BrowserShot | null
   finishRestore: () => void
@@ -68,8 +70,12 @@ export function useTitlebarBrowserFreeze(): {
   const [freeze, setFreeze] = useState<BrowserShot | null>(null)
   const [open, setOpen] = useState(false)
   const overlayOpen = useRef(false)
+  const omniboxCoversPageRef = useRef(omniboxCoversPage)
+  omniboxCoversPageRef.current = omniboxCoversPage
   const pending = useRef<Promise<BrowserShot | null> | null>(null)
   const primed = useRef<BrowserShot | null>(null)
+  const captureRef = useRef<() => void>(() => {})
+  const applyRef = useRef<(next: boolean) => void>(() => {})
 
   useEffect(() => {
     const capture = (): void => {
@@ -79,7 +85,7 @@ export function useTitlebarBrowserFreeze(): {
         .then((shot) => {
           pending.current = null
           primed.current = shot
-          if (shot && overlayOpen.current) {
+          if (shot && (overlayOpen.current || omniboxCoversPageRef.current)) {
             setFreeze(shot)
             // Do not occlude the native page until its replacement is available. This matters
             // for large menus, whose final position is only known after their child list mounts.
@@ -89,6 +95,7 @@ export function useTitlebarBrowserFreeze(): {
         })
     }
     const apply = (next: boolean): void => {
+      if (!next && omniboxCoversPageRef.current) return
       if (next === overlayOpen.current) return
       overlayOpen.current = next
       if (!next) {
@@ -102,6 +109,8 @@ export function useTitlebarBrowserFreeze(): {
       }
       else capture()
     }
+    captureRef.current = capture
+    applyRef.current = apply
     const sync = (): void => apply(overlayBlocksBrowser())
     const onPointerDown = (event: PointerEvent): void => {
       const target = event.target
@@ -126,10 +135,15 @@ export function useTitlebarBrowserFreeze(): {
     }
   }, [])
 
+  useEffect(() => {
+    if (omniboxCoversPage) applyRef.current(true)
+    else applyRef.current(overlayBlocksBrowser())
+  }, [omniboxCoversPage])
+
   // The DOM overlay disappears before the bounds IPC necessarily reaches main. Retain the
   // still until main has made the attached live page visible, so there is no blank handoff.
   const finishRestore = useCallback((): void => {
-    if (!overlayOpen.current) setFreeze(null)
+    if (!overlayOpen.current && !omniboxCoversPageRef.current) setFreeze(null)
   }, [])
 
   return { open, shot: freeze, finishRestore }

@@ -13,8 +13,9 @@ type BrowserIdentity = { kind: 'web' | 'file' | 'other'; secure: boolean; host: 
 export function useBrowserController(layoutKey?: string, visible = true, occluded = false) {
   const [isEditingUrl, setIsEditingUrl] = useState(false)
   const state = useBrowserSnapshot(isEditingUrl)
-  const titlebarOverlay = useTitlebarBrowserFreeze()
   const omnibox = useOmnibox(state.browser, state.location, state.setLocation, setIsEditingUrl)
+  const omniboxCoversPage = isEditingUrl && omnibox.suggestionsOpen && omnibox.suggestions.length > 0
+  const titlebarOverlay = useTitlebarBrowserFreeze(omniboxCoversPage)
   const browserHostRef = useBrowserBounds(
     layoutKey,
     visible && !state.browser.navigationError,
