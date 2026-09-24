@@ -685,7 +685,7 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   conversation pane across tab switching and unmounting, clearing them only on submission.
   Appearance settings separate message and composer font sizes
   (defaults 14 and 15 px, range 13–22) from chat zoom.
-- Ctrl/Cmd+, opens settings, Ctrl/Cmd+H opens chat history, Ctrl/Cmd+N creates a chat,
+- Ctrl/Cmd+, opens settings, Ctrl/Cmd+H focuses chat search, Ctrl/Cmd+N creates a chat,
   Ctrl/Cmd+W closes the focused chat tab or hides its tile (same path as the ×; the last
   remaining chat stays), Ctrl/Cmd+Shift+W closes the window, F11 toggles fullscreen, and Escape
   pauses a running task in any pane. Escape yields (`escapePausesTask` in
