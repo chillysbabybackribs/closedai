@@ -4,7 +4,7 @@ import {
   useState
 } from 'react'
 import { useNativeViewBounds } from './native-view-bounds.js'
-import type { BrowserState, BrowserTabInfo } from '../shared/types.js'
+import type { BrowserBounds, BrowserState, BrowserTabInfo } from '../shared/types.js'
 import { useTitlebarBrowserFreeze } from './titlebar-browser-freeze.js'
 
 import { useOmnibox } from './browser-omnibox.js'
@@ -20,7 +20,8 @@ export function useBrowserController(layoutKey?: string, visible = true, occlude
     layoutKey,
     visible && !state.browser.navigationError,
     titlebarOverlay.open,
-    titlebarOverlay.finishRestore
+    titlebarOverlay.finishRestore,
+    titlebarOverlay.refresh
   )
   const displayedUrl = state.browser.navigationError?.url ?? state.browser.url
   const identity = useMemo(
@@ -81,10 +82,12 @@ function useBrowserBounds(
   layoutKey?: string,
   visible = true,
   occluded = false,
-  finishRestore?: () => void
+  finishRestore?: () => void,
+  refresh?: (bounds: BrowserBounds) => void
 ) {
   return useNativeViewBounds(async (bounds) => {
     await window.closedai.browser.setBounds(bounds)
+    refresh?.(bounds)
     if (!bounds.occluded) finishRestore?.()
   }, layoutKey, visible, occluded)
 }

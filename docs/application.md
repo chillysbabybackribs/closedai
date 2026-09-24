@@ -381,7 +381,10 @@ the selected chat; its position uses the same saved layout and resizable divider
 While a pane or the browser is dragged toward a split target, tiles and dividers live-resize to
 the layout that would result on release; chats and a captured browser page stay visible and track their
 new bounds. Layout drags temporarily occlude the native browser after the still is ready, so
-the moving native surface cannot intercept drag events. The still remains through commit,
+the moving native surface cannot intercept drag events. After each bounds update the preview
+refreshes from the resized page, so responsive content reflows before release. Captures are
+serialized and obsolete sizes are discarded; the previous frame stays at its natural scale
+until the replacement arrives, without stretching. The still remains through commit,
 then clears after native bounds are restored. Preview dimensions update once per animation frame without size tweening, so
 transcripts do not repeatedly rewrap after a target change. On release the accepted split stays
 mounted until the chat-open operation commits (or fails); native drag-end cannot briefly restore

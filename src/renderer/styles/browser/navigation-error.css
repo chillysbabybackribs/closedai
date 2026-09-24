@@ -24,7 +24,9 @@
   width: calc(100% - 12px);
   height: calc(100% - 12px);
   border-radius: 7px;
-  object-fit: fill;
+  /* Preserve CSS-pixel scale until the resized compositor frame arrives. */
+  object-fit: none;
+  object-position: top left;
   pointer-events: none;
 }
 

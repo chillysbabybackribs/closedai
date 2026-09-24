@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { BrowserShot } from '../shared/types.js'
+import type { BrowserBounds, BrowserShot } from '../shared/types.js'
 
 // DOM surfaces that may paint over the browser column.
 // Modal backdrops cover the browser even before async content (such as an image) has
@@ -56,6 +56,31 @@ export function overlayBlocksBrowser(root: ParentNode = document): boolean {
   return false
 }
 
+// Keep at most one compositor capture in flight. A newer size (or restoration) makes
+// its result obsolete; capture the latest request next without holding up bounds IPC.
+export function createBrowserFreezeRefresh(
+  capture: () => Promise<BrowserShot | null>,
+  publish: (shot: BrowserShot) => void
+): (bounds: BrowserBounds) => void {
+  let latest: BrowserBounds | null = null
+  let running = false
+  const drain = async (): Promise<void> => {
+    running = true
+    while (latest) {
+      const request = latest
+      const shot = await capture().catch(() => null)
+      if (latest !== request) continue
+      latest = null
+      if (shot) publish(shot)
+    }
+    running = false
+  }
+  return (bounds) => {
+    latest = bounds.visible !== false && bounds.occluded ? bounds : null
+    if (latest && !running) void drain()
+  }
+}
+
 // Electron paints WebContentsView above the renderer, so a DOM overlay cannot literally stack
 // over the live page. When an overlay intersects the browser host, prime a one-frame capture,
 // show that still in the unchanged browser box, and hide the native pixels while leaving the
@@ -66,6 +91,7 @@ export function useTitlebarBrowserFreeze(omniboxCoversPage = false): {
   open: boolean
   shot: BrowserShot | null
   finishRestore: () => void
+  refresh: (bounds: BrowserBounds) => void
 } {
   const [freeze, setFreeze] = useState<BrowserShot | null>(null)
   const [open, setOpen] = useState(false)
@@ -75,6 +101,13 @@ export function useTitlebarBrowserFreeze(omniboxCoversPage = false): {
   const pending = useRef<Promise<BrowserShot | null> | null>(null)
   const primed = useRef<BrowserShot | null>(null)
   const captureRef = useRef<() => void>(() => {})
+  const refreshRef = useRef<ReturnType<typeof createBrowserFreezeRefresh> | null>(null)
+  if (!refreshRef.current) refreshRef.current = createBrowserFreezeRefresh(
+    () => window.closedai.browser.capture(),
+    (shot) => {
+      if (overlayOpen.current || omniboxCoversPageRef.current) setFreeze(shot)
+    }
+  )
   const applyRef = useRef<(next: boolean) => void>(() => {})
 
   useEffect(() => {
@@ -146,5 +179,5 @@ export function useTitlebarBrowserFreeze(omniboxCoversPage = false): {
     if (!overlayOpen.current && !omniboxCoversPageRef.current) setFreeze(null)
   }, [])
 
-  return { open, shot: freeze, finishRestore }
+  return { open, shot: freeze, finishRestore, refresh: refreshRef.current }
 }
