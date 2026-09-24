@@ -50,6 +50,7 @@ export const WorkspaceView = memo(function WorkspaceView({ viewId, kind, active,
       {kind === 'trace' && <TracePanel paneId={scope.chatId} active={active} />}
       {kind === 'tools' && <ToolsPanel active={active} onSendToChat={(text) => onSendToChat(scope.chatId, text)} />}
       {kind === 'agents' && onStartAgent && <AgentLibraryView active={active} startEnabled={startEnabled}
+        chats={history.chats} onOpenChat={(chatId) => { void history.openChat(chatId) }}
         onStart={(options) => onStartAgent(scope.chatId, options)} />}
       {kind === 'history' && <ChatHistory activeChatId={scope.chatId} busy={history.busy} listChats={history.listChats}
         chats={history.chats} openChat={history.openChat} archiveChat={history.archiveChat} onClose={onClose} onOpened={() => {}} />}

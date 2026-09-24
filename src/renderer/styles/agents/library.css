@@ -14,3 +14,18 @@
   font-size: 12.5px;
   line-height: 1.5;
 }
+
+.agent-run-overview {
+  flex: none;
+  max-height: 42%;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--hairline);
+}
+.agent-run-overview-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.agent-run-overview-heading h3 { margin: 0; font-size: 12px; font-weight: 650; }
+.agent-run-overview-heading span, .agent-run-overview-empty { color: var(--muted-foreground); font-size: 11px; }
+.agent-run-overview-empty { margin: 8px 0 0; }
+.agent-run-overview-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 8px; margin-top: 10px; }
+.agent-run-overview-list > * { min-width: 0; }

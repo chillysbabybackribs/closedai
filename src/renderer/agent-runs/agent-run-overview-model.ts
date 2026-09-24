@@ -1,14 +1,14 @@
 import { AGENT_RUN_MAX_FAILURES, type AgentRun } from '../../shared/agent-runs.js'
 
-// What the agent dock shows: one icon per run in the footer row, ordered so runs that need the
+// What the Agents view shows: one card per run, ordered so runs that need the
 // user (an approval, a failure pause, a finished limit) come first. Pure so the rules are testable.
 
 export type DockTileState = 'running' | 'retrying' | 'paused' | 'finished' | 'failed' | 'approval'
 
-/** The slice of a chat row the dock reads: whether a turn is live and what it is doing. */
+/** The slice of a chat row the overview reads: whether a turn is live and what it is doing. */
 export type DockChatActivity = { paneId: string; running: boolean; activity: string | null }
 
-/** The slice of a pending credential approval the dock reads. */
+/** The slice of a pending credential approval the overview reads. */
 export type DockApproval = { id: string; paneId: string | null; credentialLabel: string }
 
 export type DockTile = {
@@ -23,7 +23,7 @@ export type DockTile = {
   attentionKey: string | null
 }
 
-/** How each state reads in the icon's tooltip and the run card. */
+/** How each state reads in the run card. */
 export const DOCK_STATE_LABEL: Record<DockTileState, string> = {
   running: 'Running', retrying: 'Retrying', paused: 'Paused', finished: 'Finished',
   failed: 'Paused by failures', approval: 'Needs your approval'
@@ -73,7 +73,7 @@ export function dockTiles(runs: readonly AgentRun[], chats: readonly DockChatAct
   }).sort((a, b) => ORDER[a.state] - ORDER[b.state])
 }
 
-/** The dock's one-line status beside its icons. */
+/** The overview's one-line status. */
 export function dockSummary(tiles: readonly DockTile[]): string {
   if (tiles.length === 0) return 'No agents running'
   const running = tiles.filter((tile) => tile.state === 'running' || tile.state === 'retrying').length
@@ -81,11 +81,4 @@ export function dockSummary(tiles: readonly DockTile[]): string {
   const paused = tiles.length - running - needs
   const parts = [running ? `${running} running` : '', needs ? `${needs} need${needs === 1 ? 's' : ''} you` : '', paused ? `${paused} paused` : '']
   return parts.filter(Boolean).join(' · ')
-}
-
-/** Up to two letters that tell runs apart on their dock icons: "Daily brief" is DB. */
-export function dockInitials(name: string): string {
-  const words = name.match(/[\p{L}\p{N}]+/gu) ?? []
-  const letters = words.length > 1 ? words[0]![0]! + words[1]![0]! : (words[0] ?? 'A').slice(0, 2)
-  return letters.toUpperCase()
 }
