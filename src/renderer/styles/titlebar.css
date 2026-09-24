@@ -35,44 +35,6 @@
   -webkit-app-region: no-drag;
 }
 
-.titlebar-search-tools .titlebar-agent-toggle,
-.titlebar-search-tools .titlebar-browser-toggle {
-  display: flex;
-  flex: 0 0 34px;
-  align-items: center;
-  justify-content: center;
-  height: 34px;
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: var(--chrome-control-fg);
-  cursor: pointer;
-  transition: color 110ms var(--ease-chrome);
-}
-
-.titlebar-search-tools .titlebar-agent-toggle:hover:not(:disabled),
-.titlebar-search-tools .titlebar-browser-toggle:hover:not(:disabled) {
-  color: var(--chrome-control-strong);
-}
-
-.titlebar-search-tools .titlebar-agent-toggle.is-selected,
-.titlebar-search-tools .titlebar-browser-toggle.is-selected {
-  color: var(--chrome-control-strong);
-}
-
-.titlebar-search-tools .titlebar-agent-toggle:disabled,
-.titlebar-search-tools .titlebar-browser-toggle:disabled {
-  color: var(--chrome-control-quiet);
-}
-
-.titlebar-search-tools .titlebar-agent-toggle svg,
-.titlebar-search-tools .titlebar-browser-toggle svg {
-  stroke-width: var(--chrome-icon-stroke);
-}
-
-.titlebar-search-tools .titlebar-agent-toggle:focus-visible,
-.titlebar-search-tools .titlebar-browser-toggle:focus-visible { outline: 1px solid var(--focus-ink); outline-offset: -1px; border-radius: 6px; }
-
 .app-brand {
   position: absolute;
   top: 0;

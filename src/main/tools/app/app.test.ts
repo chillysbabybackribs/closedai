@@ -225,7 +225,7 @@ test('preview_html resolves workspace html and reveals the browser when hidden',
   assert.match(textOf(result), /mock\.html/)
   assert.match(textOf(result), /tab-preview/)
   const toggle = calls.find((entry) => Array.isArray(entry) && entry[0] === 'click') as ['click', { control: string }]
-  assert.equal(toggle[1].control, 'layout.browser-toggle')
+  assert.equal(toggle[1].control, 'composer.browser')
   assert.match(textOf(result), /"browserRevealed": true/)
 })
 

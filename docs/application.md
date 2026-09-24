@@ -300,7 +300,7 @@ Two full-height chats can
 sit on either side of the browser. The browser starts on the right; drag a conversation tab,
 or empty chat header space onto the browser's left or right half to dock it on that side.
 During a chat drag, the native browser view is temporarily covered so the drop targets can receive
-the gesture. A globe button beside Search chats in the top title bar hides/restores the browser in its saved position without
+the gesture. The **Browser** pill (`composer.browser`) under every composer hides/restores the browser in its saved position without
 closing tabs. Chat headers offer **New chat to the right**, **New chat below**, and **Hide chat pane**.
 Hiding a tile neither detaches its runtime nor stops its turn; the model command `close_chat`
 still detaches and stops it.
@@ -451,11 +451,10 @@ with "App relaunched". A strip above the composer shows the state and cycle coun
 and a tool's `stop_agent` pause the run too; a user message sent between cycles is folded into
 the loop rather than raced.
 
-The **Agents tab** opens from the workflow icon beside Search chats in the title bar
-(`titlebar.agents`), the tile + menu, or Agent → Agents…. There is at most one Agents tab in
+The **Agents tab** opens from the composer's Agents menu (Manage), the tile + menu, or Agent → Agents…. There is at most one Agents tab in
 the workspace: any of those entry points opens it in its existing tile or creates it in the
 selected chat's tile, then focuses it (Trace, History and Tools still dedupe per tile only).
-The title-bar icon shows selected while that tab exists. Its **Runs** screen (from the Library
+Its **Runs** screen (from the Library
 header's Runs control, whose label carries the summary of running and attention-needed runs)
 lists every agent run in a minimal table, with state, cycle, and current activity or pause
 reason. Under each row a brief of two to four plain sentences reads from the run's tallies

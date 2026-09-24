@@ -27,7 +27,6 @@ const SettingsDialog = lazy(async () => {
 })
 import { useToolsPreset } from './tools/use-tools-preset.js'
 import { useBrowserSavedSitesController } from './browser-saved-sites-controller.js'
-import { Globe, Workflow } from 'lucide-react'
 import {
   normalizeAppearanceSettings,
   persistAppearanceSettings,
@@ -63,8 +62,6 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
   const dialogsRef = useRef({ settingsOpen, renamingChat })
   dialogsRef.current = { settingsOpen, renamingChat }
   const toolsPreset = useToolsPreset()
-  const [browserVisible, setBrowserVisible] = useState(false)
-  const [agentsViewOpen, setAgentsViewOpen] = useState(false)
   const savedSites = useBrowserSavedSitesController()
   // A shortcut or menu action main refused; shown under the title bar until dismissed.
   const [shellError, setShellError] = useState<string | null>(null)
@@ -208,20 +205,6 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
         />
         <div className="titlebar-search-tools">
           <HeaderChatSearch chats={chat.chats} controller={history} inputRef={searchRef} />
-          <button type="button" className={`titlebar-agent-toggle${agentsViewOpen ? ' is-selected' : ''}`}
-            data-ui="titlebar.agents" disabled={!chat.selectedPaneId}
-            aria-pressed={agentsViewOpen} aria-label={agentsViewOpen ? 'Focus Agents tab' : 'Open Agents tab'}
-            title={agentsViewOpen ? 'Focus Agents tab' : 'Open Agents tab'}
-            onClick={() => workspaceRef.current?.openView('agents')}>
-            <Workflow size={19} aria-hidden="true" />
-          </button>
-          <button type="button" className={`titlebar-browser-toggle${browserVisible ? ' is-selected' : ''}`}
-            data-ui="layout.browser-toggle" disabled={!chat.selectedPaneId}
-            aria-pressed={browserVisible} aria-label={browserVisible ? 'Hide browser' : 'Show browser'}
-            title={browserVisible ? 'Hide browser' : 'Show browser'}
-            onClick={() => workspaceRef.current?.toggleBrowser()}>
-            <Globe size={19} aria-hidden="true" />
-          </button>
         </div>
         <AppWindowControls />
       </header>
@@ -237,8 +220,6 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
         {chat.selectedPaneId && <DesktopWorkspace
           key={chat.workspace?.cwd ?? chat.state.cwd}
           ref={workspaceRef}
-          onBrowserVisibilityChange={setBrowserVisible}
-          onAgentsViewOpenChange={setAgentsViewOpen}
           chat={chat}
           savedSites={savedSites}
           reviewQueue={history.reviewQueue}

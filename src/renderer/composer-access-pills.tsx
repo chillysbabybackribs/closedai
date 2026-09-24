@@ -21,7 +21,6 @@ export function ComposerAccessPills({ paneId, startEnabled, runningTurn, onCompo
         type="button"
         className="composer-pill"
         data-ui="composer.browser"
-        disabled={runningTurn}
         onClick={() => workspace.toggleBrowser()}
       >
         <Globe2 size={14} strokeWidth={1.9} aria-hidden="true" />

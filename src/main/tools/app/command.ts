@@ -207,7 +207,7 @@ async function revealBrowserPane(uiProvider: () => AppUiHost | null): Promise<bo
   const automation = uiProvider()
   if (!automation) return false
   if (await browserPaneVisible(uiProvider)) return true
-  await automation.click({ control: 'layout.browser-toggle' })
+  await automation.click({ control: 'composer.browser' })
   return true
 }
 

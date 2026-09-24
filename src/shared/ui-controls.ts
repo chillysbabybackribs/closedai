@@ -15,12 +15,10 @@ export const UI_CONTROLS = {
   'titlebar.chat-search-delete': 'Delete a chat from history immediately without confirmation; item is the chat id',
   'titlebar.menu': 'Application menu tab; item is file, view, agent, or developer',
   'titlebar.menu-item': 'Application menu row; item is its stable key, for example new-chat, tools, compact-context, stop-turn, turn-trace, reload-renderer, toggle-devtools',
-  'titlebar.agents': 'Workflow icon beside Search chats: open or focus the workspace Agents tab (one per layout; same tab as Agent → Agents… and the tile + menu)',
   'window.minimize': 'Minimize the window',
   'window.maximize': 'Maximize or restore the window',
   'window.close': 'Close the window',
 
-  'layout.browser-toggle': 'Globe button beside Search chats in the top title bar: show or hide the shared browser in its saved position; no item required',
   'layout.browser-dock': 'Drop a chat tab or pane on the left or right half to place it beside the browser',
   'layout.browser-drag': 'Drag the shared browser by its tab-strip grip to a chat edge to stack or dock it',
   'layout.workspace-dock': 'Browser-drag drop target at the workspace edge for a full-height column; item is left or right',
