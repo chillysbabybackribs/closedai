@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, JSX, ReactNode } from "react"
+import { createContext, useContext, type ComponentProps, type JSX, type ReactNode } from "react"
 import {
   Bookmark,
   Calendar,
@@ -12,10 +12,32 @@ import {
 } from "lucide-react"
 
 import { cn } from "../../lib/utils.js"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./tooltip.js"
 
-// A glass icon dock on a dark hero: raised square tiles that lift on hover, show their label
-// beneath, and carry an optional count badge. HeroDockBar and HeroDockIcon are the reusable
-// pieces; the default export is the full hero they were published with.
+// A glass icon dock: a pill bar of raised square tiles that lift on hover, name themselves in a
+// tooltip, and carry an optional count badge. Colours come from theme tokens so the bar follows
+// the active theme. Labels use the shared Tooltip, which is portaled (never clipped at a window
+// edge) and which the native browser view already yields to. HeroDockBar, HeroDockIcon and
+// HeroDockSeparator are the reusable pieces; the default export is the hero they were published with.
+
+export type HeroDockSize = "default" | "compact"
+
+const HeroDockSizeContext = createContext<HeroDockSize>("default")
+
+const BAR_SIZE: Record<HeroDockSize, string> = {
+  default: "gap-3 rounded-[28px] px-3 py-2 sm:gap-5 sm:rounded-[48px] sm:px-6 sm:py-3",
+  compact: "gap-1.5 rounded-full px-1.5 py-1",
+}
+
+const TILE_SIZE: Record<HeroDockSize, string> = {
+  default: "h-12 w-12 rounded-xl sm:h-14 sm:w-14",
+  compact: "size-8 rounded-lg",
+}
+
+const GLYPH_SIZE: Record<HeroDockSize, string> = {
+  default: "h-5 w-5",
+  compact: "size-4",
+}
 
 export default function HeroDock(): JSX.Element {
   return (
@@ -53,7 +75,7 @@ export default function HeroDock(): JSX.Element {
 
           <div className="relative mt-6 w-full max-w-[85%] sm:max-w-[80%]">
             <div className="flex items-center justify-center">
-              <HeroDockBar>
+              <HeroDockBar className="scale-90 sm:scale-95">
                 <HeroDockIcon icon={Home} label="Agents" />
                 <HeroDockIcon icon={Compass} label="Leads" />
                 <HeroDockIcon icon={Calendar} label="Operations" badge="4" />
@@ -88,53 +110,90 @@ export default function HeroDock(): JSX.Element {
   )
 }
 
-export function HeroDockBar({ className, children }: { className?: string; children: ReactNode }): JSX.Element {
+export type HeroDockBarProps = ComponentProps<"div"> & { size?: HeroDockSize }
+
+/** The pill that holds the tiles; its tooltips share one provider so moving along the bar skips the open delay. */
+export function HeroDockBar({ size = "default", className, children, ...props }: HeroDockBarProps): JSX.Element {
   return (
-    <div className="relative flex scale-90 items-center gap-2 sm:scale-95 sm:gap-4">
-      <div
-        className={cn(
-          "flex items-center gap-3 rounded-[28px] bg-neutral-900/80 px-3 py-2 shadow-2xl ring-1 ring-white/10 backdrop-blur-lg sm:gap-5 sm:rounded-[48px] sm:px-6 sm:py-3",
-          className
-        )}
-      >
-        {children}
-      </div>
-    </div>
+    <HeroDockSizeContext.Provider value={size}>
+      <TooltipProvider>
+        <div
+          {...props}
+          className={cn(
+            "flex items-center bg-(--surface-raised)/85 shadow-[inset_0_1px_0_var(--surface-highlight),0_10px_30px_-12px_rgb(0_0_0/0.6)] ring-1 ring-(--hairline-strong) backdrop-blur-lg",
+            BAR_SIZE[size],
+            className
+          )}
+        >
+          {children}
+        </div>
+      </TooltipProvider>
+    </HeroDockSizeContext.Provider>
   )
 }
 
-export function HeroDockSeparator(): JSX.Element {
-  return <span className="mx-1 hidden h-6 w-px bg-white/10 sm:block" aria-hidden="true" />
+export function HeroDockSeparator({ className }: { className?: string }): JSX.Element {
+  const size = useContext(HeroDockSizeContext)
+  return (
+    <span
+      className={cn("w-px self-stretch bg-(--hairline-strong)", size === "compact" ? "my-1.5" : "mx-1 my-2 hidden sm:block", className)}
+      aria-hidden="true"
+    />
+  )
 }
 
-export type HeroDockIconProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children"> & {
-  icon: LucideIcon
+export type HeroDockIconProps = Omit<ComponentProps<"button">, "children"> & {
+  /** The tile glyph; children render after it, for a glyph that is not an icon (initials) or a status dot. */
+  icon?: LucideIcon
+  children?: ReactNode
+  /** Accessible name and default tooltip text. */
   label: string
+  /** Richer tooltip body; defaults to the label. */
+  tip?: ReactNode
+  side?: "top" | "bottom"
   badge?: string
 }
 
-export function HeroDockIcon({ icon: Icon, label, badge, className, ...props }: HeroDockIconProps): JSX.Element {
+export function HeroDockIcon({
+  icon: Icon,
+  children,
+  label,
+  tip,
+  side = "bottom",
+  badge,
+  className,
+  ...props
+}: HeroDockIconProps): JSX.Element {
+  const size = useContext(HeroDockSizeContext)
   return (
-    <button
-      type="button"
-      aria-label={label}
-      {...props}
-      className={cn(
-        "group relative grid h-12 w-12 place-items-center rounded-xl bg-gradient-to-b from-neutral-800/60 to-neutral-900/70 shadow-lg ring-1 ring-white/10 outline-none backdrop-blur-xl transition-transform duration-200 hover:-translate-y-1 hover:scale-[1.05] focus-visible:ring-2 focus-visible:ring-white/50 sm:h-14 sm:w-14",
-        // Hover halo: a soft outer ring and drop shadow that fade in under the lifted tile.
-        "after:pointer-events-none after:absolute after:-inset-0.5 after:rounded-[inherit] after:opacity-0 after:shadow-[0_0_0_0_rgba(255,255,255,.18),0_12px_30px_-10px_rgba(0,0,0,.7)] after:transition-opacity after:duration-250 hover:after:opacity-100",
-        className
-      )}
-    >
-      <Icon className="h-5 w-5 text-white/85 transition-transform duration-200 group-hover:scale-110" strokeWidth={2.1} />
-      {badge ? (
-        <span className="absolute -right-2 -top-2 grid h-5 w-5 place-items-center rounded-full bg-white text-[10px] font-semibold text-neutral-900 ring-1 ring-white/80">
-          {badge}
-        </span>
-      ) : null}
-      <span className="pointer-events-none absolute -bottom-6 translate-y-[calc(50%+6px)] text-[9px] tracking-wide text-white/70 opacity-0 transition-[opacity,translate] duration-200 group-hover:translate-y-1/2 group-hover:opacity-100 group-focus-visible:translate-y-1/2 group-focus-visible:opacity-100 sm:text-[10px]">
-        {label}
-      </span>
-    </button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          aria-label={label}
+          {...props}
+          className={cn(
+            "group relative grid shrink-0 place-items-center bg-linear-to-b from-(--surface-control-hover) to-(--surface-control) text-foreground/85 shadow-[inset_0_1px_0_var(--surface-highlight)] ring-1 ring-(--hairline-strong) outline-none transition-transform duration-200 hover:-translate-y-0.5 hover:scale-[1.06] hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50",
+            // Hover halo: a drop shadow that fades in under the lifted tile.
+            "after:pointer-events-none after:absolute after:-inset-0.5 after:rounded-[inherit] after:opacity-0 after:shadow-[0_10px_24px_-10px_rgb(0_0_0/0.7)] after:transition-opacity after:duration-250 hover:after:opacity-100",
+            TILE_SIZE[size],
+            className
+          )}
+        >
+          {Icon ? (
+            <Icon className={cn(GLYPH_SIZE[size], "transition-transform duration-200 group-hover:scale-110")} strokeWidth={2.1} />
+          ) : null}
+          {children}
+          {badge ? (
+            <span className="absolute -right-1.5 -top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-foreground px-1 text-[10px] font-semibold text-background">
+              {badge}
+            </span>
+          ) : null}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side={side} className="max-w-64">
+        {tip ?? label}
+      </TooltipContent>
+    </Tooltip>
   )
 }
