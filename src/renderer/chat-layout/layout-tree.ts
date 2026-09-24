@@ -1,4 +1,4 @@
-import { DOCK_HEIGHT, expandedTree, hasBrowser, layoutGroups, type DockGroup } from './layout-docking.js'
+import { DOCK_HEIGHT, dockBandHeight, dockRailAnchors, dockedGroups, expandedTree, hasBrowser, layoutGroups, type DockGroup } from './layout-docking.js'
 export type DockEdge = 'left' | 'right' | 'top' | 'bottom'
 export type ChatLayout = { kind: 'pane'; id: string; tabs?: string[]; docked?: boolean; dockNumber?: number } | {
   kind: 'split'; id: string; axis: 'horizontal' | 'vertical'; ratio: number
@@ -95,10 +95,10 @@ export function resizeSplit(tree: ChatLayout, id: string, ratio: number): ChatLa
 }
 
 export function minimumSize(tree: ChatLayout, region = true): { width: number; height: number } {
-  if (region && !hasBrowser(tree) && layoutGroups(tree).some((group) => group.docked)) {
+  if (region && !hasBrowser(tree) && dockedGroups(tree).length) {
     const expanded = expandedTree(tree)
     const size = expanded ? minimumSize(expanded, false) : { width: 180, height: 0 }
-    return { width: size.width, height: size.height + DOCK_HEIGHT }
+    return { width: size.width, height: size.height + dockBandHeight(tree) }
   }
   if (tree.kind === 'pane') return { width: tree.id === BROWSER_PANE_ID ? 384 : 300, height: 280 }
   const a = minimumSize(tree.first, region)
@@ -117,14 +117,12 @@ export function layoutGeometry(tree: ChatLayout, width: number, height: number, 
   const dividers: Array<{ id: string; axis: 'horizontal' | 'vertical'; rect: Rect; parent: Rect; ratio: number; min: number; max: number }> = []
   const rails: Array<{ id: string; groups: DockGroup[]; rect: Rect; boundary: Rect }> = []
   const visit = (node: ChatLayout, rect: Rect, region = true): void => {
-    if (region && !hasBrowser(node)) {
-      const groups = layoutGroups(node).filter((group) => group.docked)
-      if (groups.length) {
-        rails.push({ id: node.id, groups, boundary: rect, rect: { ...rect, y: rect.y + rect.height - DOCK_HEIGHT, height: DOCK_HEIGHT } })
-        const expanded = expandedTree(node)
-        if (expanded) visit(expanded, { ...rect, height: rect.height - DOCK_HEIGHT }, false)
-        return
-      }
+    if (region && !hasBrowser(node) && dockRailAnchors(node).includes(node)) {
+      const groups = dockedGroups(node)
+      rails.push({ id: node.id, groups, boundary: rect, rect: { ...rect, y: rect.y + rect.height - DOCK_HEIGHT, height: DOCK_HEIGHT } })
+      const expanded = expandedTree(node)
+      if (expanded) visit(expanded, { ...rect, height: rect.height - DOCK_HEIGHT }, false)
+      return
     }
     if (node.kind === 'pane') { panes.push({ id: node.id, tabs: node.tabs ?? [node.id], rect }); return }
     const horizontal = node.axis === 'horizontal'

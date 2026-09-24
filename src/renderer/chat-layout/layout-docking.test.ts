@@ -58,6 +58,21 @@ test('docking preserves saved group labels, membership and divider ratios', () =
   assert.deepEqual(twice, docked)
 })
 
+test('dock rails sit under horizontal chat rows, not the whole grid', () => {
+  let tree = split('top', pane('a'), pane('b'))
+  tree = split('grid', tree, split('bottom', pane('c'), pane('d'), 'horizontal'), 'vertical')
+  const docked = setGroupDocked(tree, 'b', true)
+  const geometry = layoutGeometry(docked, 1200, 800)
+  assert.equal(geometry.rails.length, 1)
+  const rail = geometry.rails[0]!
+  assert.equal(rail.groups.map((group) => group.id).join(','), 'b')
+  const topRow = geometry.panes.find((item) => item.id === 'a')!.rect.height + DOCK_HEIGHT
+  assert.equal(rail.rect.y, topRow - DOCK_HEIGHT)
+  assert.equal(rail.rect.width, 1200)
+  const c = geometry.panes.find((item) => item.id === 'c')!
+  assert.ok(c.rect.y > rail.rect.y + DOCK_HEIGHT, 'lower row stays below the dock rail')
+})
+
 test('a view-only tile cannot allow the final visible chat to be docked', () => {
   const chatAndView = split('pair', pane('a'), pane('closedai:view:tools:x'))
   assert.equal(setGroupDocked(chatAndView, 'a', true), chatAndView)

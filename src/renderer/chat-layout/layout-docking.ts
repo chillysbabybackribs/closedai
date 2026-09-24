@@ -8,6 +8,29 @@ export function layoutGroups(tree: ChatLayout): DockGroup[] {
     : [...layoutGroups(tree.first), ...layoutGroups(tree.second)]
 }
 
+export function dockedGroups(tree: ChatLayout): DockGroup[] {
+  return layoutGroups(tree).filter((group) => group.docked)
+}
+
+/** Subtrees that own a regional dock rail (a horizontal row or a vertical chat column). */
+export function dockRailAnchors(node: ChatLayout): ChatLayout[] {
+  if (node.kind === 'pane') return []
+  if (hasBrowser(node)) return [...dockRailAnchors(node.first), ...dockRailAnchors(node.second)]
+  if (!dockedGroups(node).length) return []
+  const nested = [...dockRailAnchors(node.first), ...dockRailAnchors(node.second)]
+  return nested.length ? nested : [node]
+}
+
+/** Vertical space reserved for dock rails beneath chat bands in this subtree. */
+export function dockBandHeight(node: ChatLayout): number {
+  if (node.kind === 'pane') return 0
+  if (hasBrowser(node)) return Math.max(dockBandHeight(node.first), dockBandHeight(node.second))
+  if (dockRailAnchors(node).includes(node)) return DOCK_HEIGHT
+  return node.axis === 'vertical'
+    ? dockBandHeight(node.first) + dockBandHeight(node.second)
+    : Math.max(dockBandHeight(node.first), dockBandHeight(node.second))
+}
+
 export function hasBrowser(tree: ChatLayout): boolean {
   return tree.kind === 'pane' ? tree.id === BROWSER_PANE_ID : hasBrowser(tree.first) || hasBrowser(tree.second)
 }

@@ -559,7 +559,8 @@ it immediately. **Cancel** (`layout.preset-cancel`) leaves the layout unchanged.
 The header's **Dock group** minus button (`layout.pane-minimize`) minimizes the whole tab
 group into a slim regional rail. Rails use Radix Toolbar buttons labelled **Group 1**, **Group 2**,
 and so on, and appear only where groups are docked. The browser divides the canvas into separate
-chat regions; each rail stops at its region boundary. Remaining tiles fill that region above the
+chat regions; each rail stops at its region boundary. Side-by-side chats in one row share one rail
+under that row; stacked rows keep independent rails. Remaining tiles fill their band above the
 rail. A fully docked region keeps its rail available. The final visible chat has no dock control.
 Docking keeps the full split tree, tab membership, group label and divider ratios saved per project;
 restoring returns the group to that position. Docked panes stay mounted to preserve drafts and
