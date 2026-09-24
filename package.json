@@ -49,6 +49,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "cn": "^0.4.0",
     "frida": "17.18.0",
     "lucide-react": "^1.33.0",
     "marked": "^18.0.11",

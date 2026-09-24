@@ -1,9 +1,7 @@
 import { AGENT_RUN_MAX_FAILURES, type AgentRun } from '../../shared/agent-runs.js'
 
-// What the agent dock shows and when it shows itself. The dock is a thin rail at the bottom of
-// the window that opens on a deliberate rest or click, so it never pops up under a composer by
-// accident; a run that needs the user (an approval, a failure pause, a finished limit) opens it
-// on its own and keeps it open until the user has looked. Pure so the rules are testable.
+// What the agent dock shows: one icon per run in the footer row, ordered so runs that need the
+// user (an approval, a failure pause, a finished limit) come first. Pure so the rules are testable.
 
 export type DockTileState = 'running' | 'retrying' | 'paused' | 'finished' | 'failed' | 'approval'
 
@@ -69,7 +67,7 @@ export function dockTiles(runs: readonly AgentRun[], chats: readonly DockChatAct
   }).sort((a, b) => ORDER[a.state] - ORDER[b.state])
 }
 
-/** The rail's accessible label and the dock header's one-line summary. */
+/** The dock's one-line status beside its icons. */
 export function dockSummary(tiles: readonly DockTile[]): string {
   if (tiles.length === 0) return 'No agents running'
   const running = tiles.filter((tile) => tile.state === 'running' || tile.state === 'retrying').length
@@ -79,45 +77,9 @@ export function dockSummary(tiles: readonly DockTile[]): string {
   return parts.filter(Boolean).join(' · ')
 }
 
-export type DockReveal = {
-  /** Opened by a rest on the rail or a click; closed by leaving, Escape, or a second click. */
-  open: boolean
-  /** Stays open through pointer leaves until unpinned or Escape. */
-  pinned: boolean
-  /** Attention keys the user has already looked at; pruned to the live set on every event. */
-  seen: readonly string[]
-}
-
-export type DockEvent =
-  | { type: 'open' }
-  | { type: 'toggle' }
-  | { type: 'pin' }
-  /** The pointer left the rail and dock after a grace delay; what was showing counts as looked at. */
-  | { type: 'leave' }
-  | { type: 'escape' }
-  /** The pointer entered or focus landed inside the dock. */
-  | { type: 'look' }
-
-export const DOCK_CLOSED: DockReveal = { open: false, pinned: false, seen: [] }
-
-export function unseenAttention(reveal: DockReveal, attention: readonly string[]): string[] {
-  return attention.filter((key) => !reveal.seen.includes(key))
-}
-
-export function dockVisible(reveal: DockReveal, attention: readonly string[]): boolean {
-  return reveal.open || reveal.pinned || unseenAttention(reveal, attention).length > 0
-}
-
-export function reduceDock(reveal: DockReveal, event: DockEvent, attention: readonly string[]): DockReveal {
-  const seen = reveal.seen.filter((key) => attention.includes(key))
-  const all = [...attention]
-  switch (event.type) {
-    case 'open': return { ...reveal, open: true, seen }
-    case 'toggle': return dockVisible(reveal, attention) ? { open: false, pinned: false, seen: all } : { ...reveal, open: true, seen }
-    case 'pin': return { open: true, pinned: !reveal.pinned, seen }
-    case 'leave': return { ...reveal, open: false, seen: all }
-    case 'escape': return { open: false, pinned: false, seen: all }
-    // Looking holds the dock open, so marking the attention seen cannot hide it under the pointer.
-    case 'look': return { ...reveal, open: true, seen: all }
-  }
+/** Up to two letters that tell runs apart on their dock icons: "Daily brief" is DB. */
+export function dockInitials(name: string): string {
+  const words = name.match(/[\p{L}\p{N}]+/gu) ?? []
+  const letters = words.length > 1 ? words[0]![0]! + words[1]![0]! : (words[0] ?? 'A').slice(0, 2)
+  return letters.toUpperCase()
 }
