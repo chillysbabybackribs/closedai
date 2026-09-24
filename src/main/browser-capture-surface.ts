@@ -49,7 +49,9 @@ export class HiddenCaptureSurfaces {
       this.leases.delete(tab.id)
       try {
         if (!this.home.isDestroyed() && !tab.view.webContents.isDestroyed()) {
-          tab.hide()
+          // Keep the widget visible across reparenting. Hiding it here can leave its
+          // frame sink blank after return, even though capturePage still sees pixels.
+          tab.applyBounds({ ...bounds, occluded: true }, false)
           this.home.contentView.addChildView(tab.view)
         }
       } finally {
