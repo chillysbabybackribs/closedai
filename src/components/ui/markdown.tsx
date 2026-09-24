@@ -134,13 +134,17 @@ const DEFAULT_COMPONENTS: Partial<Components> = {
   // behaviour) instead of shadcn's nowrap so a prose column does not force a scrollbar, but a
   // word is never broken: a table that does not fit scrolls inside its frame.
   table: function TableComponent({ node: _node, className, ...props }: TaggedProps) {
-    return <div className="my-4 overflow-hidden rounded-lg border"><Table className={cn('aui-md-table', className)} {...props} /></div>
+    return (
+      <div className="not-prose my-4">
+        <Table className={cn('aui-md-table', className)} {...props} />
+      </div>
+    )
   },
   thead: function HeadComponent({ node: _node, ...props }: TaggedProps) { return <TableHeader {...props} /> },
   tbody: function BodyComponent({ node: _node, ...props }: TaggedProps) { return <TableBody {...props} /> },
   tr: function RowComponent({ node: _node, ...props }: TaggedProps) { return <TableRow {...props} /> },
   th: function HeadCellComponent({ node: _node, style, className, ...props }: CellProps) {
-    return <TableHead className={cn('bg-muted/50 text-muted-foreground px-3 text-xs', cellAlign(style), className)} {...props} />
+    return <TableHead className={cn('text-muted-foreground px-3 py-2 text-xs font-medium', cellAlign(style), className)} {...props} />
   },
   td: function CellComponent({ node: _node, style, className, children, ...props }: CellProps) {
     const numeric = NUMERIC_CELL.test(textContent(children).trim())

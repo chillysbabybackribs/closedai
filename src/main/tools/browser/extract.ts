@@ -10,7 +10,7 @@ import { projectJson } from './project.js'
 export function extractAction(browser: BrowserHostProvider): ToolAction {
   return {
     action: 'extract',
-    description: 'Project named fields from JSON in the tab or from a fetched URL.',
+    description: 'Project JSON with path/fields/limit (not expression — use evaluate for arbitrary JS). From tab context or a fetched URL.',
     inputSchema: {
       type: 'object',
       properties: {

@@ -9,7 +9,7 @@ and when replaying a saved thread. Click a generated image to open the full-size
 image viewer. Pending generation remains an activity row; failures display an error. The revised
 generation prompt is not used as a caption. These images are display data, not instructions.
 
-Source review: 2026-09-21. This describes implemented behavior, not a new live UI or provider
+Source review: 2026-09-23. This describes implemented behavior, not a new live UI or provider
 verification. Protocol measurements retain their dates in the provider guides. Provider context
 delivery lives in [Model context](model-context.md); registry contracts live in
 [Tools](tools.md).

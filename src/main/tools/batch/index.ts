@@ -60,10 +60,13 @@ export function batchTools(registry: ToolRegistryProvider, options: BatchToolOpt
         name: 'run',
         deferLoading: true,
         description:
-          'Batch ClosedAI tool calls; native provider shell/file tools are not routable here. No nested batches. ' +
-          'Default: sequential with stop-on-error and browser unwind; parallel only for independent work. ' +
-          'Real-input actions need verification in the same sequential batch. include_result:false omits successful bodies. ' +
-          'Await in exec.',
+          'Batch only ClosedAI registry tools as namespace.tool (for example embedded_browser.page, closedai_app.state). ' +
+          'Provider-native file, shell, and search tools are not routable — call those directly, not inside calls[]. ' +
+          'Action tools need arguments.action set to the verb (navigate, read_page, extract), never the tool name (page, script). ' +
+          'closedai_app.state is plain: optional include array of sections, no action field; UI waits use closedai_app.ui wait_for. ' +
+          'No nested batches. Default sequential stop-on-error with browser unwind; parallel only for independent targets. ' +
+          'Real-input steps need a later read/wait/capture in the same sequential batch. include_result:false omits successful bodies. ' +
+          'Codex exec: await each inner call.',
         inputSchema: {
           type: 'object',
           properties: {
@@ -75,11 +78,11 @@ export function batchTools(registry: ToolRegistryProvider, options: BatchToolOpt
                 properties: {
                   tool: {
                     type: 'string',
-                    description: 'The tool to call, as `namespace.tool` (for example `embedded_browser.page`).'
+                    description: 'ClosedAI tool id as namespace.tool (for example embedded_browser.page). Not a provider harness tool name.'
                   },
                   arguments: {
                     type: 'object',
-                    description: "That tool's arguments, exactly as for a direct call."
+                    description: 'Same JSON as a direct call. Action tools must include action: "<verb>" (navigate, not page).'
                   },
                   include_result: {
                     type: 'boolean',

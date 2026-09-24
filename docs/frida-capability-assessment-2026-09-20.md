@@ -1,5 +1,8 @@
 # Frida capability and ClosedAI integration assessment
 
+**Historical assessment.** Implemented contracts live in [Native instrumentation](native-instrumentation.md).
+References below to `application-instructions.ts` or model instruction builders describe pre-2026-09-23 design, not the current native-provider baseline ([Model context](model-context.md)).
+
 Research date: 2026-09-20 America/New_York / 2026-09-21 UTC.
 Repository baseline: `2d61205`, clean working tree when this review began.
 Status at the time of this assessment: research and proposed design. No Frida installation,

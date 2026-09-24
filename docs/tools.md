@@ -196,7 +196,9 @@ browser targets to run concurrently; active-tab operations and tab-strip mutatio
 browser-wide barrier for the resource-scoped calls in that batch. Unscoped calls stay independent.
 Every call name is resolved against the registry before the first one runs: a batch naming a tool
 the app does not own — typically one of the model's own harness tools, which are not routable here —
-fails as a unit, names the tools a batch can run, and executes nothing.
+fails as a unit, names the tools a batch can run, and executes nothing. Action tools need
+`arguments.action` set to the verb (`navigate`, `extract`, …), not the tool name (`page`, `script`).
+`closedai_app.state` is plain (optional `include`, no `action`); `closedai_app.ui` owns `wait_for`.
 Each nested call retains validation, switches, timing, and telemetry. Set `include_result: false`
 for successful intermediate payloads; failures are always included, and the summary's first line
 names every failed call plus the first failure's own words, so the telemetry note says which step

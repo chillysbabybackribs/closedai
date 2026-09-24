@@ -11,7 +11,7 @@ const TRUNCATION_ADVICE =
 export function readPageAction(browser: BrowserHostProvider): ToolAction {
   return {
     action: 'read_page',
-    description: 'Read HTML text or a page of the PDF already open in Chromium. For PDFs select the tab first; pdf_page is one-based (default 1). Native accessibility text is not visual verification; use browser capture for figures/layout. Scans may have no text. selector applies only to HTML.',
+    description: 'HTML text or one PDF page (select tab first; pdf_page one-based, default 1). selector for HTML only. Not layout verification — use closedai_ui.capture.',
     inputSchema: {
       type: 'object',
       properties: {

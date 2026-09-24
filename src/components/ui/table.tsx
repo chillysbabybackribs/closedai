@@ -2,8 +2,8 @@ import * as React from 'react'
 
 import { cn } from '../../lib/utils.js'
 
-/* shadcn/ui Table (ui.shadcn.com/docs/components/table), unchanged apart from the import path:
-   a scrolling container, whitespace-nowrap cells, hairline rows and a muted hover. */
+/* shadcn/ui Table (ui.shadcn.com/docs/components/table), adapted for ClosedAI:
+   a scrolling container, whitespace-nowrap cells, and hairline row dividers only. */
 function Table({ className, ...props }: React.ComponentProps<'table'>) {
   return (
     <div data-slot="table-container" className="relative w-full overflow-x-auto">
@@ -13,7 +13,7 @@ function Table({ className, ...props }: React.ComponentProps<'table'>) {
 }
 
 function TableHeader({ className, ...props }: React.ComponentProps<'thead'>) {
-  return <thead data-slot="table-header" className={cn('[&_tr]:border-b', className)} {...props} />
+  return <thead data-slot="table-header" className={cn('[&_tr]:border-b [&_tr]:border-[var(--hairline)]', className)} {...props} />
 }
 
 function TableBody({ className, ...props }: React.ComponentProps<'tbody'>) {
@@ -34,7 +34,10 @@ function TableRow({ className, ...props }: React.ComponentProps<'tr'>) {
   return (
     <tr
       data-slot="table-row"
-      className={cn('hover:bg-muted/50 data-[state=selected]:bg-muted border-b transition-colors', className)}
+      className={cn(
+        'border-b border-[var(--hairline)] transition-colors hover:bg-muted/30 data-[state=selected]:bg-muted',
+        className
+      )}
       {...props}
     />
   )

@@ -54,7 +54,7 @@ function fullRegistry() {
 
 test('eager Codex tool wire stays within the regression budget', () => {
   const budget = measureToolContextBudget(fullRegistry())
-  assert.equal(budget.toolCount, 26)
+  assert.equal(budget.toolCount, 27)
   assert.ok(budget.deferredWireChars > budget.eagerWireChars, 'most schema weight should stay deferred')
   assert.ok(budget.eagerWireChars <= 3_600, `eager wire grew to ${budget.eagerWireChars}`)
   assert.ok(budget.advertisedTokens <= 1_850, `advertised tokens grew to ${budget.advertisedTokens}`)

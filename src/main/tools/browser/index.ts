@@ -36,8 +36,7 @@ export function browserTools(
       defineActionTool({
         name: 'page',
         description:
-          'Inspect the visible embedded browser tab. navigate, read_page, and wait_for return plain text (read_page: HTML or native PDF via pdf_page). ' +
-          'For fetch, extract, query, evaluate, and console use embedded_browser.script.',
+          'Embedded tab inspection. Actions navigate, read_page, wait_for (text). fetch/extract/query/evaluate/console: embedded_browser.script.',
         actions: [
           navigateAction(browser),
           readPageAction(browser),
@@ -48,8 +47,7 @@ export function browserTools(
         name: 'script',
         deferLoading: true,
         description:
-          'Run scripts and extract data from the embedded browser page. All actions return JSON except when noted. ' +
-          'For cross-origin APIs prefer embedded_browser.session fetch.',
+          'Page scripting. actions: fetch, extract, query, evaluate, console (never action script). JSON results. Cross-origin APIs: embedded_browser.session fetch.',
         actions: [
           fetchAction(browser),
           extractAction(browser),
