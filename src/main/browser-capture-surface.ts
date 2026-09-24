@@ -1,11 +1,10 @@
-import { BrowserWindow, webContents } from 'electron'
+import { BrowserWindow } from 'electron'
 import type { BrowserTab } from './browser-tab.js'
 import type { BrowserBounds } from '../shared/types.js'
 
 /** Native capture host for a collapsed/covered browser, never mapped to the user's display. */
 export class HiddenCaptureSurfaces {
   private readonly leases = new Map<string, { host: BrowserWindow; count: number }>()
-  private readonly returned = new WeakSet<BrowserTab>()
 
   // Keep one native host alive: destroying a BrowserWindow during an HTML drag can
   // end Chromium's native drag routing, even when that window was never shown.
@@ -21,22 +20,6 @@ export class HiddenCaptureSurfaces {
   }
 
   has(id: string): boolean { return this.leases.has(id) }
-
-  /** Re-arm the hidden host's widget only after its real on-screen bounds are restored. */
-  async restoreShown(tab: BrowserTab): Promise<void> {
-    if (!this.returned.has(tab)) return
-    // Let the native widget consume its restored bounds before re-arming it.
-    await new Promise<void>((resolve) => setTimeout(resolve, 16))
-    if (tab.view.webContents.isDestroyed() || this.has(tab.id)
-      || !tab.view.getVisible() || tab.view.getBounds().x < 0 || !this.returned.delete(tab)) return
-    const contents = tab.view.webContents
-    const focused = webContents.getFocusedWebContents()
-    const throttled = contents.getBackgroundThrottling()
-    contents.setBackgroundThrottling(false)
-    if (throttled) contents.setBackgroundThrottling(true)
-    // Showing Chromium's widget can disturb keyboard focus; preserve the user's target.
-    if (focused && !focused.isDestroyed()) focused.focus()
-  }
 
   acquire(tab: BrowserTab, bounds: BrowserBounds): () => void {
     let entry = this.leases.get(tab.id)
@@ -66,13 +49,8 @@ export class HiddenCaptureSurfaces {
       this.leases.delete(tab.id)
       try {
         if (!this.home.isDestroyed() && !tab.view.webContents.isDestroyed()) {
-          // Keep the widget visible across reparenting. Hiding it here can leave its
-          // frame sink blank after return, even though capturePage still sees pixels.
-          tab.applyBounds({ ...bounds, occluded: true }, false)
+          tab.hide()
           this.home.contentView.addChildView(tab.view)
-          // View visibility alone does not restore Chromium's hidden drawing widget.
-          // Re-arm after the caller restores on-screen geometry, not while parked here.
-          this.returned.add(tab)
         }
       } finally {
         if (!entry.host.isDestroyed()) {

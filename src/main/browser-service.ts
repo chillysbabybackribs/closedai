@@ -348,7 +348,6 @@ export class BrowserService extends EventEmitter {
     active?.applyBounds(paneVisible ? this.bounds : {
       ...this.bounds, x: this.window.getContentBounds().width, occluded: true
     }, pageVisible)
-    if (pageVisible && active) await this.captureSurfaces.restoreShown(active)
     // The renderer holds its freeze still until this call resolves. Returning the moment the
     // view is made visible drops the still onto a surface that has not painted yet, which is
     // the blank the still existed to cover; wait for the frame instead.
@@ -506,14 +505,11 @@ export class BrowserService extends EventEmitter {
     if (this.overlayCapture) return this.overlayCapture
     const tab = this.active
     if (!(tab instanceof BrowserTab)) return null
-    // Off-window views can keep returning their pre-resize compositor frame. Reuse the
-    // hidden capture host to paint at the requested size without intercepting drag input.
-    const release = this.leaseTabRendering(tab.id) ?? (() => {})
-    // A never-shown capture host does not deliver animation frames. capturePage
-    // requests its own paint; waiting for rAF here only adds the timeout to each resize.
-    const ready = this.captureSurfaces.has(tab.id)
-      ? Promise.resolve(false) : settleFrames(tab.view.webContents, CAPTURE_SETTLE_MS)
-    const pending = ready
+    // Keep overlay previews in the resident window. Reparenting through a hidden host
+    // can leave Chromium's drawing widget hidden when the drag ends.
+    const release = this.rendering.pin(tab.id)
+    const releaseCadence = this.cadence.hold(tab.id)
+    const pending = settleFrames(tab.view.webContents, CAPTURE_SETTLE_MS)
       .then(() => tab.screenshot())
       .then((imageUrl): BrowserShot | null => {
         if (!imageUrl || this.active !== tab) return null
@@ -522,7 +518,7 @@ export class BrowserService extends EventEmitter {
       })
       .catch(() => null)
       .finally(() => {
-        try { release() } finally { this.overlayCapture = null }
+        try { releaseCadence(); release() } finally { this.overlayCapture = null }
       })
     this.overlayCapture = pending
     return pending
