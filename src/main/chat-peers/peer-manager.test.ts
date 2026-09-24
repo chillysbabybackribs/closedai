@@ -82,6 +82,15 @@ test('new chat keeps a running peer alive and selects an independent surface', a
   assert.equal(surfaces[1]!.state.activeTurnId, 'turn:second')
 })
 
+test('newPeer anchored to a tile inherits its model without selecting it first', async () => {
+  const { manager } = harnessWith([chatRecord('pane-a', 'gpt'), chatRecord('pane-b', 'gpt')], 'pane-a')
+  await manager.selectModel('pane-b', 'claude:opus')
+  assert.equal(manager.snapshot().selectedPaneId, 'pane-a')
+  const paneC = await manager.newPeer('pane-b')
+  assert.equal(manager.snapshot().selectedPaneId, paneC)
+  assert.equal(manager.snapshot().chats.find((chat) => chat.paneId === paneC)?.modelId, 'claude:opus')
+})
+
 test('a new chat is announced before settings are written and inherits the model', async () => {
   const { manager, settings } = harness()
   const order: string[] = []

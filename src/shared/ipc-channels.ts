@@ -71,7 +71,7 @@ export type IpcInvokeChannels = {
   'chat:refreshPlanUsage': { args: [ChatPaneId]; result: void }
   'chat:login': { args: []; result: void }
   'chat:listChats': { args: []; result: ChatRowSummary[] }
-  'chat:newPeer': { args: []; result: ChatPaneId }
+  'chat:newPeer': { args: [ChatPaneId?]; result: ChatPaneId }
   'chat:closePeer': { args: [ChatPaneId]; result: void }
   'chat:continueInNewPeer': { args: [ChatContinuationSource, string | null]; result: ChatPaneId }
   'chat:openChat': { args: [string]; result: ChatPaneId }

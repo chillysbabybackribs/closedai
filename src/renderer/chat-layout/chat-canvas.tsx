@@ -14,6 +14,11 @@ import { ChatLayoutPaneHeader } from './chat-layout-pane-header.js'
 
 const position = (rect: Rect): CSSProperties => ({ left: rect.x, top: rect.y, width: rect.width, height: rect.height })
 
+/** React keys follow the first tab in a tile so adding a tab does not remount the header strip. */
+function tileReactKey(activeId: string, tabs: string[]): string {
+  return activeId === BROWSER_PANE_ID ? BROWSER_PANE_ID : tabs[0] ?? activeId
+}
+
 type ChatCanvasProps = {
   tree: ChatLayout
   selectedId: string
@@ -225,6 +230,7 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
     <div className="chat-layout-canvas" ref={canvasRef} style={{ minWidth: minimum.width, minHeight: minimum.height }}
       // The shell's Escape handler leaves a drag in progress to the cancel listener above.
       data-layout-drag={dragging ? 'true' : undefined}
+      data-layout-busy={busy ? 'true' : undefined}
       onDragEnterCapture={acceptDrag}
       onDragOverCapture={acceptDrag}
       onDragLeave={(event) => {
@@ -264,7 +270,7 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
         const tileTabs = tabs
         const tileActiveId = tileTabs.includes(activeId) ? activeId : (tileTabs[0] ?? activeId)
         const row = chatRow?.(activeId)
-        return <section key={activeId === BROWSER_PANE_ID ? BROWSER_PANE_ID : activeId}
+        return <section key={tileReactKey(activeId, tileTabs)}
           className="chat-layout-tile" style={position(tileRect)} data-pane-id={activeId === BROWSER_PANE_ID || isViewTabId(activeId) ? undefined : activeId}
           data-view-id={isViewTabId(activeId) ? activeId : undefined}
           data-solo={isThisTileSolo ? 'true' : undefined}

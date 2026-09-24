@@ -100,7 +100,7 @@ export type ClosedaiApi = {
     /** Every chat of this workspace from the app's own store, newest first; provider catalogs are reconciled behind it. */
     listChats: () => Promise<ChatRowSummary[]>
     /** Clear the pane; the next message starts a fresh app-server thread. */
-    newPeer: () => Promise<ChatPaneId>
+    newPeer: (anchorPaneId?: ChatPaneId) => Promise<ChatPaneId>
     /** Retire an open peer pane from the active workspace shelf back to history. */
     closePeer: (paneId: ChatPaneId) => Promise<void>
     /** Create a new pane whose first message carries a compact digest of the exact source chat. */

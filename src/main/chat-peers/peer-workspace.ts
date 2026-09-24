@@ -29,7 +29,8 @@ export interface ChatWorkspaceSurface {
   listChats(): Promise<ChatRowSummary[]>
   /** Every thread the providers and the store know, reconciled first; for tools that search by title. */
   listThreads(): Promise<ChatThreadSummary[]>
-  newPeer(): Promise<ChatPaneId>
+  /** When `anchorPaneId` is set, inherit that chat's model and workspace without focusing it first. */
+  newPeer(anchorPaneId?: ChatPaneId): Promise<ChatPaneId>
   closePeer(paneId: ChatPaneId): Promise<void>
   continueInNewPeer(source: ChatContinuationSource, modelId: string | null): Promise<ChatPaneId>
   /** Show a chat: select it if attached, else attach it, replacing the selected chat only when that one is blank. */

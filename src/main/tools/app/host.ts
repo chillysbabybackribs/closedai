@@ -161,7 +161,7 @@ export type AppChatWorkspace = {
   }
   snapshot(): ChatWorkspaceSnapshot
   paneSnapshot(paneId: string): ChatSnapshot | null
-  newPeer(): Promise<string>
+  newPeer(anchorPaneId?: string): Promise<string>
   send(paneId: string, text: string, attachments: ChatAttachment[]): Promise<void>
   interrupt(paneId: string): Promise<void>
   selectPane(paneId: string): Promise<void>

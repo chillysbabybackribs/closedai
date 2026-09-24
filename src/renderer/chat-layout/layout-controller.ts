@@ -194,8 +194,8 @@ export function useChatLayout(
       if (!view && edge && layoutGroups(treeBefore).filter((group) => !isViewTabId(group.id)).length >= 32 && (!id || !paneIds(treeBefore).includes(id) || (singleTab && sourceHasSiblings))) {
         throw new Error('The workspace already has 32 visible chats')
       }
-      if (!id && !isViewTabId(target)) await window.closedai.chat.selectPane(target)
-      const added = view ? id : id ? await window.closedai.chat.openChat(id) : create ? await create() : await window.closedai.chat.newPeer()
+      const anchor = !id && !isViewTabId(target) ? target : undefined
+      const added = view ? id : id ? await window.closedai.chat.openChat(id) : create ? await create() : await window.closedai.chat.newPeer(anchor)
       if (!view) selected.current = added
       setLayout((value) => {
         // A following view leaving its tile is pinned to the chat it showed; whole-tile moves keep their chats.

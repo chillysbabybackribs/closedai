@@ -349,8 +349,12 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     }))
   }
 
-  async newPeer(): Promise<ChatPaneId> {
+  async newPeer(anchorPaneId?: ChatPaneId): Promise<ChatPaneId> {
     this.projectSwitch.assertAvailable()
+    if (anchorPaneId) {
+      const anchor = this.lifecycle.require(anchorPaneId).surface.snapshot({ limit: 0 })
+      return this.newChat(anchor.selectedModel, anchor.selectedReasoningEffort, null, this.store.require(anchorPaneId))
+    }
     const current = this.lifecycle.require(this.selectedPaneId).surface.snapshot({ limit: 0 })
     return this.newChat(current.selectedModel, current.selectedReasoningEffort, null)
   }

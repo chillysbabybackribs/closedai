@@ -178,8 +178,7 @@
 .chat-layout-header > button.chat-layout-drag:focus-visible { outline: 1px solid var(--focus-ink); outline-offset: -2px; }
 .chat-layout-header > button.chat-layout-drag:active { cursor: grabbing; }
 .chat-layout-header > button.chat-layout-drag:disabled { opacity: 0.3; cursor: default; }
-/* Selection is carried by the active tab's bright, bold label. */
-.chat-layout-tile[data-selected='true'] > .chat-layout-header { color: var(--chrome-fg-strong); }
+/* Selection is carried by the active tab's bright, bold label; avoid retinting the whole header when focus moves. */
 /* Inset tabs share a dark surface; neighboring tabs share a short
    separator. Keep the rail height fixed so pane and browser headers stay aligned. */
 .chat-layout-tabs {
@@ -274,6 +273,10 @@
 .chat-layout-tab[data-status='failed'] .chat-tab-indicator { color: #e27474; }
 .chat-tab-unread { width: 7px; height: 7px; border-radius: 50%; background: #65b98a; }
 @keyframes chat-tab-spin { to { transform: rotate(360deg); } }
+.chat-layout-canvas[data-layout-busy='true'] .chat-layout-tab,
+.chat-layout-canvas[data-layout-busy='true'] .chat-layout-tab button.chat-layout-tab-close {
+  transition: none;
+}
 @media (prefers-reduced-motion: reduce) {
   .chat-layout-tab,
   .chat-layout-tab-close { transition: none; }
