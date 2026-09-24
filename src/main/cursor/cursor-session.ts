@@ -2,7 +2,6 @@ import {
   CursorAcpClient,
   type AcpCapabilities, type AcpMcpServer, type AcpPromptBlock, type AcpSessionSetup
 } from './cursor-acp.js'
-import { cursorTurnId } from './cursor-ids.js'
 import { CursorTurnTranslator, cursorTurnEnd, type TranscriptOp, type TurnEnd } from './cursor-stream.js'
 import type { ChatTranscriptItem } from '../../shared/chat.js'
 import { IdleProcessGuard } from '../idle-process-guard.js'
