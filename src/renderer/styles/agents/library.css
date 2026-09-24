@@ -29,6 +29,8 @@
   border-bottom: 1px solid var(--hairline);
 }
 
+/* Buttons inherit their container's font (styles.css `button { font: inherit }` wins over
+   Tailwind's layered size utilities), so each action row sets its own size. */
 .agent-screen-back {
   margin-left: -6px;
   color: var(--muted-foreground);
@@ -44,6 +46,11 @@
   letter-spacing: var(--tracking-tight);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.agent-screen-actions,
+.agent-screen-back {
+  font-size: 12px;
 }
 
 .agent-screen-actions {
@@ -90,6 +97,7 @@
 .agent-card-footer {
   display: flex;
   align-items: center;
+  font-size: 12px;
 }
 
 .agent-card-status {
@@ -107,6 +115,10 @@
   min-height: 0;
   gap: 12px;
   padding: 24px;
+}
+
+.agent-library-empty [data-slot='empty-content'] {
+  font-size: 12px;
 }
 
 /* Runs (agent-run-overview.tsx, agent-run-card.tsx): a minimal table matching chat markdown tables. */
@@ -236,6 +248,7 @@
   gap: 8px;
   margin-top: auto;
   padding-top: 4px;
+  font-size: 13px;
 }
 
 .agent-library-footer .text-muted-foreground {
