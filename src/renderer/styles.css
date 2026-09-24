@@ -119,7 +119,7 @@
   --tracking-tight: -0.014em;
   --tracking-display: -0.022em;
 
-  /* Neutral shell surface ramp. Chat overrides this locally with near-black surfaces
+  /* Neutral shell surface ramp. Chat overrides this locally with soft charcoal surfaces
      in styles/chat/shell.css to distinguish its canvas from browser chrome. */
   /* The chassis (title bar, gutters, dividers) is the darkest plane, the recessed frame
      the tile cards float on; chrome is the tab rail on top of a card; card is the content

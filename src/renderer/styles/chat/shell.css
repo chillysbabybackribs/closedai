@@ -25,15 +25,16 @@
 
 /* ---- Chat pane ---------------------------------------------------------- */
 
-/* Neutral near-black chat surfaces; tab headers share the shell chrome.
+/* Soft charcoal chat surfaces, with raised headers and composers.
    Rebind semantic aliases here because root aliases resolve before inheritance. */
 :root:not([data-theme='warm']) .chat-layout-tile[data-pane-id],
 :root:not([data-theme='warm']) .chat-pane {
-  --surface-card: #181818;
-  --surface-raised: #242424;
-  --surface-control: #262626;
-  --surface-control-hover: #303030;
-  --tab-active-surface: #242424;
+  --surface-chrome: #24262a;
+  --surface-card: #1c1d20;
+  --surface-raised: #24262a;
+  --surface-control: #2a2c30;
+  --surface-control-hover: #323438;
+  --tab-active-surface: #2d2f33;
   --background: var(--surface-card);
   --card: var(--surface-card);
   --popover: var(--surface-raised);
