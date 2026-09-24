@@ -22,6 +22,8 @@ export type ComposerProps = {
   selectedReasoningEffort: string | null
   /** How full the model's window was after the latest response; null before the first one. */
   contextUsage: ChatContextUsage | null
+  /** A provider-generated next prompt, shown as ghost text while the draft is empty. */
+  promptSuggestion?: string | null
   /** Which provider's plan the usage section names. */
   provider: ChatProvider
   /** The account's subscription windows, shown beside the context window in the setup panel. */
@@ -61,6 +63,7 @@ export function Composer({
   selectedModel,
   selectedReasoningEffort,
   contextUsage,
+  promptSuggestion = null,
   provider,
   planUsage,
   onRefreshPlanUsage,
@@ -77,6 +80,10 @@ export function Composer({
   const { input, setInput, attachments, setAttachments, clearDraft } = useComposerDraft(paneId)
   // One alert row for whatever the composer's own controls could not do: attach, pause, pick.
   const [composerError, setComposerError] = useState('')
+  const [dismissedSuggestion, setDismissedSuggestion] = useState<string | null>(null)
+  const visibleSuggestion = !input && !running && !sending && promptSuggestion && dismissedSuggestion !== promptSuggestion
+    ? promptSuggestion
+    : null
   const providerLabel = CHAT_PROVIDER_LABELS[provider]
   const [sending, setSending] = useState(false)
   // Blank while a turn runs: the pause button is the affordance then, and a hint would compete.
@@ -157,6 +164,18 @@ export function Composer({
     if (event.dataTransfer.files.length) void addFiles(event.dataTransfer.files)
   }
 
+  function suggestionKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>): void {
+    if (!visibleSuggestion) return
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      setDismissedSuggestion(visibleSuggestion)
+    } else if (event.key === 'Tab' || (event.key === 'ArrowRight' && event.currentTarget.selectionStart === 0 && event.currentTarget.selectionEnd === 0)) {
+      event.preventDefault()
+      setInput(visibleSuggestion)
+      setDismissedSuggestion(visibleSuggestion)
+    }
+  }
+
   const action = running ? (
     <PromptInputAction tooltip={`Pause ${providerLabel} (Esc)`} disabled={false}>
       <Button
@@ -226,16 +245,23 @@ export function Composer({
             />
           )}
           <div className="composer-row">
-            <PromptInputTextarea
-              aria-label={`Message ${providerLabel}`}
-              data-ui="composer.input"
-              data-can-send={canSend || undefined}
-              placeholder={inputPlaceholder}
-              spellCheck={false}
-              rows={1}
-              className="composer-textarea"
-              onPaste={pasteFiles}
-            />
+            <div className="composer-input-wrap">
+              {visibleSuggestion && <div className="composer-suggestion" aria-hidden="true">
+                <span>{visibleSuggestion}</span><kbd>Tab</kbd>
+              </div>}
+              <PromptInputTextarea
+                aria-label={`Message ${providerLabel}`}
+                data-ui="composer.input"
+                data-can-send={canSend || undefined}
+                data-suggestion={Boolean(visibleSuggestion) || undefined}
+                placeholder={inputPlaceholder}
+                spellCheck={false}
+                rows={1}
+                className="composer-textarea"
+                onPaste={pasteFiles}
+                onKeyDown={suggestionKeyDown}
+              />
+            </div>
             {action}
           </div>
         </PromptInput>

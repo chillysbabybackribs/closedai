@@ -29,6 +29,7 @@ export type ClaudeSessionDeps = {
   onSessionId: (sessionId: string) => void
   onTurnEnd: (turnId: string, end: TurnEnd) => void
   onContextUsage: (usage: ContextUsage) => void
+  onPromptSuggestion: (suggestion: string) => void
   /** One plan window moved mid-turn; the full reading still comes from `planUsage`. */
   onPlanUsageSignal: (signal: ClaudeRateLimitSignal) => void
   /** When set, every SDK message in either direction is recorded in the turn trace. */
@@ -170,6 +171,11 @@ export class ClaudeSession {
 
   private onMessage(message: SDKMessage): void {
     this.trace('in', message)
+    if (message.type === 'prompt_suggestion') {
+      const suggestion = message.prompt
+      if (suggestion.trim()) this.deps.onPromptSuggestion(suggestion.trim())
+      return
+    }
     // The CLI can start a turn by itself when a backgrounded task settles; mint one so its
     // output lands in the transcript instead of being dropped.
     if (!this.translator && (message.type === 'stream_event' || message.type === 'assistant')) {

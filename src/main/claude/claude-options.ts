@@ -67,6 +67,7 @@ export function claudeQueryOptions(config: ClaudeQueryConfig): Options {
       CLAUDE_AGENT_SDK_CLIENT_APP: 'closedai/0.1.0'
     },
     includePartialMessages: true,
+    promptSuggestions: true,
     permissionMode: 'bypassPermissions',
     allowDangerouslySkipPermissions: true,
     settingSources: ['project'],

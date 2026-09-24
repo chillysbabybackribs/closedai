@@ -77,6 +77,7 @@ export class ClaudeChatService extends EventEmitter {
   private activeTurnId: string | null = null
   private pausedTurnId: string | null = null
   private contextUsage: ContextUsage | null = null
+  private promptSuggestion: string | null = null
   private planUsage: ChatPlanUsage | null = null
   private readonly transcript: ChatTranscript
   private readonly rotator: SessionRotator
@@ -128,6 +129,7 @@ export class ClaudeChatService extends EventEmitter {
       pausedTurnId: this.pausedTurnId,
       contextUsage: describeUsage(this.contextUsage),
       planUsage: this.planUsage,
+      promptSuggestion: this.promptSuggestion,
       items: page?.items ?? this.transcript.snapshot(),
       ...(page ? { history: { hasEarlier: page.hasEarlier, backgroundTasks: page.backgroundTasks } } : {})
     }
@@ -377,6 +379,10 @@ export class ClaudeChatService extends EventEmitter {
       onSessionId: (sessionId) => this.adoptSessionId(sessionId),
       onTurnEnd: (turnId, end) => this.onTurnEnd(turnId, end),
       onContextUsage: (usage) => this.noteContextUsage(usage),
+      onPromptSuggestion: (suggestion) => {
+        this.promptSuggestion = suggestion
+        this.emitEvent({ type: 'promptSuggestion', suggestion })
+      },
       onPlanUsageSignal: (signal) => this.notePlanUsageSignal(signal),
       traceScope: () => ({ paneId: this.paneId, provider: 'claude', turnId: this.activeTurnId }),
       seamlessRotation: () => this.seamlessRotation()
@@ -504,6 +510,10 @@ export class ClaudeChatService extends EventEmitter {
     if (this.activeTurnId === turnId) return
     this.activeTurnId = turnId
     if (turnId) {
+      if (this.promptSuggestion !== null) {
+        this.promptSuggestion = null
+        this.emitEvent({ type: 'promptSuggestion', suggestion: null })
+      }
       this.setPaused(null)
       this.rotator.turnStarted()
     }

@@ -183,6 +183,8 @@ export function reduceChatEvent(state: ChatSnapshot, event: ChatEvent): ChatSnap
       return { ...state, contextUsage: event.usage }
     case 'planUsage':
       return { ...state, planUsage: event.usage }
+    case 'promptSuggestion':
+      return { ...state, promptSuggestion: event.suggestion }
     case 'checkpoint':
       return { ...state, checkpoint: event.checkpoint }
     case 'item': {

@@ -229,6 +229,8 @@ export type ChatSnapshot = {
   contextUsage: ChatContextUsage | null
   /** The account's plan usage; null until the provider answers, and cached between readings. */
   planUsage: ChatPlanUsage | null
+  /** Ephemeral provider-generated next-prompt suggestion, when the provider supports it. */
+  promptSuggestion?: string | null
   items: ChatTranscriptItem[]
   /** Present on windowed renderer snapshots; provider history remains complete. */
   history?: { hasEarlier: boolean; title?: string; backgroundTasks?: ChatTranscriptItem[] }
@@ -256,6 +258,7 @@ export type ChatEvent =
   | { type: 'paused'; turnId: string | null }
   | { type: 'context'; usage: ChatContextUsage | null }
   | { type: 'planUsage'; usage: ChatPlanUsage | null }
+  | { type: 'promptSuggestion'; suggestion: string | null }
   | { type: 'checkpoint'; checkpoint: import('./chat-memory.js').ChatMemoryCheckpoint | null }
   | { type: 'item'; item: ChatTranscriptItem; appended?: boolean }
   | { type: 'itemDelta'; itemId: string; field: 'text' | 'output'; delta: string }

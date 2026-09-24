@@ -77,6 +77,48 @@
   line-height: 22px;
 }
 
+.composer-input-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.composer-suggestion {
+  position: absolute;
+  inset: 8px 0 auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  overflow: hidden;
+  max-height: calc(var(--composer-max-height, min(36vh, 240px)) - 8px);
+  color: var(--muted-foreground);
+  font-size: var(--composer-font-size, 15px);
+  line-height: 22px;
+  opacity: 0.78;
+  pointer-events: none;
+}
+
+.composer-suggestion > span {
+  min-width: 0;
+}
+
+.composer-suggestion kbd {
+  flex: none;
+  align-self: flex-end;
+  margin-left: auto;
+  padding: 1px 5px;
+  border: 1px solid color-mix(in srgb, var(--muted-foreground) 30%, transparent);
+  border-radius: 5px;
+  font: 10px/16px inherit;
+  white-space: nowrap;
+}
+
+.composer-textarea[data-suggestion] {
+  position: relative;
+  z-index: 1;
+  background: transparent;
+}
+
 .composer-textarea::placeholder {
   color: var(--muted-foreground);
   opacity: 0.85;

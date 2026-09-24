@@ -89,6 +89,7 @@ export const UI_CONTROLS = {
   'diff.copy-hunk': 'Copy an individual diff hunk to clipboard; item is the hunk index',
 
   'composer.input': 'Message textarea of the selected pane; Enter or the send button sends, Shift+Enter inserts a newline',
+  'composer.suggestion': 'Muted next-prompt suggestion in the message textarea; Tab or Right Arrow accepts it, Escape dismisses it',
   'composer.send': 'Send the draft (present while no turn runs; disabled until there is text or an attachment)',
   'composer.setup': 'Open the model setup panel — model, reasoning effort, and context/plan usage',
   'composer.folder': 'Open the working-folder panel; the trigger names the current folder',

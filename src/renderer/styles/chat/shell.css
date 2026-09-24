@@ -148,18 +148,12 @@
 }
 
 .transcript-fold-banner {
-  position: sticky;
-  top: 0;
-  z-index: 2;
   display: flex;
   justify-content: center;
+  flex-shrink: 0;
   margin: 0 var(--chat-inline) 12px;
   padding: 8px 0 4px;
-  background: linear-gradient(
-    to bottom,
-    var(--background, #181818) 70%,
-    transparent
-  );
+  /* In document flow above the anchored prompt: sticky top:0 overlapped the sent message. */
 }
 
 .transcript-fold-toggle {

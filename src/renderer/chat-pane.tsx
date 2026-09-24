@@ -163,6 +163,7 @@ export const ChatPane = memo(function ChatPane({
           selectedModel={state.selectedModel}
           selectedReasoningEffort={state.selectedReasoningEffort}
           contextUsage={state.contextUsage}
+          promptSuggestion={state.provider === 'claude' ? state.promptSuggestion ?? null : null}
           provider={state.provider}
           planUsage={state.planUsage}
           onRefreshPlanUsage={chat.refreshPlanUsage}
