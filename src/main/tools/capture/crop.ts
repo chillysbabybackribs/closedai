@@ -2,12 +2,13 @@ import type { ToolAction } from '../action-tool.js'
 import { failureResult, numberArg, stringArg } from '../tool.js'
 import type { ImageCrop, UiCaptureHostProvider } from './host.js'
 import { requireCaptureHost } from './host.js'
+import type { CaptureDedup } from './dedup.js'
 import { imageResult } from './result.js'
 import type { ScreenshotStore, StoredScreenshot } from './screenshot-store.js'
 
 const MAX_ZOOM = 4
 
-export function cropAction(capture: UiCaptureHostProvider, store: ScreenshotStore): ToolAction {
+export function cropAction(capture: UiCaptureHostProvider, store: ScreenshotStore, dedup: CaptureDedup): ToolAction {
   return {
     action: 'crop',
     description:
@@ -51,7 +52,10 @@ export function cropAction(capture: UiCaptureHostProvider, store: ScreenshotStor
       const summary =
         `Crop of: ${sourceId}\nRegion: (${region.x}, ${region.y}) ${region.width}x${region.height} ` +
         `of ${source.modelWidth}x${source.modelHeight}${zoom > 1 ? `\nZoom: ${zoom}x` : ''}`
-      return imageResult(summary, image, 'crop', store, context.callId)
+      return imageResult(
+        summary, image, 'crop', store, context.callId, dedup, context.turnId,
+        `crop:${sourceId}:${region.x},${region.y},${region.width},${region.height},${zoom}`
+      )
     }
   }
 }

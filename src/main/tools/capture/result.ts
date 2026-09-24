@@ -1,4 +1,5 @@
-import type { ToolResult } from '../tool.js'
+import { textResult, type ToolResult } from '../tool.js'
+import { captureFingerprint, CaptureDedup, duplicateCaptureText } from './dedup.js'
 import type { CapturedImage } from './host.js'
 import type { ScreenshotStore, ScreenshotSurface } from './screenshot-store.js'
 
@@ -11,8 +12,19 @@ export function imageResult(
   image: CapturedImage,
   surface: ScreenshotSurface,
   store: ScreenshotStore,
-  callId: string
+  callId: string,
+  dedup?: CaptureDedup,
+  turnId?: string | null,
+  dedupScope?: string
 ): ToolResult {
+  if (dedup) {
+    dedup.resetIfTurn(turnId ?? null)
+    const fingerprint = captureFingerprint(image)
+    const scope = dedupScope ?? surface
+    const prior = dedup.duplicate(scope, fingerprint)
+    if (prior) return textResult(duplicateCaptureText(prior.surface, prior.callId))
+    dedup.remember(scope, surface, fingerprint, callId)
+  }
   store.retain(callId, {
     dataUrl: image.dataUrl,
     width: image.width,

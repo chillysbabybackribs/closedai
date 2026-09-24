@@ -200,6 +200,17 @@ test('each turn gets a bounded number of images across all capture actions', asy
   assert.match(textOf(nextTurn), /Images left this turn: 1$/)
 })
 
+test('pixel-identical captures in one turn return text only and skip a second screenshot row', async () => {
+  const { call, store } = harness()
+  const first = await call({ action: 'app_window' }, 'c1', 'turn-1')
+  assert.ok(first.content.some((item) => item.type === 'image'))
+  assert.ok(store.get('c1'))
+  const second = await call({ action: 'app_window' }, 'c2', 'turn-1')
+  assert.equal(second.content.some((item) => item.type === 'image'), false)
+  assert.match(textOf(second), /unchanged.*Capture ID c1/i)
+  assert.equal(store.get('c2'), null)
+})
+
 test('a heavily scaled capture tells the model to crop rather than re-capture', async () => {
   const wide = { ...image, width: 2560, height: 1080, model: { ...image.model, width: 1280, height: 540 } }
   const { call } = harness({ captureAppWindow: async () => wide })

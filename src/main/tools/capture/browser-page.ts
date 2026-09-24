@@ -6,10 +6,11 @@ import { MAX_WAIT_MS, readinessFrom, readinessProperties, tabIdField } from '../
 import type { UiCaptureHostProvider } from './host.js'
 import { requireCaptureHost } from './host.js'
 import { describeMissingTab } from '../../../shared/browser-tabs.js'
+import type { CaptureDedup } from './dedup.js'
 import { imageResult } from './result.js'
 import type { ScreenshotStore } from './screenshot-store.js'
 
-export function browserPageAction(capture: UiCaptureHostProvider, store: ScreenshotStore): ToolAction {
+export function browserPageAction(capture: UiCaptureHostProvider, store: ScreenshotStore, dedup: CaptureDedup): ToolAction {
   return {
     action: 'browser_page',
     description:
@@ -30,7 +31,10 @@ export function browserPageAction(capture: UiCaptureHostProvider, store: Screens
       const coherence = result.coherence ? `\n${describeCoherence(result.coherence)}` : ''
       const summary = `${result.title ? `Page: ${result.title}\n` : ''}URL: ${result.url}\nTab: ${result.tabId}\n${ready}${coherence}`
       if (!result.image) return failureResult(`${summary}${result.error ? `\nCapture failed: ${result.error}` : ''}`)
-      return imageResult(summary, result.image, 'browser_page', store, context.callId)
+      return imageResult(
+        summary, result.image, 'browser_page', store, context.callId, dedup, context.turnId,
+        `browser_page:${result.tabId}`
+      )
     }
   }
 }

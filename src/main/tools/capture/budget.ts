@@ -29,4 +29,10 @@ export class CaptureBudget {
     this.used += 1
     return { allowed: true, used: this.used, remaining: this.maxPerTurn - this.used }
   }
+
+  /** Undo one claim when a capture produced no new image (for example a pixel-identical duplicate). */
+  unclaim(turnId: string | null): void {
+    if (turnId !== this.turnId || this.used <= 0) return
+    this.used -= 1
+  }
 }

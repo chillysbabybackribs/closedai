@@ -3,6 +3,7 @@ import { failureResult, type ToolNamespace, type ToolResult } from '../tool.js'
 import { appWindowAction } from './app-window.js'
 import { browserPageAction } from './browser-page.js'
 import { CaptureBudget } from './budget.js'
+import { CaptureDedup } from './dedup.js'
 import { cropAction } from './crop.js'
 import type { UiCaptureHostProvider } from './host.js'
 import { ScreenshotStore } from './screenshot-store.js'
@@ -19,11 +20,12 @@ export { CaptureBudget, DEFAULT_MAX_CAPTURES_PER_TURN } from './budget.js'
 export function captureTools(
   capture: UiCaptureHostProvider,
   store = new ScreenshotStore(),
-  budget = new CaptureBudget()
+  budget = new CaptureBudget(),
+  dedup = new CaptureDedup()
 ): ToolNamespace {
   const actions = [
-    appWindowAction(capture, store),
-    browserPageAction(capture, store), cropAction(capture, store)
+    appWindowAction(capture, store, dedup),
+    browserPageAction(capture, store, dedup), cropAction(capture, store, dedup)
   ]
   return {
     name: 'closedai_ui',
@@ -33,16 +35,16 @@ export function captureTools(
         name: 'capture',
         deferLoading: true,
         description:
-          'Screenshots when visual evidence is needed: app_window (whole UI), browser_page (one readiness-gated page), or crop (enlarge a retained ' +
-          `region). At most ${budget.maxPerTurn} images per turn; prefer embedded_browser.page read_page for text. ` +
-          'Batch changes, then capture once.',
-        actions: actions.map((action) => withBudget(action, budget))
+          'Screenshots when visual evidence is needed: action is required — app_window, browser_page, or crop. ' +
+          `At most ${budget.maxPerTurn} distinct images per turn; pixel-identical back-to-back captures return text only (no duplicate transcript screenshot). ` +
+          'Prefer embedded_browser.page read_page for text. Batch UI changes, then capture once.',
+        actions: actions.map((action) => withBudget(action, budget, dedup))
       })
     ]
   }
 }
 
-function withBudget(action: ToolAction, budget: CaptureBudget): ToolAction {
+function withBudget(action: ToolAction, budget: CaptureBudget, dedup: CaptureDedup): ToolAction {
   return {
     ...action,
     async run(input, context): Promise<ToolResult> {
@@ -55,8 +57,13 @@ function withBudget(action: ToolAction, budget: CaptureBudget): ToolAction {
         )
       }
       const result = await action.run(input, context)
+      const hasImage = result.content.some((item) => item.type === 'image')
+      if (!hasImage) {
+        budget.unclaim(context.turnId)
+        return result
+      }
       const first = result.content[0]
-      if (result.content.some((item) => item.type === 'image') && first?.type === 'text') {
+      if (first?.type === 'text') {
         first.text += `\nImages left this turn: ${use.remaining}`
       }
       return result
