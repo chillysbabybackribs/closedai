@@ -190,8 +190,9 @@ processes are spawned in their own process group and stopped as a group (SIGTERM
 after three seconds), so the worker a CLI launcher forks dies with it, and every tracked group is
 killed at quit (`src/main/process-tree.ts`). Titles and last turn-boundary times are persisted on
 the record so dormant chats can still be named after a restart. Active chats request a
-short descriptive title in the background from the initial user prompt and optional response, using the active provider
-in a separate ephemeral request. The input contains bounded text from the user request
+short descriptive title in the background after a completed turn, from the initial user prompt and
+optional assistant response, using the active provider in a separate ephemeral request (never while
+the live turn is still starting). The input contains bounded text from the user request
 (and assistant response when available), with injected context stripped. Naming uses low reasoning, a 45-second deadline, and an
 isolated temporary working directory; it does not add turns to the conversation. Claude disables
 built-in tools and MCP; Codex disables shell, browsing, apps, image tools, delegation, and hooks,

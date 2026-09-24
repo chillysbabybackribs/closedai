@@ -144,11 +144,11 @@ export class PeerLifecycle {
       const oldTitle = entry.display.current.title
       this.onEvent(entry, event)
       if (entry.display.current.title !== oldTitle) this.onEvent(entry, { type: 'title', title: entry.display.current.title })
-      if (surface.generateTitle && (
-        (event.type === 'item' && event.item.type === 'user') ||
-        event.type === 'thread' ||
-        (wasRunning && !entry.display.current.running)
-      )) {
+      // Name after the turn ends, not when the user message lands. An optimistic user item is
+      // painted before the provider turn starts; kicking off the ephemeral title CLI then (Cursor
+      // `--print`, Codex exec, etc.) competes with the live session for the same provider and
+      // delays the first token. The tab still shows a first-message fallback until naming finishes.
+      if (surface.generateTitle && wasRunning && !entry.display.current.running) {
         void this.titles.generate(record.id, surface.snapshot(), surface.generateTitle.bind(surface))
       }
     })
