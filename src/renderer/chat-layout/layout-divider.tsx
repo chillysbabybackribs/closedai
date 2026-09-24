@@ -10,12 +10,10 @@ export type SplitResizeControls = {
   end: () => void
 }
 
-export function LayoutDivider({ divider, splitResize, onResize, domPositioned = false }: {
+export function LayoutDivider({ divider, splitResize, onResize }: {
   divider: Divider
   splitResize: SplitResizeControls
   onResize: (id: string, ratio: number, phase?: SplitResizePhase) => void
-  /** When true, a layout drag is driving position via DOM paint; skip React inline geometry. */
-  domPositioned?: boolean
 }) {
   const [active, setActive] = useState(false)
   const release = useRef<(() => void) | null>(null)
@@ -28,7 +26,7 @@ export function LayoutDivider({ divider, splitResize, onResize, domPositioned = 
   const clamp = (ratio: number): number => Math.max(divider.min, Math.min(divider.max, ratio))
 
   return <div className="chat-layout-divider" data-axis={divider.axis} data-resizing={active}
-    style={domPositioned ? undefined : { left: divider.rect.x, top: divider.rect.y, width: divider.rect.width, height: divider.rect.height }}
+    style={{ left: divider.rect.x, top: divider.rect.y, width: divider.rect.width, height: divider.rect.height }}
     role="separator" tabIndex={0} data-ui="layout.divider" data-ui-key={divider.id}
     aria-label="Resize adjacent panes" aria-orientation={horizontal ? 'vertical' : 'horizontal'}
     aria-valuenow={Math.round(divider.ratio * 100)} aria-valuemin={Math.round(divider.min * 100)} aria-valuemax={Math.round(divider.max * 100)}

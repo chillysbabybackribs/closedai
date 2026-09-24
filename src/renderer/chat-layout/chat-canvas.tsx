@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import type { ChatReviewQueue } from '../chat-history/review-queue.js'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
-import { BROWSER_PANE_ID, CHAT_DRAG_TYPE, DIVIDER_SIZE, WORKSPACE_DOCK_ID, isViewTabId, layoutGeometry, minimumSize, paneIds, removePane, type ChatLayout, type DockEdge, type Rect, type SplitResizePhase } from './layout-tree.js'
+import { BROWSER_PANE_ID, CHAT_DRAG_TYPE, WORKSPACE_DOCK_ID, isViewTabId, layoutGeometry, minimumSize, paneIds, removePane, type ChatLayout, type DockEdge, type Rect, type SplitResizePhase } from './layout-tree.js'
 import type { ViewKind } from './layout-views.js'
 import type { ViewHints } from './pane-add-menu.js'
 import { LayoutDivider } from './layout-divider.js'
@@ -10,7 +10,6 @@ import { CHAT_TAB_DRAG_TYPE, tabOwner } from './layout-tabs.js'
 import type { TabActivity } from './tab-activity.js'
 import { browserDropAt, sameBrowserDrop, type BrowserDrop } from './browser-drop.js'
 import { dragSplitPreview } from './layout-drag-preview.js'
-import { applyLayoutGeometryDom } from './layout-geometry-dom.js'
 import { ChatLayoutPaneHeader } from './chat-layout-pane-header.js'
 
 const position = (rect: Rect): CSSProperties => ({ left: rect.x, top: rect.y, width: rect.width, height: rect.height })
@@ -77,35 +76,16 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
   const [drop, setDrop] = useState<{ target: string; edge: DockEdge | null } | null>(null)
   const dropTarget = useRef<typeof drop>(null)
   const dropPaintRaf = useRef(0)
-  const paintCommittedLayout = useCallback((): void => {
-    const canvas = canvasRef.current
-    if (!canvas || layoutFrame.current.width <= 0) return
-    const visible = layoutFrame.current.browserVisible ? layoutFrame.current.tree : removePane(layoutFrame.current.tree, BROWSER_PANE_ID)!
-    applyLayoutGeometryDom(canvas, layoutGeometry(visible, layoutFrame.current.width, layoutFrame.current.height))
-  }, [])
-  const paintDragLayout = useCallback((): void => {
-    const canvas = canvasRef.current
-    const drag = dragging
-    if (!canvas || !drag || layoutFrame.current.width <= 0) return
-    const target = dropTarget.current
-    const visible = layoutFrame.current.browserVisible ? layoutFrame.current.tree : removePane(layoutFrame.current.tree, BROWSER_PANE_ID)!
-    const committed = layoutGeometry(visible, layoutFrame.current.width, layoutFrame.current.height)
-    const preview = target?.edge
-      ? dragSplitPreview(layoutFrame.current.tree, drag.id, target, drag.singleTab, layoutFrame.current.width, layoutFrame.current.height)
-      : null
-    applyLayoutGeometryDom(canvas, preview ?? committed)
-  }, [dragging])
   const finishDrag = useCallback((): void => {
     if (dropPaintRaf.current) {
       cancelAnimationFrame(dropPaintRaf.current)
       dropPaintRaf.current = 0
     }
-    paintCommittedLayout()
     dropTarget.current = null
     setDragging(null)
     setDrop(null)
     onDragActive(false)
-  }, [onDragActive, paintCommittedLayout])
+  }, [onDragActive])
   const queueDrop = (next: typeof drop): void => {
     if (next?.target === dropTarget.current?.target && next?.edge === dropTarget.current?.edge) return
     dropTarget.current = next
@@ -113,7 +93,6 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
     dropPaintRaf.current = requestAnimationFrame(() => {
       dropPaintRaf.current = 0
       setDrop(dropTarget.current)
-      paintDragLayout()
     })
   }
   const tabFocus = useRef<string | null>(null)
@@ -170,10 +149,6 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
     : null), [dragging, drop, tree, size.width, size.height])
   const minimum = splitPreview?.minimum ?? minimumSize(visibleTree)
   const provisionalSplitTab = dragging?.singleTab && tabOwner(tree, dragging.id) !== dragging.id ? dragging.id : null
-  useLayoutEffect(() => {
-    if (!dragging) return
-    paintDragLayout()
-  }, [dragging, drop, paintDragLayout, size.width, size.height, tree, browserVisible])
   // Keep the browser host mounted while hidden, just as inactive conversation tabs are.
   const committedTiles = useMemo(() => {
     let panes = geometry.panes
@@ -196,20 +171,7 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
     }
     return tabs
   }
-  const dragDividerStub = useMemo(() => ({
-    id: 'drag-preview',
-    axis: 'horizontal' as const,
-    rect: { x: 0, y: 0, width: DIVIDER_SIZE, height: 0 },
-    parent: { x: 0, y: 0, width: Math.max(size.width, 1), height: Math.max(size.height, 1) },
-    ratio: 0.5,
-    min: 0.05,
-    max: 0.95
-  }), [size.width, size.height])
-  const layoutDividers = geometry.dividers.length
-    ? geometry.dividers
-    : dragging && !soloTile && (provisionalSplitTab || drop?.edge)
-      ? [splitPreview?.dividers[0] ?? dragDividerStub]
-      : []
+  const layoutDividers = splitPreview?.dividers ?? geometry.dividers
   const chatCount = paneIds(tree).length
   const canMaximize = chatCount > 1 || (browserVisible && chatCount >= 1)
   const soloTile = soloPaneId
@@ -284,13 +246,13 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
       }}>
       {committedTiles.map(({ id: activeId, tabs, rect }) => {
         const isThisTileSolo = soloTile ? (soloTile.id === activeId || soloTile.tabs.includes(activeId)) : false
-        const tileRect = isThisTileSolo ? soloRect : rect
+        const tileRect = isThisTileSolo ? soloRect : (splitPreview?.panes.find((pane) => pane.id === activeId)?.rect ?? rect)
         const tileTabs = previewTabs(activeId, tabs)
         const tileActiveId = tileTabs.includes(activeId) ? activeId : (tileTabs[0] ?? activeId)
         const isProvisional = activeId === provisionalSplitTab
         const row = chatRow?.(activeId)
         return <section key={activeId === BROWSER_PANE_ID ? BROWSER_PANE_ID : activeId}
-          className="chat-layout-tile" style={dragging && !isThisTileSolo ? undefined : position(tileRect)} data-pane-id={activeId === BROWSER_PANE_ID || isViewTabId(activeId) ? undefined : activeId}
+          className="chat-layout-tile" style={position(tileRect)} data-pane-id={activeId === BROWSER_PANE_ID || isViewTabId(activeId) ? undefined : activeId}
           data-view-id={isViewTabId(activeId) ? activeId : undefined}
           data-solo={isThisTileSolo ? 'true' : undefined}
           hidden={isProvisional && !drop?.edge ? true : soloTile ? !isThisTileSolo : (activeId === BROWSER_PANE_ID && !browserVisible)}
@@ -344,7 +306,7 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
         aria-label={`Move browser to full-height ${edge} column`}
       ><span>Full-height column</span></div>)}
       {!soloTile && layoutDividers.map((divider) => <LayoutDivider key={divider.id}
-        divider={divider} splitResize={splitResize} onResize={onResize} domPositioned={Boolean(dragging)} />)}
+        divider={divider} splitResize={splitResize} onResize={onResize} />)}
     </div>
   </div>
 }
