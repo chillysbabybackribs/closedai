@@ -96,7 +96,7 @@
   --font-mono:
     "Berkeley Mono", "Geist Mono Variable", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   font-family: var(--font-sans);
-  background: #111111;
+  background: #141416;
   color: #d8d8d8;
 
   /* Crisp text rendering. Greyscale AA rather than subpixel: on the dark
@@ -125,8 +125,8 @@
      the tile cards float on; chrome is the tab rail on top of a card; card is the content
      surface you read on; raised is anything that sits on a card (toolbar, bubble, popover).
      Raised controls provide contrast against their surrounding surface. */
-  --chassis: #070708;
-  --chassis-well: #050506;
+  --chassis: #0c0c0e;
+  --chassis-well: #09090b;
   --surface-chrome: #141415;
   --surface-card: #1a1a1b;
   --surface-raised: #232325;

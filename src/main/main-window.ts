@@ -42,7 +42,7 @@ export function createMainWindow(actions: MainWindowActions): BrowserWindow {
     minWidth: 1040,
     minHeight: 680,
     autoHideMenuBar: true,
-    backgroundColor: '#000000',
+    backgroundColor: '#0c0c0e',
     title: 'closedai',
     frame: false,
     show: false,
