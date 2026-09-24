@@ -81,11 +81,11 @@ export function Composer({
   // One alert row for whatever the composer's own controls could not do: attach, pause, pick.
   const [composerError, setComposerError] = useState('')
   const [dismissedSuggestion, setDismissedSuggestion] = useState<string | null>(null)
+  const providerLabel = CHAT_PROVIDER_LABELS[provider]
+  const [sending, setSending] = useState(false)
   const visibleSuggestion = !input && !running && !sending && promptSuggestion && dismissedSuggestion !== promptSuggestion
     ? promptSuggestion
     : null
-  const providerLabel = CHAT_PROVIDER_LABELS[provider]
-  const [sending, setSending] = useState(false)
   // Blank while a turn runs: the pause button is the affordance then, and a hint would compete.
   const inputPlaceholder = running
     ? ''

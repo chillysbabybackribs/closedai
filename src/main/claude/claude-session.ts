@@ -172,7 +172,7 @@ export class ClaudeSession {
   private onMessage(message: SDKMessage): void {
     this.trace('in', message)
     if (message.type === 'prompt_suggestion') {
-      const suggestion = message.prompt
+      const suggestion = message.suggestion
       if (suggestion.trim()) this.deps.onPromptSuggestion(suggestion.trim())
       return
     }
