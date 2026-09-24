@@ -1,4 +1,4 @@
-import { BROWSER_PANE_ID, dockPane, layoutGeometry, paneIds, type ChatLayout, type DockEdge } from './layout-tree.js'
+import { BROWSER_PANE_ID, dockPane, layoutGeometry, paneIds, type ChatLayout, type DockEdge, type Rect } from './layout-tree.js'
 import { moveTab, removeTab, tabOwner } from './layout-tabs.js'
 import { browserDropPreview } from './browser-drop.js'
 
@@ -43,4 +43,16 @@ export function dragSplitPreview(
   }
   const previewTree = dragPreviewTree(tree, sourceId, drop, singleTab)
   return previewTree ? layoutGeometry(previewTree, width, height) : null
+}
+
+/** Chat drop targets stay anchored to the layout before preview resizing. */
+export function chatDropAt(panes: Array<{ id: string; rect: Rect }>, x: number, y: number): DragDropTarget | null {
+  const tile = panes.find(({ rect }) => x >= rect.x && x <= rect.x + rect.width && y >= rect.y && y <= rect.y + rect.height)
+  if (!tile) return null
+  const dx = (x - tile.rect.x) / tile.rect.width
+  const dy = (y - tile.rect.y) / tile.rect.height
+  if (tile.id === BROWSER_PANE_ID) return { target: tile.id, edge: dx < 0.5 ? 'left' : 'right' }
+  if (y - tile.rect.y < 38) return { target: tile.id, edge: null }
+  const edges: Array<[DockEdge, number]> = [['left', dx], ['right', 1 - dx], ['top', dy], ['bottom', 1 - dy]]
+  return { target: tile.id, edge: edges.sort((a, b) => a[1] - b[1])[0]![0] }
 }

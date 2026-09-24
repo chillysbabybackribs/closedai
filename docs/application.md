@@ -382,7 +382,7 @@ While a pane or the browser is dragged toward a split target, tiles and dividers
 the layout that would result on release; chats and the browser page stay visible and track their
 new bounds. Splitting either the active or an inactive conversation tab out of a group
 shows both the dragged conversation and the remaining group in their proposed shells before release.
-Hit targets for browser drags stay fixed on the pre-drag layout so the destination
+Hit targets for chat and browser drags stay fixed on the pre-drag layout so the destination
 does not flicker. The 32-pixel workspace edge targets start below the tab strip and carry
 full-height column labels. Escape cancels; dropping over the browser, a divider, or outside the
 workspace leaves the layout unchanged.

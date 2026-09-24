@@ -8,8 +8,8 @@ import { LayoutDivider } from './layout-divider.js'
 import { createSplitResizeSession, paintSplitResize, type SplitResizeFrame } from './layout-split-resize.js'
 import { CHAT_TAB_DRAG_TYPE } from './layout-tabs.js'
 import type { TabActivity } from './tab-activity.js'
-import { browserDropAt, sameBrowserDrop, type BrowserDrop } from './browser-drop.js'
-import { dragSplitPreview } from './layout-drag-preview.js'
+import { browserDropAt, type BrowserDrop } from './browser-drop.js'
+import { chatDropAt, dragSplitPreview } from './layout-drag-preview.js'
 import { ChatLayoutPaneHeader } from './chat-layout-pane-header.js'
 
 const position = (rect: Rect): CSSProperties => ({ left: rect.x, top: rect.y, width: rect.width, height: rect.height })
@@ -202,29 +202,36 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
       // The shell's Escape handler leaves a drag in progress to the cancel listener above.
       data-layout-drag={dragging ? 'true' : undefined}
       onDragOverCapture={(event) => {
-        if (dragging?.id !== BROWSER_PANE_ID) return
+        if (!dragging || !event.dataTransfer.types.includes(CHAT_DRAG_TYPE)) return
         event.stopPropagation()
         if (busy) { event.dataTransfer.dropEffect = 'none'; return }
         event.preventDefault()
         if (soloTile) setSoloPaneId(null)
-        const next = resolveBrowserDrop(event.currentTarget, event.clientX, event.clientY)
+        const bounds = event.currentTarget.getBoundingClientRect()
+        const next = dragging.id === BROWSER_PANE_ID
+          ? resolveBrowserDrop(event.currentTarget, event.clientX, event.clientY)
+          : chatDropAt(geometry.panes, event.clientX - bounds.left, event.clientY - bounds.top)
         event.dataTransfer.dropEffect = next ? 'move' : 'none'
-        if (sameBrowserDrop(browserDrop, next)) return
+        if (next?.target === dropTarget.current?.target && next?.edge === dropTarget.current?.edge) return
         queueDrop(next)
       }}
       onDragLeave={(event) => {
-        if (dragging?.id !== BROWSER_PANE_ID) return
+        if (!dragging) return
         const bounds = event.currentTarget.getBoundingClientRect()
         if (event.clientX <= bounds.left || event.clientX >= bounds.right || event.clientY <= bounds.top || event.clientY >= bounds.bottom) {
           queueDrop(null)
         }
       }}
       onDropCapture={(event) => {
-        if (event.dataTransfer.getData(CHAT_DRAG_TYPE) !== BROWSER_PANE_ID) return
+        const source = event.dataTransfer.getData(CHAT_DRAG_TYPE)
+        if (!source) return
         event.preventDefault()
         event.stopPropagation()
-        const target = resolveBrowserDrop(event.currentTarget, event.clientX, event.clientY)
-        if (!busy && dragging?.id === BROWSER_PANE_ID && target) onDock(BROWSER_PANE_ID, target.target, target.edge)
+        const bounds = event.currentTarget.getBoundingClientRect()
+        const target = source === BROWSER_PANE_ID
+          ? resolveBrowserDrop(event.currentTarget, event.clientX, event.clientY)
+          : chatDropAt(geometry.panes, event.clientX - bounds.left, event.clientY - bounds.top)
+        if (!busy && target) onDock(source, target.target, target.edge, event.dataTransfer.types.includes(CHAT_TAB_DRAG_TYPE))
         finishDrag()
       }}>
       {committedTiles.map(({ id: activeId, tabs, rect }) => {
@@ -241,33 +248,7 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
           data-selected={activeId === selectedId || tabs.includes(selectedId)} aria-label={activeId === BROWSER_PANE_ID ? 'Browser' : title(activeId)}
           onFocusCapture={(event) => { if (activeId !== BROWSER_PANE_ID && activeId !== selectedId && !(event.target as HTMLElement).closest('[role="tablist"]')) onSelect(activeId) }}
           onPointerDownCapture={(event) => { if (activeId !== BROWSER_PANE_ID && activeId !== selectedId && !(event.target as HTMLElement).closest('[role="tablist"]')) onSelect(activeId) }}
-          onDragOver={(event) => {
-            if (busy || !event.dataTransfer.types.includes(CHAT_DRAG_TYPE)) return
-            if (soloTile) setSoloPaneId(null)
-            event.preventDefault()
-            event.dataTransfer.dropEffect = 'move'
-            const bounds = event.currentTarget.getBoundingClientRect()
-            const x = (event.clientX - bounds.left) / bounds.width
-            const y = (event.clientY - bounds.top) / bounds.height
-            const edges: Array<[DockEdge, number]> = [['left', x], ['right', 1 - x], ['top', y], ['bottom', 1 - y]]
-            const edge = activeId === BROWSER_PANE_ID ? (x < 0.5 ? 'left' : 'right')
-              : dragging?.id !== BROWSER_PANE_ID && (event.target as HTMLElement).closest('.chat-layout-header') ? null
-              : edges.sort((a, b) => a[1] - b[1])[0]![0]
-            queueDrop({ target: activeId, edge })
-          }}
-          onDragLeave={(event) => {
-            if (dragging?.id === BROWSER_PANE_ID) return
-            if (!event.currentTarget.contains(event.relatedTarget as Node | null)) queueDrop(null)
-          }}
-          onDrop={(event) => {
-            const source = event.dataTransfer.getData(CHAT_DRAG_TYPE)
-            const target = dropTarget.current
-            if (busy || !source || !target || target.target !== activeId) return
-            event.preventDefault()
-            event.stopPropagation()
-            onDock(source, activeId, target.edge, event.dataTransfer.types.includes(CHAT_TAB_DRAG_TYPE))
-            finishDrag()
-          }}>
+>
           {activeId !== BROWSER_PANE_ID && <ChatLayoutPaneHeader activeId={tileActiveId} tabs={tileTabs} chatCount={chatCount}
             busy={busy} toolsPreset={toolsPreset ?? null} title={title} activity={activity} reviewQueue={reviewQueue}
             row={row} soloTile={soloTile ?? null} setSoloPaneId={setSoloPaneId} tabFocus={tabFocus} onSelect={onSelect}
