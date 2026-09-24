@@ -53,23 +53,26 @@ export function AgentDock({ chats, onOpenChat, onOpenAgents }: AgentDockProps): 
     timer.current = null
   }
   useEffect(() => () => { clear(dwell); clear(leave) }, [])
+  // Pinned, the dock is part of the layout, not an overlay: Escape keeps its app-wide meaning.
+  const overlay = visible && !reveal.pinned
   useEffect(() => {
-    if (!visible) return
+    if (!overlay) return
     const onKey = (event: KeyboardEvent): void => {
       if (event.key === 'Escape' && !event.defaultPrevented) dispatch({ type: 'escape' })
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [visible, dispatch])
+  }, [overlay, dispatch])
 
+  // Opening a chat or the Agents surface closes a hover-opened dock and leaves a pinned one pinned.
   const openChat = (chatId: string): void => {
-    dispatch({ type: 'escape' })
+    dispatch({ type: 'leave' })
     onOpenChat(chatId)
   }
   const runsApi = window.closedai.agentRuns
 
   return (
-    <div className="agent-dock" data-open={visible ? 'yes' : 'no'}
+    <div className="agent-dock" data-open={visible ? 'yes' : 'no'} data-pinned={reveal.pinned ? 'yes' : 'no'}
       onPointerEnter={() => clear(leave)}
       onPointerLeave={() => {
         clear(dwell)
@@ -77,7 +80,8 @@ export function AgentDock({ chats, onOpenChat, onOpenAgents }: AgentDockProps): 
         leave.current = setTimeout(() => dispatch({ type: 'leave' }), DOCK_LEAVE_MS)
       }}>
       {visible && (
-        <section className="agent-dock-panel" role="dialog" aria-modal="false" aria-label="Agents dock" data-ui="dock.panel"
+        <section className="agent-dock-panel" role={overlay ? 'dialog' : 'region'} aria-modal={overlay ? false : undefined}
+          aria-label="Agents dock" data-ui="dock.panel"
           onPointerEnter={() => dispatch({ type: 'look' })} onFocus={() => dispatch({ type: 'look' })}>
           <header className="flex items-center gap-3 px-1">
             <div className="min-w-0 flex-1">
@@ -85,7 +89,7 @@ export function AgentDock({ chats, onOpenChat, onOpenAgents }: AgentDockProps): 
               <p className="agent-dock-summary truncate text-xs">{summary}</p>
             </div>
             <Button type="button" variant="outline" size="sm" data-ui="dock.agents"
-              onClick={() => { dispatch({ type: 'escape' }); onOpenAgents() }}>
+              onClick={() => { dispatch({ type: 'leave' }); onOpenAgents() }}>
               <Bot /> New or saved agent
             </Button>
             <Button type="button" variant="ghost" size="icon-sm" data-ui="dock.pin" aria-pressed={reveal.pinned}

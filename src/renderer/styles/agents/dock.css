@@ -4,16 +4,15 @@
 .agent-dock {
   position: relative;
   z-index: 40;
-  height: 10px;
 }
 
 .agent-dock-rail {
   display: flex;
+  height: 10px;
   align-items: center;
   justify-content: center;
   gap: 6px;
   width: 100%;
-  height: 100%;
   padding: 0;
   border: 0;
   background: transparent;
@@ -47,6 +46,18 @@
   box-shadow: 0 12px 32px rgb(0 0 0 / 22%);
   transform: translateX(-50%);
   animation: agent-dock-rise 140ms ease-out;
+}
+
+/* Pinned, the panel takes its own row above the rail and the workspace shrinks to make room:
+   an overlay that stayed open would keep the browser column frozen to a still behind it. */
+.agent-dock[data-pinned='yes'] .agent-dock-panel {
+  position: static;
+  width: auto;
+  max-height: 240px;
+  margin: 0 8px 4px;
+  box-shadow: none;
+  transform: none;
+  animation: none;
 }
 
 .agent-dock-summary,
