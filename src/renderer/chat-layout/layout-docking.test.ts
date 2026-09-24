@@ -58,6 +58,20 @@ test('docking preserves saved group labels, membership and divider ratios', () =
   assert.deepEqual(twice, docked)
 })
 
+test('dock rails span consecutive chats when the tree nests horizontal splits', () => {
+  let tree = split('outer', pane('left'), split('inner', pane('middle'), pane('right')))
+  tree = setGroupDocked(tree, 'right', true)
+  const geometry = layoutGeometry(tree, 1200, 800)
+  assert.equal(geometry.rails.length, 1)
+  const rail = geometry.rails[0]!
+  assert.equal(rail.groups.map((group) => group.id).join(','), 'right')
+  const left = geometry.panes.find((item) => item.id === 'left')!
+  const middle = geometry.panes.find((item) => item.id === 'middle')!
+  assert.equal(rail.rect.x, left.rect.x)
+  assert.equal(rail.rect.width, left.rect.width + middle.rect.width + 14)
+  assert.equal(rail.rect.y, left.rect.y + left.rect.height)
+})
+
 test('dock rails sit under horizontal chat rows, not the whole grid', () => {
   let tree = split('top', pane('a'), pane('b'))
   tree = split('grid', tree, split('bottom', pane('c'), pane('d'), 'horizontal'), 'vertical')

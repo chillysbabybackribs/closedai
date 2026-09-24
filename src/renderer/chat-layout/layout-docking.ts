@@ -12,11 +12,23 @@ export function dockedGroups(tree: ChatLayout): DockGroup[] {
   return layoutGroups(tree).filter((group) => group.docked)
 }
 
+function horizontalHoistAnchor(node: ChatLayout, first: ChatLayout, second: ChatLayout): ChatLayout | null {
+  if (node.axis !== 'horizontal') return null
+  const left = dockRailAnchors(first)
+  const right = dockRailAnchors(second)
+  const tryHoist = (nested: ChatLayout[], sibling: ChatLayout, branch: ChatLayout): ChatLayout | null =>
+    nested.length === 1 && sibling.kind === 'pane' && !sibling.docked && branch.kind === 'split' && branch.axis === 'horizontal'
+      ? node : null
+  return tryHoist(left, second, first) ?? tryHoist(right, first, second)
+}
+
 /** Subtrees that own a regional dock rail (a horizontal row or a vertical chat column). */
 export function dockRailAnchors(node: ChatLayout): ChatLayout[] {
   if (node.kind === 'pane') return []
   if (hasBrowser(node)) return [...dockRailAnchors(node.first), ...dockRailAnchors(node.second)]
   if (!dockedGroups(node).length) return []
+  const hoisted = horizontalHoistAnchor(node, node.first, node.second)
+  if (hoisted) return [hoisted]
   const nested = [...dockRailAnchors(node.first), ...dockRailAnchors(node.second)]
   return nested.length ? nested : [node]
 }
