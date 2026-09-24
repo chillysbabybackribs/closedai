@@ -50,6 +50,16 @@ test('modal backdrop occludes the browser before an image dialog grows into it',
     assert.equal(overlayBlocksBrowser(root), true)
     backdrop.attributes['data-state'] = 'closed'
     assert.equal(overlayBlocksBrowser(root), false)
+    const dock = new Surface(0, 1280, { 'data-state': 'closed' }, 700, 100)
+    const dockRoot = {
+      querySelector: () => host,
+      querySelectorAll: (selector: string) => selector.includes('[data-ui="dock.bar"]') ? [dock] : []
+    } as unknown as ParentNode
+    assert.equal(overlayBlocksBrowser(dockRoot), false, 'hidden dock leaves browser live')
+    dock.attributes['data-state'] = 'open'
+    assert.equal(overlayBlocksBrowser(dockRoot), true, 'revealed dock overlays the native page')
+    dock.attributes['data-state'] = 'closed'
+    assert.equal(overlayBlocksBrowser(dockRoot), false, 'leaving dock restores the page')
     const search = new Surface(750, 440)
     const searchRoot = {
       querySelector: () => host,

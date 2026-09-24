@@ -30,15 +30,15 @@
   margin-inline: auto;
   overflow: hidden;
   border: 1px solid var(--hairline-strong);
-  border-radius: 12px;
+  border-radius: 14px;
   background: var(--antigravity-card-bg, #252526);
-  box-shadow: inset 0 1px 0 var(--surface-highlight), 0 3px 12px rgb(0 0 0 / 18%);
+  box-shadow: inset 0 1px 0 var(--surface-highlight), 0 4px 14px rgb(0 0 0 / 14%);
   transition: border-color 140ms ease, box-shadow 140ms ease;
 }
 
 .composer-stack:focus-within {
   border-color: var(--focus-ink);
-  box-shadow: 0 2px 8px rgb(0 0 0 / 22%), 0 1px 2px rgb(0 0 0 / 14%);
+  box-shadow: inset 0 1px 0 var(--surface-highlight), 0 0 0 2px color-mix(in srgb, var(--focus-ink) 12%, transparent);
 }
 
 .composer-card {
@@ -61,25 +61,25 @@
   align-items: flex-end;
   gap: 8px;
   min-height: 52px;
-  padding: 8px 8px 8px 12px;
+  padding: 8px 10px 8px 14px;
 }
 
 .composer-textarea {
   flex: 1 1 auto;
   align-self: center;
   min-width: 0;
-  min-height: 40px;
+  min-height: 36px;
   max-height: var(--composer-max-height, min(36vh, 240px));
   padding: 4px 0;
-  color: #fff;
+  color: var(--foreground);
   font-size: var(--composer-font-size, 15px);
-  font-weight: 500;
+  font-weight: 400;
   line-height: 22px;
 }
 
 .composer-textarea::placeholder {
   color: var(--muted-foreground);
-  opacity: 0.72;
+  opacity: 0.85;
 }
 
 /* Footer attach and other quiet icon controls. */
@@ -107,41 +107,19 @@
 
 /* Footer: attach, model setup trigger, and folder trigger. */
 .composer-footer {
-  position: relative;
   display: flex;
   align-items: stretch;
-  min-height: 34px;
-  border-top: 1px solid color-mix(in srgb, var(--foreground) 9%, transparent);
-  background: color-mix(in srgb, var(--foreground) 4%, var(--antigravity-card-bg, #252526));
+  min-height: 38px;
+  padding: 3px 4px;
+  border-top: 1px solid color-mix(in srgb, var(--foreground) 6%, transparent);
+  background: color-mix(in srgb, var(--foreground) 2%, var(--antigravity-card-bg, #252526));
 }
 
 .composer-footer-attach {
   display: flex;
   flex: none;
   align-items: center;
-  padding: 0 2px 0 6px;
-  border-right: 1px solid color-mix(in srgb, var(--foreground) 8%, transparent);
-}
-
-.composer-footer-agent {
-  display: flex;
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 1;
-  flex: none;
-  align-items: center;
-}
-
-.composer-agent-trigger {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  height: 28px;
-  padding: 0 7px;
-  color: color-mix(in srgb, var(--foreground) 72%, transparent);
-  font-size: 12px;
+  padding: 0 2px;
 }
 
 .composer-footer-attach .composer-tool {
@@ -163,9 +141,11 @@
 .composer-footer-folder-trigger {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   min-width: 0;
   padding: 5px 8px;
+  border-radius: 7px;
+  color: color-mix(in srgb, var(--foreground) 82%, transparent);
   border: 0;
   background: transparent;
   font: inherit;
@@ -180,15 +160,13 @@
 .composer-footer-model-trigger {
   flex: 1 1 auto;
   justify-content: flex-start;
-  color: color-mix(in srgb, var(--foreground) 82%, transparent);
 }
 
 .composer-footer-folder-trigger {
   flex: 0 1 auto;
   max-width: 46%;
   margin-left: auto;
-  color: var(--cwd-ink, #7eb0e0);
-  font-weight: 550;
+
 }
 
 .composer-footer-model-trigger:not(:disabled):hover,
@@ -197,11 +175,6 @@
 .composer-footer-folder-trigger[data-state='open'] {
   background: color-mix(in srgb, var(--foreground) 6%, transparent);
   color: var(--foreground);
-}
-
-.composer-footer-folder-trigger:not(:disabled):hover,
-.composer-footer-folder-trigger[data-state='open'] {
-  color: var(--cwd-ink, #7eb0e0);
 }
 
 .composer-footer-model-trigger:focus-visible,
@@ -251,7 +224,7 @@
   flex: none;
   width: 32px;
   height: 32px;
-  margin-bottom: 3px;
+  margin-bottom: 2px;
   border: 1px solid transparent;
   border-radius: 9px;
   display: grid;

@@ -388,7 +388,7 @@ balances it within pane minimums. Escape during a drag restores its starting pro
 pointer cancellation, lost capture, and window blur release the gesture. Nested splits support columns, rows,
 and quadrants, up to 32 visible chats. A tile has a 300 × 280 px minimum; the chat area scrolls
 when a small window cannot fit the chosen arrangement. Every layout uses the same one-line
-composer (42 px at rest, 30 px controls). Drafts grow upward within a tile-relative height limit and
+composer (a 52 px draft row, a 38 px footer, and a 32 px send/pause control). Drafts grow upward within a tile-relative height limit and
 then scroll, leaving room for the transcript.
 Tiles at most 680 px wide or 640 px tall also tighten transcript spacing; under 460 px the setup
 folder trigger truncates on narrow composers, and under 330 px the model name too. Single-tab headers use the
@@ -396,8 +396,9 @@ available width for the title; the focused tile has the accent tab indicator.
 The composer is a single stack: a draft card (text and the action button on the right) and a
 footer bar beneath it with attach (`composer.upload`) on the left, the model setup trigger
 (`composer.setup`) naming the model (with a chevron), and the folder trigger (`composer.folder`)
-on the right naming the working folder. The **Agent** button (`composer.agents`; also Agent → Agents…) opens the
-**Agents** view tab (`view.agents`, `src/renderer/agent-library/`) in this chat's tile: the saved-agent library on
+on the right naming the working folder. Model and folder controls share the same neutral color,
+with rounded hover surfaces inside a softly outlined composer. The footer has no Agent button.
+Agent → Agents… or the tile + menu opens the **Agents** view tab (`view.agents`, `src/renderer/agent-library/`) in this chat's tile: the saved-agent library on
 the left (`agents.item`, most recently used first, each with its run count and last run;
 `agents.new` clears the editor) and an editor on the right with a name (`agents.name`), a
 max-cycles cap (`agents.max-cycles`, blank runs until paused), and the standing instructions

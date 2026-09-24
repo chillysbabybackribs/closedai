@@ -173,7 +173,6 @@ export const ChatPane = memo(function ChatPane({
           onModelChange={chat.selectModel}
           onReasoningEffortChange={chat.selectReasoningEffort}
           onSend={sendMessage}
-          onOpenAgents={onOpenView && onStartAgent ? () => onOpenView('agents') : undefined}
           onStop={chat.interrupt}
           paused={state.pausedTurnId !== null}
           onResume={() => sendMessage(CHAT_RESUME_PROMPT, [])}

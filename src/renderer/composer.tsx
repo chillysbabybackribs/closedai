@@ -30,8 +30,6 @@ export type ComposerProps = {
   onModelChange: (modelId: string) => Promise<void>
   onReasoningEffortChange: (effort: string) => Promise<void>
   onSend: (text: string, attachments: ChatAttachment[]) => Promise<void>
-  /** Opens the pane's Agents dialog (agent-library/); absent where this pane cannot launch agents. */
-  onOpenAgents?: () => void
   onStop: () => Promise<void>
   /** A turn the pause button ended and nothing has followed, so Resume is worth offering. */
   paused: boolean
@@ -69,7 +67,6 @@ export function Composer({
   onModelChange,
   onReasoningEffortChange,
   onSend,
-  onOpenAgents,
   onStop,
   paused,
   onResume,
@@ -243,12 +240,6 @@ export function Composer({
           </div>
         </PromptInput>
         <div className="composer-footer">
-          {onOpenAgents && <div className="composer-footer-agent">
-            <Button type="button" variant="ghost" className="composer-agent-trigger" data-ui="composer.agents"
-              aria-label="Open agents" onClick={onOpenAgents}>
-              <span>Agent</span>
-            </Button>
-          </div>}
           <div className="composer-footer-attach">
             <AttachmentPicker
               disabled={!enabled || running || sending}

@@ -89,7 +89,6 @@ export const UI_CONTROLS = {
   'composer.input': 'Message textarea of the selected pane; Enter or the send button sends, Shift+Enter inserts a newline',
   'composer.send': 'Send the draft (present while no turn runs; disabled until there is text or an attachment)',
   'composer.setup': 'Open the model setup panel — model, reasoning effort, and context/plan usage',
-  'composer.agents': 'Open (or focus) the Agents view tab in this chat\u2019s tile: the saved-agent library beside an editor, with Start',
   'composer.folder': 'Open the working-folder panel; the trigger names the current folder',
   'composer.model-item': 'Choose a model in the setup panel; item is the model id',
   'composer.model-recent': 'Choose one of the recently used models at the bottom of the setup panel; item is the model id',
@@ -141,7 +140,7 @@ export const UI_CONTROLS = {
 
   'view.tools': 'Tools & capabilities view tab body, opened through the tile + menu or Agent → Tools & capabilities; item is the view tab id',
   'view.trace': 'Turn trace view tab body for the chat the view follows or is pinned to, opened through the tile + menu or Developer → Turn trace; item is the view tab id',
-  'view.agents': 'Agents view tab body (saved-agent library and editor), opened from the composer footer Agent button, the tile + menu, or Agent → Agents…; item is the view tab id',
+  'view.agents': 'Agents view tab body (saved-agent library and editor), opened from the tile + menu or Agent → Agents…; item is the view tab id',
   'view.history': 'History view tab body listing this workspace\u2019s chats, opened through the tile + menu or File → Manage chat history; item is the view tab id',
   'view.scope': 'Scope chip in a view toolbar: Following (the tile\u2019s own chat, dashed) or Pinned (one chat, solid); opens the scope menu; item is the view tab id',
   'view.scope-follow': 'Scope menu: return the view to following its tile; item is the view tab id',
