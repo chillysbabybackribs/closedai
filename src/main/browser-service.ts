@@ -508,7 +508,11 @@ export class BrowserService extends EventEmitter {
     // Off-window views can keep returning their pre-resize compositor frame. Reuse the
     // hidden capture host to paint at the requested size without intercepting drag input.
     const release = this.leaseTabRendering(tab.id) ?? (() => {})
-    const pending = settleFrames(tab.view.webContents, CAPTURE_SETTLE_MS)
+    // A never-shown capture host does not deliver animation frames. capturePage
+    // requests its own paint; waiting for rAF here only adds the timeout to each resize.
+    const ready = this.captureSurfaces.has(tab.id)
+      ? Promise.resolve(false) : settleFrames(tab.view.webContents, CAPTURE_SETTLE_MS)
+    const pending = ready
       .then(() => tab.screenshot())
       .then((imageUrl): BrowserShot | null => {
         if (!imageUrl || this.active !== tab) return null
