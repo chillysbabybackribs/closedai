@@ -25,6 +25,6 @@ export function prepareBrowserTabForTool(options: {
     return
   }
   prepareTabSurfaceForTool(tab, activeId, bounds, visibility)
-  if (tab.id === activeId && visibility.pageVisible) captureSurfaces.restoreShown(tab)
+  if (tab.id === activeId && visibility.pageVisible) void captureSurfaces.restoreShown(tab)
   if (!visibility.paneVisible && tab.id !== activeId) tab.park(bounds)
 }

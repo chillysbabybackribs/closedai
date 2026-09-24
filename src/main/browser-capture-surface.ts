@@ -23,8 +23,12 @@ export class HiddenCaptureSurfaces {
   has(id: string): boolean { return this.leases.has(id) }
 
   /** Re-arm the hidden host's widget only after its real on-screen bounds are restored. */
-  restoreShown(tab: BrowserTab): void {
-    if (!this.returned.delete(tab) || tab.view.webContents.isDestroyed()) return
+  async restoreShown(tab: BrowserTab): Promise<void> {
+    if (!this.returned.has(tab)) return
+    // Let the native widget consume its restored bounds before re-arming it.
+    await new Promise<void>((resolve) => setTimeout(resolve, 16))
+    if (tab.view.webContents.isDestroyed() || this.has(tab.id)
+      || !tab.view.getVisible() || tab.view.getBounds().x < 0 || !this.returned.delete(tab)) return
     const contents = tab.view.webContents
     const focused = webContents.getFocusedWebContents()
     const throttled = contents.getBackgroundThrottling()

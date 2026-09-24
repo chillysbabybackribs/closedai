@@ -348,7 +348,7 @@ export class BrowserService extends EventEmitter {
     active?.applyBounds(paneVisible ? this.bounds : {
       ...this.bounds, x: this.window.getContentBounds().width, occluded: true
     }, pageVisible)
-    if (pageVisible && active) this.captureSurfaces.restoreShown(active)
+    if (pageVisible && active) await this.captureSurfaces.restoreShown(active)
     // The renderer holds its freeze still until this call resolves. Returning the moment the
     // view is made visible drops the still onto a surface that has not painted yet, which is
     // the blank the still existed to cover; wait for the frame instead.
