@@ -6,7 +6,7 @@ import { join } from 'node:path'
 import type { ChatTranscriptItem } from '../shared/chat.js'
 import { DEFAULT_APP_SETTINGS } from './app-settings-store.js'
 import { ChatHub, type ChatHubProviders } from './chat-hub.js'
-import { restoreHubHistory } from './chat-hub-history.js'
+import { restoreHubHistory, withHubHistory } from './chat-hub-history.js'
 import { FakeSurface, MemorySettings } from './chat-peers/peer-manager-harness.js'
 import { PeerSettings } from './chat-peers/peer-settings.js'
 import { ChatStore } from './chat-store/chat-store.js'
@@ -110,4 +110,19 @@ test('an explicit new chat and a separate continuation do not restore retired hi
   const read = async () => { throw new Error('must not read an unrelated chat') }
   assert.equal(await restoreHubHistory({ ...DEFAULT_APP_SETTINGS, chatSessionRotations: rotations }, read), null)
   assert.equal(await restoreHubHistory({ ...DEFAULT_APP_SETTINGS, chatContinuation: continuation }, read), null)
+})
+
+
+test('overlapping replay and optimistic prompts stay before their answers when reopening', () => {
+  const prompt: ChatTranscriptItem = { type: 'user', id: 'provider-user', turnId: 'turn', text: 'Go' }
+  const answer: ChatTranscriptItem = { type: 'assistant', id: 'answer', turnId: 'turn', text: 'Done', phase: 'final', streaming: false }
+  const livePrompt = { ...prompt, id: 'user:optimistic' }
+  const snapshot = { ...new FakeSurface('gpt').state, items: [livePrompt, answer] }
+  const carried = { provider: snapshot.provider, threadName: null, items: [prompt, answer] }
+  const merged = withHubHistory(snapshot, carried)
+  assert.deepEqual(merged.items.map((item) => item.id), ['user:optimistic', 'answer'])
+  assert.deepEqual(withHubHistory(snapshot, carried, { limit: 1, unit: 'turn' }).items, merged.items)
+  const nextPrompt = { ...livePrompt, id: 'next-user', turnId: 'next-turn' }
+  assert.deepEqual(withHubHistory({ ...snapshot, items: [...snapshot.items, nextPrompt] }, carried).items,
+    [livePrompt, answer, nextPrompt])
 })

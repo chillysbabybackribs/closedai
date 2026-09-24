@@ -122,19 +122,19 @@ test('identically named tool calls collapse to a counted label', () => {
   assert.match(html, /aria-label="Searched the web 2 times, completed"/)
 })
 
-test('opening a long transcript shows only the latest turn until earlier ones are requested', () => {
+test('opening a transcript renders every loaded turn without a reveal ceiling', () => {
   const items: ChatTranscriptItem[] = Array.from({ length: 250 }, (_, index) => ({
     type: 'user', id: `u${index}`, turnId: `t${index}`, text: `Message ${index}`
   }))
   const html = renderTranscript({ items })
-  assert.match(html, /data-ui="chat\.show-earlier"/)
-  assert.match(html, /aria-label="View previous messages"/)
-  assert.doesNotMatch(html, /Message 248/)
+  assert.doesNotMatch(html, /data-ui="chat\.show-earlier"/)
+  assert.match(html, /Message 0/)
+  assert.match(html, /Message 248/)
   assert.match(html, /Message 249/)
-  assert.equal((html.match(/data-slot="message-scroller-item"/g) ?? []).length, 1)
+  assert.equal((html.match(/data-slot="message-scroller-item"/g) ?? []).length, 250)
 })
 
-test('revealing earlier messages mounts one additional turn at a time', () => {
+test('a reopened transcript keeps earlier replies visible', () => {
   const items: ChatTranscriptItem[] = [
     { type: 'user', id: 'u1', turnId: 't1', text: 'First' },
     { type: 'assistant', id: 'a1', turnId: 't1', text: 'First answer', phase: null, streaming: false },
@@ -143,7 +143,7 @@ test('revealing earlier messages mounts one additional turn at a time', () => {
   ]
   const html = renderTranscript({ items })
   assert.match(html, /Second/)
-  assert.doesNotMatch(html, /First answer/)
+  assert.match(html, /First answer/)
 })
 
 
