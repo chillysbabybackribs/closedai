@@ -29,6 +29,31 @@ function centrePixel(dataUrl: string): [number, number, number] {
 }
 const near = (pixel: [number, number, number], expected: [number, number, number]) => pixel.every((value, index) => Math.abs(value - expected[index]!) < 24)
 
+async function verifyResize(browser: BrowserService, window: BrowserWindow, url: string): Promise<void> {
+  const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+  // Page capture can succeed while the reparented view is blank in the actual window.
+  // Exercise repeated resize previews, including release during an in-flight capture,
+  // and check the window compositor independently before any tool can re-arm the page.
+  await browser.navigate(url)
+  await wait(400)
+  for (let cycle = 0; cycle < 3; cycle++) {
+    for (const width of [420, 760, 540]) {
+      await browser.setBounds({ x: 0, y: 0, width, height: 500, visible: true, occluded: true })
+      const preview = await browser.capture()
+      assert.ok(preview && near(centrePixel(preview.imageUrl), [0, 0, 255]))
+      assert.equal(nativeImage.createFromDataURL(preview.imageUrl).getSize().width, width)
+    }
+    const pending = browser.capture()
+    await browser.setBounds({ x: 0, y: 0, width: 780, height: 560, visible: true })
+    await pending
+    await wait(100)
+    const sources = await desktopCapturer.getSources({ types: ['window'], thumbnailSize: { width: 800, height: 600 } })
+    const surface = sources.find((source) => source.id === window.getMediaSourceId())
+    assert.ok(surface && near(centrePixel(surface.thumbnail.toDataURL()), [0, 0, 255]),
+      'native window must display the page after resize release without a tab switch')
+  }
+}
+
 async function verify(): Promise<void> {
   await app.whenReady()
   const server = createServer((_request, response) => { response.setHeader('content-type', 'text/html'); response.end(PAGE) })
@@ -43,6 +68,9 @@ async function verify(): Promise<void> {
   const capture = new UiCaptureAccess(() => window, () => browser)
   const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
   try {
+    await verifyResize(browser, window, `${base}/?color=rgb(0,0,255)`)
+    console.log('PASS native resize previews and release during capture')
+    if (process.env.CLOSEDAI_RESIZE_CHECK_ONLY === '1') return
     // A blue page in a tab that then goes to the background behind a foreground tab.
     const hidden = browser.openNewTab(`${base}/?color=rgb(0,0,255)`, true)
     await wait(800)
@@ -83,26 +111,6 @@ async function verify(): Promise<void> {
     assert.equal(churning.coherence?.frame, 'painted', 'the visible tab paints on request')
     assert.ok((churning.coherence?.domMutations ?? 0) > 0)
     assert.ok(near(centrePixel(churning.image.dataUrl), [0, 255, 0]))
-    // Page capture can succeed while the reparented view is blank in the actual window.
-    // Exercise repeated resize previews, including release during an in-flight capture,
-    // and check the window compositor independently before any tool can re-arm the page.
-    await browser.navigate(`${base}/?color=rgb(0,0,255)`)
-    for (let cycle = 0; cycle < 3; cycle++) {
-      for (const width of [420, 760, 540]) {
-        await browser.setBounds({ x: 0, y: 0, width, height: 500, visible: true, occluded: true })
-        const preview = await browser.capture()
-        assert.ok(preview && near(centrePixel(preview.imageUrl), [0, 0, 255]))
-        assert.equal(nativeImage.createFromDataURL(preview.imageUrl).getSize().width, width)
-      }
-      const pending = browser.capture()
-      await browser.setBounds({ x: 0, y: 0, width: 780, height: 560, visible: true })
-      await pending
-      await wait(100)
-      const sources = await desktopCapturer.getSources({ types: ['window'], thumbnailSize: { width: 800, height: 600 } })
-      const surface = sources.find((source) => source.id === window.getMediaSourceId())
-      assert.ok(surface && near(centrePixel(surface.thumbnail.toDataURL()), [0, 0, 255]),
-        'native window must display the page after resize release without a tab switch')
-    }
     console.log(JSON.stringify({ ok: true, hidden: first.coherence, recolored: second.coherence, flickering: flickering.coherence, churning: churning.coherence }))
   } catch (error) {
     console.error(error)
