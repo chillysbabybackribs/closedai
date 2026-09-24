@@ -381,8 +381,10 @@ File → New chat and continuation also add a tab in the focused
 tile; the split buttons explicitly add another tile. Moving a visible tile carries its tab group;
 dragging a tab to a tile edge splits that conversation out of its group.
 
-Dividers reserve a 14 px grab area between panes, with a center grip and hover, focus, and active
-feedback. This area stays outside native browser bounds. They resize horizontal and vertical
+Dividers reserve a 14 px grab area between panes, with a muted 2 × 24 px center grip.
+Hover reveals a subtle 1 px center line and brightens the grip; keyboard focus and active
+dragging emphasize both with the focus color without filling the gutter.
+This area stays outside native browser bounds. They resize horizontal and vertical
 splits independently; arrow keys resize a focused divider by 5% (Shift: 1%), and double-click
 balances it within pane minimums. Escape during a drag restores its starting proportions;
 pointer cancellation, lost capture, and window blur release the gesture. Nested splits support columns, rows,

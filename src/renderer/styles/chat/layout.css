@@ -283,15 +283,25 @@
 }
 .chat-layout-divider[data-axis='horizontal'] { cursor: col-resize; }
 .chat-layout-divider[data-axis='vertical'] { cursor: row-resize; }
-/* Only the grip: the card edges on either side already draw the seam. */
-.chat-layout-divider::after { content: ''; position: absolute; pointer-events: none; border-radius: 3px; background: var(--chrome-fg); }
-.chat-layout-divider[data-axis='horizontal']::after { width: 3px; height: 32px; }
-.chat-layout-divider[data-axis='vertical']::after { height: 3px; width: 32px; }
-.chat-layout-divider:hover,
-.chat-layout-divider:focus-visible,
-.chat-layout-divider[data-resizing='true'] { background: color-mix(in srgb, var(--focus-ink) 18%, var(--chassis)); }
-.chat-layout-divider:focus-visible { outline: 1px solid var(--focus-ink); outline-offset: -1px; }
-.chat-layout-divider:hover::after,
+/* Keep the full grab area quiet; only the center line and grip react. */
+.chat-layout-divider::before,
+.chat-layout-divider::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  border-radius: 2px;
+}
+.chat-layout-divider::before { background: transparent; }
+.chat-layout-divider[data-axis='horizontal']::before { width: 1px; top: 8px; bottom: 8px; }
+.chat-layout-divider[data-axis='vertical']::before { height: 1px; left: 8px; right: 8px; }
+.chat-layout-divider::after { background: color-mix(in srgb, var(--chrome-fg) 55%, var(--chassis)); }
+.chat-layout-divider[data-axis='horizontal']::after { width: 2px; height: 24px; }
+.chat-layout-divider[data-axis='vertical']::after { height: 2px; width: 24px; }
+.chat-layout-divider:hover::before { background: color-mix(in srgb, var(--chrome-fg) 25%, var(--chassis)); }
+.chat-layout-divider:hover::after { background: color-mix(in srgb, var(--chrome-fg) 80%, var(--chassis)); }
+.chat-layout-divider:focus-visible { outline: none; }
+.chat-layout-divider:focus-visible::before,
+.chat-layout-divider[data-resizing='true']::before,
 .chat-layout-divider:focus-visible::after,
 .chat-layout-divider[data-resizing='true']::after { background: var(--focus-ink); }
 body[data-layout-resize] * { user-select: none !important; }
