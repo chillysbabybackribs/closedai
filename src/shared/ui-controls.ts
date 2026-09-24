@@ -109,7 +109,7 @@ export const UI_CONTROLS = {
   'composer.resume': 'Resume the turn the pause button ended (present only while a turn is paused)',
   'composer.browser': 'Show or hide the embedded browser pane from the composer pills under the message card',
   'composer.agents': 'Open the saved-agent menu to start a run beside this chat or open Manage agents',
-  'composer.agents-start': 'Start a saved agent in a new chat docked beside this pane; item is the saved agent id',
+  'composer.agents-start': 'Start a saved agent in a new chat tab beside this chat\u2019s tile, or focus that agent\u2019s live run tab when one exists; item is the saved agent id',
   'composer.agents-manage': 'Open or focus the workspace Agents view tab (Library, Build, Runs)',
 
   'browser.tab': 'Select a browser tab; item is the tab id',

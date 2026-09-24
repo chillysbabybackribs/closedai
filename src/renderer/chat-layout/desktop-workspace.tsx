@@ -186,11 +186,16 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
     layout.toggleBrowser()
     setBrowserRevealVersion((value) => value + 1)
   }, [layout.toggleBrowser])
+  const focusChatTab = useCallback((chatId: string, anchorPaneId: string) => {
+    const tile = tabOwner(layout.tree, anchorPaneId) ?? anchorPaneId
+    return layout.activateTab(chatId, tile)
+  }, [layout.activateTab, layout.tree])
   const paneActions = useMemo<WorkspacePaneActions>(() => ({
     toggleBrowser: toggleBrowserPane,
     openAgentsView: (anchorPaneId) => layout.openView('agents', anchorPaneId),
+    focusChatTab,
     startAgentFromPane: (paneId, options) => startAgentRef.current(paneId, options)
-  }), [toggleBrowserPane, layout.openView])
+  }), [toggleBrowserPane, layout.openView, focusChatTab])
   const viewContext = useMemo<WorkspaceViewContextValue>(() => ({
     tree: layout.tree, views: layout.views, selectedPaneId: chat.selectedPaneId, chats: chat.chats, title: chatTitle,
     listChats: chat.listChats, archiveChat: archiveChat ?? chat.archiveChat, activateChat: layout.activateTab,

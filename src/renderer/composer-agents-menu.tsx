@@ -16,12 +16,13 @@ export type ComposerAgentsMenuProps = {
   startEnabled: boolean
   runningTurn: boolean
   onStart: (paneId: string, options: AgentRunStartOptions) => Promise<void>
+  onOpenRun: (chatId: string) => Promise<void>
   onManage: (paneId: string) => void
   onError: (message: string) => void
 }
 
 /** Saved-agent quick start for this chat's tile; Manage opens the workspace Agents view. */
-export function ComposerAgentsMenu({ paneId, startEnabled, runningTurn, onStart, onManage, onError }: ComposerAgentsMenuProps): JSX.Element {
+export function ComposerAgentsMenu({ paneId, startEnabled, runningTurn, onStart, onOpenRun, onManage, onError }: ComposerAgentsMenuProps): JSX.Element {
   const agents = useAgentLibrary()
   const runs = useAgentRuns()
   const live = liveTilesByAgent(runs, dockTiles(runs, [], [], Date.now()))
@@ -33,8 +34,12 @@ export function ComposerAgentsMenu({ paneId, startEnabled, runningTurn, onStart,
     if (error) onError(error)
   }, [error, onError])
 
-  const startAgent = (agent: SavedAgent): void => {
+  const openOrStart = (agent: SavedAgent, liveChatId: string | undefined): void => {
     void act(async () => {
+      if (liveChatId) {
+        await onOpenRun(liveChatId)
+        return
+      }
       await onStart(paneId, {
         prompt: agent.prompt,
         maxCycles: agent.maxCycles,
@@ -77,11 +82,11 @@ export function ComposerAgentsMenu({ paneId, startEnabled, runningTurn, onStart,
                     data-ui-key={agent.id}
                     disabled={disabled}
                     title={disabled && !startEnabled ? 'This chat cannot start an agent right now' : undefined}
-                    onClick={() => startAgent(agent)}
+                    onClick={() => openOrStart(agent, liveTile?.chatId)}
                   >
                     <span className="composer-agents-item-name">{agent.name}</span>
                     <span className="composer-agents-item-meta">
-                      {liveTile ? `${liveTile.cycleLabel} · ${DOCK_STATE_LABEL[liveTile.state]}` : 'Saved agent'}
+                      {liveTile ? `Open · ${liveTile.cycleLabel} · ${DOCK_STATE_LABEL[liveTile.state]}` : 'Start run'}
                     </span>
                   </button>
                 </li>

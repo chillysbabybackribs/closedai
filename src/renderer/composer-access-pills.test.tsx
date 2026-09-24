@@ -11,6 +11,7 @@ test('composer access pills render browser and agents controls when workspace ac
     value: {
       toggleBrowser: () => {},
       openAgentsView: () => {},
+      focusChatTab: async () => {},
       startAgentFromPane: async () => {}
     }
   }, createElement(ComposerAccessPills, {

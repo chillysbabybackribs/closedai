@@ -6,6 +6,8 @@ export type WorkspacePaneActions = {
   toggleBrowser: () => void
   /** Focus the workspace Agents tab, creating it beside `anchorPaneId` when missing. */
   openAgentsView: (anchorPaneId: string) => void
+  /** Show an open chat tab, adding it to the tile that owns `anchorPaneId` when needed. */
+  focusChatTab: (chatId: string, anchorPaneId: string) => Promise<void>
   startAgentFromPane: (paneId: string, options: AgentRunStartOptions) => Promise<void>
 }
 
