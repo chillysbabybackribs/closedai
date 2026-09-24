@@ -35,6 +35,7 @@
 .chat-dock-preview {
   z-index: 50;
   width: 340px;
+  max-width: var(--radix-hover-card-content-available-width);
   max-height: min(360px, var(--radix-hover-card-content-available-height));
   overflow: hidden;
   box-sizing: border-box;

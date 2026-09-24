@@ -1,4 +1,4 @@
-import { ensureExpandedGroup, setGroupDocked } from './layout-docking.js'
+import { ensureExpandedGroup, layoutGroups, setGroupDocked } from './layout-docking.js'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ChatWorkspaceSnapshot } from '../../shared/chat-peers.js'
 import { errorMessage } from '../error-message.js'
@@ -191,7 +191,7 @@ export function useChatLayout(
       const treeBefore = current.current.tree
       const sourceOwner = id ? tabOwner(treeBefore, id) : null
       const sourceHasSiblings = sourceOwner && tabIds(treeBefore).some((tab) => tab !== id && tabOwner(treeBefore, tab) === sourceOwner)
-      if (!view && edge && chatPaneIds(treeBefore).length >= 32 && (!id || !paneIds(treeBefore).includes(id) || (singleTab && sourceHasSiblings))) {
+      if (!view && edge && layoutGroups(treeBefore).filter((group) => !isViewTabId(group.id)).length >= 32 && (!id || !paneIds(treeBefore).includes(id) || (singleTab && sourceHasSiblings))) {
         throw new Error('The workspace already has 32 visible chats')
       }
       if (!id && !isViewTabId(target)) await window.closedai.chat.selectPane(target)

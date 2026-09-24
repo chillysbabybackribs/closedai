@@ -47,7 +47,7 @@ function DockTab({ group, boundary, width, busy, onRestore, onPreview }: {
     </HoverCard.Trigger>
     <HoverCard.Portal>
       <HoverCard.Content className="chat-dock-preview" side="top" align="start" sideOffset={8}
-        collisionBoundary={boundary} collisionPadding={8} style={{ maxWidth: Math.max(120, width - 16) }}>
+        collisionBoundary={boundary} collisionPadding={8} style={{ width: Math.min(340, Math.max(120, width - 16)) }}>
         {previewId ? <LivePreview paneId={previewId} /> : <p className="chat-dock-empty">Workspace view</p>}
         <div className="chat-dock-preview-footer">{chats.length > 1 ? `${chats.length} chats · ` : ''}Click tab to restore</div>
       </HoverCard.Content>

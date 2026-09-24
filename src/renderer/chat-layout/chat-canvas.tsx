@@ -295,7 +295,7 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
         </section>
       })}
       {!soloTile && !dragging && !settling && onPreview && (preview?.rails ?? geometry.rails).map((rail) =>
-        <ChatDockRail key={rail.id} rail={rail} busy={busy} onRestore={onSelectTab} onPreview={onPreview} />)}
+        <ChatDockRail key={rail.id} rail={rail} busy={busy} onRestore={(id) => { tabFocus.current = id; onSelectTab(id) }} onPreview={onPreview} />)}
       {dragging?.id === BROWSER_PANE_ID && !busy && (['left', 'right'] as const).map((edge) => <div key={edge}
         className="chat-layout-workspace-dock" data-edge={edge} data-ui="layout.workspace-dock" data-ui-key={edge}
         data-active={browserDrop?.target === WORKSPACE_DOCK_ID && browserDrop.edge === edge}
