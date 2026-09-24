@@ -6,7 +6,7 @@ import type { ViewKind } from './layout-views.js'
 import type { ViewHints } from './pane-add-menu.js'
 import { LayoutDivider } from './layout-divider.js'
 import { createSplitResizeSession, paintSplitResize, type SplitResizeFrame } from './layout-split-resize.js'
-import { CHAT_TAB_DRAG_TYPE, tabOwner } from './layout-tabs.js'
+import { CHAT_TAB_DRAG_TYPE } from './layout-tabs.js'
 import type { TabActivity } from './tab-activity.js'
 import { browserDropAt, sameBrowserDrop, type BrowserDrop } from './browser-drop.js'
 import { dragSplitPreview } from './layout-drag-preview.js'
@@ -148,29 +148,12 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
     ? dragSplitPreview(tree, dragging.id, drop, dragging.singleTab, size.width, size.height)
     : null), [dragging, drop, tree, size.width, size.height])
   const minimum = splitPreview?.minimum ?? minimumSize(visibleTree)
-  const provisionalSplitTab = dragging?.singleTab && tabOwner(tree, dragging.id) !== dragging.id ? dragging.id : null
-  // Keep the browser host mounted while hidden, just as inactive conversation tabs are.
-  const committedTiles = useMemo(() => {
-    let panes = geometry.panes
-    if (provisionalSplitTab && !panes.some((pane) => pane.id === provisionalSplitTab)) {
-      const owner = tabOwner(tree, provisionalSplitTab)!
-      const ownerPane = panes.find((pane) => pane.id === owner)
-      if (ownerPane) {
-        panes = [...panes, { id: provisionalSplitTab, tabs: [provisionalSplitTab], rect: ownerPane.rect }]
-      }
-    }
-    return browserVisible || panes.some((pane) => pane.id === BROWSER_PANE_ID)
-      ? panes
-      : [...panes, { id: BROWSER_PANE_ID, tabs: [BROWSER_PANE_ID], rect: { x: 0, y: 0, width: 0, height: 0 } }]
-  }, [browserVisible, geometry.panes, provisionalSplitTab, tree])
-  const previewTabs = (paneId: string, tabs: string[]): string[] => {
-    const preview = splitPreview?.panes.find((pane) => pane.id === paneId)?.tabs
-    if (preview) return preview
-    if (provisionalSplitTab && tabOwner(tree, provisionalSplitTab) === paneId) {
-      return tabs.filter((tab) => tab !== provisionalSplitTab)
-    }
-    return tabs
-  }
+  // Render the complete proposed layout: splitting the active tab also creates a
+  // tile for its remaining siblings. Geometry alone cannot make that tile visible.
+  const displayedTiles = splitPreview?.panes ?? geometry.panes
+  const committedTiles = browserVisible || displayedTiles.some((pane) => pane.id === BROWSER_PANE_ID)
+    ? displayedTiles
+    : [...displayedTiles, { id: BROWSER_PANE_ID, tabs: [BROWSER_PANE_ID], rect: { x: 0, y: 0, width: 0, height: 0 } }]
   const layoutDividers = splitPreview?.dividers ?? geometry.dividers
   const chatCount = paneIds(tree).length
   const canMaximize = chatCount > 1 || (browserVisible && chatCount >= 1)
@@ -246,16 +229,15 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
       }}>
       {committedTiles.map(({ id: activeId, tabs, rect }) => {
         const isThisTileSolo = soloTile ? (soloTile.id === activeId || soloTile.tabs.includes(activeId)) : false
-        const tileRect = isThisTileSolo ? soloRect : (splitPreview?.panes.find((pane) => pane.id === activeId)?.rect ?? rect)
-        const tileTabs = previewTabs(activeId, tabs)
+        const tileRect = isThisTileSolo ? soloRect : rect
+        const tileTabs = tabs
         const tileActiveId = tileTabs.includes(activeId) ? activeId : (tileTabs[0] ?? activeId)
-        const isProvisional = activeId === provisionalSplitTab
         const row = chatRow?.(activeId)
         return <section key={activeId === BROWSER_PANE_ID ? BROWSER_PANE_ID : activeId}
           className="chat-layout-tile" style={position(tileRect)} data-pane-id={activeId === BROWSER_PANE_ID || isViewTabId(activeId) ? undefined : activeId}
           data-view-id={isViewTabId(activeId) ? activeId : undefined}
           data-solo={isThisTileSolo ? 'true' : undefined}
-          hidden={isProvisional && !drop?.edge ? true : soloTile ? !isThisTileSolo : (activeId === BROWSER_PANE_ID && !browserVisible)}
+          hidden={soloTile ? !isThisTileSolo : (activeId === BROWSER_PANE_ID && !browserVisible)}
           data-selected={activeId === selectedId || tabs.includes(selectedId)} aria-label={activeId === BROWSER_PANE_ID ? 'Browser' : title(activeId)}
           onFocusCapture={(event) => { if (activeId !== BROWSER_PANE_ID && activeId !== selectedId && !(event.target as HTMLElement).closest('[role="tablist"]')) onSelect(activeId) }}
           onPointerDownCapture={(event) => { if (activeId !== BROWSER_PANE_ID && activeId !== selectedId && !(event.target as HTMLElement).closest('[role="tablist"]')) onSelect(activeId) }}
