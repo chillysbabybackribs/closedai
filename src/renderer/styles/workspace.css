@@ -219,8 +219,10 @@
   font-size: 10px;
 }
 
-.agent-dock [data-slot='hero-dock-icon'] {
+.agent-dock :is([data-ui='dock.run'], [data-ui='dock.agents']) {
   flex: none;
+  translate: none;
+  scale: 1;
   width: 44px;
   height: 44px;
   border: 1px solid var(--hairline-strong);
@@ -231,17 +233,17 @@
   transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
 }
 
-.agent-dock [data-slot='hero-dock-icon']:hover {
+.agent-dock :is([data-ui='dock.run'], [data-ui='dock.agents']):hover {
   transform: translateY(-2px);
   border-color: color-mix(in srgb, var(--foreground) 28%, transparent);
 }
 
-.agent-dock [data-slot='hero-dock-icon'][aria-expanded='true'] {
+.agent-dock :is([data-ui='dock.run'], [data-ui='dock.agents'])[aria-expanded='true'] {
   border-color: var(--link-ink);
   background: color-mix(in srgb, var(--link-ink) 14%, var(--surface-control));
 }
 
-.agent-dock [data-slot='hero-dock-icon']:focus-visible {
+.agent-dock :is([data-ui='dock.run'], [data-ui='dock.agents']):focus-visible {
   outline: 2px solid var(--focus-ink, var(--link-ink));
   outline-offset: 3px;
 }
@@ -287,7 +289,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .agent-dock [data-slot='hero-dock-icon'],
+  .agent-dock :is([data-ui='dock.run'], [data-ui='dock.agents']),
   .agent-dock [data-slot='hero-dock-label'] { transition: none; }
-  .agent-dock [data-slot='hero-dock-icon']:hover { transform: none; }
+  .agent-dock :is([data-ui='dock.run'], [data-ui='dock.agents']):hover { transform: none; }
 }
