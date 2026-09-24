@@ -150,7 +150,10 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
   const minimum = splitPreview?.minimum ?? minimumSize(visibleTree)
   // Render the complete proposed layout: splitting the active tab also creates a
   // tile for its remaining siblings. Geometry alone cannot make that tile visible.
-  const displayedTiles = splitPreview?.panes ?? geometry.panes
+  const displayedTiles = splitPreview
+    ? [...geometry.panes.map((pane) => splitPreview.panes.find((next) => next.id === pane.id) ?? pane),
+        ...splitPreview.panes.filter((pane) => !geometry.panes.some((previous) => previous.id === pane.id))]
+    : geometry.panes
   const committedTiles = browserVisible || displayedTiles.some((pane) => pane.id === BROWSER_PANE_ID)
     ? displayedTiles
     : [...displayedTiles, { id: BROWSER_PANE_ID, tabs: [BROWSER_PANE_ID], rect: { x: 0, y: 0, width: 0, height: 0 } }]
