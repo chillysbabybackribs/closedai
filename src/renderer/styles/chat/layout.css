@@ -132,6 +132,14 @@
   container: chat-tile / size;
 }
 .chat-layout-tile[hidden] { display: none; }
+
+.chat-layout-tile[data-dock-peek='true'] {
+  z-index: 45;
+  pointer-events: none;
+  box-shadow:
+    0 0 0 1px var(--tile-edge),
+    0 16px 48px rgb(0 0 0 / 32%);
+}
 /* Selection changes the frame, keeping every transcript equally readable. */
 .chat-layout-tile:is([data-pane-id], [data-view-id])[data-selected='true'] {
   border-color: color-mix(in srgb, var(--focus-ink) 32%, var(--tile-edge));

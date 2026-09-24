@@ -10,8 +10,8 @@ import type { Rect } from './layout-tree.js'
 type Rail = ReturnType<typeof layoutGeometry>['rails'][number]
 const position = (rect: Rect) => ({ left: rect.x, top: rect.y, width: rect.width, height: rect.height })
 
-function DockTab({ group, boundary, width, busy, onRestore, onPreview, onPeekGroup }: {
-  group: DockGroup; boundary: HTMLElement | null; width: number; busy: boolean
+function DockTab({ group, boundary, busy, onRestore, onPreview, onPeekGroup }: {
+  group: DockGroup; boundary: HTMLElement | null; busy: boolean
   onRestore: (id: string) => void; onPreview: (id: string | null) => void; onPeekGroup: (id: string | null) => void
 }) {
   const [open, setOpen] = useState(false)
@@ -67,7 +67,7 @@ export function ChatDockRail({ rail, busy, onRestore, onPreview, onPeekGroup }: 
         <span className="chat-dock-rail-mark" aria-hidden="true">
           <PanelBottom size={14} strokeWidth={1.65} />
         </span>
-        {rail.groups.map((group) => <DockTab key={group.id} group={group} boundary={boundary} width={rail.rect.width}
+        {rail.groups.map((group) => <DockTab key={group.id} group={group} boundary={boundary}
           busy={busy} onRestore={onRestore} onPreview={onPreview} onPeekGroup={onPeekGroup} />)}
       </Toolbar.Root>
     </div>

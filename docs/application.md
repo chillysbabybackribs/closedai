@@ -565,14 +565,16 @@ Docking keeps the full split tree, tab membership, group label and divider ratio
 restoring returns the group to that position. Docked panes stay mounted to preserve drafts and
 attachments, and their turns continue. Applying a layout preset includes and expands docked groups.
 
-Hovering a dock tab for 350 ms (or focusing it with the keyboard) opens a themed Radix Hover Card
-above it, constrained to the chat region. It shows the group's active chat (or first chat when a
-view is active), title, recent messages, activity and chat count. While open, that chat joins the
-existing display subscription for live text; closing releases this temporary subscription without
-changing chat selection. Clicking or pressing Enter/Space on `layout.dock-restore` restores the
-group. Toolbar arrow keys move between dock tabs; Escape dismisses the preview. History/search
-selection of a docked chat restores its group too. Removing the last expanded chat restores a
-remaining group so the workspace cannot be stranded with only dock tabs.
+Hovering a dock tab for 350 ms (or focusing it with the keyboard) shows a **live preview** of the
+docked group in its chat region: the mounted tile (header, transcript, and composer) repaints above
+the rail at full size with a dimmed scrim behind it, constrained to that region's boundary. While
+open, the active chat (or first chat when a view is active) joins the existing display subscription;
+closing releases this temporary subscription without changing chat selection. A screen-reader-only
+Hover Card carries the title and restore hint. Clicking or pressing Enter/Space on
+`layout.dock-restore` restores the group. Toolbar arrow keys move between dock tabs; Escape
+dismisses the preview. History/search selection of a docked chat restores its group too. Removing
+the last expanded chat restores a remaining group so the workspace cannot be stranded with only dock
+tabs.
 
 `src/renderer/chat-layout/` owns the shared tree, geometry, persistence, and tile controls. The browser
 is a reserved layout leaf, excluded from chat subscriptions, tab lists, and the 32-chat limit.
