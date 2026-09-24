@@ -15,11 +15,11 @@ export function useBrowserController(layoutKey?: string, visible = true, occlude
   const state = useBrowserSnapshot(isEditingUrl)
   const omnibox = useOmnibox(state.browser, state.location, state.setLocation, setIsEditingUrl)
   const omniboxCoversPage = isEditingUrl && omnibox.suggestionsOpen
-  const titlebarOverlay = useTitlebarBrowserFreeze(omniboxCoversPage)
+  const titlebarOverlay = useTitlebarBrowserFreeze(omniboxCoversPage || occluded)
   const browserHostRef = useBrowserBounds(
     layoutKey,
     visible && !state.browser.navigationError,
-    occluded || titlebarOverlay.open,
+    titlebarOverlay.open,
     titlebarOverlay.finishRestore
   )
   const displayedUrl = state.browser.navigationError?.url ?? state.browser.url

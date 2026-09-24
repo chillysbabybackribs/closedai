@@ -8,7 +8,7 @@ import type { BrowserShot } from '../shared/types.js'
 // not drive the generic overlay scanner or the native page occludes/restores in a loop.
 const OVERLAY_SELECTOR = '.header-chat-search-popup, .header-chat-search-error, .browser-downloads, [data-slot="dialog-overlay"], [role="dialog"], [role="menu"], [data-slot="tooltip-content"]'
 const BROWSER_HOST_SELECTOR = '#browser-page'
-const EAGER_CAPTURE_TRIGGER = '[data-ui="titlebar.chat-search"], [data-ui="titlebar.menu"][data-ui-key="view"], [data-ui="browser.address"], [data-ui="browser.saved-sites"], [aria-label="Downloads"], [aria-label="Tools"]'
+const EAGER_CAPTURE_TRIGGER = '[data-ui="titlebar.chat-search"], [data-ui="titlebar.menu"][data-ui-key="view"], [data-ui="browser.address"], [data-ui="browser.saved-sites"], [aria-label="Downloads"], [aria-label="Tools"], [data-ui="layout.browser-drag"], [data-ui="layout.pane-drag"], [data-ui="layout.tab"]'
 // Right-clicking browser chrome opens a menu over the page, and unlike the triggers above it
 // was reaching apply() with nothing primed — so the still arrived a capture round-trip after
 // the native pixels were already hidden. A secondary button never switches tabs, so the shot

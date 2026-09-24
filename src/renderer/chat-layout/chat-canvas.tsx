@@ -90,7 +90,7 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
     dropTarget.current = null
     setDragging(null)
     setDrop(null)
-    dragActiveListener.current(false)
+    if (!settlingRef.current) dragActiveListener.current(false)
   }, [])
   const queueDrop = (next: typeof drop): void => {
     if (next?.target === dropTarget.current?.target && next?.edge === dropTarget.current?.edge) return
@@ -250,6 +250,7 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
         } finally {
           settlingRef.current = false
           setSettling(null)
+          dragActiveListener.current(false)
         }
       }}>
       {renderedTiles.map(({ id: activeId, tabs, rect }) => {

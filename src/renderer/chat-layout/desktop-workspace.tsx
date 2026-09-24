@@ -58,7 +58,8 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
       event.dataTransfer.setData(CHAT_DRAG_TYPE, BROWSER_PANE_ID)
       event.dataTransfer.effectAllowed = 'move'
     }}><span className="browser-layout-drag-dots" aria-hidden="true" /></button>, [layout.busy])
-  const browser = useBrowserController(`${layoutRevision}\0${layout.browserVisible ? '1' : '0'}`, layout.browserVisible)
+  const [layoutDragging, setLayoutDragging] = useState(false)
+  const browser = useBrowserController(`${layoutRevision}\0${layout.browserVisible ? '1' : '0'}`, layout.browserVisible, layoutDragging)
   const imageTabId = browser.browser.image?.tabId
   const [browserRevealVersion, setBrowserRevealVersion] = useState(0)
   const [presetsOpen, setPresetsOpen] = useState(false)
@@ -211,7 +212,7 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
     <ChatCanvas tree={layout.tree} selectedId={chat.selectedPaneId} busy={layout.busy}
         notice={layout.notice} toolsPreset={toolsPreset}
         browserRevealVersion={browserRevealVersion}
-        onDragActive={() => {}}
+        onDragActive={setLayoutDragging}
         browserVisible={layout.browserVisible}
         title={title}
         reviewQueue={reviewQueue}

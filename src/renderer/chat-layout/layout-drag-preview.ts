@@ -1,6 +1,6 @@
 import { BROWSER_PANE_ID, dockPane, layoutGeometry, paneIds, removePane, type ChatLayout, type DockEdge, type Rect } from './layout-tree.js'
 import { moveTab, removeTab, tabOwner } from './layout-tabs.js'
-import { browserDropPreview } from './browser-drop.js'
+import { browserDropPreview, splitDropEdge } from './browser-drop.js'
 
 export type DragDropTarget = { target: string; edge: DockEdge | null }
 
@@ -68,20 +68,7 @@ export function chatDropAt(
   // Enter the tab strip deliberately; once there, allow a little downward drift.
   const stripBoundary = held ? (held.edge === null ? 50 : 26) : 38
   if (y - tile.rect.y < stripBoundary) return { target: tile.id, edge: null }
-  const distances: Record<DockEdge, number> = { left: dx, right: 1 - dx, top: dy, bottom: 1 - dy }
-  const edge = (Object.keys(distances) as DockEdge[]).reduce((best, candidate) => distances[candidate] < distances[best] ? candidate : best)
-  // Measure penetration into the new zone in pixels, including diagonal boundaries.
-  // This holds through small hand movements without delaying deliberate movement.
-  if (held?.edge && held.edge !== edge) {
-    const horizontal = (side: DockEdge): boolean => side === 'left' || side === 'right'
-    const sameAxis = horizontal(held.edge) === horizontal(edge)
-    const gradient = sameAxis
-      ? 2 / (horizontal(edge) ? tile.rect.width : tile.rect.height)
-      : Math.hypot(1 / tile.rect.width, 1 / tile.rect.height)
-    const margin = Math.min(32, Math.min(tile.rect.width, tile.rect.height) * 0.1)
-    if (distances[held.edge] - distances[edge] <= margin * gradient) return held
-  }
-  return { target: tile.id, edge }
+  return { target: tile.id, edge: splitDropEdge(tile.rect, x, y, held?.edge ?? null) }
 }
 
 /** Keep existing DOM shells in place, adding any shell created by splitting a tab. */
