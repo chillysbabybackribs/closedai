@@ -2,12 +2,23 @@ import type { JSX } from 'react'
 import { MessageSquareText } from 'lucide-react'
 import { Button } from '../../components/ui/button.js'
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../../components/ui/card.js'
+import { cn } from '../../lib/utils.js'
 import { useAgentRunAction } from '../agent-runs/use-agent-run-action.js'
-import type { DockTile } from './agent-dock-model.js'
+import { DOCK_STATE_LABEL, type DockTile, type DockTileState } from './agent-dock-model.js'
 
-// One running or paused agent in the dock: name and status dot, the cycle it is on, one line of
-// what it is doing or why it stopped, and the run controls. Open chat is the only way a run
-// takes layout space, and the user chooses it.
+// One agent run's card, opened from its dock icon: name, state and cycle, one line of what it is
+// doing or why it stopped, and the run controls. Open chat is the only way a run takes layout
+// space, and the user chooses it.
+
+/** The status colour a run shows on its icon badge and card, in theme tokens. */
+export const DOCK_STATE_TONE: Record<DockTileState, string> = {
+  running: 'bg-(--ok-ink)',
+  retrying: 'bg-(--ok-ink) animate-pulse',
+  paused: 'bg-muted-foreground',
+  finished: 'bg-(--link-ink)',
+  approval: 'bg-(--link-ink) animate-pulse',
+  failed: 'bg-destructive animate-pulse'
+}
 
 export type AgentDockTileProps = {
   tile: DockTile
@@ -21,14 +32,15 @@ export function AgentDockTile({ tile, onOpenChat, onPause, onResume, onStop }: A
   const { busy, error, act } = useAgentRunAction()
   const review = tile.state === 'approval'
   const finished = tile.state === 'finished'
+  const detailTone = tile.state === 'failed' ? 'text-destructive' : review || finished ? 'text-(--link-ink)' : 'text-muted-foreground'
   return (
-    <Card className="agent-dock-tile gap-2 rounded-lg py-3 shadow-none" data-state={tile.state}>
+    <Card className="gap-2 rounded-md border-0 bg-transparent py-3 shadow-none" data-state={tile.state}>
       <CardHeader className="gap-1 px-3">
         <CardTitle className="flex min-w-0 items-center gap-2 text-sm">
-          <span className="agent-dock-dot" data-state={tile.state} aria-hidden="true" />
+          <span className={cn('size-2 shrink-0 rounded-full', DOCK_STATE_TONE[tile.state])} aria-hidden="true" />
           <span className="truncate" title={tile.name}>{tile.name}</span>
         </CardTitle>
-        <CardDescription className="text-xs">{tile.cycleLabel}</CardDescription>
+        <CardDescription className="text-xs">{DOCK_STATE_LABEL[tile.state]} · {tile.cycleLabel}</CardDescription>
         <CardAction>
           <Button type="button" variant="ghost" size="icon-xs" data-ui="dock.open-chat" data-ui-key={tile.chatId}
             aria-label={`Open ${tile.name} as a chat`} title="Open as a chat" onClick={() => onOpenChat(tile.chatId)}>
@@ -36,7 +48,7 @@ export function AgentDockTile({ tile, onOpenChat, onPause, onResume, onStop }: A
           </Button>
         </CardAction>
       </CardHeader>
-      <CardContent className="agent-dock-detail truncate px-3 text-xs" title={error || tile.detail}>
+      <CardContent className={cn('truncate px-3 text-xs', error ? 'text-destructive' : detailTone)} title={error || tile.detail}>
         {error || tile.detail}
       </CardContent>
       <CardFooter className="gap-1 px-3">
@@ -50,7 +62,7 @@ export function AgentDockTile({ tile, onOpenChat, onPause, onResume, onStop }: A
           <Button type="button" variant="outline" size="xs" data-ui="dock.resume" data-ui-key={tile.chatId} disabled={busy}
             onClick={() => void act(() => onResume(tile.chatId))}>Resume</Button>
         )}
-        {/* A finished run has nothing left to stop; ending it clears the tile and keeps the chat. */}
+        {/* A finished run has nothing left to stop; ending it clears the icon and keeps the chat. */}
         <Button type="button" variant={finished ? 'outline' : 'ghost'} size="xs" data-ui="dock.stop" data-ui-key={tile.chatId}
           disabled={busy} onClick={() => void act(() => onStop(tile.chatId))}>{finished ? 'Dismiss' : 'Stop'}</Button>
       </CardFooter>

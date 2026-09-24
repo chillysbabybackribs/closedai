@@ -23,6 +23,12 @@ export type DockTile = {
   attentionKey: string | null
 }
 
+/** How each state reads in the icon's tooltip and the run card. */
+export const DOCK_STATE_LABEL: Record<DockTileState, string> = {
+  running: 'Running', retrying: 'Retrying', paused: 'Paused', finished: 'Finished',
+  failed: 'Paused by failures', approval: 'Needs your approval'
+}
+
 const ATTENTION: ReadonlySet<DockTileState> = new Set(['approval', 'failed', 'finished'])
 const ORDER: Record<DockTileState, number> = { approval: 0, failed: 1, finished: 2, retrying: 3, running: 4, paused: 5 }
 

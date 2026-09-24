@@ -3,6 +3,8 @@ import test from 'node:test'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import type { DockTile } from './agent-dock-model.ts'
+import { TooltipProvider } from '../../components/ui/tooltip.tsx'
+import { AgentDockIcon } from './agent-dock-icon.tsx'
 import { AgentDockTile } from './agent-dock-tile.tsx'
 
 const tile: DockTile = { chatId: 'c1', name: 'Daily brief', state: 'running', running: true, cycleLabel: 'Cycle 2 of 4',
@@ -30,4 +32,13 @@ test('paused tiles resume, finished tiles dismiss, approvals send the user to re
   const approval = render({ state: 'approval' })
   assert.match(approval, /data-ui="dock\.review"/)
   assert.doesNotMatch(approval, /data-ui="dock\.pause"/)
+})
+
+test('a dock icon shows the run initials and names its state for assistive technology', () => {
+  const html = renderToStaticMarkup(createElement(TooltipProvider, null, createElement(AgentDockIcon, {
+    tile: { ...tile, state: 'failed', running: false }, onOpenChat: () => {}, onPause: noop, onResume: noop, onStop: noop })))
+  assert.match(html, /data-ui="dock\.run" data-ui-key="c1"/)
+  assert.match(html, />DB</)
+  assert.match(html, /aria-label="Daily brief: Paused by failures"/)
+  assert.match(html, /ring-destructive/)
 })

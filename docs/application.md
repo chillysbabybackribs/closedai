@@ -421,17 +421,18 @@ with "App relaunched". A strip above the composer shows the state and cycle coun
 and a tool's `stop_agent` pause the run too; a user message sent between cycles is folded into
 the loop rather than raced.
 
-The **agent dock** (`src/renderer/agent-dock/`) is a 10px rail below the workspace (`dock.rail`)
-with one status dot per run: green running (fast pulse while retrying), grey paused, blue finished
-or waiting on a credential approval, red paused by failures. Resting the pointer on the rail for
-350 ms or clicking it opens the panel (`dock.panel`) of run tiles with name, cycle, current
-activity or pause reason, **Pause**/**Resume**/**Stop** (`dock.pause`, `dock.resume`, `dock.stop`;
-Stop reads **Dismiss** on a finished run), **Review** for a pending approval (`dock.review`), and
-an open-chat button (`dock.open-chat`); **New or saved agent** (`dock.agents`) opens the Agents
-view. A run that needs the user opens the panel on its own and keeps it open until the pointer
-or focus reaches it. The panel is an overlay that closes on leave or Escape, and freezes the
-browser column to a still where it overlaps it; **pin** (`dock.pin`) turns it into a row above
-the rail that shrinks the workspace. Start still docks the run's chat as a tab. Models drive runs in other panes with `closedai_app.agent` (`start`
+The **agent dock** (`src/renderer/agent-dock/`) is a full-width footer row under the workspace
+(`dock.bar`) built on Magic UI's `Dock` (`src/components/ui/dock.tsx`, `@magicui` registry). The
+left of the row reads **Agents** and a summary (`2 running · 1 needs you`, blue when a run needs the
+user). The dock holds one Avatar icon per run (`dock.run`) with the run's initials and a status
+badge: green running (pulsing while retrying), grey paused, blue finished or waiting on a
+credential approval, red paused by failures; runs that need the user come first and carry a ring.
+Hovering an icon shows its state and current line; clicking opens a popover card with name, state,
+cycle, activity or pause reason, **Pause**/**Resume**/**Stop** (`dock.pause`, `dock.resume`,
+`dock.stop`; Stop reads **Dismiss** on a finished run), **Review** for a pending approval
+(`dock.review`), and an open-chat button (`dock.open-chat`). The dashed plus icon (`dock.agents`)
+opens the Agents view. The row is always on screen, so nothing opens by itself; the popover and
+tooltips freeze the browser column to a still where they overlap it. Start still docks the run's chat as a tab. Models drive runs in other panes with `closedai_app.agent` (`start`
 with a standing prompt attaches the same loop to an existing chat; `pause`, `resume`, `stop`). `closedai_app.state` reports the run under `chat.agentRun`. There is no collapsed mode;
 pending attachment chips sit above the line inside the card. The setup trigger opens a
 fixed-height panel (520px, or less when the pane is shorter), top to bottom: a Context line

@@ -2,7 +2,7 @@
 
 .shell {
   display: grid;
-  /* Title bar, divider, shell alert (empty when none), workspace, agent dock rail. Rows are
+  /* Title bar, divider, shell alert (empty when none), workspace, agent dock footer. Rows are
      placed explicitly so the optional alert never pushes the workspace out of the flexible row. */
   grid-template-rows: auto 1px auto minmax(0, 1fr) auto;
   width: 100vw;
