@@ -34,6 +34,7 @@ export function ComposerAccessPills({ paneId, startEnabled, runningTurn, onCompo
         onStart={workspace.startAgentFromPane}
         onOpenRun={(chatId) => workspace.focusChatTab(chatId, paneId)}
         onManage={(id) => workspace.openAgentsView(id)}
+        onNewAgent={(id) => workspace.openAgentsView(id)}
         onError={onComposerError}
       />
     </div>

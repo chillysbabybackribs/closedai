@@ -100,9 +100,10 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
     // Dock beside the launching chat's tile; inherit its model and folder for the new run chat.
     const target = tabOwner(layout.tree, launchPaneId) ?? launchPaneId
     let startError: unknown = null
+    let agentPaneId: string | null = null
     await layout.dock(null, target, null, false, async () => {
       await window.closedai.chat.selectPane(launchPaneId)
-      const agentPaneId = await window.closedai.chat.newPeer()
+      agentPaneId = await window.closedai.chat.newPeer()
       try {
         await window.closedai.agentRuns.start(agentPaneId, options)
       } catch (error) {
@@ -111,6 +112,7 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
       return agentPaneId
     })
     if (startError) throw startError
+    if (agentPaneId) await layout.activateTab(agentPaneId, target)
   }
   continueChatRef.current = (id: string): Promise<void> => {
     const row = chatsRef.current.find((entry) => entry.paneId === id)

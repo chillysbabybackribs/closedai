@@ -416,10 +416,11 @@ footer bar beneath it with attach (`composer.upload`) on the left, the model set
 on the right naming the working folder. Model and folder controls share the same neutral color,
 with rounded hover surfaces inside a softly outlined composer. The model trigger fits its label
 and chevron, leaving the space before the folder outside its hover and click area. Under the card, **Browser** (`composer.browser`) and **Agents** (`composer.agents`) pills appear in
-every chat: Browser toggles the embedded pane; Agents lists saved agents to **Start**
-(`composer.agents-start`, docking a new run as a tab beside **this** chat's tile with this chat's model and
-folder, or focusing that saved agent's live run tab when one already exists) and **Manage agents…** (`composer.agents-manage`) to open the workspace Agents tab. The
-pill shows how many runs are live workspace-wide. Agent → Agents… or the tile + menu still opens the **Agents** view tab (`view.agents`,
+every chat. Browser toggles the embedded pane. Agents opens a menu of saved agents: **Start new run**
+(`composer.agents-start`, a new tab beside **this** chat's tile and the run starts at once; only a
+**live** run for that agent offers **Open** instead), **New agent…** (`composer.agents-new`) and
+**Manage** (`composer.agents-manage`) for the workspace Agents tab. The pill shows how many runs are
+live workspace-wide. Agent → Agents… or the tile + menu still opens the **Agents** view tab (`view.agents`,
 `src/renderer/agent-library/`), which shows no scope chip and stacks three screens under a one-line
 header. The **Library** opens first: a grid of saved-agent cards (`agents.card`; live runs first,
 then most recently used, then never-run by name), each with the name, the first two lines of its

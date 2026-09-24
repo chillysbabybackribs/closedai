@@ -12,6 +12,7 @@ import { AgentLibraryCards, liveTilesByAgent } from './agent-library-cards.js'
 import { AgentLibraryPanel, type AgentDraft } from './agent-library-panel.js'
 import { useAgentLibrary } from './agent-library-store.js'
 import { AgentScreenHeader } from './agent-screen-header.js'
+import { takeAgentsViewIntent } from './agents-view-intent.js'
 
 // The Agents view: three stacked screens. The Library (saved-agent cards) is the root; Build
 // (one agent's editor) and Runs (every run) are pushed screens with a back control. A draft the
@@ -54,6 +55,11 @@ export function AgentLibraryView({ active, startEnabled, onStart, chats, onOpenC
   useEffect(() => securityRequests().credentials.subscribe(setApprovals), [])
   const [screen, setScreen] = useState<Screen>(LIBRARY)
   const held = useRef(new Map<string, AgentDraft>())
+  useEffect(() => {
+    if (!active) return
+    const intent = takeAgentsViewIntent()
+    if (intent?.screen === 'build-new') setScreen({ kind: 'build', agentId: null })
+  }, [active])
   const now = useRunsClock(active && screen.kind === 'runs' && runs.some((run) => run.status === 'running'), [active, screen])
   const tiles = useMemo(() => dockTiles(runs, chats, approvals, now), [runs, chats, approvals, now])
   const live = useMemo(() => liveTilesByAgent(runs, tiles), [runs, tiles])

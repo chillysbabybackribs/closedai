@@ -425,11 +425,15 @@
 }
 
 .composer-agents-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
   margin-top: 4px;
   padding: 6px 8px 2px;
   border-top: 1px solid color-mix(in srgb, var(--foreground) 8%, transparent);
 }
 
+.composer-agents-new,
 .composer-agents-manage {
   border: 0;
   background: transparent;
@@ -440,6 +444,11 @@
   cursor: pointer;
 }
 
+.composer-agents-manage {
+  color: var(--muted-foreground);
+}
+
+.composer-agents-new:hover,
 .composer-agents-manage:hover {
   text-decoration: underline;
 }

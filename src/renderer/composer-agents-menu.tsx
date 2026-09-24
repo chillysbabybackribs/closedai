@@ -8,7 +8,8 @@ import type { AgentRunStartOptions } from '../shared/agent-runs.js'
 import { useAgentLibrary } from './agent-library/agent-library-store.js'
 import { liveTilesByAgent, orderAgents } from './agent-library/agent-library-cards.js'
 import { useAgentRuns } from './agent-runs/agent-runs-store.js'
-import { dockTiles, DOCK_STATE_LABEL } from './agent-runs/agent-run-overview-model.js'
+import { dockTiles, DOCK_STATE_LABEL, type DockTileState } from './agent-runs/agent-run-overview-model.js'
+import { queueAgentsViewIntent } from './agent-library/agents-view-intent.js'
 import { useAgentRunAction } from './agent-runs/use-agent-run-action.js'
 
 export type ComposerAgentsMenuProps = {
@@ -18,11 +19,14 @@ export type ComposerAgentsMenuProps = {
   onStart: (paneId: string, options: AgentRunStartOptions) => Promise<void>
   onOpenRun: (chatId: string) => Promise<void>
   onManage: (paneId: string) => void
+  onNewAgent: (paneId: string) => void
   onError: (message: string) => void
 }
 
+const OPEN_EXISTING: ReadonlySet<DockTileState> = new Set(['running', 'retrying', 'approval'])
+
 /** Saved-agent quick start for this chat's tile; Manage opens the workspace Agents view. */
-export function ComposerAgentsMenu({ paneId, startEnabled, runningTurn, onStart, onOpenRun, onManage, onError }: ComposerAgentsMenuProps): JSX.Element {
+export function ComposerAgentsMenu({ paneId, startEnabled, runningTurn, onStart, onOpenRun, onManage, onNewAgent, onError }: ComposerAgentsMenuProps): JSX.Element {
   const agents = useAgentLibrary()
   const runs = useAgentRuns()
   const live = liveTilesByAgent(runs, dockTiles(runs, [], [], Date.now()))
@@ -34,9 +38,9 @@ export function ComposerAgentsMenu({ paneId, startEnabled, runningTurn, onStart,
     if (error) onError(error)
   }, [error, onError])
 
-  const openOrStart = (agent: SavedAgent, liveChatId: string | undefined): void => {
+  const openOrStart = (agent: SavedAgent, liveState: DockTileState | undefined, liveChatId: string | undefined): void => {
     void act(async () => {
-      if (liveChatId) {
+      if (liveChatId && liveState && OPEN_EXISTING.has(liveState)) {
         await onOpenRun(liveChatId)
         return
       }
@@ -65,7 +69,7 @@ export function ComposerAgentsMenu({ paneId, startEnabled, runningTurn, onStart,
         </button>
       </PopoverTrigger>
       <PopoverContent className="composer-agents-panel" align="start" side="top" sideOffset={8}>
-        <p className="composer-agents-heading">Start beside this chat</p>
+        <p className="composer-agents-heading">Saved agents</p>
         {ordered.length === 0 ? (
           <p className="composer-agents-empty">No saved agents yet.</p>
         ) : (
@@ -82,11 +86,15 @@ export function ComposerAgentsMenu({ paneId, startEnabled, runningTurn, onStart,
                     data-ui-key={agent.id}
                     disabled={disabled}
                     title={disabled && !startEnabled ? 'This chat cannot start an agent right now' : undefined}
-                    onClick={() => openOrStart(agent, liveTile?.chatId)}
+                    onClick={() => openOrStart(agent, liveTile?.state, liveTile?.chatId)}
                   >
                     <span className="composer-agents-item-name">{agent.name}</span>
                     <span className="composer-agents-item-meta">
-                      {liveTile ? `Open · ${liveTile.cycleLabel} · ${DOCK_STATE_LABEL[liveTile.state]}` : 'Start run'}
+                      {liveTile && OPEN_EXISTING.has(liveTile.state)
+                        ? `Open · ${liveTile.cycleLabel} · ${DOCK_STATE_LABEL[liveTile.state]}`
+                        : liveTile
+                          ? `Start new run · last ${DOCK_STATE_LABEL[liveTile.state].toLowerCase()}`
+                          : 'Start new run'}
                     </span>
                   </button>
                 </li>
@@ -95,8 +103,14 @@ export function ComposerAgentsMenu({ paneId, startEnabled, runningTurn, onStart,
           </ul>
         )}
         <div className="composer-agents-foot">
+          <button type="button" className="composer-agents-new" data-ui="composer.agents-new" onClick={() => {
+            queueAgentsViewIntent({ screen: 'build-new' })
+            onNewAgent(paneId)
+          }}>
+            New agent…
+          </button>
           <button type="button" className="composer-agents-manage" data-ui="composer.agents-manage" onClick={() => onManage(paneId)}>
-            Manage agents…
+            Manage
           </button>
         </div>
       </PopoverContent>
