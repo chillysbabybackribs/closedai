@@ -1,6 +1,6 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import { ContextMenu } from 'radix-ui'
-import { Minus, Plus, X } from 'lucide-react'
+import { Plus, X } from 'lucide-react'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import type { ChatReviewQueue } from '../chat-history/review-queue.js'
 import { ChatLayoutContextMenu } from './layout-context-menu.js'
@@ -10,7 +10,7 @@ import { CHAT_DRAG_TYPE, isViewTabId } from './layout-tree.js'
 import { paneHideHint, tabCloseHint } from './layout-copy.js'
 import type { TabActivity } from './tab-activity.js'
 
-function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset, title, activity, reviewQueue, row, soloTile, setSoloPaneId, tabFocus, hideHint, closeHint, tabActivity, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onTogglePin, onPauseTab, onResumeTab, onOpenPresets, onMinimize, onHide, setDragging, canMaximize, isThisTileSolo }: {
+function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset, title, activity, reviewQueue, row, soloTile, setSoloPaneId, tabFocus, hideHint, closeHint, tabActivity, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onTogglePin, onPauseTab, onResumeTab, onOpenPresets, onHide, setDragging, canMaximize, isThisTileSolo }: {
   activeId: string
   tabs: string[]
   chatCount: number
@@ -35,7 +35,6 @@ function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset
   onPauseTab?: (id: string) => void
   onResumeTab?: (id: string) => void
   onOpenPresets?: () => void
-  onMinimize?: (id: string) => void
   onHide: (id: string) => void
   setDragging: (value: { id: string; singleTab: boolean } | null) => void
   canMaximize: boolean
@@ -75,11 +74,6 @@ function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset
           onClick={() => onNewChat(activeId)}>
           <Plus size={14} aria-hidden="true" />
         </button>
-        {onMinimize && <button data-ui="layout.pane-minimize" data-ui-key={activeId} disabled={busy}
-          title="Dock group" aria-label="Dock group" onClick={() => {
-            if (soloTile) setSoloPaneId(null)
-            onMinimize(activeId)
-          }}><Minus size={14} aria-hidden="true" /></button>}
         <button data-ui="layout.pane-hide" data-ui-key={activeId} disabled={busy || chatCount < 2}
           title={`Hide pane · ${hideHint}`} aria-label={`Hide pane · ${hideHint}`} onClick={() => {
             if (soloTile) setSoloPaneId(null)

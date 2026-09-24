@@ -111,6 +111,19 @@ export function setGroupDocked(tree: ChatLayout, id: string, docked: boolean): C
   return visit(tree)
 }
 
+/** Clear dock flags from saved layouts while group docking is disabled in the UI. */
+export function expandAllDockedGroups(tree: ChatLayout): ChatLayout {
+  const visit = (node: ChatLayout): ChatLayout => {
+    if (node.kind === 'pane') {
+      if (!node.docked && node.dockNumber === undefined) return node
+      const { docked: _docked, dockNumber: _number, ...rest } = node
+      return rest
+    }
+    return { ...node, first: visit(node.first), second: visit(node.second) }
+  }
+  return visit(tree)
+}
+
 /** Removal/archive must never strand the remaining groups in the dock. */
 export function ensureExpandedGroup(tree: ChatLayout): ChatLayout {
   const groups = layoutGroups(tree)

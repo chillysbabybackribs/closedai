@@ -1,4 +1,4 @@
-import { ensureExpandedGroup, layoutGroups, setGroupDocked } from './layout-docking.js'
+import { ensureExpandedGroup, expandAllDockedGroups, layoutGroups } from './layout-docking.js'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ChatWorkspaceSnapshot } from '../../shared/chat-peers.js'
 import { errorMessage } from '../error-message.js'
@@ -30,7 +30,7 @@ export function useChatLayout(
       // Behind a sibling chat it surfaces; behind a view it stays where the last session left it.
       tree = selectTab(tree, paneIds(tree)[0]!, snapshot.selectedPaneId)
     }
-    return { ...saved, tree: withBrowser(ensureExpandedGroup(tree!)) }
+    return { ...saved, tree: withBrowser(expandAllDockedGroups(ensureExpandedGroup(tree!))) }
   })
   // Objects rather than strings: repeating the same message restarts its dismissal timer.
   const [error, setError] = useState<{ text: string } | null>(null)
@@ -60,9 +60,7 @@ export function useChatLayout(
   const current = useRef(layout)
   current.current = layout
   // Main hears about chats only: a tile showing a view has no visible chat, its chats are retained.
-  const [previewPaneId, setPreviewPaneId] = useState<string | null>(null)
-  const idsKey = JSON.stringify([...new Set([...chatPaneIds(layout.tree),
-    ...(previewPaneId && chatTabIds(layout.tree).includes(previewPaneId) ? [previewPaneId] : [])])])
+  const idsKey = JSON.stringify([...new Set(chatPaneIds(layout.tree))])
   const tabsKey = JSON.stringify(chatTabIds(layout.tree))
   const hasTiles = paneIds(layout.tree).length > 0
   const release = useCallback(() => {
@@ -105,7 +103,7 @@ export function useChatLayout(
     const available = new Set(chatIdsKey.split('\0').filter(Boolean))
     setLayout((value) => {
       const pruned = pruneTabs(value.tree, available)
-      const tree = pruned ? ensureExpandedGroup(pruned) : pruned
+      const tree = pruned ? expandAllDockedGroups(ensureExpandedGroup(pruned)) : pruned
       return tree === value.tree ? value : { ...value, tree: tree! }
     })
   }, [chatIdsKey, cwd])
@@ -348,27 +346,6 @@ export function useChatLayout(
     finally { pending.current = false }
   }, [clearError, fail, reportRemoval])
 
-  const minimize = useCallback(async (id: string): Promise<void> => {
-    if (pending.current) return
-    const next = setGroupDocked(current.current.tree, id, true)
-    if (next === current.current.tree) return
-    pending.current = true
-    setBusy(true)
-    try {
-      const nextChat = tabOwner(current.current.tree, selected.current) === id ? chatPaneIds(next)[0] : null
-      if (nextChat) {
-        await window.closedai.chat.openChat(nextChat)
-        selected.current = nextChat
-      }
-      setLayout((value) => ({ ...value, tree: setGroupDocked(value.tree, id, true) }))
-      clearError()
-      // Main announces selection through a transition; wait before reconciling or the old
-      // selected chat would immediately restore the group we have just docked.
-      if (nextChat) setSelectionToConfirm(nextChat)
-      else release()
-    } catch (reason) { fail(reason); release() }
-  }, [clearError, fail, release])
-
   const resize = useCallback((id: string, ratio: number, phase: SplitResizePhase = 'commit') => {
     if (phase === 'cancel') return
     setLayout((value) => ({ ...value, tree: resizeSplit(value.tree, id, ratio) }))
@@ -432,7 +409,7 @@ export function useChatLayout(
   const showBrowser = useCallback(() => setLayout((value) => value.browserVisible ? value : { ...value, browserVisible: true }), [])
   return {
     ...layout, error: error?.text ?? '', notice: notice?.text ?? '', busy, dock, newChat, continueChat, focusPane,
-    activateTab, minimize, setPreviewPaneId, openView, toggleView, pinView, moveTabToTile, closeTab, hide, closeFocused, resize, arrange,
+    activateTab, openView, toggleView, pinView, moveTabToTile, closeTab, hide, closeFocused, resize, arrange,
     toggleBrowser, showBrowser
   }
 }

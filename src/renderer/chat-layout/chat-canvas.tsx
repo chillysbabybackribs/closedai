@@ -1,5 +1,4 @@
-import { ChatDockRail } from './chat-dock-rail.js'
-import { DOCK_HEIGHT, expandedPaneIds, layoutGroups, setGroupDocked } from './layout-docking.js'
+import { expandedPaneIds } from './layout-docking.js'
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent as ReactDragEvent, type ReactNode } from 'react'
 import type { ChatReviewQueue } from '../chat-history/review-queue.js'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
@@ -49,13 +48,11 @@ type ChatCanvasProps = {
   /** Tile canvas content box, for arranging presets against the real space. */
   onSizeChange?: (size: { width: number; height: number }) => void
   onDock: (id: string | null, target: string, edge: DockEdge | null, singleTab?: boolean) => void | Promise<void>
-  onMinimize?: (id: string) => void
-  onPreview?: (id: string | null) => void
   onHide: (id: string) => void
   onResize: (id: string, ratio: number, phase?: SplitResizePhase) => void
 }
 
-function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, browserVisible, browserRevealVersion, renderBrowser, onDragActive, title, activity, reviewQueue, chatRow, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onTogglePin, onContinueChat: _onContinueChat, onPauseTab, onResumeTab, onOpenPresets, onSizeChange, onDock, onMinimize, onPreview, onHide, onResize }: ChatCanvasProps) {
+function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, browserVisible, browserRevealVersion, renderBrowser, onDragActive, title, activity, reviewQueue, chatRow, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onTogglePin, onContinueChat: _onContinueChat, onPauseTab, onResumeTab, onOpenPresets, onSizeChange, onDock, onHide, onResize }: ChatCanvasProps) {
   const viewport = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLDivElement>(null)
   const layoutFrame = useRef<SplitResizeFrame>({ tree, browserVisible, width: 0, height: 0 })
@@ -161,8 +158,6 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
   // Render the complete proposed layout: splitting the active tab also creates a
   // tile for its remaining siblings. Geometry alone cannot make that tile visible.
   const displayedTiles = dragPreviewPanes(geometry.panes, preview)
-  const dockedGroups = layoutGroups(tree).filter((group) => group.docked)
-  const dockedIds = new Set(dockedGroups.map((group) => group.id))
   const renderedTiles = browserVisible || displayedTiles.some((pane) => pane.id === BROWSER_PANE_ID)
     ? displayedTiles
     : [...displayedTiles, { id: BROWSER_PANE_ID, tabs: [BROWSER_PANE_ID], rect: { x: 0, y: 0, width: 0, height: 0 } }]
@@ -202,15 +197,6 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
     width: Math.max(size.width, minimum.width),
     height: Math.max(size.height, minimum.height)
   }
-  const [dockPeekGroupId, setDockPeekGroupId] = useState<string | null>(null)
-  const activeRails = preview?.rails ?? geometry.rails
-  const dockPeekRail = dockPeekGroupId
-    ? activeRails.find((rail) => rail.groups.some((group) => group.id === dockPeekGroupId))
-    : undefined
-  const dockPeekRect = dockPeekRail
-    ? { x: dockPeekRail.boundary.x, y: dockPeekRail.boundary.y, width: dockPeekRail.boundary.width,
-      height: Math.max(0, dockPeekRail.boundary.height - DOCK_HEIGHT) }
-    : null
   const browserDrop = drop?.edge && dragging?.id === BROWSER_PANE_ID ? drop as BrowserDrop : null
   const resolveBrowserDrop = (element: HTMLElement, x: number, y: number): BrowserDrop | null => {
     const bounds = element.getBoundingClientRect()
@@ -272,11 +258,9 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
           dragActiveListener.current(false)
         }
       }}>
-      {[...renderedTiles, ...dockedGroups.map((group) => ({ id: group.id, tabs: group.tabs ?? [group.id],
-        rect: { x: 0, y: 0, width: 0, height: 0 } }))].map(({ id: activeId, tabs, rect }) => {
+      {renderedTiles.map(({ id: activeId, tabs, rect }) => {
         const isThisTileSolo = soloTile ? (soloTile.id === activeId || soloTile.tabs.includes(activeId)) : false
-        const isDockPeek = Boolean(dockPeekRect && dockPeekGroupId === activeId && dockedIds.has(activeId))
-        const tileRect = isDockPeek && dockPeekRect ? dockPeekRect : isThisTileSolo ? soloRect : rect
+        const tileRect = isThisTileSolo ? soloRect : rect
         const tileTabs = tabs
         const tileActiveId = tileTabs.includes(activeId) ? activeId : (tileTabs[0] ?? activeId)
         const row = chatRow?.(activeId)
@@ -284,8 +268,7 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
           className="chat-layout-tile" style={position(tileRect)} data-pane-id={activeId === BROWSER_PANE_ID || isViewTabId(activeId) ? undefined : activeId}
           data-view-id={isViewTabId(activeId) ? activeId : undefined}
           data-solo={isThisTileSolo ? 'true' : undefined}
-          hidden={(dockedIds.has(activeId) && !isDockPeek) || (soloTile ? !isThisTileSolo : (activeId === BROWSER_PANE_ID && !browserVisible))}
-          data-dock-peek={isDockPeek ? 'true' : undefined}
+          hidden={soloTile ? !isThisTileSolo : (activeId === BROWSER_PANE_ID && !browserVisible)}
           data-selected={activeId === selectedId || tabs.includes(selectedId)} aria-label={activeId === BROWSER_PANE_ID ? 'Browser' : title(activeId)}
           onFocusCapture={(event) => { if (activeId !== BROWSER_PANE_ID && activeId !== selectedId && !(event.target as HTMLElement).closest('[role="tablist"]')) onSelect(activeId) }}
           onPointerDownCapture={(event) => { if (activeId !== BROWSER_PANE_ID && activeId !== selectedId && !(event.target as HTMLElement).closest('[role="tablist"]')) onSelect(activeId) }}>
@@ -294,19 +277,14 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
             row={row} soloTile={soloTile ?? null} setSoloPaneId={setSoloPaneId} tabFocus={tabFocus} onSelect={onSelect}
             onSelectTab={onSelectTab} onCloseTab={onCloseTab} onNewChat={onNewChat} onRenameChat={onRenameChat}
             onTogglePin={onTogglePin} onPauseTab={onPauseTab} onResumeTab={onResumeTab} onOpenPresets={onOpenPresets}
-            onMinimize={onMinimize && setGroupDocked(tree, activeId, true) !== tree ? onMinimize : undefined}
             onHide={onHide} setDragging={setDragging} canMaximize={canMaximize} isThisTileSolo={isThisTileSolo} />}
           {activeId === selectedId && <div className="chat-layout-notice" role="status" aria-atomic="true">{notice}</div>}
           {activeId === BROWSER_PANE_ID ? <div className="chat-layout-browser-frame" data-ui="layout.browser-dock">
             {renderBrowser}
           </div> : tileTabs.map((tabId) => <div key={tabId} className="chat-layout-content" role="tabpanel" id={`chat-panel-${tabId}`}
-            aria-label={title(tabId)} hidden={tabId !== tileActiveId}>{renderPane(tabId, (isDockPeek || !dockedIds.has(activeId)) && tabId === tileActiveId)}</div>)}
+            aria-label={title(tabId)} hidden={tabId !== tileActiveId}>{renderPane(tabId, tabId === tileActiveId)}</div>)}
         </section>
       })}
-      {dockPeekRail && dockPeekRect && dockPeekRect.height > 0 ? <div className="chat-dock-peek-scrim" style={position(dockPeekRail.boundary)} aria-hidden="true" /> : null}
-      {!soloTile && !dragging && !settling && onPreview && activeRails.map((rail) =>
-        <ChatDockRail key={rail.id} rail={rail} busy={busy} onRestore={(id) => { tabFocus.current = id; onSelectTab(id) }}
-          onPreview={onPreview} onPeekGroup={setDockPeekGroupId} />)}
       {dragging?.id === BROWSER_PANE_ID && !busy && (['left', 'right'] as const).map((edge) => <div key={edge}
         className="chat-layout-workspace-dock" data-edge={edge} data-ui="layout.workspace-dock" data-ui-key={edge}
         data-active={browserDrop?.target === WORKSPACE_DOCK_ID && browserDrop.edge === edge}
@@ -329,7 +307,6 @@ function chatCanvasPropsEqual(previous: ChatCanvasProps, next: ChatCanvasProps):
     && previous.onRenameChat === next.onRenameChat && previous.onTogglePin === next.onTogglePin
     && previous.onPauseTab === next.onPauseTab && previous.onResumeTab === next.onResumeTab
     && previous.onOpenPresets === next.onOpenPresets && previous.onSizeChange === next.onSizeChange
-    && previous.onMinimize === next.onMinimize && previous.onPreview === next.onPreview
     && previous.onDock === next.onDock && previous.onHide === next.onHide && previous.onResize === next.onResize
 }
 
