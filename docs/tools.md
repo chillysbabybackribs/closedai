@@ -677,7 +677,8 @@ described above.
 
 ## Seeing what exists: Tools & capabilities
 
-The title bar's Agent menu opens Tools & capabilities (`src/renderer/tools/`). It reads the
+The title bar's Agent menu (or a tile's + menu) opens Tools & capabilities (`src/renderer/tools/`) as
+a view tab in the chat's tile. It reads the
 registry as data (`manifest.ts`) joined with the human catalog (`catalog.ts`): for every tool a
 person-facing name, a one-line summary, what switching it off changes, an effect group, and an
 estimated per-turn token cost (characters / 4 of the advertised name, description, and schema;
@@ -686,7 +687,7 @@ order, the total cost of the enabled set, and the ids the Read-only preset keeps
 missing from the catalog still appears under a generated name; `catalog.test.ts` keeps entries
 complete.
 
-The dialog groups tools by effect rather than namespace, because a switch is a trust decision:
+The view groups tools by effect rather than namespace, because a switch is a trust decision:
 Read the web (reads only), Act in the browser (acts as you), Control ClosedAI, Your secrets, This
 machine. A left rail lists those groups with on/total counts, token cost, a relative cost bar, and
 a failing count when any enabled tool in the group has errors. Selecting a group fills the pane:
@@ -754,7 +755,7 @@ downstream reader queueing and rendering; it is not a pure network timer. The fi
 marks the first readable document, not the model's acceptance of that evidence. These notes add no
 persisted content ledger or background model call; trace failures cannot interrupt retrieval.
 
-Separate from telemetry, Developer → "Turn trace" in the title bar opens a live view of everything the main
+Separate from telemetry, Developer → "Turn trace" in the title bar (or a tile's + menu) opens a Trace view tab, a live view of everything the main
 process saw a model do: turn start and end with duration, every registry tool call with its
 full arguments and result (`registry.observe`), each normalized transcript item and context
 update, and the raw JSON lines exchanged with each provider process (Codex app-server, the

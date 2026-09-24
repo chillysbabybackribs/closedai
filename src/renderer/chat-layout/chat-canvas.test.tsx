@@ -163,3 +163,42 @@ test('ChatCanvas names running close/hide actions and overlays a status notice',
   assert.match(html, /title="Hide pane · Tasks keep running"/)
   assert.match(html, /class="chat-layout-notice"[^>]*>Tab closed · Tasks continue in the background/)
 })
+
+test('ChatCanvas renders a view tab with its kind glyph, no chat status, and the add menu', () => {
+  const view = 'closedai:view:trace:v1'
+  const tree: ChatLayout = { kind: 'pane', id: view, tabs: ['chat-1', view] }
+  const html = renderToStaticMarkup(createElement(ChatCanvas, {
+    tree,
+    selectedId: 'chat-1',
+    busy: false,
+    browserVisible: false,
+    renderBrowser: createElement('div', { id: 'browser-content' }, 'Browser'),
+    onDragActive: () => {},
+    title: (id) => id === view ? 'Trace' : `Chat ${id}`,
+    activity: () => ({ state: 'working', label: 'Working' }),
+    renderPane: (id) => createElement('div', { id: `content-${id}` }, `Content ${id}`),
+    onSelect: () => {},
+    onSelectTab: () => {},
+    onCloseTab: () => {},
+    onNewChat: () => {},
+    onOpenView: () => {},
+    onShowBrowser: () => {},
+    onDock: () => {},
+    onHide: () => {},
+    onResize: () => {}
+  }))
+
+  // The tile is named by its active view, so it carries no chat pane id for automation.
+  assert.doesNotMatch(html, /data-pane-id=/)
+  assert.match(html, new RegExp(`data-view-id="${view}"`))
+  assert.match(html, /data-selected="true"/)
+  // The view tab has a kind and a glyph; the chat tab beside it keeps its spinner.
+  assert.match(html, /class="chat-layout-tab" data-active="true" data-kind="trace"/)
+  assert.match(html, /class="chat-layout-tab" data-active="false" data-status="working"/)
+  assert.match(html, /aria-label="Close view: Trace · Chats stay open"/)
+  // The + is a menu trigger now; New chat is its first row (rendered lazily by Radix).
+  assert.match(html, /data-ui="layout\.add" data-ui-key="closedai:view:trace:v1"/)
+  assert.doesNotMatch(html, /data-ui="layout\.new-chat"/)
+  assert.match(html, /id="chat-panel-chat-1"[^>]*hidden/)
+  assert.doesNotMatch(html, /id="chat-panel-closedai:view:trace:v1"[^>]*hidden/)
+})

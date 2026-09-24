@@ -3,6 +3,7 @@ import { BrowserPane } from '../browser-pane.js'
 import type { BrowserSavedSitesController } from '../browser-saved-sites-controller.js'
 import { useBrowserController } from '../browser-controller.js'
 import type { AgentRunStartOptions } from '../../shared/agent-runs.js'
+import { useAgentRuns } from '../agent-runs/agent-runs-store.js'
 import { type useChatController } from '../chat-controller.js'
 import { injectComposerDraft } from '../composer-drafts.js'
 import type { AppearanceSettings } from '../settings/appearance-settings.js'
@@ -151,7 +152,12 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
   const onHide = useCallback((id: string) => { void layout.hide(id) }, [layout.hide])
   const onSizeChange = useCallback((size: CanvasSize) => { canvasSize.current = size }, [])
   const actions = useMemo(() => ({ moveTab: layout.moveTabToTile }), [layout.moveTabToTile])
-  const viewHints = useMemo<ViewHints>(() => (toolsPreset === 'read-only' ? { tools: 'Read-only' } : {}), [toolsPreset])
+  // The + menu tells you what is worth opening: runs in flight, a registry that cannot act.
+  const runningAgents = useAgentRuns().filter((run) => run.status === 'running').length
+  const viewHints = useMemo<ViewHints>(() => ({
+    ...(toolsPreset === 'read-only' ? { tools: 'Read-only' } : {}),
+    ...(runningAgents ? { agents: `${runningAgents} running` } : {})
+  }), [toolsPreset, runningAgents])
   const onRename = useMemo(() => onRenameChat
     ? (id: string) => onRenameChat(id, chatsRef.current.find((row) => row.paneId === id)?.title ?? 'New chat')
     : undefined, [onRenameChat])

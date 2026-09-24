@@ -278,9 +278,10 @@ footer lists those keys and the result count. Each result has a trash button, sh
 or hovered row, that removes the chat from history in one click without confirmation. The chat
 hides immediately. Running chats cannot
 be deleted; pending actions disable the buttons and failures appear below the search. The dropdown
-stays open after deletion. Archive in the history panel uses the same immediate archive path.
+stays open after deletion. Archive in the History view uses the same immediate archive path.
 Ctrl+H and File →
-Search chats focus it. File → Manage chat history retains the full history management panel.
+Search chats focus it. File → Manage chat history opens (or, when it is already in front, closes) a
+History view tab in the selected chat's tile.
 New chats use the tab + button or File → New chat (Ctrl+N).
 Two full-height chats can
 sit on either side of the browser. The browser starts on the right; drag a conversation tab,
@@ -291,9 +292,37 @@ closing tabs. Chat headers offer **New chat to the right**, **New chat below**, 
 Hiding a tile neither detaches its runtime nor stops its turn; the model command `close_chat`
 still detaches and stops it.
 
-Each tile header shows conversation tabs and a **+** button for **New chat tab**. It uses that
-tile's active chat model, adds a tab, and selects it while retaining the previous tabs and the
-other tiles and divider sizes. Tab creation waits for the renderer's workspace snapshot to
+Each tile header shows conversation and view tabs and a **+** button (`layout.add`) that opens
+the add menu: **New chat** (`layout.new-chat`), then the views the tile can show (`layout.open-view`:
+Trace, Agents, History, Tools, each with a live hint such as "2 running" or "Read-only"), then
+**Browser** (`layout.open-browser`, reveals the shared browser). New chat uses that tile's active
+chat model, adds a tab, and selects it while retaining the previous tabs and the other tiles and
+divider sizes.
+
+### Views
+
+A view is a tab with a kind, not a chat and not a dialog (`src/renderer/chat-layout/layout-views.ts`,
+`workspace-view.tsx`). Trace, Agents, History and Tools, which were pane dialogs, open as view tabs:
+same strip, same drag, close, split and move-to-tile as chat tabs, persisted in the saved layout
+under a `closedai:view:<kind>:<id>` tab id that main never sees (`setVisiblePanes` receives chat ids
+only; a tile whose active tab is a view has no visible chat and its chats stay retained). A view
+tab shows a kind glyph where a chat tab shows status: never a spinner, never unread. Opening a kind
+already present in the tile focuses it instead of duplicating. A view can be the only tab of a tile;
+closing it empties the tile like an emptied chat tile, and hiding the tile works as for chats. The
+tile context menu offers no rename, pin, pause or resume while a view is in front.
+
+Each view body starts with a toolbar whose only control is the scope chip (`view.scope`):
+**Following · chat** (dashed) means the view shows its own tile's chat (the selected chat when it
+lives there, else the tile's first chat tab; a tile with no chat follows the workspace selection),
+so switching the tile's chat switches the view. **Pinned · chat** (solid) fixes one chat. Dragging or
+moving a following view to another tile pins it to the chat it was showing, so it never silently
+retargets; the chip menu returns it to following (`view.scope-follow`) or pins another open chat
+(`view.scope-pin`). Pins to chats that close are dropped. Focusing a view tile selects the chat it
+follows; that chat stays behind the view rather than being pulled in front. Ctrl+W on a tile with a
+view in front closes the view before the chat behind it. The Agent and Developer menus, Ctrl+Shift+T
+and Ctrl+Shift+I open the view in the selected chat's tile. The Tools view's repair action puts the
+draft in the followed chat's composer and brings that chat forward; the Agents view starts runs beside
+the followed chat's tile; the History view opens a chosen chat in its own tile and stays open behind it. Tab creation waits for the renderer's workspace snapshot to
 catch up with the new chat before reconciling tabs; menu focus restoration cannot interrupt it.
 The tab's full surface, including its title, activity icon, and padding, drags that conversation
 (tab split, stack, or join). A 36 × 38 pixel grip at the left of the tile header (matching the
@@ -367,7 +396,7 @@ The composer is a single stack: a draft card (text and the action button on the 
 footer bar beneath it with attach (`composer.upload`) on the left, the model setup trigger
 (`composer.setup`) naming the model (with a chevron), and the folder trigger (`composer.folder`)
 on the right naming the working folder. The **Agent** button (`composer.agents`; also Agent → Agents…) opens the
-**Agents** dialog (`dialog.agents`, `src/renderer/agent-library/`, a pane dialog like Tools): the saved-agent library on
+**Agents** view tab (`view.agents`, `src/renderer/agent-library/`) in this chat's tile: the saved-agent library on
 the left (`agents.item`, most recently used first, each with its run count and last run;
 `agents.new` clears the editor) and an editor on the right with a name (`agents.name`), a
 max-cycles cap (`agents.max-cycles`, blank runs until paused), and the standing instructions
@@ -580,10 +609,10 @@ existing consumers. Hidden panes retain their main-process state but do not stre
 - There is no project rail: the folder lives in the composer's setup panel. The title bar has four menus.
   File owns chat creation, history, Settings (Appearance, Models, Credentials, and Security tabs), and closing the
   window; View owns browser visibility, Saved sites, layout, chat zoom, and fullscreen; Agent owns the
-  Agents dialog (Agents…, the saved-agent library and editor, opened on the selected pane), what the
-  model is given (Tools & capabilities) and a "Selected chat" section naming
+  Agents view (Agents…, the saved-agent library and editor, opened as a tab in the selected chat's
+  tile), what the model is given (Tools & capabilities, likewise a view tab) and a "Selected chat" section naming
   the pane its rows act on (Compact context, Stop turn; rows that do not apply are disabled, not
-  hidden); Developer owns Turn trace, Reload renderer, and Toggle DevTools.
+  hidden); Developer owns Turn trace (a view tab), Reload renderer, and Toggle DevTools.
   Shortcuts: Ctrl+Shift+T tools, Ctrl+Shift+I trace, Ctrl+R reload, F12 DevTools.
   Send, pause,
   and resume controls live in the composer; Pause and Resume also appear in header search rows.
