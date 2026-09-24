@@ -397,7 +397,8 @@ The composer is a single stack: a draft card (text and the action button on the 
 footer bar beneath it with attach (`composer.upload`) on the left, the model setup trigger
 (`composer.setup`) naming the model (with a chevron), and the folder trigger (`composer.folder`)
 on the right naming the working folder. Model and folder controls share the same neutral color,
-with rounded hover surfaces inside a softly outlined composer. The footer has no Agent button.
+with rounded hover surfaces inside a softly outlined composer. The model trigger fits its label
+and chevron, leaving the space before the folder outside its hover and click area. The footer has no Agent button.
 Agent → Agents… or the tile + menu opens the **Agents** view tab (`view.agents`, `src/renderer/agent-library/`) in this chat's tile: the saved-agent library on
 the left (`agents.item`, most recently used first, each with its run count and last run;
 `agents.new` clears the editor) and an editor on the right with a name (`agents.name`), a
