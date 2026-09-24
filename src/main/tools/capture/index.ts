@@ -38,13 +38,13 @@ export function captureTools(
           'Screenshots when visual evidence is needed: action is required — app_window, browser_page, or crop. ' +
           `At most ${budget.maxPerTurn} distinct images per turn; pixel-identical back-to-back captures return text only (no duplicate transcript screenshot). ` +
           'Prefer embedded_browser.page read_page for text. Batch UI changes, then capture once.',
-        actions: actions.map((action) => withBudget(action, budget, dedup))
+        actions: actions.map((action) => withBudget(action, budget))
       })
     ]
   }
 }
 
-function withBudget(action: ToolAction, budget: CaptureBudget, dedup: CaptureDedup): ToolAction {
+function withBudget(action: ToolAction, budget: CaptureBudget): ToolAction {
   return {
     ...action,
     async run(input, context): Promise<ToolResult> {
