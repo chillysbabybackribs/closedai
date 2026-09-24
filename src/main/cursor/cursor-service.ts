@@ -551,7 +551,7 @@ export class CursorChatService extends EventEmitter {
     if (!answer) return
     const generation = ++this.suggestionGeneration
     const sessionId = this.session?.sessionId
-    const suggestion = await generatePromptSuggestion('cursor', this.modelState.selectedModel, answer)
+    const suggestion = await generatePromptSuggestion('cursor', cursorAcpModelId(this.modelState.selectedModel), answer)
     if (this.activeTurnId || generation !== this.suggestionGeneration || this.session?.sessionId !== sessionId || !suggestion) return
     this.setPromptSuggestion(suggestion)
   }
