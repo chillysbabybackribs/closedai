@@ -57,20 +57,38 @@ export function chatSearchMeta(hit: ChatActivityHit, formatTime: (ms: number) =>
 export type ChatSearchSection = {
   label: string
   hits: ChatActivityHit[]
+  /** How many chats belong to the group; larger than `hits.length` when the group is windowed. */
+  total: number
 }
+
+export type ChatSearchLimits = {
+  /** Ranked matches kept for a query. */
+  query?: number
+  /** Closed chats shown at rest. Live groups (running, paused, unread, open) are never windowed. */
+  closed?: number
+}
+
+/**
+ * Closed chats shown at rest. A workspace accumulates hundreds of closed chats; painting them all
+ * on every open is what made the palette and the History view slow, and nobody scrolls that far:
+ * older chats are reached by typing, or paged in the History view.
+ */
+export const REST_CLOSED_LIMIT = 20
 
 const compareActivity = (a: ChatActivityHit, b: ChatActivityHit): number =>
   activityAt(b.row) - activityAt(a.row) || a.row.paneId.localeCompare(b.row.paneId)
 
 /**
  * Activity is never displaced by newer history; title queries retain their relevance ranking.
- * Groups are not capped: the list scrolls and each caption carries its count, so what the header
- * shows at rest is exactly what the History view shows.
+ * Live groups are complete. Closed is a window of the newest chats and carries its full count,
+ * so the caption can say how much history lies beyond it.
  */
-export function chatSearchView(rows: ChatRowSummary[], query: string, reviews: ChatReviewQueue, limit = Infinity): {
+export function chatSearchView(rows: ChatRowSummary[], query: string, reviews: ChatReviewQueue, limits: ChatSearchLimits = {}): {
   sections: ChatSearchSection[]
   runningCount: number
   unreadCount: number
+  /** Listed chats before any window was applied. */
+  total: number
 } {
   const withActivity = (hit: ChatSearchHit): ChatActivityHit => {
     const review = reviews[hit.row.paneId]
@@ -82,26 +100,37 @@ export function chatSearchView(rows: ChatRowSummary[], query: string, reviews: C
       completedAt: unread ? review.queuedAt : null
     }
   }
-  const recent = searchChats(rows, '', Infinity).map(withActivity)
+  const section = (label: string, hits: ChatActivityHit[], total = hits.length): ChatSearchSection => ({ label, hits, total })
+  const window = (hits: ChatActivityHit[], limit: number): ChatActivityHit[] => hits.slice(0, Math.max(0, limit))
+  const recent = rankChats(rows, '').map(withActivity)
   const running = recent.filter(hit => hit.status === 'running')
   const completed = recent.filter(hit => hit.status === 'completed')
     .sort((a, b) => b.completedAt! - a.completedAt! || a.row.paneId.localeCompare(b.row.paneId))
   const open = recent.filter(hit => hit.status === 'open').sort(compareActivity)
   const closed = recent.filter(hit => hit.status === 'closed').sort(compareActivity)
-  const sections = query.trim()
-    ? [{ label: 'Matching chats', hits: searchChats(rows, query, limit).map(withActivity) }]
+  const matches = query.trim() ? rankChats(rows, query).map(withActivity) : null
+  const sections = matches
+    ? [section('Matching chats', window(matches, limits.query ?? Infinity), matches.length)]
     : [
-        { label: 'Running', hits: running },
-        { label: 'Paused', hits: recent.filter(hit => hit.status === 'paused') },
-        { label: 'Recently completed', hits: completed },
-        { label: 'Open', hits: open },
-        { label: 'Closed', hits: closed }
+        section('Running', running),
+        section('Paused', recent.filter(hit => hit.status === 'paused')),
+        section('Recently completed', completed),
+        section('Open', open),
+        section('Closed', window(closed, limits.closed ?? REST_CLOSED_LIMIT), closed.length)
       ]
   return {
     sections: sections.filter(section => section.hits.length > 0),
     runningCount: running.length,
-    unreadCount: completed.length
+    unreadCount: completed.length,
+    total: matches ? matches.length : recent.length
   }
+}
+
+/** The palette footer: how much of history the list shows, and how to reach the rest. */
+export function chatSearchFooter(listed: number, total: number, searching: boolean): string {
+  const plural = searching ? 'matches' : 'chats'
+  if (total > listed) return `${listed} of ${total} ${plural}${searching ? '' : ' · type to search older'}`
+  return `${listed} ${listed === 1 ? (searching ? 'match' : 'chat') : plural}`
 }
 
 export function searchChats(
@@ -109,10 +138,14 @@ export function searchChats(
   query: string,
   limit: number = DEFAULT_LIMIT
 ): ChatSearchHit[] {
+  return rankChats(rows, query).slice(0, Math.max(0, limit))
+}
+
+/** Every listable hit for the query, best first; an empty query is history newest first. */
+export function rankChats(rows: ChatRowSummary[], query: string): ChatSearchHit[] {
   const trimmed = query.trim()
   const listable = rows.filter(listableChat)
   if (trimmed === '') return sortByActivity(listable)
-    .slice(0, Math.max(0, limit))
     .map(row => ({ row, titleRanges: [], folder: basename(row.cwd), score: 0 }))
 
   const needle = trimmed.toLowerCase()
@@ -134,7 +167,7 @@ export function searchChats(
       activityAt(right.row) - activityAt(left.row) ||
       left.row.paneId.localeCompare(right.row.paneId)
   )
-  return hits.slice(0, Math.max(0, limit))
+  return hits
 }
 
 type SubsequenceMatch = { score: number; ranges: Array<[number, number]> }

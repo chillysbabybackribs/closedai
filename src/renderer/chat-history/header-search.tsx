@@ -4,11 +4,12 @@ import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import type { HistoryController } from './history-controller.js'
 import { closesOnFocusOut, closesOnPointerDown, cursorIndex } from './header-search-dismiss.js'
 import { HeaderChatSearchRow } from './header-search-row.js'
-import { chatSearchView, stepHighlight, type ChatSearchHit } from './history-search.js'
+import { chatSearchFooter, chatSearchView, stepHighlight, type ChatSearchHit } from './history-search.js'
 
 const SHEET_EXIT_MS = 160
-/** Ranked title/preview matches shown for a query; the footer reports the count. */
+/** Ranked title/preview matches shown for a query; the footer reports the full count. */
 const QUERY_RESULT_LIMIT = 40
+const NO_CHATS: ChatRowSummary[] = []
 
 type Phase = 'closed' | 'open' | 'closing'
 
@@ -55,14 +56,17 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
     if (phaseRef.current !== 'closed') transition('closed')
   }, [transition])
 
-  const view = useMemo(() => chatSearchView(chats, query, controller.reviewQueue, QUERY_RESULT_LIMIT),
-    [chats, query, controller.reviewQueue])
-  const hits = useMemo(() => view.sections.flatMap(section => section.hits), [view])
-  const ids = useMemo(() => hits.map(hit => hit.row.paneId), [hits])
-  const cursor = cursorIndex(ids, highlightId)
-  const optionId = (index: number): string => `${listId}-${index}`
   const sheetOpen = phase !== 'closed'
   const expanded = phase === 'open'
+  // Workspace rows update on every chat event; while the sheet is closed nothing reads the view,
+  // so a closed palette costs no ranking over a large history.
+  const view = useMemo(() => chatSearchView(sheetOpen ? chats : NO_CHATS, query, controller.reviewQueue,
+    { query: QUERY_RESULT_LIMIT }), [sheetOpen, chats, query, controller.reviewQueue])
+  const hits = useMemo(() => view.sections.flatMap(section => section.hits), [view])
+  const ids = useMemo(() => hits.map(hit => hit.row.paneId), [hits])
+  const indexOf = useMemo(() => new Map(ids.map((id, index) => [id, index])), [ids])
+  const cursor = cursorIndex(ids, highlightId)
+  const optionId = (index: number): string => `${listId}-${index}`
 
   // Keyboard moves keep the cursor in view; hovering never scrolls, or a row scrolling under the
   // pointer would re-highlight and scroll again.
@@ -210,11 +214,12 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
             className="header-chat-search-section" aria-label={section.label}>
             <div role="row">
               <div role="columnheader" aria-colspan={2} className="header-chat-search-caption">
-                {section.label}<span>{section.hits.length}</span>
+                {section.label}<span>{section.total > section.hits.length
+                  ? `${section.hits.length} of ${section.total}` : section.hits.length}</span>
               </div>
             </div>
             {section.hits.map(hit => {
-              const index = ids.indexOf(hit.row.paneId)
+              const index = indexOf.get(hit.row.paneId) ?? -1
               return <HeaderChatSearchRow key={hit.row.paneId} hit={hit} id={optionId(index)}
                 selected={index === cursor} busy={busy} changingTurn={changingTurn === hit.row.paneId}
                 searching={searching} onHover={() => setHighlightId(hit.row.paneId)}
@@ -232,10 +237,7 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
           <span aria-hidden="true"><kbd>↑</kbd><kbd>↓</kbd>Navigate</span>
           <span aria-hidden="true"><kbd>↵</kbd>Open</span>
           <span aria-hidden="true"><kbd>Esc</kbd>Close</span>
-          <span className="header-chat-search-count">
-            {searching ? `${hits.length} ${hits.length === 1 ? 'match' : 'matches'}`
-              : `${hits.length} ${hits.length === 1 ? 'chat' : 'chats'}`}
-          </span>
+          <span className="header-chat-search-count">{chatSearchFooter(hits.length, view.total, searching)}</span>
         </div>
       </div>
     </div>}
