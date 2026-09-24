@@ -20,7 +20,6 @@
   box-sizing: border-box;
   height: 30px;
   padding: 3px;
-  border: 1px solid var(--hairline-strong);
   border-radius: 8px;
   background: color-mix(in srgb, var(--chrome-fg-strong) 4%, var(--titlebar-surface));
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 3%);
