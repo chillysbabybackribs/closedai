@@ -258,26 +258,35 @@ limits and [Model context](model-context.md) for prompt delivery.
 
 ## Workspace layout
 
-The workspace has no sidebar. A centered title-bar input searches saved chat titles across projects.
-Clicking or focusing the input opens a dropdown that stays open across the field, the gap, and the
-results; leaving the component hides it, even while the input retains focus. Moving the pointer over
-the title bar beside the pill does not open it, so nearby tabs stay easy to hit. Focusing, clicking,
-typing, or using arrow keys opens it for keyboard and touch access.
+The workspace has no sidebar. A centered title-bar input searches saved chats across projects.
+Header search and the History view tab read the same live workspace rows (`chats` events from the
+main process, every directory, attached or detached) and share one model in
+`src/renderer/chat-history/history-search.ts`: one visibility rule (`listableChat`: a blank pane
+is hidden unless it is running or continues another chat), one order and time (`activityAt`: last
+turn end, else store update), and one matcher (fuzzy title subsequence, then preview substring,
+title hits first). Neither surface caps what it lists at rest; the header groups, the History view
+flattens, and both show the project folder.
+Clicking or focusing the input opens a dropdown. The palette has one state and closes only on
+discrete events: Escape, opening a result, focus leaving the component, a press outside it, or the
+window losing focus (a click on the native browser view). Nothing is inferred from pointer position,
+so moving the pointer over or away from the palette never opens or closes it. Presses inside the
+popup do not move focus, so the input keeps the keyboard.
 The dropdown groups chats into Running, Paused, Recently completed (unread), Open (still attached),
-and Closed (detached). Open and Closed each show up to eight chats, newest last turn first. Rows are
-single lines in a command-palette surface wider than the input: a live-state glyph (or the provider's
-mark when idle), the title, the project folder as a dim description, and the last-activity time on
-the right; a search result also carries an Open/Closed tag since no group implies it. Empty groups
-are omitted and each chat appears once. The closed input shows no count badges; at rest it shows
-the Ctrl+H shortcut on the right, with the magnifying glass and placeholder aligned left.
-The icon and text retain that alignment when the input is focused or contains a query.
-Activity groups include all matching chats in the scrollable
-dropdown; unread completions use the persisted review queue and move into History when opened.
-Typing shows one list of up to eight ranked, case-insensitive title matches across all groups, with
-matched characters highlighted. Arrow keys select, Enter or click opens, and Escape dismisses; the
-footer lists those keys and the result count. Each result has a trash button, shown for the selected
-or hovered row, that removes the chat from history in one click without confirmation. The chat
-hides immediately. Running chats cannot
+and Closed (detached), newest last turn first, in a scrollable list whose captions carry the counts.
+Rows are single lines in a command-palette surface wider than the input: a live-state glyph (or the
+provider's mark when idle), the title, the project folder as a dim description, and the
+last-activity time on the right; a search result also carries an Open/Closed tag since no group
+implies it. Empty groups are omitted and each chat appears once. The closed input shows no count
+badges; at rest it shows the Ctrl+H shortcut on the right, with the magnifying glass and placeholder
+aligned left. The icon and text retain that alignment when the input is focused or contains a query.
+Unread completions use the persisted review queue and move into History when opened.
+Typing shows one list of up to forty ranked, case-insensitive matches across all groups, with
+matched title characters highlighted. The keyboard cursor is the highlighted chat's id, so a list
+that reorders underneath it (a turn finishing, a refresh adopting threads) never changes which chat
+Enter opens; arrow moves scroll the cursor into view, hovering does not. Arrow keys select, Enter or
+click opens, and Escape dismisses; the footer lists those keys and the result count. Each result has
+a trash button, shown for the selected or hovered row, that removes the chat from history in one
+click without confirmation. The chat hides immediately. Running chats cannot
 be deleted; pending actions disable the buttons and failures appear below the search. The dropdown
 stays open after deletion. Archive in the History view uses the same immediate archive path.
 Ctrl+H and File →
@@ -529,7 +538,7 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   The shell reserves the header's
   natural height so the workspace begins directly below its divider.
 - Header search reads chat records across directories, attached or detached, including child chats.
-  It matches titles; project names provide context. Opening a result calls `openChat` and selects
+  It matches titles, then previews; project names provide context. Opening a result calls `openChat` and selects
   an existing tab or adds a new tab to the focused tile. Archived chats are excluded by the store.
   Running results show a status label and Pause button; paused chats stay in a Paused section
   with a Resume button. Both actions target the row without opening the chat and use the same

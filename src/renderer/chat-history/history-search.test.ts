@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
-import { chatSearchMeta, chatSearchView, searchChats, segmentTitle, stepHighlight } from './history-search.js'
+import { chatSearchMeta, chatSearchView, listableChat, searchChats, segmentTitle, stepHighlight } from './history-search.js'
 
 function chat(paneId: string, title: string, updatedAt = 100, cwd = '/projects/app'): ChatRowSummary {
   return {
@@ -32,6 +32,27 @@ test('empty input shows bounded recent history, excludes blank chats, and does n
   assert.equal(rows[0]?.paneId, 'old')
   assert.equal(searchChats(rows, '', 0).length, 0)
   assert.equal(searchChats(rows, 'zzzzzz').length, 0)
+})
+
+test('one visibility rule: blank panes hide unless running or continuing another chat', () => {
+  const blank = { ...chat('blank', 'New chat'), threadId: null, attached: true }
+  assert.equal(listableChat(blank), false)
+  assert.equal(listableChat({ ...blank, running: true }), true)
+  assert.equal(listableChat({ ...blank, preview: 'hello' }), true)
+  assert.equal(listableChat({ ...blank, continuedFrom: { paneId: 'p', title: 'Prior', handoff: null } }), true)
+  assert.equal(listableChat(chat('threaded', 'Titled')), true)
+  // A title query cannot surface what the rest view hides.
+  assert.equal(searchChats([blank], 'new').length, 0)
+})
+
+test('a query also finds chats by preview, ranked below every title match', () => {
+  const rows = [
+    { ...chat('said', 'Unrelated title', 500), preview: 'please fix the drawer animation' },
+    chat('titled', 'Long title where drawer appears at the very end of it all', 1)
+  ]
+  const hits = searchChats(rows, 'drawer')
+  assert.deepEqual(hits.map(hit => [hit.row.paneId, hit.titleRanges.length]), [['titled', 1], ['said', 0]])
+  assert.equal(searchChats(rows, 'DRAWER ANIM').map(hit => hit.row.paneId).join(), 'said')
 })
 
 test('equal scores use recent activity and stable ids, with a bounded result count', () => {
@@ -66,7 +87,8 @@ test('activity groups are exclusive and precede recent history without hiding ol
   assert.deepEqual(view.sections.map(section => section.label), ['Running', 'Recently completed', 'Closed'])
   assert.deepEqual(view.sections[0]!.hits.map(hit => hit.row.paneId), ['running'])
   assert.deepEqual(view.sections[1]!.hits.map(hit => hit.row.paneId), ['newly-finished', 'finished'])
-  assert.equal(view.sections[2]!.hits.length, 8)
+  // Groups are not capped: the rest view lists every chat the History view lists.
+  assert.equal(view.sections[2]!.hits.length, 13)
   assert.equal(view.sections[2]!.hits[0]!.row.paneId, 'viewed')
   const ids = view.sections.flatMap(section => section.hits.map(hit => hit.row.paneId))
   assert.equal(new Set(ids).size, ids.length)
@@ -80,6 +102,7 @@ test('search flattens activity into title-ranked results and keeps global activi
     chat('finished', 'Finished task', 200)]
   const reviews = { finished: { queuedAt: 200, viewedAt: null } }
   const view = chatSearchView(rows, 'browser', reviews)
+  assert.equal(chatSearchView(rows, 'browser', reviews, 1).sections[0]!.hits.length, 1)
   assert.deepEqual(view.sections.map(section => section.label), ['Matching chats'])
   assert.deepEqual(view.sections[0]!.hits.map(hit => [hit.row.paneId, hit.status]),
     [['history', 'closed'], ['running', 'running']])

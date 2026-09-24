@@ -6,6 +6,8 @@ import { Button } from '../components/ui/button.js'
 import { Loader } from '../components/ui/loader.js'
 import { errorMessage } from './error-message.js'
 import type { ChatRowSummary } from '../shared/chat-peers.js'
+import { formatChatTime } from './chat-history/history-format.js'
+import { activityAt, searchChats, segmentTitle } from './chat-history/history-search.js'
 
 export type ChatHistoryProps = {
   /** The selected chat's id; the same id names it in the store and as a pane. */
@@ -28,7 +30,11 @@ type LoadState =
   | { status: 'ready'; threads: ChatRowSummary[] }
   | { status: 'error'; message: string }
 
-/** List of past chats for this workspace, shown in a History view tab. */
+/**
+ * Every listable chat across directories, shown in a History view tab. The rows, their order,
+ * the visibility rule, the matcher, and the time shown are the same ones header search uses, so
+ * the two surfaces never disagree about what history contains.
+ */
 export function ChatHistory({ activeChatId, busy, listChats, chats, openChat, archiveChat, onClose, onOpened }: ChatHistoryProps): JSX.Element {
   const [load, setLoad] = useState<LoadState>({ status: 'loading' })
   const [query, setQuery] = useState('')
@@ -49,14 +55,14 @@ export function ChatHistory({ activeChatId, busy, listChats, chats, openChat, ar
     return () => { active = false }
   }, [listChats, reloadKey, chats])
 
-  const visible = useMemo(() => {
-    if (load.status !== 'ready') return []
-    const needle = query.trim().toLowerCase()
-    if (!needle) return load.threads
-    return load.threads.filter((thread) =>
-      thread.title.toLowerCase().includes(needle) || thread.preview.toLowerCase().includes(needle)
-    )
-  }, [load, query])
+  // Live rows arrive through the workspace stream; asking once on open still lets the main process
+  // adopt provider threads the store has not seen, exactly as header search does when it opens.
+  useEffect(() => {
+    if (!chats) return
+    listChats().catch(() => {})
+  }, [chats !== undefined, listChats, reloadKey]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const visible = useMemo(() => load.status === 'ready' ? searchChats(load.threads, query, Infinity) : [], [load, query])
 
   async function open(chatId: string): Promise<void> {
     if (busy || pendingId) return
@@ -135,7 +141,8 @@ export function ChatHistory({ activeChatId, busy, listChats, chats, openChat, ar
 
       {load.status === 'ready' && visible.length > 0 && (
         <ul className="chat-history-list">
-          {visible.map((thread) => {
+          {visible.map((hit) => {
+            const thread = hit.row
             const current = thread.paneId === activeChatId
             return (
               <li
@@ -153,9 +160,13 @@ export function ChatHistory({ activeChatId, busy, listChats, chats, openChat, ar
                   disabled={busy || pendingId !== null}
                   aria-current={current ? 'true' : undefined}
                 >
-                  <span className="chat-history-title">{thread.title}</span>
+                  <span className="chat-history-title">
+                    {segmentTitle(thread.title, hit.titleRanges).map((segment, position) => segment.matched
+                      ? <mark key={position}>{segment.text}</mark> : <span key={position}>{segment.text}</span>)}
+                  </span>
                   <span className="chat-history-meta">
-                    {current ? 'Current' : formatRelativeTime(thread.updatedAt)}
+                    {hit.folder && <span className="chat-history-folder">{hit.folder}</span>}
+                    <span>{current ? 'Current' : formatChatTime(activityAt(thread))}</span>
                   </span>
                 </button>
                 <Button
@@ -188,20 +199,4 @@ export function closesHistoryOnSearchEscape(
   if (event.nativeEvent.isComposing) return false
   if (event.key !== 'Escape') return false
   return !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey
-}
-
-const MINUTE = 60_000
-const HOUR = 60 * MINUTE
-const DAY = 24 * HOUR
-
-export function formatRelativeTime(timestampMs: number, now = Date.now()): string {
-  if (!timestampMs) return ''
-  const elapsed = now - timestampMs
-  if (elapsed < MINUTE) return 'Just now'
-  if (elapsed < HOUR) return `${Math.floor(elapsed / MINUTE)}m ago`
-  if (elapsed < DAY) return `${Math.floor(elapsed / HOUR)}h ago`
-  if (elapsed < 7 * DAY) return `${Math.floor(elapsed / DAY)}d ago`
-  const date = new Date(timestampMs)
-  const sameYear = date.getFullYear() === new Date(now).getFullYear()
-  return date.toLocaleDateString(undefined, sameYear ? { month: 'short', day: 'numeric' } : { year: 'numeric', month: 'short', day: 'numeric' })
 }
