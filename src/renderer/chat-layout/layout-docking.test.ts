@@ -67,8 +67,10 @@ test('dock rails span chat tiles beside the browser in the same row', () => {
   assert.equal(rail.groups.map((group) => group.id).join(','), 'left')
   assert.equal(geometry.panes.find((item) => item.id === 'left'), undefined, 'docked slot collapses')
   const middle = geometry.panes.find((item) => item.id === 'middle')!
-  assert.ok(rail.rect.width > middle.rect.width + 100, 'rail spans every chat column in the row')
-  assert.ok(rail.rect.x + rail.rect.width <= geometry.panes.find((item) => item.id === BROWSER_PANE_ID)!.rect.x)
+  const browser = geometry.panes.find((item) => item.id === BROWSER_PANE_ID)!
+  assert.equal(rail.rect.x, middle.rect.x)
+  assert.equal(rail.rect.x + rail.rect.width, browser.rect.x, 'rail stops at the browser edge')
+  assert.ok(rail.rect.width > middle.rect.width, 'rail is wider than the surviving chat tile alone')
 })
 
 test('dock rails span consecutive chats when the tree nests horizontal splits', () => {
