@@ -509,7 +509,7 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   composers (`#262626`) and a darker full-width tab header (`#191919`), including
   the tabs, pane grip, gaps, and header actions. Browser
   tab headers retain the darker shell chrome (`#141415`); recessed workspace
-  gutters (`#0c0c0e`) separate the panels.
+  gutters (`#161618`) separate the panels.
   Chat tabs sit inside the header with 6 px rounded corners and short separators
   between all neighboring tabs, including selected and hovered tabs. Each tile's active tab uses bold white text; inactive
   labels stay gray, including on hover. Selection has no tab outline or top marker.

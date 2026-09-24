@@ -1,8 +1,10 @@
 import { memo, type ReactNode } from 'react'
-import { DropdownMenu } from 'radix-ui'
 import { Check, ChevronDown, Pin } from 'lucide-react'
 import type { AgentRunStartOptions } from '../../shared/agent-runs.js'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger
+} from '../../components/ui/dropdown-menu.js'
 import { AgentLibraryView } from '../agent-library/agent-library-view.js'
 import { ChatHistory } from '../chat-history.js'
 import { ToolsPanel } from '../tools/tools-panel.js'
@@ -66,8 +68,8 @@ function ScopeChip({ viewId, scope, chatTitle, pinOptions, onPin }: {
   onPin: (chatId: string | null) => void
 }): ReactNode {
   const pinned = scope.mode === 'pinned'
-  return <DropdownMenu.Root modal={false}>
-    <DropdownMenu.Trigger asChild>
+  return <DropdownMenu modal={false}>
+    <DropdownMenuTrigger asChild>
       <button type="button" className="workspace-view-scope" data-ui="view.scope" data-ui-key={viewId} data-mode={scope.mode}
         title={pinned ? 'Pinned to one chat; open to follow this pane instead' : 'Following the chat in this pane; open to pin one chat'}
         aria-label={`${pinned ? 'Pinned to' : 'Following'} ${chatTitle}. Change scope`}>
@@ -77,31 +79,24 @@ function ScopeChip({ viewId, scope, chatTitle, pinOptions, onPin }: {
         <span className="workspace-view-scope-chat">{chatTitle}</span>
         <ChevronDown size={12} aria-hidden="true" />
       </button>
-    </DropdownMenu.Trigger>
-    <DropdownMenu.Portal>
-      <DropdownMenu.Content className="titlebar-menu-content chat-layout-context-menu" align="start" sideOffset={4} loop>
-        <DropdownMenu.Item className="titlebar-menu-item chat-layout-add-menu-item" data-ui="view.scope-follow" data-ui-key={viewId}
-          disabled={!pinned} onSelect={() => onPin(null)}>
-          <div className="chat-layout-menu-item-left">
-            <span className="workspace-view-scope-check">{!pinned && <Check size={14} aria-hidden="true" />}</span>
-            <span>Follow this pane</span>
-          </div>
-        </DropdownMenu.Item>
-        <DropdownMenu.Separator className="titlebar-menu-separator" />
-        <DropdownMenu.Label className="titlebar-menu-heading chat-layout-add-menu-heading">Pin to a chat</DropdownMenu.Label>
-        {pinOptions.map((option) => <DropdownMenu.Item key={option.id} className="titlebar-menu-item chat-layout-add-menu-item"
-          data-ui="view.scope-pin" data-ui-key={option.id} onSelect={() => onPin(option.id)}>
-          <div className="chat-layout-menu-item-left">
-            <span className="workspace-view-scope-check">{pinned && option.id === scope.chatId && <Check size={14} aria-hidden="true" />}</span>
-            <span className="workspace-view-scope-option">{option.title}</span>
-          </div>
-        </DropdownMenu.Item>)}
-        {!pinOptions.length && <DropdownMenu.Item className="titlebar-menu-item chat-layout-add-menu-item" disabled>
-          <div className="chat-layout-menu-item-left"><span className="workspace-view-scope-check" /><span>No open chats</span></div>
-        </DropdownMenu.Item>}
-      </DropdownMenu.Content>
-    </DropdownMenu.Portal>
-  </DropdownMenu.Root>
+    </DropdownMenuTrigger>
+    <DropdownMenuContent className="min-w-[220px]" align="start" loop>
+      <DropdownMenuItem data-ui="view.scope-follow" data-ui-key={viewId} disabled={!pinned} onSelect={() => onPin(null)}>
+        <span className="workspace-view-scope-check">{!pinned && <Check aria-hidden="true" />}</span>
+        <span>Follow this pane</span>
+      </DropdownMenuItem>
+      <DropdownMenuSeparator />
+      <DropdownMenuLabel>Pin to a chat</DropdownMenuLabel>
+      {pinOptions.map((option) => <DropdownMenuItem key={option.id} data-ui="view.scope-pin" data-ui-key={option.id}
+        onSelect={() => onPin(option.id)}>
+        <span className="workspace-view-scope-check">{pinned && option.id === scope.chatId && <Check aria-hidden="true" />}</span>
+        <span className="workspace-view-scope-option">{option.title}</span>
+      </DropdownMenuItem>)}
+      {!pinOptions.length && <DropdownMenuItem disabled>
+        <span className="workspace-view-scope-check" /><span>No open chats</span>
+      </DropdownMenuItem>}
+    </DropdownMenuContent>
+  </DropdownMenu>
 }
 
 export { VIEW_ICONS }

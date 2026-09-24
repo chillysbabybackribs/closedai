@@ -10,6 +10,7 @@
 @import "./styles/shell-chat.css";
 @import "./styles/titlebar.css";
 @import "./styles/titlebar-menu.css";
+@import "./styles/dropdown-menu.css";
 @import "./styles/chat/layout.css";
 @import "./styles/chat/layout-views.css";
 @import "./styles/chat/layout-presets.css";
@@ -125,7 +126,7 @@
      the tile cards float on; chrome is the tab rail on top of a card; card is the content
      surface you read on; raised is anything that sits on a card (toolbar, bubble, popover).
      Raised controls provide contrast against their surrounding surface. */
-  --chassis: #0c0c0e;
+  --chassis: #161618;
   --chassis-well: #09090b;
   --surface-chrome: #141415;
   --surface-card: #1a1a1b;

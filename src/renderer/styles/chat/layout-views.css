@@ -5,18 +5,8 @@
 .chat-layout-tab[data-kind] > [role='tab'] .chat-tab-indicator { color: inherit; opacity: 0.8; }
 .chat-layout-tab[data-kind] > [role='tab'] .chat-tab-indicator svg { width: 13px; height: 13px; }
 
-.chat-layout-add-menu { min-width: 216px; }
-.chat-layout-add-menu-heading { padding: 6px 8px 2px; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; }
-.chat-layout-add-menu-item { align-items: center; padding-block: 6px; }
-.chat-layout-add-menu-item .chat-layout-menu-item-left { flex: 1; min-width: 0; }
-.chat-layout-add-menu-meta {
-  margin-left: auto;
-  padding-left: 12px;
-  color: var(--chrome-control-quiet);
-  font-size: 11px;
-  white-space: nowrap;
-}
-.titlebar-menu-item[data-highlighted] .chat-layout-add-menu-meta { color: color-mix(in srgb, currentColor 72%, transparent); }
+/* The + stays lit while its menu (components/ui/dropdown-menu.tsx) is open. */
+.chat-layout-header button.chat-layout-new-chat[data-state='open'] { color: var(--chrome-fg-strong); background: var(--surface-control-hover); }
 
 /* Body: toolbar then the panel, both inside the tile card. */
 .workspace-view {
@@ -59,11 +49,12 @@
   cursor: pointer;
 }
 .workspace-view-scope[data-mode='following'] { border-style: dashed; color: var(--muted-foreground); }
-.workspace-view-scope:hover { background: var(--surface-highlight); color: var(--foreground); }
+.workspace-view-scope:hover,
+.workspace-view-scope[data-state='open'] { background: var(--surface-highlight); color: var(--foreground); }
 .workspace-view-scope:focus-visible { outline: 1px solid var(--focus-ink); outline-offset: 1px; }
 .workspace-view-scope-chat { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .workspace-view-scope-sep { opacity: 0.6; }
-.workspace-view-scope-check { display: inline-flex; width: 14px; justify-content: center; flex-shrink: 0; }
+.workspace-view-scope-check { display: inline-flex; width: 15px; justify-content: center; flex-shrink: 0; }
 .workspace-view-scope-option { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 260px; }
 
 /* Panels that were dialog contents fill the view instead of sizing to the viewport. */
