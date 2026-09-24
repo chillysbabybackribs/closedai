@@ -152,22 +152,25 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
     if (!splitPreview || !canvasRef.current) return
     applyLayoutGeometryDom(canvasRef.current, splitPreview)
   }, [splitPreview])
+  const layoutPanes = splitPreview?.panes ?? geometry.panes
   // Keep the browser host mounted while hidden, just as inactive conversation tabs are.
-  const tiles = browserVisible ? geometry.panes : [...geometry.panes,
-    { id: BROWSER_PANE_ID, tabs: [BROWSER_PANE_ID], rect: { x: 0, y: 0, width: 0, height: 0 } }]
+  const tiles = browserVisible || layoutPanes.some((pane) => pane.id === BROWSER_PANE_ID)
+    ? layoutPanes
+    : [...layoutPanes, { id: BROWSER_PANE_ID, tabs: [BROWSER_PANE_ID], rect: { x: 0, y: 0, width: 0, height: 0 } }]
+  const layoutDividers = splitPreview?.dividers ?? geometry.dividers
   const chatCount = paneIds(tree).length
   const canMaximize = chatCount > 1 || (browserVisible && chatCount >= 1)
   const soloTile = soloPaneId
-    ? geometry.panes.find((p) => p.id === soloPaneId || p.tabs.includes(soloPaneId))
+    ? layoutPanes.find((p) => p.id === soloPaneId || p.tabs.includes(soloPaneId))
     : null
 
   useEffect(() => {
     if (!soloPaneId) return
-    const exists = geometry.panes.some((p) => p.id === soloPaneId || p.tabs.includes(soloPaneId))
+    const exists = layoutPanes.some((p) => p.id === soloPaneId || p.tabs.includes(soloPaneId))
     if (!exists || (chatCount <= 1 && !browserVisible)) {
       setSoloPaneId(null)
     }
-  }, [soloPaneId, geometry.panes, chatCount, browserVisible])
+  }, [soloPaneId, layoutPanes, chatCount, browserVisible])
 
   useEffect(() => {
     if (!soloPaneId) return
@@ -232,7 +235,7 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
       }}>
       {tiles.map(({ id: activeId, tabs, rect }) => {
         const isThisTileSolo = soloTile ? (soloTile.id === activeId || soloTile.tabs.includes(activeId)) : false
-        const tileRect = isThisTileSolo ? soloRect : rect
+        const tileRect = isThisTileSolo ? soloRect : (splitPreview?.panes.find((pane) => pane.id === activeId)?.rect ?? rect)
         const tileKey = activeId === BROWSER_PANE_ID ? BROWSER_PANE_ID : (tabs[0] ?? activeId)
         const row = chatRow?.(activeId)
         return <section key={tileKey}
@@ -292,7 +295,7 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
         data-active={browserDrop?.target === WORKSPACE_DOCK_ID && browserDrop.edge === edge}
         aria-label={`Move browser to full-height ${edge} column`}
       ><span>Full-height column</span></div>)}
-      {!soloTile && geometry.dividers.map((divider) => <LayoutDivider key={divider.id}
+      {!soloTile && layoutDividers.map((divider) => <LayoutDivider key={divider.id}
         divider={divider} splitResize={splitResize} onResize={onResize} />)}
     </div>
   </div>

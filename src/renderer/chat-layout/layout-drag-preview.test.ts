@@ -32,3 +32,11 @@ test('dragSplitPreview matches browser dock preview geometry', () => {
 test('dragSplitPreview returns null for tab-strip drops', () => {
   assert.equal(dragSplitPreview(pair, 'a', { target: 'b', edge: null }, true, 800, 600), null)
 })
+
+test('dragSplitPreview materializes a second tile when a tab splits out of a group', () => {
+  const grouped = { kind: 'pane' as const, id: 'a', tabs: ['a', 'b'] }
+  const preview = dragSplitPreview(grouped, 'b', { target: 'a', edge: 'right' }, true, 800, 600)
+  assert.ok(preview)
+  assert.equal(preview!.panes.length, 2)
+  assert.deepEqual(preview!.panes.map((pane) => pane.id).sort(), ['a', 'b'])
+})
