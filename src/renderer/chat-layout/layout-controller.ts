@@ -355,17 +355,18 @@ export function useChatLayout(
     pending.current = true
     setBusy(true)
     try {
-      if (tabOwner(current.current.tree, selected.current) === id) {
-        const nextChat = chatPaneIds(next)[0]
-        if (nextChat) {
-          await window.closedai.chat.openChat(nextChat)
-          selected.current = nextChat
-        }
+      const nextChat = tabOwner(current.current.tree, selected.current) === id ? chatPaneIds(next)[0] : null
+      if (nextChat) {
+        await window.closedai.chat.openChat(nextChat)
+        selected.current = nextChat
       }
       setLayout((value) => ({ ...value, tree: setGroupDocked(value.tree, id, true) }))
       clearError()
-    } catch (reason) { fail(reason) }
-    finally { release() }
+      // Main announces selection through a transition; wait before reconciling or the old
+      // selected chat would immediately restore the group we have just docked.
+      if (nextChat) setSelectionToConfirm(nextChat)
+      else release()
+    } catch (reason) { fail(reason); release() }
   }, [clearError, fail, release])
 
   const resize = useCallback((id: string, ratio: number, phase: SplitResizePhase = 'commit') => {
