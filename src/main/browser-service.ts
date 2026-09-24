@@ -352,11 +352,12 @@ export class BrowserService extends EventEmitter {
     // view is made visible drops the still onto a surface that has not painted yet, which is
     // the blank the still existed to cover; wait for the frame instead.
     if (revealing && active) {
-      await settleFrames(active.view.webContents, REVEAL_SETTLE_MS)
       const contents = active.view.webContents
       if (!contents.isDestroyed() && browserSurfaceVisibility(this.bounds).pageVisible) {
+        const throttled = contents.getBackgroundThrottling()
         contents.setBackgroundThrottling(false)
-        contents.setBackgroundThrottling(true)
+        await settleFrames(contents, REVEAL_SETTLE_MS)
+        if (!contents.isDestroyed()) contents.setBackgroundThrottling(throttled)
       }
     }
   }
