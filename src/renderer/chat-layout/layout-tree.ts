@@ -102,8 +102,11 @@ export function minimumSize(tree: ChatLayout): { width: number; height: number }
     : { width: Math.max(a.width, b.width), height: a.height + b.height + DIVIDER_SIZE }
 }
 
+export type SplitRatioOverrides = Readonly<Record<string, number>>
+export type SplitResizePhase = 'preview' | 'commit' | 'cancel'
+
 /** Flat geometry keeps React pane keys and composer state stable across tree rearrangements. */
-export function layoutGeometry(tree: ChatLayout, width: number, height: number) {
+export function layoutGeometry(tree: ChatLayout, width: number, height: number, splitRatios?: SplitRatioOverrides) {
   const panes: Array<{ id: string; tabs: string[]; rect: Rect }> = []
   const dividers: Array<{ id: string; axis: 'horizontal' | 'vertical'; rect: Rect; parent: Rect; ratio: number; min: number; max: number }> = []
   const visit = (node: ChatLayout, rect: Rect): void => {
@@ -113,7 +116,7 @@ export function layoutGeometry(tree: ChatLayout, width: number, height: number) 
     const available = rect[dimension] - DIVIDER_SIZE
     const min = minimumSize(node.first)[dimension] / available
     const max = 1 - minimumSize(node.second)[dimension] / available
-    const ratio = Math.max(min, Math.min(max, node.ratio))
+    const ratio = Math.max(min, Math.min(max, splitRatios?.[node.id] ?? node.ratio))
     const size = available * ratio
     const first = { ...rect, [dimension]: size }
     const second = { ...rect, [dimension]: available - size,

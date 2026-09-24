@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { DIVIDER_SIZE, type layoutGeometry } from './layout-tree.js'
+import type { SplitResizePhase } from './layout-tree.js'
 
 type Divider = ReturnType<typeof layoutGeometry>['dividers'][number]
 
 export function LayoutDivider({ divider, onResize }: {
   divider: Divider
-  onResize: (id: string, ratio: number) => void
+  onResize: (id: string, ratio: number, phase?: SplitResizePhase) => void
 }) {
   const [active, setActive] = useState(false)
   const release = useRef<(() => void) | null>(null)
@@ -43,29 +44,33 @@ export function LayoutDivider({ divider, onResize }: {
       body.setAttribute('data-layout-resize', divider.axis)
       let moveRaf = 0
       let lastMove: PointerEvent | null = null
+      let lastRatio = divider.ratio
       const applyMove = (): void => {
         moveRaf = 0
         const next = lastMove
         if (!next) return
         const delta = (horizontal ? next.clientX : next.clientY) - start
-        resize.current(divider.id, clamp(divider.ratio + delta / length))
+        lastRatio = clamp(divider.ratio + delta / length)
+        resize.current(divider.id, lastRatio, 'preview')
       }
       const move = (next: PointerEvent): void => {
         if (next.pointerId !== pointerId) return
         lastMove = next
         if (!moveRaf) moveRaf = requestAnimationFrame(applyMove)
       }
-      const finish = (): void => {
+      const finish = (commit: boolean): void => {
         if (moveRaf) {
           cancelAnimationFrame(moveRaf)
           moveRaf = 0
           applyMove()
         }
+        if (commit) resize.current(divider.id, lastRatio, 'commit')
+        else resize.current(divider.id, divider.ratio, 'cancel')
         release.current = null
         window.removeEventListener('pointermove', move, true)
         window.removeEventListener('pointerup', up, true)
         window.removeEventListener('pointercancel', cancel, true)
-        window.removeEventListener('blur', finish)
+        window.removeEventListener('blur', onBlur)
         window.removeEventListener('keydown', key, true)
         target.removeEventListener('lostpointercapture', cancel)
         if (target.hasPointerCapture(pointerId)) target.releasePointerCapture(pointerId)
@@ -76,21 +81,21 @@ export function LayoutDivider({ divider, onResize }: {
       const up = (next: PointerEvent): void => {
         if (next.pointerId !== pointerId) return
         move(next)
-        finish()
+        finish(true)
       }
-      const cancel = (next: PointerEvent): void => { if (next.pointerId === pointerId) finish() }
+      const cancel = (next: PointerEvent): void => { if (next.pointerId === pointerId) finish(false) }
+      const onBlur = (): void => finish(true)
       const key = (next: KeyboardEvent): void => {
         if (next.key !== 'Escape') return
         next.preventDefault()
         next.stopPropagation()
-        resize.current(divider.id, divider.ratio)
-        finish()
+        finish(false)
       }
-      release.current = finish
+      release.current = () => finish(false)
       window.addEventListener('pointermove', move, true)
       window.addEventListener('pointerup', up, true)
       window.addEventListener('pointercancel', cancel, true)
-      window.addEventListener('blur', finish)
+      window.addEventListener('blur', onBlur)
       window.addEventListener('keydown', key, true)
       target.addEventListener('lostpointercapture', cancel)
     }}

@@ -97,6 +97,14 @@ test('moving a pane collapses its old split without duplication or loss', () => 
   assert.deepEqual(dockPane(tree, 'a', 'a', 'right', 'ignored'), tree)
 })
 
+test('layoutGeometry applies live split overrides without mutating the saved tree', () => {
+  const tree = dockPane({ kind: 'pane', id: 'a' }, 'b', 'a', 'right', 'ab')
+  const baseline = layoutGeometry(tree, 800, 700)
+  const preview = layoutGeometry(tree, 800, 700, { ab: 0.75 })
+  assert.notEqual(preview.panes[0]!.rect.width, baseline.panes[0]!.rect.width)
+  assert.equal(layoutGeometry(tree, 800, 700).panes[0]!.rect.width, baseline.panes[0]!.rect.width)
+})
+
 test('divider ratios respect readable pane minimums even in a narrow viewport', () => {
   const tree = dockPane({ kind: 'pane', id: 'a' }, 'b', 'a', 'right', 'ab')
   const resized = resizeSplit(tree, 'ab', 0.9)

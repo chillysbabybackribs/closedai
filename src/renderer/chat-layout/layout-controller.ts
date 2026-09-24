@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ChatWorkspaceSnapshot } from '../../shared/chat-peers.js'
 import { errorMessage } from '../error-message.js'
-import { BROWSER_PANE_ID, WORKSPACE_DOCK_ID, chatPaneIds, isViewTabId, withBrowser, dockBrowser, dockPane, paneIds, readLayout, removePane, resizeSplit, saveLayout, type ChatLayout, type DockEdge } from './layout-tree.js'
+import { BROWSER_PANE_ID, WORKSPACE_DOCK_ID, chatPaneIds, isViewTabId, withBrowser, dockBrowser, dockPane, paneIds, readLayout, removePane, resizeSplit, saveLayout, type ChatLayout, type DockEdge, type SplitResizePhase } from './layout-tree.js'
 import { addTab, chatTabIds, focusChatTabInLayout, focusedCloseAction, isChatTabActive, moveTab, neighborTile, pruneTabs, removeTab, selectTab, tabIds, tabOwner, type TileDirection } from './layout-tabs.js'
 import { isWorkspaceViewKind, pinOnMove, pruneViewScopes, tileView, viewScope, viewTabId, workspaceView, type ViewKind } from './layout-views.js'
 import { removalNotice } from './layout-copy.js'
@@ -48,6 +48,7 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
     const rows = latestSnapshot.current.chats.filter((row) => ids.includes(row.paneId))
     setNotice({ text: removalNotice(label, rows) })
   }, [])
+  const [splitPreview, setSplitPreview] = useState<{ id: string; ratio: number } | null>(null)
   const [busy, setBusy] = useState(false)
   const [selectionToConfirm, setSelectionToConfirm] = useState<string | null>(null)
   const pending = useRef(false)
@@ -330,7 +331,16 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
     finally { pending.current = false }
   }, [clearError, fail, reportRemoval])
 
-  const resize = useCallback((id: string, ratio: number) => {
+  const resize = useCallback((id: string, ratio: number, phase: SplitResizePhase = 'commit') => {
+    if (phase === 'preview') {
+      setSplitPreview({ id, ratio })
+      return
+    }
+    if (phase === 'cancel') {
+      setSplitPreview(null)
+      return
+    }
+    setSplitPreview(null)
     setLayout((value) => ({ ...value, tree: resizeSplit(value.tree, id, ratio) }))
   }, [])
   // Ctrl+W acts on what the selected tile shows: a view in front closes before the chat behind it.
@@ -391,7 +401,7 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
   const toggleBrowser = useCallback(() => setLayout((value) => ({ ...value, browserVisible: !value.browserVisible })), [])
   const showBrowser = useCallback(() => setLayout((value) => value.browserVisible ? value : { ...value, browserVisible: true }), [])
   return {
-    ...layout, error: error?.text ?? '', notice: notice?.text ?? '', busy, dock, newChat, continueChat, focusPane,
+    ...layout, splitPreview, error: error?.text ?? '', notice: notice?.text ?? '', busy, dock, newChat, continueChat, focusPane,
     activateTab, openView, toggleView, pinView, moveTabToTile, closeTab, hide, closeFocused, resize, arrange,
     toggleBrowser, showBrowser
   }

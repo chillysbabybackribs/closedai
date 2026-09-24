@@ -2,7 +2,7 @@ import type { JSX } from 'react'
 import '@fontsource-variable/inter/wght.css'
 import '@fontsource-variable/inter/wght-italic.css'
 import '@fontsource-variable/geist-mono/wght.css'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { APP_REVEAL_CHAT_TAB_EVENT, type AppRevealChatTabDetail } from '../shared/app-ui-events.js'
 import { HeaderChatSearch } from './chat-history/header-search.js'
 import { useHistoryController } from './chat-history/history-controller.js'
@@ -19,7 +19,12 @@ import { errorMessage } from './error-message.js'
 import { TitlebarMenu, type MenuAction } from './titlebar-menu.js'
 import { DesktopWorkspace, type ChatLayoutHandle } from './chat-layout/desktop-workspace.js'
 import { ChatRenameDialog } from './chat-rename-dialog.js'
-import { SettingsDialog, type SettingsTab } from './settings/settings-dialog.js'
+import type { SettingsTab } from './settings/settings-dialog.js'
+
+const SettingsDialog = lazy(async () => {
+  const module = await import('./settings/settings-dialog.js')
+  return { default: module.SettingsDialog }
+})
 import { useToolsPreset } from './tools/use-tools-preset.js'
 import { useBrowserSavedSitesController } from './browser-saved-sites-controller.js'
 import { Globe, Workflow } from 'lucide-react'
@@ -253,14 +258,16 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
           await chat.sidebar.renameChat(id, title)
         }}
       />
-      <SettingsDialog
-        open={settingsOpen}
-        tab={settingsTab}
-        onTabChange={setSettingsTab}
-        onOpenChange={setSettingsOpen}
-        appearance={appearance}
-        onAppearanceChange={updateAppearance}
-      />
+      {settingsOpen && <Suspense fallback={null}>
+        <SettingsDialog
+          open={settingsOpen}
+          tab={settingsTab}
+          onTabChange={setSettingsTab}
+          onOpenChange={setSettingsOpen}
+          appearance={appearance}
+          onAppearanceChange={updateAppearance}
+        />
+      </Suspense>}
     </div>
   )
 }

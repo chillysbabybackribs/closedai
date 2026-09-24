@@ -1,7 +1,7 @@
 import { memo, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import type { ChatReviewQueue } from '../chat-history/review-queue.js'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
-import { BROWSER_PANE_ID, CHAT_DRAG_TYPE, WORKSPACE_DOCK_ID, isViewTabId, layoutGeometry, minimumSize, paneIds, removePane, type ChatLayout, type DockEdge, type Rect } from './layout-tree.js'
+import { BROWSER_PANE_ID, CHAT_DRAG_TYPE, WORKSPACE_DOCK_ID, isViewTabId, layoutGeometry, minimumSize, paneIds, removePane, type ChatLayout, type DockEdge, type Rect, type SplitRatioOverrides, type SplitResizePhase } from './layout-tree.js'
 import type { ViewKind } from './layout-views.js'
 import type { ViewHints } from './pane-add-menu.js'
 import { LayoutDivider } from './layout-divider.js'
@@ -48,10 +48,11 @@ type ChatCanvasProps = {
   onSizeChange?: (size: { width: number; height: number }) => void
   onDock: (id: string | null, target: string, edge: DockEdge | null, singleTab?: boolean) => void
   onHide: (id: string) => void
-  onResize: (id: string, ratio: number) => void
+  splitPreview?: { id: string; ratio: number } | null
+  onResize: (id: string, ratio: number, phase?: SplitResizePhase) => void
 }
 
-function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, browserVisible, browserRevealVersion, renderBrowser, onDragActive, title, activity, reviewQueue, chatRow, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onOpenView, onShowBrowser, viewHints, onRenameChat, onTogglePin, onContinueChat: _onContinueChat, onPauseTab, onResumeTab, onOpenPresets, onSizeChange, onDock, onHide, onResize }: ChatCanvasProps) {
+function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, browserVisible, browserRevealVersion, renderBrowser, onDragActive, title, activity, reviewQueue, chatRow, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onOpenView, onShowBrowser, viewHints, onRenameChat, onTogglePin, onContinueChat: _onContinueChat, onPauseTab, onResumeTab, onOpenPresets, onSizeChange, onDock, onHide, splitPreview = null, onResize }: ChatCanvasProps) {
   const viewport = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState({ width: 0, height: 0 })
   const [dragging, setDragging] = useState<{ id: string; singleTab: boolean } | null>(null)
@@ -105,7 +106,9 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
   const [soloPaneId, setSoloPaneId] = useState<string | null>(null)
   useEffect(() => { setSoloPaneId(null) }, [browserRevealVersion])
   const visibleTree = browserVisible ? tree : removePane(tree, BROWSER_PANE_ID)!
-  const geometry = layoutGeometry(visibleTree, size.width, size.height)
+  const splitRatios: SplitRatioOverrides | undefined = splitPreview
+    ? { [splitPreview.id]: splitPreview.ratio } : undefined
+  const geometry = layoutGeometry(visibleTree, size.width, size.height, splitRatios)
   const minimum = minimumSize(visibleTree)
   // Keep the browser host mounted while hidden, just as inactive conversation tabs are.
   const tiles = browserVisible ? geometry.panes : [...geometry.panes,
@@ -278,7 +281,9 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
 }
 
 function chatCanvasPropsEqual(previous: ChatCanvasProps, next: ChatCanvasProps): boolean {
-  return previous.tree === next.tree && previous.selectedId === next.selectedId && previous.busy === next.busy
+  return previous.tree === next.tree
+    && previous.splitPreview?.id === next.splitPreview?.id && previous.splitPreview?.ratio === next.splitPreview?.ratio
+    && previous.selectedId === next.selectedId && previous.busy === next.busy
     && previous.notice === next.notice && previous.toolsPreset === next.toolsPreset
     && previous.browserVisible === next.browserVisible && previous.browserRevealVersion === next.browserRevealVersion
     && previous.renderBrowser === next.renderBrowser && previous.renderPane === next.renderPane

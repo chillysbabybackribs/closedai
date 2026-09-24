@@ -190,7 +190,7 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
     {layout.error && <div className="chat-layout-error" role="alert">{layout.error}</div>}
     <ChatLayoutActions.Provider value={actions}>
     <WorkspaceViewContext.Provider value={viewContext}>
-    <ChatCanvas tree={layout.tree} selectedId={chat.selectedPaneId} busy={layout.busy}
+    <ChatCanvas tree={layout.tree} splitPreview={layout.splitPreview} selectedId={chat.selectedPaneId} busy={layout.busy}
         notice={layout.notice} toolsPreset={toolsPreset}
         browserRevealVersion={browserRevealVersion}
         onDragActive={setDragging}

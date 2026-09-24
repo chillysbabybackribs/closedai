@@ -1,16 +1,32 @@
-import { memo, type ReactNode } from 'react'
+import { lazy, memo, Suspense, type ReactNode } from 'react'
 import { Check, ChevronDown, Pin } from 'lucide-react'
 import type { AgentRunStartOptions } from '../../shared/agent-runs.js'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger
 } from '../../components/ui/dropdown-menu.js'
-import { AgentLibraryView } from '../agent-library/agent-library-view.js'
-import { ChatHistory } from '../chat-history.js'
-import { ToolsPanel } from '../tools/tools-panel.js'
-import { SavedSitesPanel } from '../saved-sites/saved-sites-panel.js'
-import { TracePanel } from '../trace/trace-panel.js'
 import { VIEW_LABELS, type ViewKind, type ViewScope } from './layout-views.js'
+
+const TracePanel = lazy(async () => {
+  const module = await import('../trace/trace-panel.js')
+  return { default: module.TracePanel }
+})
+const ToolsPanel = lazy(async () => {
+  const module = await import('../tools/tools-panel.js')
+  return { default: module.ToolsPanel }
+})
+const AgentLibraryView = lazy(async () => {
+  const module = await import('../agent-library/agent-library-view.js')
+  return { default: module.AgentLibraryView }
+})
+const ChatHistory = lazy(async () => {
+  const module = await import('../chat-history.js')
+  return { default: module.ChatHistory }
+})
+const SavedSitesPanel = lazy(async () => {
+  const module = await import('../saved-sites/saved-sites-panel.js')
+  return { default: module.SavedSitesPanel }
+})
 
 export type WorkspaceViewProps = {
   viewId: string
@@ -57,15 +73,17 @@ export const WorkspaceView = memo(function WorkspaceView({ viewId, kind, active,
       <ScopeChip viewId={viewId} scope={scope} chatTitle={chatTitle} pinOptions={pinOptions} onPin={onPin} />
     </div>}
     <div className="workspace-view-body">
-      {kind === 'trace' && <TracePanel paneId={scope.chatId} active={active} />}
-      {kind === 'tools' && <ToolsPanel active={active} onSendToChat={(text) => onSendToChat(scope.chatId, text)} />}
-      {kind === 'agents' && onStartAgent && <AgentLibraryView active={active} startEnabled={startEnabled}
-        chats={history.chats} onOpenChat={(chatId) => { void history.openChat(chatId) }}
-        onStart={(options) => onStartAgent(scope.chatId, options)} />}
-      {kind === 'history' && <ChatHistory activeChatId={scope.chatId} busy={history.busy} listChats={history.listChats}
-        chats={history.chats} openChat={history.openChat} archiveChat={history.archiveChat} onClose={onClose} onOpened={() => {}} />}
-      {kind === 'saved-sites' && <SavedSitesPanel active={active} onError={onSavedSitesError} onOpenSite={savedSites.openSite}
-        update={savedSites.update} remove={savedSites.remove} />}
+      <Suspense fallback={null}>
+        {kind === 'trace' && <TracePanel paneId={scope.chatId} active={active} />}
+        {kind === 'tools' && <ToolsPanel active={active} onSendToChat={(text) => onSendToChat(scope.chatId, text)} />}
+        {kind === 'agents' && onStartAgent && <AgentLibraryView active={active} startEnabled={startEnabled}
+          chats={history.chats} onOpenChat={(chatId) => { void history.openChat(chatId) }}
+          onStart={(options) => onStartAgent(scope.chatId, options)} />}
+        {kind === 'history' && <ChatHistory activeChatId={scope.chatId} busy={history.busy} listChats={history.listChats}
+          chats={history.chats} openChat={history.openChat} archiveChat={history.archiveChat} onClose={onClose} onOpened={() => {}} />}
+        {kind === 'saved-sites' && <SavedSitesPanel active={active} onError={onSavedSitesError} onOpenSite={savedSites.openSite}
+          update={savedSites.update} remove={savedSites.remove} />}
+      </Suspense>
     </div>
   </section>
 })
