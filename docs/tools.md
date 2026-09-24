@@ -551,9 +551,9 @@ turn, and only compacts by itself near the context limit. Several mechanisms kee
   churning visible tab are delivered without the verified verdict.
 - New background views are sized before attachment so their first compositor surface has a usable
   viewport. A capture lease renders beneath the opaque active browser view without selecting the
-  tab. With the browser collapsed or covered, a temporary never-shown native window hosts the same
-  WebContentsView, with geometry set before reparenting; release returns it to the main window.
-  Native `capturePage` may request visible rendering internally without showing that window.
+  tab. With the browser collapsed or covered, the WebContentsView stays in the main window parked
+  with one corner pixel inside it, so Chromium keeps it mapped and laid out at the pane's size;
+  nothing is reparented for capture.
   Background throttling is disabled only during capture and restored afterward, allowing the
   readiness check to wait for actual paints even when the browser panel is hidden.
   A 1×1 placeholder is rejected. The isolated browser-coordination live check verifies simultaneous

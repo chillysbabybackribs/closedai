@@ -72,7 +72,7 @@ export class UiCaptureAccess implements UiCaptureHost {
         // The coherence interval opens after readiness: from here until the pixels are read.
         const startedAt = Date.now()
         const readMutations = await observeDomMutations(contents)
-        // The leased surface stays covered or in an unmapped window. Let Electron's
+        // The leased surface may sit beneath the active tab or parked at the window's corner. Let Electron's
         // capturer request fresh frames even when the document has never been selected.
         const grab = () => contents.capturePage(undefined, { stayHidden: false, stayAwake: true })
         let frame: CaptureFrame

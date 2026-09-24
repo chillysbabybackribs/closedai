@@ -382,13 +382,13 @@ While a pane or the browser is dragged toward a split target, tiles and dividers
 the layout that would result on release; chats and a captured browser page stay visible and track their
 new bounds. Layout drags temporarily occlude the native browser after the still is ready, so
 the moving native surface cannot intercept drag events. After each bounds update the preview
-refreshes from the resized page, so responsive content reflows before release. Captures are
-serialized through a reusable hidden capture host (kept alive to preserve native drag routing)
-without waiting for animation frames in that never-shown window, and obsolete sizes are discarded;
+refreshes from the resized page, so responsive content reflows before release. The page never
+leaves the main window for this: it is parked with one corner pixel inside the window, where
+Chromium keeps it mapped, laid out at the preview size and painting, so each capture waits for a
+real frame at that size. Captures are serialized and obsolete sizes are discarded;
 the previous frame stays at its natural scale
 until the replacement arrives, without stretching. The still remains through commit,
-then clears after native bounds are restored and Chromium's drawing widget is re-armed through
-a painted frame, preserving focus and the tab's background cadence. Preview dimensions update once per animation frame without size tweening, so
+then clears after native bounds are restored and the page has painted a frame there. Preview dimensions update once per animation frame without size tweening, so
 transcripts do not repeatedly rewrap after a target change. On release the accepted split stays
 mounted until the chat-open operation commits (or fails); native drag-end cannot briefly restore
 the old layout. A hidden browser takes no space in the preview, so chats can occupy full-height
@@ -863,10 +863,13 @@ That colour is not fixed. `browser-page-background.ts` measures each document's 
 colour at dom-ready and remembers it per origin, and the next gap on that origin is filled with
 the colour the page is about to paint, so a gap is not a flash. A tab holding no document shows
 the app's bezel colour, and a page that paints no background of its own still gets the browser
-default of white. The renderer's overlay freeze waits for its still, then moves the still-compositing
-native page entirely left of the window instead of toggling its visibility, so chats docked
-beside the browser are never covered by the parked page; `browser:setBounds` waits
-for a painted frame before resolving the return. This avoids both a blank capture gap and Electron's
+default of white. The renderer's overlay freeze waits for its still, then parks the still-compositing
+native page above and left of the window with one corner pixel inside it instead of toggling its
+visibility, so chats docked beside the browser are never covered by the parked page and the page
+keeps laying out at the pane's size; `browser:setBounds` waits
+for a painted frame before resolving the return. A view moved entirely outside the window is
+unmapped by Chromium and stops relayouting, and a view reparented into a hidden window comes back
+with a hidden drawing widget; the corner parking avoids both, along with Electron's
 loaded-view blanking failure when a `WebContentsView` is hidden and shown around an overlay.
 Modal backdrops participate in this overlap check. Image previews instead own a tab in the
 shared strip: `local-files/image-tab.ts` holds the image without a native browser view, and
@@ -908,8 +911,8 @@ pages to ~1 Hz timers with no animation frames. `browser-tab-cadence.ts` exempts
 operates on it and for 5 s afterwards; navigation holds the exemption across load. A runtime
 `setBackgroundThrottling(false)` restores 50 ms timers and 60 fps rAF while `visibilityState` stays
 `hidden`. Capture temporarily disables background throttling and restores it afterward. When the
-browser is collapsed or covered, a temporary never-shown native window can host the same view for
-capture and return it afterward.
+browser is collapsed or covered, the view stays in the main window parked at its corner, still
+mapped and capturable at the pane's size.
 
 For native PDF text, select the PDF tab,
 then `embedded_browser.page read_page` reads `pdf_page` (one-based, default 1) from Chromium's
