@@ -70,3 +70,40 @@ test('chat hit targets use original geometry through preview and release', () =>
   assert.deepEqual(chatDropAt(panes, 500, 20), { target: 'a', edge: null })
   assert.equal(chatDropAt(panes, -1, 400), null)
 })
+
+test('chat split choices hold across diagonals until movement is deliberate', () => {
+  const panes = [{ id: 'a', rect: { x: 0, y: 0, width: 1000, height: 800 } }]
+  let held = chatDropAt(panes, 250, 210)!
+  assert.equal(held.edge, 'left')
+  for (const y of [198, 205, 185, 201]) {
+    held = chatDropAt(panes, 250, y, held)!
+    assert.equal(held.edge, 'left')
+  }
+  held = chatDropAt(panes, 250, 150, held)!
+  assert.equal(held.edge, 'top')
+  assert.equal(chatDropAt(panes, 250, 210, held)?.edge, 'top')
+  assert.equal(chatDropAt(panes, 250, 250, held)?.edge, 'left')
+  assert.equal(chatDropAt(panes, -1, 250, held), null)
+})
+
+test('tab merging has separate entry and exit boundaries', () => {
+  const panes = [{ id: 'a', rect: { x: 0, y: 0, width: 1000, height: 800 } }]
+  const split = chatDropAt(panes, 500, 100)!
+  assert.equal(chatDropAt(panes, 500, 32, split)?.edge, 'top')
+  const strip = chatDropAt(panes, 500, 20, split)!
+  assert.equal(strip.edge, null)
+  assert.equal(chatDropAt(panes, 500, 45, strip)?.edge, null)
+  assert.equal(chatDropAt(panes, 500, 55, strip)?.edge, 'top')
+})
+
+test('browser halves hold near their midpoint but a different tile switches immediately', () => {
+  const panes = [
+    { id: BROWSER_PANE_ID, rect: { x: 0, y: 0, width: 600, height: 800 } },
+    { id: 'a', rect: { x: 606, y: 0, width: 600, height: 800 } }
+  ]
+  const left = chatDropAt(panes, 290, 400)!
+  assert.equal(chatDropAt(panes, 320, 400, left)?.edge, 'left')
+  assert.equal(chatDropAt(panes, 340, 400, left)?.edge, 'right')
+  assert.equal(chatDropAt(panes, 610, 400, left)?.target, 'a')
+  assert.equal(chatDropAt(panes, 603, 400, left), null)
+})
