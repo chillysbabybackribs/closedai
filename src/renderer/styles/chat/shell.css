@@ -25,7 +25,7 @@
 
 /* ---- Chat pane ---------------------------------------------------------- */
 
-/* Neutral charcoal chat surfaces, with raised headers and composers.
+/* Neutral charcoal chat surfaces, with dark headers and raised composers.
    Rebind semantic aliases here because root aliases resolve before inheritance. */
 :root:not([data-theme='warm']) .chat-layout-tile[data-pane-id],
 :root:not([data-theme='warm']) .chat-pane {
@@ -35,6 +35,7 @@
   --surface-control: #2c2c2c;
   --surface-control-hover: #343434;
   --tab-active-surface: #191919;
+  --chat-header-surface: #191919;
   --chat-tab-active-fg: #fff;
   --background: var(--surface-card);
   --card: var(--surface-card);
