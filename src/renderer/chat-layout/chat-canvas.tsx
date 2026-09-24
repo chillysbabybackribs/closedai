@@ -213,8 +213,10 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
             const edge = activeId === BROWSER_PANE_ID ? (x < 0.5 ? 'left' : 'right')
               : dragging?.id !== BROWSER_PANE_ID && (event.target as HTMLElement).closest('.chat-layout-header') ? null
               : edges.sort((a, b) => a[1] - b[1])[0]![0]
-            dropTarget.current = { target: activeId, edge }
-            setDrop(dropTarget.current)
+            const next = { target: activeId, edge }
+            if (dropTarget.current?.target === next.target && dropTarget.current?.edge === next.edge) return
+            dropTarget.current = next
+            setDrop(next)
           }}
           onDragLeave={(event) => {
             if (dragging?.id === BROWSER_PANE_ID) return

@@ -41,12 +41,26 @@ export function LayoutDivider({ divider, onResize }: {
       const body = target.ownerDocument.body
       const previous = body.getAttribute('data-layout-resize')
       body.setAttribute('data-layout-resize', divider.axis)
-      const move = (next: PointerEvent): void => {
-        if (next.pointerId !== pointerId) return
+      let moveRaf = 0
+      let lastMove: PointerEvent | null = null
+      const applyMove = (): void => {
+        moveRaf = 0
+        const next = lastMove
+        if (!next) return
         const delta = (horizontal ? next.clientX : next.clientY) - start
         resize.current(divider.id, clamp(divider.ratio + delta / length))
       }
+      const move = (next: PointerEvent): void => {
+        if (next.pointerId !== pointerId) return
+        lastMove = next
+        if (!moveRaf) moveRaf = requestAnimationFrame(applyMove)
+      }
       const finish = (): void => {
+        if (moveRaf) {
+          cancelAnimationFrame(moveRaf)
+          moveRaf = 0
+          applyMove()
+        }
         release.current = null
         window.removeEventListener('pointermove', move, true)
         window.removeEventListener('pointerup', up, true)

@@ -64,8 +64,18 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
     setBusy(false)
   }, [])
 
+  const layoutPersist = useRef(layout)
+  layoutPersist.current = layout
   useEffect(() => {
-    saveLayout(window.localStorage, cwd, { ...layout, views: pruneViewScopes(layout.views, layout.tree) })
+    const persist = (): void => {
+      const value = layoutPersist.current
+      saveLayout(window.localStorage, cwd, { ...value, views: pruneViewScopes(value.views, value.tree) })
+    }
+    const timer = window.setTimeout(persist, 250)
+    return () => {
+      window.clearTimeout(timer)
+      persist()
+    }
   }, [cwd, layout])
 
   useEffect(() => {
