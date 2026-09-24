@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
@@ -201,6 +201,39 @@ test('GenerateImage promotes file links and paths from tool output text', async 
     assert.equal(settled.savedPath, path)
   } finally {
     await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('GenerateImage promotes from Cursor assets when ACP returns bare success', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'closedai-home-'))
+  const previousHome = process.env.HOME
+  process.env.HOME = home
+  try {
+    const cwd = '/home/dp/Desktop/closedai'
+    const assets = join(home, '.cursor/projects/home-dp-Desktop-closedai/assets')
+    await mkdir(assets, { recursive: true })
+    const path = join(assets, 'dalmatian.png')
+    await writeFile(path, Buffer.from([0x89, 0x50, 0x4e, 0x47]))
+    const instance = new CursorTurnTranslator({ turnId: 'cursor-turn-1', seed: 'cursor-turn-1', cwd })
+    const ops = apply(instance, [
+      {
+        sessionUpdate: 'tool_call',
+        toolCallId: 'gen-3',
+        title: 'Generate image',
+        kind: 'other',
+        status: 'pending',
+        rawInput: { _toolName: 'generateImage', description: 'a dalmatian' }
+      },
+      { sessionUpdate: 'tool_call_update', toolCallId: 'gen-3', status: 'completed', rawOutput: { success: true } }
+    ])
+    const settled = ops.flatMap((op) => (op.type === 'item' ? [op.item] : [])).at(-1)
+    assert.equal(settled?.type, 'screenshot')
+    if (settled?.type !== 'screenshot') return
+    assert.equal(settled.surface, 'generated_image')
+    assert.equal(settled.savedPath, path)
+  } finally {
+    process.env.HOME = previousHome
+    await rm(home, { recursive: true, force: true })
   }
 })
 

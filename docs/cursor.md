@@ -106,6 +106,11 @@ Verified live on 2026-09-03, and each point cost a real bug or would have:
   Antigravity lane, where the CLI repeats it. A `closedai_ui.capture` is the exception: the bridge
   ledger maps it back to the registry call id, so the app's own full-resolution image becomes a
   screenshot row.
+- **Native `GenerateImage` follows the same empty completion shape.** ACP does not replay the path
+  or bytes the agent sees, so ClosedAI promotes the row by reading `filename` hints when present
+  and otherwise the newest image under `~/.cursor/projects/<cwd-slug>/assets/` written since the
+  call started. Without that fallback the chat keeps a completed "Generate image" activity row with
+  no inline preview.
 - `session/request_permission` fires for MCP calls too, and is auto-allowed like any other.
 
 ## Not done yet

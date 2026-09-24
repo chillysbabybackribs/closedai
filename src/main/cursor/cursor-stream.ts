@@ -2,11 +2,8 @@ import type { ChatTranscriptItem } from '../../shared/chat.js'
 import { displayUserMessageText } from '../../shared/chat-display.js'
 import type { TranscriptOp, TurnEnd } from '../chat-transcript-ops.js'
 import { recordOfOrEmpty as recordOf, stringOf } from '../json-coerce.js'
-import {
-  isGenerateImageToolLabel,
-  promoteGeneratedImage,
-  resolveGeneratedImageToolOutcome
-} from '../generated-image-transcript.js'
+import { isGenerateImageToolLabel, promoteGeneratedImage } from '../generated-image-transcript.js'
+import { resolveCursorGeneratedImageEvidence } from './cursor-generated-image.js'
 import { promoteCaptureToScreenshot } from '../tool-transcript-shared.js'
 import {
   cursorStatus, cursorToolContent, cursorToolItem, cursorToolResult, resolveCursorTool,
@@ -48,6 +45,9 @@ export class CursorTurnTranslator {
   private readonly tools = new Map<string, ChatTranscriptItem>()
   /** Which of ours a tool call turned out to be, kept so a settled capture can become an image. */
   private readonly served = new Map<string, ResolvedCursorTool>()
+  /** Merged ACP rawInput per tool call — GenerateImage often omits output but keeps args here. */
+  private readonly toolInputs = new Map<string, Record<string, unknown>>()
+  private readonly toolStartedAt = new Map<string, number>()
   private open: OpenText | null = null
   private seq = 0
   private settled = false
@@ -137,6 +137,7 @@ export class CursorTurnTranslator {
       this.options.cwd
     )
     this.tools.set(id, item)
+    this.noteToolInput(id, recordOf(update.rawInput))
     this.noteServed(id, recordOf(update.rawInput))
     ops.push({ type: 'item', item })
     return [...ops, ...this.settle(id, update)]
@@ -153,6 +154,7 @@ export class CursorTurnTranslator {
       : item
     const ops: TranscriptOp[] = refreshed === item ? [] : [{ type: 'item', item: refreshed }]
     this.tools.set(id, refreshed)
+    this.noteToolInput(id, rawInput)
     this.noteServed(id, rawInput)
     return [...ops, ...this.settle(id, update)]
   }
@@ -177,6 +179,12 @@ export class CursorTurnTranslator {
     if (served) this.served.set(id, served)
   }
 
+  private noteToolInput(id: string, rawInput: Record<string, unknown>): void {
+    if (!Object.keys(rawInput).length) return
+    if (!this.toolStartedAt.has(id)) this.toolStartedAt.set(id, Date.now())
+    this.toolInputs.set(id, { ...(this.toolInputs.get(id) ?? {}), ...rawInput })
+  }
+
   /** Native GenerateImage (and peers) become inline generated-image rows when output carries bytes or a path. */
   private generatedImageItem(
     item: ChatTranscriptItem,
@@ -186,7 +194,14 @@ export class CursorTurnTranslator {
     rawOutput: unknown
   ): ChatTranscriptItem | null {
     if (status === 'failed' || item.type !== 'tool' || !isGenerateImageToolLabel(item.label)) return null
-    const evidence = resolveGeneratedImageToolOutcome({ text: output, content, rawOutput })
+    const evidence = resolveCursorGeneratedImageEvidence({
+      cwd: this.options.cwd,
+      rawInput: this.toolInputs.get(item.id) ?? {},
+      text: output,
+      content,
+      rawOutput,
+      startedAtMs: this.toolStartedAt.get(item.id) ?? Date.now()
+    })
     if (!evidence) return null
     return promoteGeneratedImage({
       itemId: item.id,
