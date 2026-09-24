@@ -10,8 +10,8 @@ const HOUR = 3_600_000
 const repair: SavedAgent = { id: 'a1', name: 'Repair agent', prompt: 'Fix things.', maxCycles: null, createdAt: 1, updatedAt: 1, lastRunAt: 5 * HOUR, runCount: 3 }
 const triage: SavedAgent = { id: 'a2', name: 'Triage bot', prompt: 'Sort issues.', maxCycles: 4, createdAt: 1, updatedAt: 1, lastRunAt: null, runCount: 0 }
 const docs: SavedAgent = { id: 'a3', name: 'Docs sweep', prompt: 'Fix one stale paragraph.', maxCycles: 10, createdAt: 1, updatedAt: 1, lastRunAt: null, runCount: 0 }
-const running: DockTile = { chatId: 'c1', name: 'Triage bot', state: 'running', running: true, cycleLabel: 'Cycle 2 of 4', detail: 'Working', attentionKey: null }
-const failed: DockTile = { chatId: 'c2', name: 'Docs sweep', state: 'failed', running: false, cycleLabel: 'Cycle 1 of 10', detail: 'Paused', attentionKey: 'c2:failed:1' }
+const running: DockTile = { chatId: 'c1', name: 'Triage bot', state: 'running', running: true, cycleLabel: 'Cycle 2 of 4', detail: 'Working', attentionKey: null, brief: [] }
+const failed: DockTile = { chatId: 'c2', name: 'Docs sweep', state: 'failed', running: false, cycleLabel: 'Cycle 1 of 10', detail: 'Paused', attentionKey: 'c2:failed:1', brief: [] }
 
 function render(overrides: Partial<AgentLibraryCardsProps> = {}): string {
   const props: AgentLibraryCardsProps = {

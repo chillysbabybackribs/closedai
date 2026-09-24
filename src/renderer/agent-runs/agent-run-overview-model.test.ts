@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { AGENT_RUN_MAX_FAILURES, type AgentRun } from '../../shared/agent-runs.js'
+import { AGENT_RUN_MAX_FAILURES, emptyAgentRunStats, type AgentRun } from '../../shared/agent-runs.js'
 import { dockSummary, dockTiles } from './agent-run-overview-model.ts'
 
 const run = (patch: Partial<AgentRun> = {}): AgentRun => ({ chatId: 'c1', prompt: 'Go.', status: 'running', cycle: 3, maxCycles: null,
-  startedAt: 1, updatedAt: 10, lastTurnEndedAt: null, reason: null, failures: 0, threadId: null, agentId: null, name: 'Brief', ...patch })
+  startedAt: 1, updatedAt: 10, lastTurnEndedAt: null, reason: null, failures: 0, threadId: null, agentId: null, name: 'Brief', stats: emptyAgentRunStats(), ...patch })
 
 test('a running tile shows the live activity of its chat, or that the next cycle is starting', () => {
   const [busy] = dockTiles([run()], [{ paneId: 'c1', running: true, activity: 'Reading docs' }], [])
@@ -12,6 +12,7 @@ test('a running tile shows the live activity of its chat, or that the next cycle
   assert.equal(busy!.detail, 'Reading docs')
   assert.equal(busy!.cycleLabel, 'Cycle 3')
   assert.equal(busy!.attentionKey, null)
+  assert.deepEqual(busy!.brief.map((line) => line.kind), ['progress', 'cost'], 'every tile carries its brief')
   const [idle] = dockTiles([run({ maxCycles: 5 })], [{ paneId: 'c1', running: false, activity: null }], [])
   assert.equal(idle!.detail, 'Starting the next cycle')
   assert.equal(idle!.cycleLabel, 'Cycle 3 of 5')

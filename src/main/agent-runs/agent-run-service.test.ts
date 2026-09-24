@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { EventEmitter } from 'node:events'
 import test from 'node:test'
-import { AGENT_RUN_CONTINUE_DELAY_MS, AGENT_RUN_MAX_FAILURES, AGENT_RUN_RETRY_DELAYS_MS, AGENT_RUN_TURN_START_TIMEOUT_MS } from '../../shared/agent-runs.js'
+import { AGENT_RUN_CONTINUE_DELAY_MS, AGENT_RUN_MAX_FAILURES, AGENT_RUN_RETRY_DELAYS_MS, AGENT_RUN_TURN_START_TIMEOUT_MS, emptyAgentRunStats } from '../../shared/agent-runs.js'
 import type { ChatEvent, ChatSnapshot } from '../../shared/chat.js'
 import { ChatStore } from '../chat-store/chat-store.js'
 import { AGENT_RUN_RELAUNCH_REASON, AgentRunService, type AgentRunChatHost } from './agent-run-service.js'
@@ -243,7 +243,7 @@ test('runs that were running at quit come back paused; archiving pauses and hide
   const id = openChat(h)
   const at = Date.now()
   h.store.update(id, { agentRun: { chatId: id, prompt: 'Go.', status: 'running', cycle: 4, maxCycles: null, startedAt: at, updatedAt: at,
-    lastTurnEndedAt: at, reason: null, failures: 0, threadId: 'thread-a', agentId: null, name: null } })
+    lastTurnEndedAt: at, reason: null, failures: 0, threadId: 'thread-a', agentId: null, name: null, stats: emptyAgentRunStats() } })
   const events: number[] = []
   h.service.on('change', (event: { runs: unknown[] }) => events.push(event.runs.length))
   h.service.start()

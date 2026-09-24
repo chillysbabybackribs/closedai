@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import type { DockTile } from './agent-run-overview-model.ts'
 import { AgentRunOverview, type AgentRunOverviewProps } from './agent-run-overview.tsx'
 
-const tile: DockTile = { chatId: 'c1', name: 'Daily brief', state: 'paused', running: false, cycleLabel: 'Cycle 2', detail: 'Paused by you', attentionKey: null }
+const tile: DockTile = { chatId: 'c1', name: 'Daily brief', state: 'paused', running: false, cycleLabel: 'Cycle 2', detail: 'Paused by you', attentionKey: null, brief: [] }
 const noop = async (): Promise<void> => {}
 const render = (tiles: DockTile[]): string => renderToStaticMarkup(createElement(AgentRunOverview, {
   tiles, onOpenChat: () => {}, onNewAgent: () => {}, onPause: noop, onResume: noop, onStop: noop } satisfies AgentRunOverviewProps))

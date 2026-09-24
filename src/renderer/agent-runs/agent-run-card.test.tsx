@@ -6,7 +6,8 @@ import type { DockTile } from './agent-run-overview-model.ts'
 import { AgentRunCard } from './agent-run-card.tsx'
 
 const tile: DockTile = { chatId: 'c1', name: 'Daily brief', state: 'running', running: true, cycleLabel: 'Cycle 2 of 4',
-  detail: 'Reading lethain.com', attentionKey: null }
+  detail: 'Reading lethain.com', attentionKey: null,
+  brief: [{ kind: 'progress', text: 'Cycle 2 of 4 has been working 40s.' }, { kind: 'cost', text: 'Each cycle re-sends 61.0k tokens.' }, { kind: 'error', text: '1 error across 3 steps.' }] }
 const noop = async (): Promise<void> => {}
 const render = (patch: Partial<DockTile>): string => renderToStaticMarkup(createElement(AgentRunCard, {
   tile: { ...tile, ...patch }, onOpenChat: () => {}, onPause: noop, onResume: noop, onStop: noop }))
@@ -20,6 +21,9 @@ test('a running tile shows its name, cycle, activity, Pause, Stop, and Open as a
   assert.match(html, /data-ui="agents\.stop"/)
   assert.match(html, /data-ui="agents\.open-chat" data-ui-key="c1"/)
   assert.doesNotMatch(html, /data-ui="agents\.resume"/)
+  assert.match(html, /agent-run-table-brief/)
+  assert.match(html, /data-kind="progress"[^>]*>Cycle 2 of 4 has been working 40s\./)
+  assert.match(html, /data-kind="error" class="[^"]*text-destructive"|text-destructive" data-kind="error"/)
 })
 
 test('paused tiles resume, finished tiles dismiss, approvals send the user to review', () => {

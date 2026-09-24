@@ -2,11 +2,11 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import type { AgentRun } from '../../shared/agent-runs.js'
+import { emptyAgentRunStats, type AgentRun } from '../../shared/agent-runs.js'
 import { AgentRunStrip } from './agent-run-strip.tsx'
 
 const base: AgentRun = { chatId: 'c1', prompt: 'Go.', status: 'running', cycle: 3, maxCycles: 10, startedAt: 1, updatedAt: 1,
-  lastTurnEndedAt: null, reason: null, failures: 0, threadId: null, agentId: null, name: null }
+  lastTurnEndedAt: null, reason: null, failures: 0, threadId: null, agentId: null, name: null, stats: emptyAgentRunStats() }
 const noop = async (): Promise<void> => {}
 
 test('a running strip offers Pause and Stop with the cycle count', () => {

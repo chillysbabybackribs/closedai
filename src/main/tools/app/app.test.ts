@@ -3,6 +3,7 @@ import { mkdtemp, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
+import { emptyAgentRunStats } from '../../../shared/agent-runs.js'
 import { uiControlFamilies } from '../../../shared/ui-controls.js'
 import { ToolRegistry } from '../registry.js'
 import { appTools } from './index.js'
@@ -55,7 +56,7 @@ function harness(overrides: { ui?: Partial<AppUiHost>; app?: Partial<AppCommandH
         chatId: request.paneId, prompt: request.op === 'start' ? request.options.prompt ?? 'saved' : 'standing', status: request.op === 'pause' ? 'paused' : 'running',
         cycle: 1, maxCycles: request.op === 'start' ? request.options.maxCycles ?? null : null,
         startedAt: 1, updatedAt: 1, lastTurnEndedAt: null, reason: null, failures: 0, threadId: null,
-        agentId: request.op === 'start' ? request.agentId : null, name: null
+        agentId: request.op === 'start' ? request.agentId : null, name: null, stats: emptyAgentRunStats()
       }
     },
     openChat: async (request) => { calls.push(['openChat', request]); return { paneId: request.paneId ?? 'pane-selected', threadId: 'thread-1' } },
