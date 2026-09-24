@@ -57,10 +57,11 @@ export function ChatHistory({ activeChatId, busy, listChats, chats, openChat, ar
 
   // Live rows arrive through the workspace stream; asking once on open still lets the main process
   // adopt provider threads the store has not seen, exactly as header search does when it opens.
+  const live = chats !== undefined
   useEffect(() => {
-    if (!chats) return
+    if (!live) return
     listChats().catch(() => {})
-  }, [chats !== undefined, listChats, reloadKey]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [live, listChats, reloadKey])
 
   const visible = useMemo(() => load.status === 'ready' ? searchChats(load.threads, query, Infinity) : [], [load, query])
 
