@@ -269,7 +269,8 @@ single lines in a command-palette surface wider than the input: a live-state gly
 mark when idle), the title, the project folder as a dim description, and the last-activity time on
 the right; a search result also carries an Open/Closed tag since no group implies it. Empty groups
 are omitted and each chat appears once. The closed input shows no count badges; at rest it shows
-the Ctrl+H shortcut.
+the Ctrl+H shortcut on the right, with the magnifying glass and placeholder aligned left.
+The icon and text retain that alignment when the input is focused or contains a query.
 Activity groups include all matching chats in the scrollable
 dropdown; unread completions use the persisted review queue and move into History when opened.
 Typing shows one list of up to eight ranked, case-insensitive title matches across all groups, with
@@ -426,8 +427,10 @@ The **agent dock** (`src/renderer/agent-dock/`) is a footer row under the worksp
 with theme-aware surfaces and raised tiles) sits directly on the window chassis. Inside the pill,
 **Agents** and a compact summary (`2 running · 1 needs you`, blue when a run needs the user)
 sit beside the tiles. A fine border and soft shadow separate the dock from the chassis; an open
-run card highlights its tile, and keyboard focus has a distinct outline. The dock holds one tile per run (`dock.run`) with the run's initials, its name beneath on
-hover, a small light under the tile while it works (pulsing while retrying), and a blue badge (red for a failure) when it needs the user (`!` for a credential approval or a failure pause, `✓` when finished);
+run card highlights its tile, and keyboard focus has a distinct outline. The dock holds one tile
+per run (`dock.run`) with the run's initials, its name beneath on hover, a small light under the
+tile while it works (pulsing while retrying), and a blue badge (red for a failure) when it needs
+the user (`!` for a credential approval or a failure pause, `✓` when finished);
 runs that need the user come first. Clicking a tile opens a popover card with name, state,
 cycle, activity or pause reason, **Pause**/**Resume**/**Stop** (`dock.pause`, `dock.resume`,
 `dock.stop`; Stop reads **Dismiss** on a finished run), **Review** for a pending approval

@@ -35,10 +35,10 @@ export function AgentDock({ chats, onOpenChat, onOpenAgents }: AgentDockProps): 
     <footer className="agent-dock"
       data-ui="dock.bar" aria-label="Agents">
       <HeroDockBar>
-      <p role="status" className="agent-dock-summary">
-        <span className="font-medium text-foreground">Agents</span>
-        <span className={cn('agent-dock-summary-detail', needsUser ? 'text-(--link-ink)' : 'text-muted-foreground')}>{dockSummary(tiles)}</span>
-      </p>
+        <p role="status" className="agent-dock-summary">
+          <span className="font-medium text-foreground">Agents</span>
+          <span className={cn('agent-dock-summary-detail', needsUser ? 'text-(--link-ink)' : 'text-muted-foreground')}>{dockSummary(tiles)}</span>
+        </p>
         {tiles.map((tile) => (
           <AgentDockIcon key={tile.chatId} tile={tile} onOpenChat={onOpenChat}
             onPause={(id) => runsApi.pause(id)} onResume={(id) => runsApi.resume(id)} onStop={(id) => runsApi.stop(id)} />

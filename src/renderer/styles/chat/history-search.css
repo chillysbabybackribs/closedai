@@ -33,22 +33,19 @@
 }
 
 /* ---- The pill ---------------------------------------------------------------
-   At rest the glass and placeholder sit together in the centre as one ghosted hint
-   with the shortcut docked right. Focus or a query stretches the input to the full
-   field, docking the glass at the left edge, so typing reads like an ordinary
-   field. `field-sizing: content` lets the resting input shrink to its placeholder,
-   which is what makes the flex row centre the pair with no measured offsets. */
+   Keep the glass and input anchored left in every state, with shortcut or clear
+   control in the flow at the right so neither can overlap the text. */
 .header-chat-search-field {
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 7px;
+  justify-content: flex-start;
+  gap: 8px;
   width: 100%;
   height: 30px;
-  padding: 0 6px 0 9px;
+  padding: 0 7px 0 11px;
   border: 1px solid var(--hairline-strong);
-  border-radius: 7px;
+  border-radius: 8px;
   background: color-mix(in srgb, var(--chrome-fg-strong) 4%, var(--titlebar-surface));
   color: var(--chrome-fg);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 3%);
@@ -70,9 +67,8 @@
 }
 
 .header-chat-search-field input {
-  field-sizing: content;
-  width: auto;
-  max-width: 100%;
+  flex: 1 1 0;
+  width: 0;
   min-width: 0;
   height: 100%;
   padding: 0;
@@ -81,25 +77,20 @@
   background: transparent;
   color: var(--chrome-fg-strong);
   font-size: 13px;
+  text-align: left;
   letter-spacing: var(--tracking-ui);
 }
 
 .header-chat-search-field input::placeholder {
   color: var(--chrome-fg);
-  opacity: 0.7;
+  opacity: 0.8;
 }
 
 .header-chat-search-field > svg {
   flex-shrink: 0;
   color: var(--chrome-fg);
-  opacity: 0.7;
+  opacity: 0.8;
   transition: opacity 140ms var(--ease-chrome);
-}
-
-.header-chat-search-field:focus-within input,
-.header-chat-search-field:has(input:not(:placeholder-shown)) input {
-  flex: 1 1 auto;
-  width: 100%;
 }
 
 .header-chat-search-field:focus-within > svg,
@@ -109,16 +100,12 @@
 
 .header-chat-search-field:focus-within input::placeholder { opacity: 0.45; }
 
-/* Shortcut chips: docked right of the centred hint at rest, gone once the field is
-   live so the input owns the width. Absolute so they never pull the hint off centre. */
+/* Shortcut chips yield their space to the input while it has focus. */
 .header-chat-search-hint {
-  position: absolute;
-  top: 50%;
-  right: 6px;
   display: flex;
-  gap: 2px;
+  flex-shrink: 0;
+  gap: 3px;
   opacity: 0.75;
-  transform: translateY(-50%);
 }
 
 .header-chat-search-field:focus-within .header-chat-search-hint { display: none; }

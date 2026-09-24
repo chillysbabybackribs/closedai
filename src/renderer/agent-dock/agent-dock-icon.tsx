@@ -5,8 +5,8 @@ import { cn } from '../../lib/utils.js'
 import { DOCK_STATE_LABEL, dockInitials, type DockTileState } from './agent-dock-model.js'
 import { AgentDockTile, type AgentDockTileProps } from './agent-dock-tile.js'
 
-// One run in the dock: a hero tile with its initials and its name beneath on hover, the hero's
-// white badge when it needs the user, a small light under the tile while it works, and its card
+// One run in the dock: a hero tile with its initials and its name beneath on hover, a coloured
+// badge when it needs the user, a small light under the tile while it works, and its card
 // with the run controls on click.
 
 const ATTENTION_BADGE: Partial<Record<DockTileState, string>> = { approval: '!', failed: '!', finished: '✓' }
