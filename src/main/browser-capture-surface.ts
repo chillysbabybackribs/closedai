@@ -53,6 +53,13 @@ export class HiddenCaptureSurfaces {
           // frame sink blank after return, even though capturePage still sees pixels.
           tab.applyBounds({ ...bounds, occluded: true }, false)
           this.home.contentView.addChildView(tab.view)
+          // A never-shown host leaves Chromium's widget hidden after reparenting,
+          // independently of View visibility. Re-arm it while parked offscreen, then
+          // preserve the cadence policy. Otherwise the window stays blank until a tab switch.
+          const contents = tab.view.webContents
+          const throttled = contents.getBackgroundThrottling()
+          contents.setBackgroundThrottling(false)
+          if (throttled) contents.setBackgroundThrottling(true)
         }
       } finally {
         if (!entry.host.isDestroyed()) {
