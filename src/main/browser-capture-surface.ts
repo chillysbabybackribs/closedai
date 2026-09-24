@@ -6,15 +6,27 @@ import type { BrowserBounds } from '../shared/types.js'
 export class HiddenCaptureSurfaces {
   private readonly leases = new Map<string, { host: BrowserWindow; count: number }>()
 
-  constructor(private readonly home: BrowserWindow) {}
+  // Keep one native host alive: destroying a BrowserWindow during an HTML drag can
+  // end Chromium's native drag routing, even when that window was never shown.
+  private idleHost: BrowserWindow | null
+
+  constructor(private readonly home: BrowserWindow) {
+    this.idleHost = this.createHost(1, 1)
+  }
+
+  private createHost(width: number, height: number): BrowserWindow {
+    return new BrowserWindow({ show: false, width, height,
+      webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false } })
+  }
 
   has(id: string): boolean { return this.leases.has(id) }
 
   acquire(tab: BrowserTab, bounds: BrowserBounds): () => void {
     let entry = this.leases.get(tab.id)
     if (!entry) {
-      const host = new BrowserWindow({ show: false, width: bounds.width, height: bounds.height,
-        webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false } })
+      const host = this.idleHost ?? this.createHost(bounds.width, bounds.height)
+      this.idleHost = null
+      host.setSize(Math.max(1, Math.round(bounds.width)), Math.max(1, Math.round(bounds.height)))
       entry = { host, count: 0 }
       this.leases.set(tab.id, entry)
       try {
@@ -41,12 +53,17 @@ export class HiddenCaptureSurfaces {
           this.home.contentView.addChildView(tab.view)
         }
       } finally {
-        if (!entry.host.isDestroyed()) entry.host.destroy()
+        if (!entry.host.isDestroyed()) {
+          if (!this.idleHost) this.idleHost = entry.host
+          else entry.host.destroy()
+        }
       }
     }
   }
 
   dispose(): void {
+    this.idleHost?.destroy()
+    this.idleHost = null
     for (const entry of this.leases.values()) if (!entry.host.isDestroyed()) entry.host.destroy()
     this.leases.clear()
   }

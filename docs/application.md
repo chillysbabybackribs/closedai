@@ -383,7 +383,8 @@ the layout that would result on release; chats and a captured browser page stay 
 new bounds. Layout drags temporarily occlude the native browser after the still is ready, so
 the moving native surface cannot intercept drag events. After each bounds update the preview
 refreshes from the resized page, so responsive content reflows before release. Captures are
-serialized and obsolete sizes are discarded; the previous frame stays at its natural scale
+serialized through a reusable hidden capture host (kept alive to preserve native drag routing)
+and obsolete sizes are discarded; the previous frame stays at its natural scale
 until the replacement arrives, without stretching. The still remains through commit,
 then clears after native bounds are restored. Preview dimensions update once per animation frame without size tweening, so
 transcripts do not repeatedly rewrap after a target change. On release the accepted split stays
