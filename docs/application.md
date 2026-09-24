@@ -502,11 +502,13 @@ existing consumers. Hidden panes retain their main-process state but do not stre
 
 ## Chat surface
 
-- Dark-theme chat panels use a neutral near-black (`#181818`) canvas, with neutral
-  charcoal (`#1c1c1c`) user cards, composers, and active tabs. These colors are scoped
-  to chat so the window header and browser keep their own surface colors. Chat and
-  browser tab headers share the same shell chrome background (`#141415`), with a
-  lighter neutral gray (`#242424`) workspace background around both shells.
+- Dark-theme chat panels use a neutral near-black (`#181818`) canvas, with raised
+  charcoal (`#242424`) composers and active tabs. Chat and browser tab headers use
+  the darker shell chrome (`#141415`) above a recessed workspace (`#0c0c0e`).
+  The selected chat has a stronger neutral frame and a short top edge on its active
+  tab; transcript contrast stays constant across panes. Composers have a subtle
+  contact shadow. Browser active tabs flow into a lighter (`#29292c`) toolbar,
+  with a hairline beneath it and around the address field.
 - The window header has a soft charcoal (`#181819`) background in the dark theme.
   It is 44 px tall, with 14 px menu/search text, a 34 px search field,
   a 24 px textured Earth browser globe with a 15° axial tilt and a subtle brightness lift on hover,

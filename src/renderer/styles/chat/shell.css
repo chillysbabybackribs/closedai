@@ -28,10 +28,10 @@
 :root:not([data-theme='warm']) .chat-layout-tile[data-pane-id],
 :root:not([data-theme='warm']) .chat-pane {
   --surface-card: #181818;
-  --surface-raised: #1c1c1c;
+  --surface-raised: #242424;
   --surface-control: #262626;
   --surface-control-hover: #303030;
-  --tab-active-surface: #1c1c1c;
+  --tab-active-surface: #242424;
   --background: var(--surface-card);
   --card: var(--surface-card);
   --popover: var(--surface-raised);

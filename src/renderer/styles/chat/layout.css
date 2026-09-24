@@ -12,8 +12,8 @@
   gap: 4px;
   min-width: 0;
   color: var(--chrome-fg);
-  background: transparent;
-  box-shadow: none;
+  background: var(--surface-chrome);
+  box-shadow: inset 0 -1px 0 var(--hairline);
   font-size: 12px;
 }
 
@@ -144,6 +144,13 @@
   container: chat-tile / size;
 }
 .chat-layout-tile[hidden] { display: none; }
+/* Selection changes the frame, keeping every transcript equally readable. */
+.chat-layout-tile[data-pane-id][data-selected='true'] {
+  border-color: color-mix(in srgb, var(--focus-ink) 32%, var(--tile-edge));
+}
+.chat-layout-tile[data-selected='true'] .chat-layout-tab[data-active='true'] {
+  box-shadow: inset 0 2px 0 color-mix(in srgb, var(--focus-ink) 65%, transparent);
+}
 .chat-layout-header { flex: 0 0 38px; padding: 0 4px 0 0; }
 /* The preset name sits before the tab actions, quiet text: a chat that cannot act says so. */
 .chat-layout-preset {
