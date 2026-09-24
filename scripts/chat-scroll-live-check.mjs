@@ -79,6 +79,10 @@ async function runChecks(BrowserWindow) {
       if(rows.length < ${count}) requestAnimationFrame(frame); else resolve(rows);
     }; requestAnimationFrame(frame);
   })`)
+  const bannerInset = () => evaluate(`(() => {
+    const banner = document.querySelector('.transcript-fold-banner');
+    return banner ? banner.offsetHeight + parseFloat(getComputedStyle(banner).marginBottom) : 0;
+  })()` )
   const reports = []
   for (const zoom of [50, 80, 100, 110, 150, 200, 250]) {
     await evaluate(`(() => {
@@ -103,12 +107,13 @@ async function runChecks(BrowserWindow) {
     const tops = frames.map((frame) => frame.anchor)
     const positions = streamed.map((frame) => frame.anchor)
     reports.push({ zoom, streamingDrift: Math.max(...positions) - Math.min(...positions),
-      drift: Math.max(...tops) - Math.min(...tops), anchor: tops.at(-1) })
+      drift: Math.max(...tops) - Math.min(...tops), anchor: tops.at(-1),
+      expectedAnchor: (12 + await bannerInset()) * zoom / 100 })
   }
   console.log('CHAT_SCROLL_RESULT', JSON.stringify(reports))
   assert.ok(reports.every((report) => report.drift <= 1 && report.streamingDrift <= 1),
     'An anchored transcript must not oscillate during streaming or while idle')
-  assert.ok(reports.every((report) => Math.abs(report.anchor - 12 * report.zoom / 100) <= 1),
+  assert.ok(reports.every((report) => Math.abs(report.anchor - report.expectedAnchor) <= 1),
     'Prompt peek must use transcript coordinates at every zoom')
 
   const delta = () => send({ type: 'itemDelta', itemId: 'reply-250', field: 'text',
@@ -147,12 +152,13 @@ async function runChecks(BrowserWindow) {
   send({ type: 'turn', turnId: 'next-turn' })
   send({ type: 'item', item: { type: 'user', id: 'next-prompt', turnId: 'next-turn', text: 'A second prompt stays anchored too.' } })
   await pause(200)
+  const expectedNextAnchor = (12 + await bannerInset()) * 2.5
   const next = await sample()
-  assert.ok(next.every((frame) => Math.abs(frame.anchor - 30) <= 1), 'A subsequent prompt must re-anchor')
+  assert.ok(next.every((frame) => Math.abs(frame.anchor - expectedNextAnchor) <= 1), 'A subsequent prompt must re-anchor')
   window.setSize(1280, 800)
   await pause(200)
   const resized = await sample()
-  assert.ok(resized.every((frame) => Math.abs(frame.anchor - 30) <= 1), 'Resizing must retain the prompt anchor')
+  assert.ok(resized.every((frame) => Math.abs(frame.anchor - expectedNextAnchor) <= 1), 'Resizing must retain the prompt anchor')
   // Revisit an attached pane after its workspace snapshot was reduced to the latest turn.
   const historyItems = Array.from({ length: 5 }, (_, index) => [
     { type: 'user', id: `history-user-${index}`, turnId: `history-turn-${index}`, text: `History prompt ${index}` },
