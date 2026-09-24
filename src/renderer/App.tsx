@@ -23,6 +23,7 @@ import { useToolsPreset } from './tools/use-tools-preset.js'
 import { BrowserGlobeIcon } from './browser-globe-icon.js'
 import { useBrowserSavedSitesController } from './browser-saved-sites-controller.js'
 import { BrowserSavedSitesShelf } from './browser-saved-sites-shelf.js'
+import { AgentDock } from './agent-dock/agent-dock.js'
 import {
   normalizeAppearanceSettings,
   persistAppearanceSettings,
@@ -226,6 +227,9 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
           archiveChat={history.deleteRow}
         />}
       </div>
+      {chat.selectedPaneId && <AgentDock chats={chat.chats} onOpenChat={(chatId) => {
+        openHistoryChat(chatId).catch(report('Could not open the agent chat'))
+      }} onOpenAgents={() => workspaceRef.current?.openView('agents')} />}
       {savedSites.isOpen && <BrowserSavedSitesShelf controller={savedSites} onError={report('Could not update saved sites')}
         onOpenSite={(url) => {
           if (!browserVisible) workspaceRef.current?.toggleBrowser()
