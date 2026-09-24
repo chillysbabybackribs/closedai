@@ -178,8 +178,12 @@
 }
 
 
-/* ---- Agent dock: one compact group floating on the chassis --------------- */
+/* ---- Agent dock: bottom-edge reveal over the workspace ------------------ */
 .agent-dock {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 40;
+  pointer-events: none;
   display: flex;
   justify-content: center;
   min-width: 0;
@@ -187,11 +191,24 @@
   font-size: 12px;
 }
 
+.agent-dock-edge {
+  position: absolute;
+  inset: auto 0 0;
+  height: 10px;
+  pointer-events: auto;
+}
+
+.agent-dock[data-state='open'] { pointer-events: auto; }
+
 .agent-dock [data-slot='hero-dock-frame'] {
+  opacity: 0;
+  transition: opacity 140ms ease;
   min-width: 0;
   max-width: 100%;
   scale: 1;
 }
+
+.agent-dock[data-state='open'] [data-slot='hero-dock-frame'] { opacity: 1; }
 
 .agent-dock [data-slot='hero-dock-bar'] {
   flex-wrap: wrap;
@@ -289,6 +306,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .agent-dock [data-slot='hero-dock-frame'],
   .agent-dock :is([data-ui='dock.run'], [data-ui='dock.agents']),
   .agent-dock [data-slot='hero-dock-label'] { transition: none; }
   .agent-dock :is([data-ui='dock.run'], [data-ui='dock.agents']):hover { transform: none; }

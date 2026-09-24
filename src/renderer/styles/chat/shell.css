@@ -2,9 +2,9 @@
 
 .shell {
   display: grid;
-  /* Title bar, divider, shell alert (empty when none), workspace, agent dock footer. Rows are
+  /* Title bar, divider, shell alert (empty when none), workspace. Rows are
      placed explicitly so the optional alert never pushes the workspace out of the flexible row. */
-  grid-template-rows: auto 1px auto minmax(0, 1fr) auto;
+  grid-template-rows: auto 1px auto minmax(0, 1fr);
   width: 100vw;
   height: 100vh;
   overflow: hidden;
@@ -12,9 +12,11 @@
 }
 
 .shell > .workspace { grid-row: 4; }
-.shell > .agent-dock { grid-row: 5; }
+
 
 .workspace {
+  /* Leave a slim renderer edge reachable beneath the native browser surface. */
+  padding-bottom: 10px;
   display: flex;
   height: 100%;
   min-height: 0;

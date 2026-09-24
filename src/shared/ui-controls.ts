@@ -155,7 +155,7 @@ export const UI_CONTROLS = {
   'agents.save': 'Save the editor as a new agent or update the loaded one (enabled while named and changed)',
   'agents.start': 'Start an agent run in a new chat from the editor, saving a named agent first; main re-sends a cycle after every finished turn until paused',
   'agents.delete': 'Delete the loaded saved agent; the first click asks for confirmation',
-  'dock.bar': 'Agent dock footer row across the bottom of the window: a status line and one icon per agent run',
+  'dock.bar': 'Auto-hidden agent dock: hover the bottom edge or focus its controls to reveal a status line and agent run icons over the workspace',
   'dock.run': 'An agent run\u2019s dock tile (initials, a badge when it needs the user); hover shows its name, click opens its card with the run controls; item is the chat id',
   'dock.agents': 'The dock\u2019s plus tile: open the Agents view (builder and saved-agent library)',
   'dock.open-chat': 'Open an agent run\u2019s chat in the workspace; item is the chat id',

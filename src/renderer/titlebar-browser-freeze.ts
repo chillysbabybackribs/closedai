@@ -4,7 +4,7 @@ import type { BrowserShot } from '../shared/types.js'
 // DOM surfaces that may paint over the browser column.
 // Modal backdrops cover the browser even before async content (such as an image) has
 // given the dialog its final size. Native views must also stay behind that backdrop.
-const OVERLAY_SELECTOR = '.header-chat-search-popup, .header-chat-search-error, .browser-suggestions, .browser-downloads, [data-slot="dialog-overlay"], [role="dialog"], [role="menu"], [data-slot="tooltip-content"]'
+const OVERLAY_SELECTOR = '[data-ui="dock.bar"], .header-chat-search-popup, .header-chat-search-error, .browser-suggestions, .browser-downloads, [data-slot="dialog-overlay"], [role="dialog"], [role="menu"], [data-slot="tooltip-content"]'
 const BROWSER_HOST_SELECTOR = '#browser-page'
 const EAGER_CAPTURE_TRIGGER = '[data-ui="titlebar.chat-search"], [data-ui="titlebar.menu"][data-ui-key="view"], [data-ui="browser.address"], [data-ui="browser.saved-sites"], [data-ui="saved-sites.move"], [aria-label="Downloads"], [aria-label="Tools"], [data-ui="dock.run"], [data-ui="dock.agents"]'
 // Right-clicking browser chrome opens a menu over the page, and unlike the triggers above it

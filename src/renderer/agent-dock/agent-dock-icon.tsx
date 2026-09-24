@@ -11,8 +11,9 @@ import { AgentDockTile, type AgentDockTileProps } from './agent-dock-tile.js'
 
 const ATTENTION_BADGE: Partial<Record<DockTileState, string>> = { approval: '!', failed: '!', finished: '✓' }
 
-export function AgentDockIcon({ tile, onOpenChat, ...controls }: AgentDockTileProps): JSX.Element {
-  const [open, setOpen] = useState(false)
+export function AgentDockIcon({ tile, onOpenChat, onOpenChange, ...controls }: AgentDockTileProps & { onOpenChange?: (open: boolean) => void }): JSX.Element {
+  const [open, updateOpen] = useState(false)
+  const setOpen = (next: boolean): void => { updateOpen(next); onOpenChange?.(next) }
   const working = tile.state === 'running' || tile.state === 'retrying'
   return (
     <Popover open={open} onOpenChange={setOpen}>
