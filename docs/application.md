@@ -512,12 +512,13 @@ existing consumers. Hidden panes retain their main-process state but do not stre
 ## Chat surface
 
 - Dark-theme chat panels use a neutral charcoal (`#1d1d1d`) canvas, with raised
-  headers and composers (`#262626`) and lighter active tabs (`#2f2f2f`). Browser
+  headers and composers (`#262626`) and darker chat tabs (`#191919`). Browser
   tab headers retain the darker shell chrome (`#141415`); recessed workspace
   gutters (`#0c0c0e`) separate the panels.
-  Chat tabs sit inside the header with 6 px rounded corners, a fine active outline,
-  and short separators between inactive neighbors. The selected chat has a stronger
-  neutral frame and a short top marker on its active tab; transcript contrast stays
+  Chat tabs sit inside the header with 6 px rounded corners and short separators
+  between inactive neighbors. Each tile's active tab uses bold white text; inactive
+  labels stay gray, including on hover. Selection has no tab outline or top marker.
+  The selected chat keeps a stronger neutral frame; transcript contrast stays
   constant across panes. Composers have a subtle
   contact shadow. Browser active tabs flow into a lighter (`#29292c`) toolbar,
   with a hairline beneath it and around the address field.

@@ -148,17 +148,6 @@
 .chat-layout-tile[data-pane-id][data-selected='true'] {
   border-color: color-mix(in srgb, var(--focus-ink) 32%, var(--tile-edge));
 }
-.chat-layout-tile[data-selected='true'] .chat-layout-tab[data-active='true']::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 12px;
-  width: 20px;
-  height: 2px;
-  border-radius: 2px;
-  background: var(--focus-ink);
-  pointer-events: none;
-}
 .chat-layout-header { flex: 0 0 38px; padding: 0 4px 0 0; }
 /* The preset name sits before the tab actions, quiet text: a chat that cannot act says so. */
 .chat-layout-preset {
@@ -201,10 +190,9 @@
 .chat-layout-header > button.chat-layout-drag:focus-visible { outline: 1px solid var(--focus-ink); outline-offset: -2px; }
 .chat-layout-header > button.chat-layout-drag:active { cursor: grabbing; }
 .chat-layout-header > button.chat-layout-drag:disabled { opacity: 0.3; cursor: default; }
-/* Selection is carried by the active tab's surface and label weight, never by a header
-   fill: a lighter header bar read as a second user bubble stacked above the transcript. */
+/* Selection is carried by the active tab's bright, bold label. */
 .chat-layout-tile[data-selected='true'] > .chat-layout-header { color: var(--chrome-fg-strong); }
-/* Inset tabs give the active surface a quiet edge; inactive neighbors share a short
+/* Inset tabs share a dark surface; inactive neighbors share a short
    separator. Keep the rail height fixed so pane and browser headers stay aligned. */
 .chat-layout-tabs {
   position: relative;
@@ -225,6 +213,7 @@
   max-width: 220px;
   align-items: center;
   border-radius: 6px;
+  background: var(--tab-active-surface);
   transition: background-color 120ms ease, color 120ms ease;
 }
 .chat-layout-tab:only-child { max-width: 300px; }
@@ -240,11 +229,9 @@
 }
 .chat-layout-tabs::-webkit-scrollbar { display: none; }
 .chat-layout-tab:not([data-active='true']) { color: var(--chrome-fg); }
-.chat-layout-tab:not([data-active='true']):hover { color: var(--chrome-fg-strong); background: var(--surface-highlight); }
+.chat-layout-tab:not([data-active='true']):hover { background: color-mix(in srgb, var(--tab-active-surface), var(--chrome-fg) 6%); }
 .chat-layout-tab[data-active='true'] {
-  color: var(--chrome-fg-strong);
-  background: var(--tab-active-surface);
-  box-shadow: inset 0 0 0 1px var(--hairline), 0 1px 2px rgb(0 0 0 / 10%);
+  color: var(--chat-tab-active-fg, var(--chrome-fg-strong));
 }
 .chat-layout-tab:not([data-active='true']):not(:hover):has(+ .chat-layout-tab:not([data-active='true']):not(:hover))::before {
   content: '';
@@ -256,13 +243,12 @@
   background: var(--hairline);
   pointer-events: none;
 }
-.chat-layout-tile:not([data-selected='true']) .chat-layout-tab[data-active='true'] { color: var(--chrome-fg); }
 .chat-layout-tab > [role='tab'] { flex: 1; min-width: 0; height: 100%; padding: 0 6px 0 10px; border-radius: inherit; justify-content: flex-start; cursor: grab; }
 .chat-layout-tab:has(.chat-layout-tab-close) > [role='tab'] { padding-right: 32px; }
 .chat-layout-tab > [role='tab']:active { cursor: grabbing; }
 .chat-layout-tab > [role='tab']:disabled { cursor: default; }
 .chat-layout-tab > [role='tab']:hover { background: transparent; }
-.chat-layout-tab[data-active='true'] > [role='tab'] { font-weight: 500; }
+.chat-layout-tab[data-active='true'] > [role='tab'] { font-weight: 700; }
 .chat-layout-tab > [role='tab'] span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 /* Close stays an 11 px icon; the control is a 24 px-wide strip so the hit area meets
    the 24 px minimum without a larger hover chip. Header button rules lose here. */

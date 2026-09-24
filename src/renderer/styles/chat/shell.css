@@ -34,7 +34,8 @@
   --surface-raised: #262626;
   --surface-control: #2c2c2c;
   --surface-control-hover: #343434;
-  --tab-active-surface: #2f2f2f;
+  --tab-active-surface: #191919;
+  --chat-tab-active-fg: #fff;
   --background: var(--surface-card);
   --card: var(--surface-card);
   --popover: var(--surface-raised);
