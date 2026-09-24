@@ -11,35 +11,40 @@ const triage: SavedAgent = { id: 'a2', name: 'Triage bot', prompt: 'Sort issues.
 
 function render(overrides: Partial<AgentLibraryPanelProps> = {}): string {
   const props: AgentLibraryPanelProps = {
-    agents: [repair, triage], now: 7 * HOUR, startEnabled: true,
-    onSave: async () => repair, onRemove: async () => {}, onStart: async () => {}, ...overrides
+    agents: [repair, triage], initialAgentId: null, startEnabled: true,
+    onSave: async () => repair, onRemove: async () => {}, onStart: async () => {}, onBack: () => {}, onDone: () => {}, ...overrides
   }
   return renderToStaticMarkup(createElement(AgentLibraryPanel, props))
 }
 
-test('the library lists saved agents in a table and opens on a blank draft', () => {
+test('a new draft opens blank under a back control, with Start off until there are instructions', () => {
   const html = render()
-  assert.match(html, /data-ui="agents\.item" data-ui-key="a1"/)
-  assert.match(html, /Ran 3 times · last 2 h ago/)
-  assert.match(html, /Never run · 4 max/)
+  assert.match(html, /data-ui="agents\.back"/)
+  assert.match(html, /agent-screen-title[^>]*>New agent</)
   assert.match(html, /data-ui="agents\.name"[^>]*value=""/)
   assert.match(html, /data-ui="agents\.prompt"[^>]*><\/textarea>/)
-  assert.doesNotMatch(html, /aria-selected="true"/)
-  assert.doesNotMatch(html, /data-ui="agents\.delete"/)
-  assert.match(html, /data-ui="agents\.start"[^>]*disabled=""/, 'Start waits for instructions on a new draft')
-})
-
-test('an empty library shows a new draft with Start off until there are instructions', () => {
-  const html = render({ agents: [] })
-  assert.match(html, /Saved agents appear here/)
-  assert.match(html, /data-ui="agents\.name"[^>]*value=""/)
   assert.doesNotMatch(html, /data-ui="agents\.delete"/)
   assert.match(html, /data-ui="agents\.start"[^>]*disabled=""/)
+})
+
+test('editing a saved agent loads its fields, titles the screen, and offers Delete', () => {
+  const html = render({ initialAgentId: 'a2' })
+  assert.match(html, /agent-screen-title[^>]*>Triage bot</)
+  assert.match(html, /data-ui="agents\.name"[^>]*value="Triage bot"/)
+  assert.match(html, /data-ui="agents\.max-cycles"[^>]*value="4"/)
+  assert.match(html, /Sort issues\./)
+  assert.match(html, /data-ui="agents\.delete"/)
+  assert.doesNotMatch(html, /data-ui="agents\.start"[^>]*disabled=""/)
+})
+
+test('a held draft wins over the saved text and reads as unsaved', () => {
+  const html = render({ initialAgentId: 'a2', initialDraft: { name: 'Triage bot', prompt: 'Sort issues by age.', maxCycles: '4' } })
+  assert.match(html, /Sort issues by age\./)
+  assert.match(html, /Unsaved changes/)
 })
 
 test('start is off while the launching pane cannot run', () => {
-  const html = render({ startEnabled: false })
-  assert.match(html, /data-ui="agents\.start"[^>]*disabled=""/)
+  assert.match(render({ initialAgentId: 'a1', startEnabled: false }), /data-ui="agents\.start"[^>]*disabled=""/)
 })
 
 test('describeAgentUse counts runs and dates the last one', () => {

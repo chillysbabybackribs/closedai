@@ -1,36 +1,44 @@
 import type { JSX } from 'react'
 import { useEffect, useRef, useState } from 'react'
-import { Plus } from 'lucide-react'
 
 import { Button } from '../../components/ui/button.js'
 import { Input } from '../../components/ui/input.js'
 import { Textarea } from '../../components/ui/textarea.js'
 import { cn } from '../../lib/utils.js'
-import { cleanAgentName, describeAgentUse, type SavedAgent, type SavedAgentDraft } from '../../shared/agent-library.js'
+import { cleanAgentName, type SavedAgent, type SavedAgentDraft } from '../../shared/agent-library.js'
 import { AGENT_RUN_MAX_PROMPT_CHARS, type AgentRunStartOptions } from '../../shared/agent-runs.js'
 import { errorMessage } from '../error-message.js'
+import { AgentScreenHeader } from './agent-screen-header.js'
 
-// The Agents dialog body (the dialog owns the title bar): the library on the left, one editor
-// on the right. Selecting an entry loads it; New clears the editor. Start runs whatever the editor shows, saving a named agent
-// first so the run and the library never disagree; a nameless draft starts as a one-off.
+// The Agents tab's Build screen: one editor for a new draft or one saved agent. Start runs
+// whatever the editor shows, saving a named agent first so the run and the library never
+// disagree; a nameless draft starts as a one-off. Start and Delete return to the Library.
+
+export type AgentDraft = { name: string; prompt: string; maxCycles: string }
 
 export type AgentLibraryPanelProps = {
   agents: readonly SavedAgent[]
-  now: number
+  /** The saved agent being edited, or null for a new draft. */
+  initialAgentId: string | null
+  /** A draft the user backed out of earlier this session, restored instead of the saved text. */
+  initialDraft?: AgentDraft
   /** False while the launching pane cannot start a run (provider unavailable). */
   startEnabled: boolean
   /** Create (id null) or update a saved agent; resolves with the stored record. */
   onSave: (draft: SavedAgentDraft, id: string | null) => Promise<SavedAgent>
   onRemove: (id: string) => Promise<void>
   onStart: (options: AgentRunStartOptions) => Promise<void>
+  /** Back: `draft` is the unsaved text to keep for the session, or null when nothing changed. */
+  onBack: (draft: AgentDraft | null, agentId: string | null) => void
+  /** Start or Delete finished; the view returns to the Library. */
+  onDone: () => void
 }
 
-type Draft = { name: string; prompt: string; maxCycles: string }
 type Busy = 'save' | 'start' | 'delete' | null
 
-const EMPTY_DRAFT: Draft = { name: '', prompt: '', maxCycles: '' }
+export const EMPTY_DRAFT: AgentDraft = { name: '', prompt: '', maxCycles: '' }
 
-function draftOf(agent: SavedAgent): Draft {
+export function draftOf(agent: SavedAgent): AgentDraft {
   return { name: agent.name, prompt: agent.prompt, maxCycles: agent.maxCycles === null ? '' : String(agent.maxCycles) }
 }
 
@@ -39,18 +47,18 @@ function parseMaxCycles(value: string): number | null {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null
 }
 
-function sameDraft(a: Draft, b: Draft): boolean {
+function sameDraft(a: AgentDraft, b: AgentDraft): boolean {
   return a.name.trim() === b.name.trim() && a.prompt.trim() === b.prompt.trim() && parseMaxCycles(a.maxCycles) === parseMaxCycles(b.maxCycles)
 }
 
-export function AgentLibraryPanel({ agents, now, startEnabled, onSave, onRemove, onStart }: AgentLibraryPanelProps): JSX.Element {
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT)
+export function AgentLibraryPanel({ agents, initialAgentId, initialDraft, startEnabled, onSave, onRemove, onStart, onBack, onDone }: AgentLibraryPanelProps): JSX.Element {
+  const [savedId, setSavedId] = useState(initialAgentId)
+  const selected = agents.find((agent) => agent.id === savedId) ?? null
+  const [draft, setDraft] = useState<AgentDraft>(() => initialDraft ?? (selected ? draftOf(selected) : EMPTY_DRAFT))
   const [busy, setBusy] = useState<Busy>(null)
   const [error, setError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
   const nameRef = useRef<HTMLInputElement>(null)
-  const selected = agents.find((agent) => agent.id === selectedId) ?? null
   const baseline = selected ? draftOf(selected) : EMPTY_DRAFT
   const dirty = !sameDraft(draft, baseline)
   const name = cleanAgentName(draft.name)
@@ -59,28 +67,19 @@ export function AgentLibraryPanel({ agents, now, startEnabled, onSave, onRemove,
   const canSave = Boolean(name) && Boolean(prompt) && !tooLong && dirty && busy === null
   const canStart = startEnabled && Boolean(prompt) && !tooLong && busy === null
 
-  // A library arriving after mount, or an entry edited elsewhere, refreshes an untouched editor;
-  // a selection that was deleted elsewhere falls back to a new draft.
+  useEffect(() => { if (initialAgentId === null) nameRef.current?.focus() }, [initialAgentId])
+
+  // An entry edited elsewhere refreshes an untouched editor; one deleted elsewhere keeps its
+  // text as a new draft.
   useEffect(() => {
-    if (selectedId !== null && !selected) {
-      setSelectedId(null)
-      setDraft(EMPTY_DRAFT)
+    if (savedId !== null && !selected) {
+      setSavedId(null)
       return
     }
-    if (selected && !dirty) {
-      setDraft(draftOf(selected))
-    }
+    if (selected && !dirty) setDraft(draftOf(selected))
     // The baseline is derived from `agents`; this reacts to the library, not to typing.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [agents])
-
-  function choose(agent: SavedAgent | null): void {
-    setSelectedId(agent?.id ?? null)
-    setDraft(agent ? draftOf(agent) : EMPTY_DRAFT)
-    setError('')
-    setConfirmDelete(false)
-    if (!agent) window.requestAnimationFrame(() => nameRef.current?.focus())
-  }
 
   async function act(kind: Exclude<Busy, null>, action: () => Promise<void>, fallback: string): Promise<void> {
     setBusy(kind)
@@ -95,8 +94,8 @@ export function AgentLibraryPanel({ agents, now, startEnabled, onSave, onRemove,
   }
 
   const saveDraft = async (): Promise<SavedAgent> => {
-    const saved = await onSave({ name, prompt, maxCycles: parseMaxCycles(draft.maxCycles) }, selectedId)
-    setSelectedId(saved.id)
+    const saved = await onSave({ name, prompt, maxCycles: parseMaxCycles(draft.maxCycles) }, savedId)
+    setSavedId(saved.id)
     setDraft(draftOf(saved))
     return saved
   }
@@ -104,70 +103,25 @@ export function AgentLibraryPanel({ agents, now, startEnabled, onSave, onRemove,
   const save = (): Promise<void> => act('save', async () => { await saveDraft() }, 'Could not save the agent')
 
   const start = (): Promise<void> => act('start', async () => {
-    const maxCycles = parseMaxCycles(draft.maxCycles)
     if (!name) {
-      await onStart({ prompt, maxCycles, agentId: null, name: null })
-      return
+      await onStart({ prompt, maxCycles: parseMaxCycles(draft.maxCycles), agentId: null, name: null })
+    } else {
+      const agent = dirty || !selected ? await saveDraft() : selected
+      await onStart({ prompt: agent.prompt, maxCycles: agent.maxCycles, agentId: agent.id, name: agent.name })
     }
-    const agent = dirty || !selected ? await saveDraft() : selected
-    await onStart({ prompt: agent.prompt, maxCycles: agent.maxCycles, agentId: agent.id, name: agent.name })
+    onDone()
   }, 'Could not start the agent')
 
   const remove = (): Promise<void> => act('delete', async () => {
     if (!selected) return
     await onRemove(selected.id)
     setConfirmDelete(false)
-    choose(agents.find((agent) => agent.id !== selected.id) ?? null)
+    onDone()
   }, 'Could not delete the agent')
 
   return (
-    <div className="agent-library-split">
-      <aside className="agent-library-rail" aria-label="Saved agents">
-        <button type="button" className="agent-library-new" data-ui="agents.new" disabled={busy !== null} onClick={() => choose(null)}>
-          <Plus size={14} aria-hidden="true" /> New agent
-        </button>
-        {agents.length === 0 ? (
-          <p className="agent-library-rail-empty">Saved agents appear here after you name a draft and Save.</p>
-        ) : (
-          <div className="agent-library-table-wrap">
-            <table className="agent-library-table">
-              <thead>
-                <tr>
-                  <th scope="col">Saved</th>
-                  <th scope="col">Use</th>
-                </tr>
-              </thead>
-              <tbody role="listbox" aria-label="Saved agents">
-                {agents.map((agent) => {
-                  const active = agent.id === selectedId
-                  return (
-                    <tr key={agent.id} data-active={active || undefined}>
-                      <td colSpan={2} className="agent-library-table-row">
-                        <button
-                          type="button"
-                          role="option"
-                          aria-selected={active}
-                          data-ui="agents.item"
-                          data-ui-key={agent.id}
-                          disabled={busy !== null}
-                          onClick={() => choose(agent)}
-                          className="agent-library-item"
-                        >
-                          <span className="agent-library-item-name">{agent.name}</span>
-                          <span className="agent-library-item-meta">
-                            {describeAgentUse(agent, now)}
-                            {agent.maxCycles !== null ? ` · ${agent.maxCycles} max` : ''}
-                          </span>
-                        </button>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </aside>
+    <div className="agent-screen">
+      <AgentScreenHeader title={selected ? selected.name : 'New agent'} onBack={() => onBack(dirty ? draft : null, savedId)} />
       <section className="agent-library-editor" aria-label="Agent editor">
         <div className="flex gap-3">
           <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs font-medium">
