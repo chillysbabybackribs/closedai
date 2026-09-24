@@ -332,8 +332,9 @@ textarea {
 
 /* Raw shell controls inherit their surrounding chrome. shadcn controls carry a
    data-slot and must keep their semantic text utility (for example, dark ink on
-   a light primary button) instead of being overridden here. */
-button:not([data-slot]) {
+   a light primary button) instead of being overridden here. Workspace file links
+   (.aui-md-local-file) are buttons that read as links and keep --link-ink. */
+button:not([data-slot], .aui-md-local-file) {
   color: inherit;
 }
 

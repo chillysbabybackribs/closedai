@@ -6,6 +6,7 @@
 
 .composer {
   container: composer / inline-size;
+  position: relative;
   grid-row: 3;
   min-width: 0;
   padding: 6px var(--chat-column-gutter, 16px) 10px;
@@ -21,6 +22,35 @@
   right: 0;
   left: 0;
   transform: translateY(-50%);
+}
+
+/* The latest turn's +added −removed lines, floating just above the card's top-left corner in the
+   gap the transcript's bottom padding leaves, so it takes no row of its own. The pill background
+   keeps it legible when transcript text scrolls behind it. Colours come from the diff headers. */
+.composer-diffstat {
+  position: relative;
+  max-width: calc(var(--chat-column-width) + 64px);
+  height: 0;
+  margin-inline: auto;
+}
+
+.composer-diffstat-counts {
+  position: absolute;
+  bottom: 5px;
+  left: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--background, #181818);
+  line-height: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.composer-diffstat-counts .diff-stat-add,
+.composer-diffstat-counts .diff-stat-del {
+  font-size: 12px;
 }
 
 .composer-stack {

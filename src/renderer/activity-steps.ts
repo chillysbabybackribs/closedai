@@ -1,4 +1,4 @@
-import type { ActivityPhase } from '../shared/chat.js'
+import type { ActivityPhase, ChatTranscriptItem } from '../shared/chat.js'
 import { fileName, fileToolSubject, fileToolVerb, toolPhrase, unwrapShell } from './activity-phrase.js'
 import { activityTitle, itemPhase, type ActivityItem } from './transcript-rows.js'
 
@@ -129,6 +129,20 @@ export function diffCounts(diffs: { diff: string }[]): { added: number; removed:
     }
   }
   return { added, removed }
+}
+
+/**
+ * Line changes since the user's latest message, for the stat above the composer. Only the latest
+ * turn counts: older turns page out of the mounted transcript, so a whole-chat total would shift
+ * as the user scrolled. Null when that turn edited nothing.
+ */
+export function latestTurnDiffStat(items: ChatTranscriptItem[]): { added: number; removed: number; files: number } | null {
+  let start = items.length
+  while (start > 0 && items[start - 1]!.type !== 'user') start -= 1
+  const changes = items.slice(start).flatMap((item) => item.type === 'fileChange' ? item.changes : [])
+  const { added, removed } = diffCounts(changes)
+  if (!added && !removed) return null
+  return { added, removed, files: new Set(changes.map((change) => change.path)).size }
 }
 
 /**

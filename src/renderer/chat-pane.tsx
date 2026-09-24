@@ -1,5 +1,5 @@
 import type { JSX } from 'react'
-import { memo, useRef, useState } from 'react'
+import { memo, useMemo, useRef, useState } from 'react'
 
 import {
   MessageScroller,
@@ -12,6 +12,7 @@ import { CHAT_RESUME_PROMPT } from '../shared/chat.js'
 import type { ChatAttachment } from '../shared/chat.js'
 import { ConnectionBanner, EmptyState, useProviderAvailability } from './chat-connection.js'
 import { useChatController, type ChatController } from './chat-controller.js'
+import { latestTurnDiffStat } from './activity-steps.js'
 import { chatRunning } from './chat-state.js'
 import { ChatTranscript } from './chat-transcript.js'
 import { Composer } from './composer.js'
@@ -56,6 +57,7 @@ export const ChatPane = memo(function ChatPane({
   const running = chatRunning(state)
   const agentRun = useAgentRun(chat.selectedPaneId)
   const hasMessages = state.items.length > 0
+  const turnChanges = useMemo(() => latestTurnDiffStat(state.items), [state.items])
   // 'starting' is the step on the way to ready, not a failure. Treating it as one made every new
   // chat flash the connection guidance and drop the composer to the bottom for the frames before
   // the pane's provider came up, so only a settled failure replaces the centered empty layout.
@@ -178,6 +180,7 @@ export const ChatPane = memo(function ChatPane({
           onClearProject={() => window.closedai.chat.clearProject(chat.selectedPaneId)}
           onCompactConversation={manualCompact ? compactConversation : undefined}
           compactConversationEnabled={canCompact}
+          changes={turnChanges}
         />
       </div>
     </aside>
