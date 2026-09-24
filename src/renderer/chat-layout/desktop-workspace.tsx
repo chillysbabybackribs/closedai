@@ -18,6 +18,7 @@ import type { CanvasSize, LayoutPreset } from './layout-presets.js'
 import type { ChatReviewQueue } from '../chat-history/review-queue.js'
 import type { ViewHints } from './pane-add-menu.js'
 import { WorkspaceChat } from './workspace-chat.js'
+import { WorkspacePaneActionsContext, type WorkspacePaneActions } from './workspace-pane-actions.js'
 import { WorkspaceViewContext, WorkspaceViewHost, type WorkspaceViewContextValue } from './workspace-view-host.js'
 import { chatLayoutRevision } from './layout-revision.js'
 
@@ -95,14 +96,12 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
   ), [browser, browserDragHandle, layout.browserVisible, savedSites])
   const continueChatRef = useRef<(id: string) => Promise<void>>(async () => {})
   const startAgentRef = useRef<(id: string, options: AgentRunStartOptions) => Promise<void>>(async () => {})
-  startAgentRef.current = async (sourceId, options) => {
-    // The run docks into the source chat's tile, even when that chat sits behind a view or sibling tab.
-    const target = tabOwner(layout.tree, sourceId) ?? sourceId
-    // Main drives the run from here on: the prompt is cycle 1, and every finished turn sends the
-    // next cycle until the strip's Pause or Stop. A failed first send keeps the docked pane so
-    // the builder can report why and try again.
+  startAgentRef.current = async (launchPaneId, options) => {
+    // Dock beside the launching chat's tile; inherit its model and folder for the new run chat.
+    const target = tabOwner(layout.tree, launchPaneId) ?? launchPaneId
     let startError: unknown = null
     await layout.dock(null, target, null, false, async () => {
+      await window.closedai.chat.selectPane(launchPaneId)
       const agentPaneId = await window.closedai.chat.newPeer()
       try {
         await window.closedai.agentRuns.start(agentPaneId, options)
@@ -183,6 +182,15 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
     openSite: openSavedSite
   }), [savedSites.update, savedSites.remove, openSavedSite])
   const reportSavedSitesError = useCallback((reason: unknown) => { onSavedSitesError?.(reason) }, [onSavedSitesError])
+  const toggleBrowserPane = useCallback(() => {
+    layout.toggleBrowser()
+    setBrowserRevealVersion((value) => value + 1)
+  }, [layout.toggleBrowser])
+  const paneActions = useMemo<WorkspacePaneActions>(() => ({
+    toggleBrowser: toggleBrowserPane,
+    openAgentsView: (anchorPaneId) => layout.openView('agents', anchorPaneId),
+    startAgentFromPane: (paneId, options) => startAgentRef.current(paneId, options)
+  }), [toggleBrowserPane, layout.openView])
   const viewContext = useMemo<WorkspaceViewContextValue>(() => ({
     tree: layout.tree, views: layout.views, selectedPaneId: chat.selectedPaneId, chats: chat.chats, title: chatTitle,
     listChats: chat.listChats, archiveChat: archiveChat ?? chat.archiveChat, activateChat: layout.activateTab,
@@ -193,6 +201,7 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
   return <div className="chat-desktop-workspace">
     {layout.error && <div className="chat-layout-error" role="alert">{layout.error}</div>}
     <ChatLayoutActions.Provider value={actions}>
+    <WorkspacePaneActionsContext.Provider value={paneActions}>
     <WorkspaceViewContext.Provider value={viewContext}>
     <ChatCanvas tree={layout.tree} selectedId={chat.selectedPaneId} busy={layout.busy}
         notice={layout.notice} toolsPreset={toolsPreset}
@@ -211,6 +220,7 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
       renderBrowser={renderBrowser}
     />
     </WorkspaceViewContext.Provider>
+    </WorkspacePaneActionsContext.Provider>
     </ChatLayoutActions.Provider>
     <LayoutPresetsDialog open={presetsOpen} size={canvasSize.current} tileCount={paneIds(layout.tree).length}
       onClose={() => setPresetsOpen(false)}

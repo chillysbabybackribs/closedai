@@ -92,6 +92,7 @@ export class ChatService extends EventEmitter {
   private stopping = false
   private readonly sessionGuideState: SessionGuideDeliveryState = { lastDeliveredThreadKey: null }
   private promptSuggestion: string | null = null
+  private suggestionGeneration = 0
 
   constructor(
     readonly cwd: string,
@@ -499,8 +500,8 @@ export class ChatService extends EventEmitter {
       const turn = params?.turn
       if (turn?.status === 'completed' && (!params?.threadId || params.threadId === this.threadId)) {
         const answer = this.transcript.snapshot()
-          .filter((item) => item.type === 'assistant' && item.turnId === turn.id && item.phase === 'final_answer')
-          .map((item) => item.text).join('\n').trim()
+          .flatMap((item) => item.type === 'assistant' && item.turnId === turn.id && item.phase === 'final_answer' ? [item.text] : [])
+          .join('\n').trim()
         void this.updatePromptSuggestion(turn.id ?? '', answer)
       }
     }
@@ -533,6 +534,7 @@ export class ChatService extends EventEmitter {
     if (this.activeTurnId === turnId) return
     this.activeTurnId = turnId
     if (turnId) {
+      this.suggestionGeneration += 1
       this.setPromptSuggestion(null)
       this.setPaused(null)
       this.contextManager().turnStarted()
@@ -546,14 +548,17 @@ export class ChatService extends EventEmitter {
 
   private async updatePromptSuggestion(turnId: string, answer: string): Promise<void> {
     if (!turnId || !answer) return
+    const generation = ++this.suggestionGeneration
+    const threadId = this.threadId
     const suggestion = await generatePromptSuggestion('codex', this.modelState.selectedModel, answer)
-    if (this.activeTurnId || !suggestion || this.threadId === null) return
+    if (this.activeTurnId || generation !== this.suggestionGeneration || !suggestion || this.threadId !== threadId) return
     this.setPromptSuggestion(suggestion)
   }
 
   private setPromptSuggestion(suggestion: string | null): void {
     if (this.promptSuggestion === suggestion) return
     this.promptSuggestion = suggestion
+    if (suggestion === null) this.suggestionGeneration += 1
     this.emitEvent({ type: 'promptSuggestion', suggestion })
   }
 

@@ -7,6 +7,7 @@ import { PromptInput, PromptInputAction, PromptInputTextarea } from '../componen
 import type { ChatAttachment, ChatContextUsage, ChatModel, ChatPlanUsage, ChatProvider } from '../shared/chat.js'
 import { CHAT_PROVIDER_LABELS } from '../shared/chat-providers.js'
 import { AttachmentChips, AttachmentPicker, attachmentsFromFiles } from './composer-attachments.js'
+import { ComposerAccessPills } from './composer-access-pills.js'
 import { ComposerFolderMenu } from './composer-folder-menu.js'
 import { ComposerSetupMenu, type ComposerSetupHandle } from './composer-setup-menu.js'
 import { useComposerDraft } from './composer-drafts.js'
@@ -309,6 +310,14 @@ export function Composer({
           </div>
         </div>
       </div>
+      {paneId && (
+        <ComposerAccessPills
+          paneId={paneId}
+          startEnabled={enabled}
+          runningTurn={running || sending}
+          onComposerError={setComposerError}
+        />
+      )}
       {composerError && <div className="prompt-attachment-error" role="alert">{composerError}</div>}
     </form>
   )

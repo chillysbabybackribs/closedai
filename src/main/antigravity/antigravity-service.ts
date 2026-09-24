@@ -93,6 +93,7 @@ export class AntigravityChatService extends EventEmitter {
   private startPromise: Promise<void> | null = null
   private readonly sessionGuideState: SessionGuideDeliveryState = { lastDeliveredThreadKey: null }
   private promptSuggestion: string | null = null
+  private suggestionGeneration = 0
 
   constructor(
     readonly cwd: string,
@@ -465,8 +466,8 @@ export class AntigravityChatService extends EventEmitter {
     this.persistTurn()
     if (end.status === 'completed') {
       const answer = this.transcript.snapshot()
-        .filter((item) => item.type === 'assistant' && item.turnId === turnId)
-        .map((item) => item.text).join('\n').trim()
+        .flatMap((item) => item.type === 'assistant' && item.turnId === turnId ? [item.text] : [])
+        .join('\n').trim()
       void this.updatePromptSuggestion(answer)
     }
   }
@@ -519,10 +520,30 @@ export class AntigravityChatService extends EventEmitter {
   private setTurn(turnId: string | null): void {
     if (this.activeTurnId === turnId) return
     this.activeTurnId = turnId
-    if (turnId) this.setPaused(null)
+    if (turnId) {
+      this.setPaused(null)
+      this.suggestionGeneration += 1
+      this.setPromptSuggestion(null)
+    }
     this.bindBridge()
     this.emitEvent({ type: 'turn', turnId })
     if (turnId === null) void this.refreshPlanUsage()
+  }
+
+  private async updatePromptSuggestion(answer: string): Promise<void> {
+    if (!answer) return
+    const generation = ++this.suggestionGeneration
+    const conversationId = this.session?.conversationId
+    const model = antigravityWireModel(this.modelState.models, this.modelState.selectedModel, this.modelState.selectedReasoningEffort)
+    const suggestion = await generatePromptSuggestion('antigravity', model, answer)
+    if (this.activeTurnId || generation !== this.suggestionGeneration || this.session?.conversationId !== conversationId || !suggestion) return
+    this.setPromptSuggestion(suggestion)
+  }
+
+  private setPromptSuggestion(suggestion: string | null): void {
+    if (this.promptSuggestion === suggestion) return
+    this.promptSuggestion = suggestion
+    this.emitEvent({ type: 'promptSuggestion', suggestion })
   }
 
   private emitEvent(event: ChatEvent): void {

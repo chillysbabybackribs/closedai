@@ -76,6 +76,7 @@ export class CursorChatService extends EventEmitter {
   private readonly bridgeKey = randomUUID()
   private readonly sessionGuideState: SessionGuideDeliveryState = { lastDeliveredThreadKey: null }
   private promptSuggestion: string | null = null
+  private suggestionGeneration = 0
 
   constructor(
     readonly cwd: string,
@@ -506,8 +507,8 @@ export class CursorChatService extends EventEmitter {
     })
     if (end.status === 'completed') {
       const answer = this.transcript.snapshot()
-        .filter((item) => item.type === 'assistant' && item.turnId === turnId)
-        .map((item) => item.text).join('\n').trim()
+        .flatMap((item) => item.type === 'assistant' && item.turnId === turnId ? [item.text] : [])
+        .join('\n').trim()
       void this.updatePromptSuggestion(answer)
     }
   }
@@ -539,6 +540,7 @@ export class CursorChatService extends EventEmitter {
     this.activeTurnId = turnId
     if (turnId) {
       this.setPaused(null)
+      this.suggestionGeneration += 1
       this.setPromptSuggestion(null)
     }
     this.bindBridge()
@@ -547,15 +549,17 @@ export class CursorChatService extends EventEmitter {
 
   private async updatePromptSuggestion(answer: string): Promise<void> {
     if (!answer) return
+    const generation = ++this.suggestionGeneration
     const sessionId = this.session?.sessionId
     const suggestion = await generatePromptSuggestion('cursor', this.modelState.selectedModel, answer)
-    if (this.activeTurnId || this.session?.sessionId !== sessionId || !suggestion) return
+    if (this.activeTurnId || generation !== this.suggestionGeneration || this.session?.sessionId !== sessionId || !suggestion) return
     this.setPromptSuggestion(suggestion)
   }
 
   private setPromptSuggestion(suggestion: string | null): void {
     if (this.promptSuggestion === suggestion) return
     this.promptSuggestion = suggestion
+    if (suggestion === null) this.suggestionGeneration += 1
     this.emitEvent({ type: 'promptSuggestion', suggestion })
   }
 

@@ -107,6 +107,10 @@ export const UI_CONTROLS = {
   'composer.attachment-preview': 'Open an attached image in a browser-pane image tab; item is the attachment id',
   'composer.stop': 'Pause the running turn via button or Escape key (present only while running)',
   'composer.resume': 'Resume the turn the pause button ended (present only while a turn is paused)',
+  'composer.browser': 'Show or hide the embedded browser pane from the composer pills under the message card',
+  'composer.agents': 'Open the saved-agent menu to start a run beside this chat or open Manage agents',
+  'composer.agents-start': 'Start a saved agent in a new chat docked beside this pane; item is the saved agent id',
+  'composer.agents-manage': 'Open or focus the workspace Agents view tab (Library, Build, Runs)',
 
   'browser.tab': 'Select a browser tab; item is the tab id',
   'browser.notice-dismiss': 'Dismiss the browser chrome notice reporting a rejected tab or navigation command',

@@ -415,8 +415,11 @@ footer bar beneath it with attach (`composer.upload`) on the left, the model set
 (`composer.setup`) naming the model (with a chevron), and the folder trigger (`composer.folder`)
 on the right naming the working folder. Model and folder controls share the same neutral color,
 with rounded hover surfaces inside a softly outlined composer. The model trigger fits its label
-and chevron, leaving the space before the folder outside its hover and click area. The footer has no Agent button.
-Agent → Agents… or the tile + menu opens the **Agents** view tab (`view.agents`,
+and chevron, leaving the space before the folder outside its hover and click area. Under the card, **Browser** (`composer.browser`) and **Agents** (`composer.agents`) pills appear in
+every chat: Browser toggles the embedded pane; Agents lists saved agents to **Start**
+(`composer.agents-start`, docking a new run beside **this** chat's tile with this chat's model and
+folder) and **Manage agents…** (`composer.agents-manage`) to open the workspace Agents tab. The
+pill shows how many runs are live workspace-wide. Agent → Agents… or the tile + menu still opens the **Agents** view tab (`view.agents`,
 `src/renderer/agent-library/`), which shows no scope chip and stacks three screens under a one-line
 header. The **Library** opens first: a grid of saved-agent cards (`agents.card`; live runs first,
 then most recently used, then never-run by name), each with the name, the first two lines of its
@@ -682,9 +685,14 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   (Escape also acts as a hotkey to pause the running task), and Resume (`composer.resume`) after a
   pause. An empty composer shows the muted placeholder “Message <Provider>”, “Resume, or send
   something new” after a pause, and nothing while a turn runs so the pause button carries that
-  affordance. Claude chats can show a muted next-prompt suggestion when Claude Code supplies one;
-  Tab or Right Arrow accepts it into the draft, Escape dismisses it, and typing hides it until the
-  draft is empty again. These suggestions are transient and clear when the next turn starts. Typed drafts naturally hide the placeholder;
+  affordance. Any provider chat can show a muted next-prompt suggestion. Claude Code supplies its
+  native suggestion; Codex, Cursor, and Antigravity make a separate, read-only follow-up request
+  through that provider using the selected model. The request receives only the latest assistant
+  answer, stays out of the ClosedAI transcript, and is discarded if another turn starts first.
+  Codex runs the request ephemerally; Cursor and Antigravity may record their short-lived request
+  in their own provider history. Tab or Right Arrow accepts the suggestion into the draft, Escape
+  dismisses it, and typing hides it until the draft is empty again. Suggestions are transient and
+  clear when the next turn starts. Typed drafts naturally hide the placeholder;
   connection/unavailable messages retain precedence while idle. The textarea label, the disabled
   placeholder, and the pause/resume tooltips name the pane's provider. Before the first snapshot
   the workspace area shows “Starting ClosedAI…”, or “Could not start” with the reason and Retry
