@@ -224,6 +224,10 @@
   color: var(--foreground);
 }
 
+.agent-run-brief-line[data-kind='error'] {
+  color: var(--destructive);
+}
+
 .agent-run-brief-line[data-kind='reply'] {
   display: -webkit-box;
   overflow: hidden;
