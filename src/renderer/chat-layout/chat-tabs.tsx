@@ -3,8 +3,10 @@ import { CircleAlert, LoaderCircle, Pause, X } from 'lucide-react'
 import type { ChatReviewQueue } from '../chat-history/review-queue.js'
 import type { TabActivity } from './tab-activity.js'
 import { tabCloseHint } from './layout-copy.js'
-import { CHAT_DRAG_TYPE } from './layout-tree.js'
+import { CHAT_DRAG_TYPE, isViewTabId } from './layout-tree.js'
 import { CHAT_TAB_DRAG_TYPE } from './layout-tabs.js'
+import { viewKindOf, type ViewKind } from './layout-views.js'
+import { VIEW_ICONS } from './pane-add-menu.js'
 import { usePaneTabActivity } from './chat-pane-tab-activity.js'
 
 export function ChatTabs({ ids, activeId, busy, canClose, title, activity, reviewQueue, onSelect, onClose, onDrag }: {
@@ -42,12 +44,17 @@ export function ChatTabs({ ids, activeId, busy, canClose, title, activity, revie
       if (event.deltaX || !event.deltaY || strip.scrollWidth <= strip.clientWidth) return
       strip.scrollLeft += event.deltaY
     }}>
-    {ids.map((id, index) => reviewQueue
+    {ids.map((id, index) => reviewQueue && !isViewTabId(id)
       ? <ChatTabRowLive key={id} id={id} index={index} ids={ids} activeId={activeId} busy={busy} canClose={canClose}
           title={title} reviewQueue={reviewQueue} list={list} onSelect={onSelect} onClose={onClose} onDrag={onDrag} />
       : <ChatTabRow key={id} id={id} index={index} ids={ids} activeId={activeId} busy={busy} canClose={canClose}
           title={title} activity={activity} list={list} onSelect={onSelect} onClose={onClose} onDrag={onDrag} />)}
   </div>
+}
+
+/** A view tab shows its kind where a chat tab shows status: never a spinner, never unread. */
+function ViewTabGlyph({ kind }: { kind: ViewKind }) {
+  return <span className="chat-tab-indicator" aria-hidden="true">{VIEW_ICONS[kind]({ size: 13 })}</span>
 }
 
 function TabStatusIndicator({ status }: { status: TabActivity | undefined }) {
@@ -66,7 +73,7 @@ function ChatTabRowLive(props: Omit<ChatTabRowProps, 'activity'> & { reviewQueue
 }
 
 function ChatTabRow(props: ChatTabRowProps) {
-  const status = props.activity?.(props.id)
+  const status = isViewTabId(props.id) ? undefined : props.activity?.(props.id)
   return <ChatTabRowBody {...props} status={status} />
 }
 
@@ -88,8 +95,9 @@ type ChatTabRowProps = {
 function ChatTabRowBody({ id, index, ids, activeId, busy, canClose, title, status, list, onSelect, onClose, onDrag }: ChatTabRowProps & {
   status: TabActivity | undefined
 }) {
-  const closeHint = tabCloseHint(status?.state)
-  return <div className="chat-layout-tab" data-active={id === activeId} data-status={status?.state} role="presentation">
+  const viewKind = viewKindOf(id)
+  const closeHint = viewKind ? 'Chats stay open' : tabCloseHint(status?.state)
+  return <div className="chat-layout-tab" data-active={id === activeId} data-status={status?.state} data-kind={viewKind ?? undefined} role="presentation">
     <button type="button" role="tab" data-ui="layout.tab" data-ui-key={id}
       id={`chat-tab-${id}`} aria-controls={`chat-panel-${id}`} aria-selected={id === activeId}
       tabIndex={id === activeId ? 0 : -1} disabled={busy} draggable={!busy}
@@ -117,11 +125,11 @@ function ChatTabRowBody({ id, index, ids, activeId, busy, canClose, title, statu
         list.current?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus()
         onSelect(ids[next]!)
       }}>
-      <TabStatusIndicator status={status} />
+      {viewKind ? <ViewTabGlyph kind={viewKind} /> : <TabStatusIndicator status={status} />}
       <span>{title(id)}</span></button>
     {canClose && <button type="button" className="chat-layout-tab-close" data-ui="layout.tab-close" data-ui-key={id}
       tabIndex={id === activeId ? 0 : -1}
-      disabled={busy} aria-label={`Close tab: ${title(id)} · ${closeHint}`} title={`Close tab · ${closeHint}`}
+      disabled={busy} aria-label={`Close ${viewKind ? 'view' : 'tab'}: ${title(id)} · ${closeHint}`} title={`Close ${viewKind ? 'view' : 'tab'} · ${closeHint}`}
       onClick={() => onClose(id)}><X size={11} aria-hidden="true" /></button>}
   </div>
 }

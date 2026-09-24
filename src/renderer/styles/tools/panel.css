@@ -1,7 +1,7 @@
-/* Tools & capabilities (renderer/tools/): dialog frame, rail + pane, and ledger rows. Row detail
+/* Tools & capabilities (renderer/tools/, shown in a Tools view tab): frame, rail + pane, and ledger rows. Row detail
    uses a few Tailwind utilities in tool-row.tsx; switches stay on the shared Switch primitive. */
 
-.tools-modal {
+.tools-panel {
   display: flex;
   flex-direction: column;
   width: min(880px, 94vw);
@@ -11,13 +11,13 @@
   overflow: hidden;
 }
 
-.tools-modal-head {
+.tools-panel-head {
   display: flex;
   align-items: baseline;
   gap: 16px;
 }
 
-.tools-modal-spend {
+.tools-panel-spend {
   margin-left: auto;
   display: flex;
   align-items: baseline;
@@ -25,17 +25,17 @@
   font-variant-numeric: tabular-nums;
 }
 
-.tools-modal-spend b {
+.tools-panel-spend b {
   font-size: 15px;
   font-weight: 600;
 }
 
-.tools-modal-spend span {
+.tools-panel-spend span {
   font-size: 11.5px;
   color: var(--muted-foreground);
 }
 
-.tools-modal-split {
+.tools-panel-split {
   display: grid;
   grid-template-columns: 216px minmax(0, 1fr);
   min-height: 0;

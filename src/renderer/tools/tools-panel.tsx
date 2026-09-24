@@ -2,7 +2,6 @@ import type { JSX } from 'react'
 import { useEffect, useMemo, useState } from 'react'
 
 import { Button } from '../../components/ui/button.js'
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../../components/ui/dialog.js'
 import { Switch } from '../../components/ui/switch.js'
 import { cn } from '../../lib/utils.js'
 import type { ToolEffect } from '../../shared/tools.js'
@@ -22,10 +21,10 @@ import {
   type ToolPreset
 } from './tools-model.js'
 
-export type ToolsModalProps = {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  /** Hands the selected chat a repair request for a tool; the pane owns its composer. */
+export type ToolsPanelProps = {
+  /** The view tab is in front; a hidden panel stops refreshing. */
+  active: boolean
+  /** Hands the scoped chat a repair request for a tool; the pane owns its composer. */
   onSendToChat: (text: string) => void
 }
 
@@ -57,10 +56,11 @@ function failingOn(group: ToolGroupModel): number {
 }
 
 /**
- * Agent → Tools & capabilities. A rail picks the effect group; the pane lists its tools as rows
- * with inline overviews. The header carries the one number the switches change: tokens per turn.
+ * Agent → Tools & capabilities, shown in a Tools view tab. A rail picks the effect group; the pane
+ * lists its tools as rows with inline overviews. The header carries the one number the switches
+ * change: tokens per turn.
  */
-export function ToolsModal({ open, onOpenChange, onSendToChat }: ToolsModalProps): JSX.Element {
+export function ToolsPanel({ active: open, onSendToChat }: ToolsPanelProps): JSX.Element {
   const tools = useToolsController(open)
   const [openId, setOpenId] = useState<string | null>(null)
   const [groupId, setGroupId] = useState<ToolEffect>('reads-web')
@@ -90,17 +90,16 @@ export function ToolsModal({ open, onOpenChange, onSendToChat }: ToolsModalProps
   }, [open])
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="tools-modal" aria-describedby="tools-modal-description" data-ui="dialog.tools">
-        <header className="tools-modal-head shrink-0 border-b px-6 py-3.5 pr-14">
+      <div className="tools-panel">
+        <header className="tools-panel-head shrink-0 border-b px-6 py-3.5">
           <div className="min-w-0">
-            <DialogTitle className="text-base font-semibold">Tools &amp; capabilities</DialogTitle>
-            <DialogDescription id="tools-modal-description" className="mt-0.5 text-[13px] text-muted-foreground">
+            <h2 className="text-base font-semibold">Tools &amp; capabilities</h2>
+            <p className="mt-0.5 text-[13px] text-muted-foreground">
               {tools.manifest ? `${on} of ${total} on` : 'Loading…'}
-            </DialogDescription>
+            </p>
           </div>
           {tools.manifest ? (
-            <p className="tools-modal-spend" aria-label={`About ${formatTokens(tools.manifest.advertisedTokens)} tokens of every turn`}>
+            <p className="tools-panel-spend" aria-label={`About ${formatTokens(tools.manifest.advertisedTokens)} tokens of every turn`}>
               <b>{formatTokens(tools.manifest.advertisedTokens)}</b>
               <span>tokens / turn</span>
             </p>
@@ -123,7 +122,7 @@ export function ToolsModal({ open, onOpenChange, onSendToChat }: ToolsModalProps
           </div>
         ) : null}
 
-        <div className="tools-modal-split min-h-0 flex-1">
+        <div className="tools-panel-split min-h-0 flex-1">
           <nav className="tools-rail" aria-label="Effect groups">
             <div className="tools-rail-list" role="tablist">
               {groups.map((group) => {
@@ -226,7 +225,6 @@ export function ToolsModal({ open, onOpenChange, onSendToChat }: ToolsModalProps
             Reset counts
           </button>
         </footer>
-      </DialogContent>
-    </Dialog>
+      </div>
   )
 }

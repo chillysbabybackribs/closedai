@@ -17,7 +17,10 @@ export type ChatHistoryProps = {
   chats?: ChatRowSummary[]
   openChat: (chatId: string) => Promise<void>
   archiveChat: (chatId: string) => Promise<void>
+  /** Escape in the search field. */
   onClose: () => void
+  /** After a chat opens; defaults to `onClose`. A History view stays open behind the chosen chat. */
+  onOpened?: () => void
 }
 
 type LoadState =
@@ -25,8 +28,8 @@ type LoadState =
   | { status: 'ready'; threads: ChatRowSummary[] }
   | { status: 'error'; message: string }
 
-/** In-pane list of past chats for this workspace. Replaces the transcript while open. */
-export function ChatHistory({ activeChatId, busy, listChats, chats, openChat, archiveChat, onClose }: ChatHistoryProps): JSX.Element {
+/** List of past chats for this workspace, shown in a History view tab. */
+export function ChatHistory({ activeChatId, busy, listChats, chats, openChat, archiveChat, onClose, onOpened }: ChatHistoryProps): JSX.Element {
   const [load, setLoad] = useState<LoadState>({ status: 'loading' })
   const [query, setQuery] = useState('')
   const [pendingId, setPendingId] = useState<string | null>(null)
@@ -61,7 +64,7 @@ export function ChatHistory({ activeChatId, busy, listChats, chats, openChat, ar
     setActionError(null)
     try {
       await openChat(chatId)
-      onClose()
+      ;(onOpened ?? onClose)()
     } catch (error) {
       // The transcript is hidden behind this panel, so the reason has to show here.
       setActionError(`Could not open that chat: ${errorMessage(error)}`)

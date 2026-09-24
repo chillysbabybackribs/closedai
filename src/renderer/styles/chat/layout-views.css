@@ -1,0 +1,86 @@
+/* Workspace views (chat-layout/workspace-view.tsx, pane-add-menu.tsx): view tabs in the tile
+   strip, the + menu, and the view body chrome. A view tab shows a kind glyph where a chat tab
+   shows status; it never spins and is never unread. */
+
+.chat-layout-tab[data-kind] > [role='tab'] .chat-tab-indicator { color: inherit; opacity: 0.8; }
+.chat-layout-tab[data-kind] > [role='tab'] .chat-tab-indicator svg { width: 13px; height: 13px; }
+
+.chat-layout-add-menu { min-width: 216px; }
+.chat-layout-add-menu-heading { padding: 6px 8px 2px; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; }
+.chat-layout-add-menu-item { align-items: center; padding-block: 6px; }
+.chat-layout-add-menu-item .chat-layout-menu-item-left { flex: 1; min-width: 0; }
+.chat-layout-add-menu-meta {
+  margin-left: auto;
+  padding-left: 12px;
+  color: var(--chrome-control-quiet);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.titlebar-menu-item[data-highlighted] .chat-layout-add-menu-meta { color: color-mix(in srgb, currentColor 72%, transparent); }
+
+/* Body: toolbar then the panel, both inside the tile card. */
+.workspace-view {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  background: var(--surface-card);
+  color: var(--foreground);
+}
+.workspace-view-bar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--hairline);
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.workspace-view-body { display: flex; flex: 1; min-height: 0; min-width: 0; flex-direction: column; }
+.workspace-view-body > * { flex: 1; min-height: 0; }
+
+/* The scope chip is the only place scope is set or seen: dashed while following, solid when pinned. */
+.workspace-view-scope {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  max-width: 100%;
+  padding: 0 8px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--foreground);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.workspace-view-scope[data-mode='following'] { border-style: dashed; color: var(--muted-foreground); }
+.workspace-view-scope:hover { background: var(--surface-highlight); color: var(--foreground); }
+.workspace-view-scope:focus-visible { outline: 1px solid var(--focus-ink); outline-offset: 1px; }
+.workspace-view-scope-chat { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.workspace-view-scope-sep { opacity: 0.6; }
+.workspace-view-scope-check { display: inline-flex; width: 14px; justify-content: center; flex-shrink: 0; }
+.workspace-view-scope-option { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 260px; }
+
+/* Panels that were dialog contents fill the view instead of sizing to the viewport. */
+.workspace-view .trace-panel,
+.workspace-view .tools-panel,
+.workspace-view .agent-library-view {
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  flex: 1;
+  min-height: 0;
+}
+.workspace-view .trace-panel-header { padding-right: 20px; }
+.workspace-view .chat-history { flex: 1; }
+/* A narrow tile stacks the tools rail above the tool rows. */
+@container chat-tile (max-width: 640px) {
+  .workspace-view .tools-panel-split { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  .workspace-view .tools-rail { border-right: 0; border-bottom: 1px solid var(--border); }
+}

@@ -11,6 +11,7 @@
 @import "./styles/titlebar.css";
 @import "./styles/titlebar-menu.css";
 @import "./styles/chat/layout.css";
+@import "./styles/chat/layout-views.css";
 @import "./styles/chat/layout-presets.css";
 @import "./styles/browser.css";
 @import "./styles/browser-downloads.css";
@@ -33,8 +34,8 @@
 @import "./styles/chat/attachments.css";
 @import "./styles/chat/screenshots.css";
 @import "./styles/chat-history.css";
-@import "./styles/tools/modal.css";
-@import "./styles/trace/modal.css";
+@import "./styles/tools/panel.css";
+@import "./styles/trace/panel.css";
 @import "./styles/settings/dialog.css";
 @import "./styles/settings/appearance.css";
 @import "./styles/settings/credentials.css";

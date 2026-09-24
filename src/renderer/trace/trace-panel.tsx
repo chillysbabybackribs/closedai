@@ -2,15 +2,14 @@ import type { JSX } from 'react'
 import { RefreshCw, Trash2 } from 'lucide-react'
 
 import { Button } from '../../components/ui/button.js'
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../../components/ui/dialog.js'
 import type { TraceKind } from '../../shared/trace.js'
 import { TRACE_KINDS, useTraceController, type TraceTurnGroup } from './trace-controller.js'
 import { TracePerformanceSummary } from './trace-performance-summary.js'
 import { duration, TraceRow } from './trace-row.js'
 
-export type TraceModalProps = {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+export type TracePanelProps = {
+  /** The view tab is in front; a hidden panel stops polling. */
+  active: boolean
   /** The pane whose turns the panel shows unless every pane is requested. */
   paneId: string
 }
@@ -25,23 +24,23 @@ const KIND_LABELS: Record<TraceKind, string> = {
 
 /**
  * The live turn trace: everything the main process saw the model do on this pane, newest turn
- * first, each entry expandable to its full payload. In memory only; gone at restart.
+ * first, each entry expandable to its full payload. In memory only; gone at restart. Lives in a
+ * Trace view tab (chat-layout/workspace-view.tsx), which owns the scope chip above it.
  */
-export function TraceModal({ open, onOpenChange, paneId }: TraceModalProps): JSX.Element {
-  const trace = useTraceController(open, paneId)
+export function TracePanel({ active, paneId }: TracePanelProps): JSX.Element {
+  const trace = useTraceController(active, paneId)
   const shown = trace.groups.reduce((count, group) => count + group.entries.length, 0)
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="trace-modal" aria-describedby="trace-modal-description" data-ui="dialog.trace">
-        <header className="trace-modal-header">
+      <div className="trace-panel">
+        <header className="trace-panel-header">
           <div>
-            <DialogTitle>Turn trace</DialogTitle>
-            <DialogDescription id="trace-modal-description">
+            <h2 className="trace-panel-title">Turn trace</h2>
+            <p className="trace-panel-description">
               {`${shown} of ${trace.total} entries shown${trace.dropped > 0 ? ` · ${trace.dropped} oldest evicted` : ''}${trace.loadedFull ? '' : ' · Refresh loads full history'} · in memory only, cleared at restart`}
-            </DialogDescription>
+            </p>
           </div>
-          <div className="trace-modal-header-actions">
+          <div className="trace-panel-header-actions">
             <Button type="button" variant="ghost" size="sm" data-ui="trace.refresh" onClick={() => void trace.refresh({ full: true })}>
               <RefreshCw aria-hidden="true" /> Refresh
             </Button>
@@ -51,36 +50,35 @@ export function TraceModal({ open, onOpenChange, paneId }: TraceModalProps): JSX
           </div>
         </header>
 
-        <div className="trace-modal-filters" role="group" aria-label="Trace filters">
+        <div className="trace-panel-filters" role="group" aria-label="Trace filters">
           {TRACE_KINDS.map((kind) => (
-            <label key={kind} className="trace-modal-filter">
+            <label key={kind} className="trace-panel-filter">
               <input type="checkbox" data-ui="trace.filter" data-ui-key={kind} checked={trace.kinds.has(kind)} onChange={() => trace.toggleKind(kind)} />
               <span>{KIND_LABELS[kind]}</span>
             </label>
           ))}
-          <span className="trace-modal-filter-spacer" />
-          <label className="trace-modal-filter">
+          <span className="trace-panel-filter-spacer" />
+          <label className="trace-panel-filter">
             <input type="checkbox" data-ui="trace.filter" data-ui-key="all-panes" checked={trace.allPanes} onChange={(event) => trace.setAllPanes(event.target.checked)} />
             <span>All chats</span>
           </label>
         </div>
 
-        {trace.error && <p className="trace-modal-error" role="alert">{trace.error}</p>}
+        {trace.error && <p className="trace-panel-error" role="alert">{trace.error}</p>}
 
-        <div className="trace-modal-list">
+        <div className="trace-panel-list">
           {trace.groups.map((group) => <TraceTurn key={`${group.turnId ?? 'between'}-${group.entries[0]!.seq}`} group={group} />)}
           {trace.loaded && trace.groups.length === 0 && (
-            <p className="trace-modal-empty">
+            <p className="trace-panel-empty">
               {trace.total === 0 ? 'Nothing traced yet. Send a message and the turn appears here as it runs.' : 'Nothing matches the current filters.'}
             </p>
           )}
         </div>
 
-        <footer className="trace-modal-footer">
+        <footer className="trace-panel-footer">
           Tool calls carry full arguments and results. Raw lines are the exact JSON exchanged with the provider process, with each entry capped at 48 KB.
         </footer>
-      </DialogContent>
-    </Dialog>
+      </div>
   )
 }
 

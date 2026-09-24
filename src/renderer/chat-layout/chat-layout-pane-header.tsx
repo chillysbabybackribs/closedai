@@ -1,16 +1,18 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import { ContextMenu } from 'radix-ui'
-import { Plus, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import type { ChatReviewQueue } from '../chat-history/review-queue.js'
 import { ChatLayoutContextMenu } from './layout-context-menu.js'
 import { ChatLayoutPaneHints } from './chat-layout-pane-hints.js'
 import { ChatTabs } from './chat-tabs.js'
-import { CHAT_DRAG_TYPE } from './layout-tree.js'
+import { CHAT_DRAG_TYPE, isViewTabId } from './layout-tree.js'
+import type { ViewKind } from './layout-views.js'
+import { PaneAddMenu, type ViewHints } from './pane-add-menu.js'
 import { paneHideHint, tabCloseHint } from './layout-copy.js'
 import type { TabActivity } from './tab-activity.js'
 
-function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset, title, activity, reviewQueue, row, soloTile, setSoloPaneId, tabFocus, hideHint, closeHint, tabActivity, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onTogglePin, onPauseTab, onResumeTab, onOpenPresets, onHide, setDragging, canMaximize, isThisTileSolo }: {
+function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset, title, activity, reviewQueue, row, soloTile, setSoloPaneId, tabFocus, hideHint, closeHint, tabActivity, viewHints, browserVisible, onSelect, onSelectTab, onCloseTab, onNewChat, onOpenView, onShowBrowser, onRenameChat, onTogglePin, onPauseTab, onResumeTab, onOpenPresets, onHide, setDragging, canMaximize, isThisTileSolo }: {
   activeId: string
   tabs: string[]
   chatCount: number
@@ -26,10 +28,14 @@ function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset
   hideHint: string
   closeHint: string
   tabActivity?: TabActivity
+  viewHints?: ViewHints
+  browserVisible?: boolean
   onSelect: (id: string) => void
   onSelectTab: (id: string) => void
   onCloseTab: (id: string) => void
   onNewChat: (id: string) => void
+  onOpenView?: (kind: ViewKind, tileId: string) => void
+  onShowBrowser?: () => void
   onRenameChat?: (id: string) => void
   onTogglePin?: (id: string, pinned: boolean) => void
   onPauseTab?: (id: string) => void
@@ -40,6 +46,8 @@ function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset
   canMaximize: boolean
   isThisTileSolo: boolean
 }) {
+  // A view in front has no chat actions: rename, pin, pause belong to the chat it follows, not the tab.
+  const view = isViewTabId(activeId)
   return <ContextMenu.Root>
     <ContextMenu.Trigger asChild>
       <header className="chat-layout-header"
@@ -51,7 +59,7 @@ function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset
           if (canMaximize || isThisTileSolo) setSoloPaneId((current) => current ? null : activeId)
         }}>
         <button type="button" className="chat-layout-drag" data-ui="layout.pane-drag" data-ui-key={activeId}
-          draggable={!busy} disabled={busy} aria-label="Drag to move chat pane"
+          draggable={!busy} disabled={busy} aria-label="Drag to move pane"
           title="Drag to move whole pane · Tab drags move one conversation"
           onDragStart={(event) => {
             event.dataTransfer.setData(CHAT_DRAG_TYPE, activeId)
@@ -66,14 +74,15 @@ function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset
           onDrag={(tab) => setDragging({ id: tab, singleTab: true })} />
         {toolsPreset === 'read-only' && <span className="chat-layout-preset" data-ui="layout.tools-preset"
           title="Tools are in Read-only: the model can look but not act. Change it in Agent → Tools & capabilities.">Read-only</span>}
-        <button type="button" className="chat-layout-new-chat"
-          data-ui="layout.new-chat" data-ui-key={activeId} disabled={busy}
-          title="New chat tab" aria-label="New chat tab"
-          onClick={() => onNewChat(activeId)}>
-          <Plus size={14} aria-hidden="true" />
-        </button>
+        {onOpenView
+          ? <PaneAddMenu tileId={activeId} busy={busy} hints={viewHints} browserVisible={browserVisible ?? false}
+              onNewChat={() => onNewChat(activeId)} onOpenView={(kind) => onOpenView(kind, activeId)} onShowBrowser={onShowBrowser} />
+          : <button type="button" className="chat-layout-new-chat"
+              data-ui="layout.new-chat" data-ui-key={activeId} disabled={busy}
+              title="New chat tab" aria-label="New chat tab"
+              onClick={() => onNewChat(activeId)}>+</button>}
         <button data-ui="layout.pane-hide" data-ui-key={activeId} disabled={busy || chatCount < 2}
-          title={`Hide pane · ${hideHint}`} aria-label={`Hide chat pane · ${hideHint}`} onClick={() => {
+          title={`Hide pane · ${hideHint}`} aria-label={`Hide pane · ${hideHint}`} onClick={() => {
             if (soloTile) setSoloPaneId(null)
             onHide(activeId)
           }}>
@@ -85,10 +94,10 @@ function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset
       hideHint={hideHint} closeHint={closeHint} tabActivity={tabActivity}
       pinned={row?.pinnedAt != null}
       onOpenPresets={onOpenPresets ? () => { if (soloTile) setSoloPaneId(null); onOpenPresets() } : undefined}
-      onRename={onRenameChat ? () => onRenameChat(activeId) : undefined}
-      onTogglePin={onTogglePin ? () => onTogglePin(activeId, row?.pinnedAt == null) : undefined}
-      onPause={onPauseTab ? () => onPauseTab(activeId) : undefined}
-      onResume={onResumeTab ? () => onResumeTab(activeId) : undefined}
+      onRename={onRenameChat && !view ? () => onRenameChat(activeId) : undefined}
+      onTogglePin={onTogglePin && !view ? () => onTogglePin(activeId, row?.pinnedAt == null) : undefined}
+      onPause={onPauseTab && !view ? () => onPauseTab(activeId) : undefined}
+      onResume={onResumeTab && !view ? () => onResumeTab(activeId) : undefined}
       onCloseTab={() => { if (soloTile) setSoloPaneId(null); onCloseTab(activeId) }}
       onHide={() => { if (soloTile) setSoloPaneId(null); onHide(activeId) }} />
   </ContextMenu.Root>

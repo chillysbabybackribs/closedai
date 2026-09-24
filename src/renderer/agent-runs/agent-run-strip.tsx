@@ -1,8 +1,7 @@
 import type { JSX } from 'react'
-import { useState } from 'react'
 import { Button } from '../../components/ui/button.js'
 import { describeAgentRun, type AgentRun } from '../../shared/agent-runs.js'
-import { errorMessage } from '../error-message.js'
+import { useAgentRunAction } from './use-agent-run-action.js'
 
 // The one line above the composer that tells the user their chat is an agent: what cycle it is
 // on, why it paused, and the three controls. Main owns the loop; this only asks it to change.
@@ -15,19 +14,7 @@ export type AgentRunStripProps = {
 }
 
 export function AgentRunStrip({ run, onPause, onResume, onStop }: AgentRunStripProps): JSX.Element {
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-  const act = async (action: () => Promise<unknown>): Promise<void> => {
-    setBusy(true)
-    setError('')
-    try {
-      await action()
-    } catch (failure) {
-      setError(errorMessage(failure, 'The agent did not respond'))
-    } finally {
-      setBusy(false)
-    }
-  }
+  const { busy, error, act } = useAgentRunAction()
   const running = run.status === 'running'
   const limit = run.maxCycles === null ? '' : ` of ${run.maxCycles}`
   return (

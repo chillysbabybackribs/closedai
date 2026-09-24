@@ -51,6 +51,18 @@ function sharedStore(): AgentRunsStore {
   return shared
 }
 
+const NO_RUNS: readonly AgentRun[] = []
+
+/** Every run, running or paused, in main's order; re-renders whenever any run changes. */
+export function useAgentRuns(): readonly AgentRun[] {
+  const store = typeof window === 'undefined' || !window.closedai ? null : sharedStore()
+  return useSyncExternalStore(
+    store ? store.subscribe : () => () => {},
+    () => store?.runs() ?? NO_RUNS,
+    () => NO_RUNS
+  )
+}
+
 /** The run driving this pane, or null; re-renders only when that run's record changes. */
 export function useAgentRun(chatId: string): AgentRun | null {
   const store = typeof window === 'undefined' || !window.closedai ? null : sharedStore()

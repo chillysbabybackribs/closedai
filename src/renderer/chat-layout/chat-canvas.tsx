@@ -1,7 +1,9 @@
 import { memo, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import type { ChatReviewQueue } from '../chat-history/review-queue.js'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
-import { BROWSER_PANE_ID, CHAT_DRAG_TYPE, WORKSPACE_DOCK_ID, layoutGeometry, minimumSize, paneIds, removePane, type ChatLayout, type DockEdge, type Rect } from './layout-tree.js'
+import { BROWSER_PANE_ID, CHAT_DRAG_TYPE, WORKSPACE_DOCK_ID, isViewTabId, layoutGeometry, minimumSize, paneIds, removePane, type ChatLayout, type DockEdge, type Rect } from './layout-tree.js'
+import type { ViewKind } from './layout-views.js'
+import type { ViewHints } from './pane-add-menu.js'
 import { LayoutDivider } from './layout-divider.js'
 import { CHAT_TAB_DRAG_TYPE } from './layout-tabs.js'
 import type { TabActivity } from './tab-activity.js'
@@ -28,6 +30,11 @@ type ChatCanvasProps = {
   onSelectTab: (id: string) => void
   onCloseTab: (id: string) => void
   onNewChat: (id: string) => void
+  /** Open (or focus) a view tab in a tile; absent, the + button only adds chats. */
+  onOpenView?: (kind: ViewKind, tileId: string) => void
+  /** The + menu's Browser row; reveals the shared browser. */
+  onShowBrowser?: () => void
+  viewHints?: ViewHints
   /** The tools preset; the header names it while it is Read-only. */
   toolsPreset?: 'full' | 'read-only' | 'custom' | null
   onRenameChat?: (id: string) => void
@@ -44,7 +51,7 @@ type ChatCanvasProps = {
   onResize: (id: string, ratio: number) => void
 }
 
-function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, browserVisible, browserRevealVersion, renderBrowser, onDragActive, title, activity, reviewQueue, chatRow, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onTogglePin, onContinueChat: _onContinueChat, onPauseTab, onResumeTab, onOpenPresets, onSizeChange, onDock, onHide, onResize }: ChatCanvasProps) {
+function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, browserVisible, browserRevealVersion, renderBrowser, onDragActive, title, activity, reviewQueue, chatRow, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onOpenView, onShowBrowser, viewHints, onRenameChat, onTogglePin, onContinueChat: _onContinueChat, onPauseTab, onResumeTab, onOpenPresets, onSizeChange, onDock, onHide, onResize }: ChatCanvasProps) {
   const viewport = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState({ width: 0, height: 0 })
   const [dragging, setDragging] = useState<{ id: string; singleTab: boolean } | null>(null)
@@ -187,7 +194,8 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
         const tileKey = activeId === BROWSER_PANE_ID ? BROWSER_PANE_ID : (tabs[0] ?? activeId)
         const row = chatRow?.(activeId)
         return <section key={tileKey}
-          className="chat-layout-tile" style={position(tileRect)} data-pane-id={activeId === BROWSER_PANE_ID ? undefined : activeId}
+          className="chat-layout-tile" style={position(tileRect)} data-pane-id={activeId === BROWSER_PANE_ID || isViewTabId(activeId) ? undefined : activeId}
+          data-view-id={isViewTabId(activeId) ? activeId : undefined}
           data-solo={isThisTileSolo ? 'true' : undefined}
           hidden={soloTile ? !isThisTileSolo : (activeId === BROWSER_PANE_ID && !browserVisible)}
           data-selected={activeId === selectedId || tabs.includes(selectedId)} aria-label={activeId === BROWSER_PANE_ID ? 'Browser' : title(activeId)}
@@ -230,7 +238,8 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
           {activeId !== BROWSER_PANE_ID && <ChatLayoutPaneHeader activeId={activeId} tabs={tabs} chatCount={chatCount}
             busy={busy} toolsPreset={toolsPreset ?? null} title={title} activity={activity} reviewQueue={reviewQueue}
             row={row} soloTile={soloTile ?? null} setSoloPaneId={setSoloPaneId} tabFocus={tabFocus} onSelect={onSelect}
-            onSelectTab={onSelectTab} onCloseTab={onCloseTab} onNewChat={onNewChat} onRenameChat={onRenameChat}
+            onSelectTab={onSelectTab} onCloseTab={onCloseTab} onNewChat={onNewChat} onOpenView={onOpenView}
+            onShowBrowser={onShowBrowser} viewHints={viewHints} browserVisible={browserVisible} onRenameChat={onRenameChat}
             onTogglePin={onTogglePin} onPauseTab={onPauseTab} onResumeTab={onResumeTab} onOpenPresets={onOpenPresets}
             onHide={onHide} setDragging={setDragging} canMaximize={canMaximize} isThisTileSolo={isThisTileSolo} />}
           {activeId === selectedId && <div className="chat-layout-notice" role="status" aria-atomic="true">{notice}</div>}
@@ -274,6 +283,7 @@ function chatCanvasPropsEqual(previous: ChatCanvasProps, next: ChatCanvasProps):
     && previous.onDragActive === next.onDragActive && previous.title === next.title && previous.activity === next.activity
     && previous.reviewQueue === next.reviewQueue && previous.chatRow === next.chatRow && previous.onSelect === next.onSelect
     && previous.onSelectTab === next.onSelectTab && previous.onCloseTab === next.onCloseTab && previous.onNewChat === next.onNewChat
+    && previous.onOpenView === next.onOpenView && previous.onShowBrowser === next.onShowBrowser && previous.viewHints === next.viewHints
     && previous.onRenameChat === next.onRenameChat && previous.onTogglePin === next.onTogglePin
     && previous.onPauseTab === next.onPauseTab && previous.onResumeTab === next.onResumeTab
     && previous.onOpenPresets === next.onOpenPresets && previous.onSizeChange === next.onSizeChange

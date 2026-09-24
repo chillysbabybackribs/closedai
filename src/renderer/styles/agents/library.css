@@ -1,6 +1,6 @@
-/* Agents dialog (agent-library/agent-library-dialog.tsx): the same fixed frame as the tools
-   modal; the panel lays itself out with utility classes inside it. */
-.agent-library-dialog {
+/* Agents view (agent-library/agent-library-view.tsx): the same frame as the tools panel; the
+   panel lays itself out with utility classes inside it. */
+.agent-library-view {
   display: flex;
   flex-direction: column;
   width: min(960px, 94vw);
