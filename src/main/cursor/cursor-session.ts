@@ -103,30 +103,37 @@ export class CursorSession {
   /** Start a turn: resolves when the message is accepted; the turn ends through `onTurnEnd`. */
   async send(blocks: readonly AcpPromptBlock[]): Promise<string> {
     if (this.activeTurnId) throw new Error('A Cursor turn is already running')
-    const client = await this.ensureClient()
-    const setup = await this.ensureSession(client)
     this.clearIdleTimer()
     const turnId = cursorTurnId()
     this.activeTurnId = turnId
-    this.translator = new CursorTurnTranslator({
-      turnId,
-      seed: turnId,
-      cwd: this.deps.cwd,
-      ...(this.deps.displayScreenshot ? { displayScreenshot: this.deps.displayScreenshot } : {}),
-      ...(this.deps.takeCallId ? { takeCallId: this.deps.takeCallId } : {})
-    })
+    // Announce before session load and MCP attach so the pane shows work in flight while the
+    // agent process and tool bridge come up — most of the wait on a cached-catalog warm path.
     this.deps.onTurn(turnId)
-    client.prompt(setup.sessionId, blocks)
-      .then((stopReason) => {
-        if (this.activeTurnId !== turnId) return
-        this.endTurn(cursorTurnEnd(stopReason))
-        this.scheduleIdleClose()
+    try {
+      const client = await this.ensureClient()
+      const setup = await this.ensureSession(client)
+      this.translator = new CursorTurnTranslator({
+        turnId,
+        seed: turnId,
+        cwd: this.deps.cwd,
+        ...(this.deps.displayScreenshot ? { displayScreenshot: this.deps.displayScreenshot } : {}),
+        ...(this.deps.takeCallId ? { takeCallId: this.deps.takeCallId } : {})
       })
-      .catch((error: unknown) => {
-        if (this.activeTurnId !== turnId) return
-        this.endTurn({ status: 'failed', error: error instanceof Error ? error.message : String(error) })
-      })
-    return turnId
+      client.prompt(setup.sessionId, blocks)
+        .then((stopReason) => {
+          if (this.activeTurnId !== turnId) return
+          this.endTurn(cursorTurnEnd(stopReason))
+          this.scheduleIdleClose()
+        })
+        .catch((error: unknown) => {
+          if (this.activeTurnId !== turnId) return
+          this.endTurn({ status: 'failed', error: error instanceof Error ? error.message : String(error) })
+        })
+      return turnId
+    } catch (error: unknown) {
+      this.endTurn({ status: 'failed', error: error instanceof Error ? error.message : String(error) })
+      throw error
+    }
   }
 
   /** Pause the running turn in protocol, leaving the session open for the next one. */

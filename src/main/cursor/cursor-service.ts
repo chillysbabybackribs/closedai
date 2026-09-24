@@ -176,7 +176,6 @@ export class CursorChatService extends EventEmitter {
         { images: this.supportsImages }
       )
       if (!turn) return
-      await this.bridge.start()
       if (this.session !== session || (sessionId && session.sessionId !== sessionId) || this.activeTurnId) throw new Error('Cursor conversation changed while preparing the turn')
       await session.send(turn.blocks)
       await this.clearDeliveredHandoff()
@@ -343,11 +342,19 @@ export class CursorChatService extends EventEmitter {
       // A saved-session replay also supplies the catalog. Load it first so an uncached
       // catalog does not cause an initial load whose history would be discarded.
       if (warm) await resumePersistedCursorSession(this.threadHost(), this.session)
-      if (!this.loadCachedCatalog()) {
+      const cachedCatalog = this.loadCachedCatalog()
+      if (!cachedCatalog) {
         const setup = await this.session.warm()
         if (setup.models.length === 0) throw new Error('Cursor reported no available models')
+        this.supportsImages = this.session.capabilities?.image !== false
+      } else if (warm) {
+        // A cached catalog skips the warm that would otherwise open the agent and session. Prefetch
+        // behind ready so the first send is not serial on process spawn plus MCP attach alone.
+        void this.prefetchTurnPath()
+        this.supportsImages = this.session.capabilities?.image !== false
+      } else {
+        this.supportsImages = this.session.capabilities?.image !== false
       }
-      this.supportsImages = this.session.capabilities?.image !== false
       this.setConnection({ state: 'ready', message: 'Cursor is ready' })
       void this.readAccount()
       if (!warm) await this.session.retire()
@@ -473,6 +480,18 @@ export class CursorChatService extends EventEmitter {
   private async ensureConnected(): Promise<void> {
     if (this.connection.state === 'ready' || this.connection.state === 'signed-out') return
     await this.start({ warm: true })
+  }
+
+  private prefetchTurnPath(): void {
+    void this.bridge.start().catch((error: unknown) => {
+      console.warn('[cursor] tool bridge prefetch failed:', messageOf(error))
+    })
+    void this.session?.warm().then((setup) => {
+      this.supportsImages = this.session!.capabilities?.image !== false
+      if (setup.models.length > 0) this.adoptSetup(setup)
+    }).catch((error: unknown) => {
+      console.warn('[cursor] session prefetch failed:', messageOf(error))
+    })
   }
 
   private async clearDeliveredHandoff(): Promise<void> {

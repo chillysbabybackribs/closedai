@@ -146,3 +146,27 @@ test('a live model change uses the advertised stable config option', async () =>
     sessionId: 'active', configId: 'model', value: 'claude-opus-5[effort=high]'
   }])
 })
+
+test('send announces the turn before opening the agent session', async () => {
+  const turns: Array<string | null> = []
+  const { session: thread } = session({ onTurn: (turnId) => turns.push(turnId) })
+  let releaseSession!: () => void
+  const sessionGate = new Promise<void>((resolve) => { releaseSession = resolve })
+  Object.assign(thread, { client: {
+    connected: true,
+    capabilities: {},
+    async newSession() {
+      await sessionGate
+      return { sessionId: 'live', models: [], modes: [], currentModelId: null, currentModeId: null,
+        modelConfigId: null, modeConfigId: null }
+    },
+    prompt() { return Promise.resolve('end_turn') }
+  } })
+  const send = thread.send([{ type: 'text', text: 'hi' }])
+  await Promise.resolve()
+  assert.equal(turns.length, 1)
+  assert.match(turns[0]!, /^cursor-turn-/)
+  releaseSession()
+  await send
+  assert.deepEqual(turns.slice(1), [null])
+})

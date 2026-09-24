@@ -1,5 +1,5 @@
 import type { ChangeEvent, JSX, RefObject } from 'react'
-import { FileImage, FileText, Plus, X } from 'lucide-react'
+import { FileImage, FileText, Paperclip, X } from 'lucide-react'
 import {
   Attachment,
   AttachmentAction,
@@ -83,7 +83,7 @@ export function AttachmentPicker({
             disabled={disabled}
             onClick={() => inputRef.current?.click()}
           >
-            <Plus size={18} strokeWidth={2.4} aria-hidden="true" />
+            <Paperclip size={17} strokeWidth={1.9} aria-hidden="true" />
           </Button>
         </TooltipTrigger>
         <TooltipContent side="top">Upload files</TooltipContent>
