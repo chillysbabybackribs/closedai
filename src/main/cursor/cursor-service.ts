@@ -45,6 +45,7 @@ import { buildCursorPrompt } from './cursor-input.js'
 import { cursorAcpModelId, cursorModelCatalog } from './cursor-models.js'
 import { CursorSession } from './cursor-session.js'
 import { applyTranscriptOp, handleProviderTurnEnd, type TranscriptOp, type TurnEnd } from '../chat-transcript-ops.js'
+import { generatePromptSuggestion } from '../chat-prompt-suggestions.js'
 
 // The Cursor provider, mirroring ChatService's surface so the hub can route to any of the four.
 // Everything model-facing is the `cursor-agent acp` server on the user's Cursor subscription:
@@ -74,6 +75,7 @@ export class CursorChatService extends EventEmitter {
    */
   private readonly bridgeKey = randomUUID()
   private readonly sessionGuideState: SessionGuideDeliveryState = { lastDeliveredThreadKey: null }
+  private promptSuggestion: string | null = null
 
   constructor(
     readonly cwd: string,
@@ -112,6 +114,7 @@ export class CursorChatService extends EventEmitter {
       contextUsage: null,
       planUsage: this.planUsage,
       items: page?.items ?? this.transcript.snapshot(),
+      promptSuggestion: this.promptSuggestion,
       ...(page ? { history: { hasEarlier: page.hasEarlier, backgroundTasks: page.backgroundTasks } } : {})
     }
   }
@@ -501,6 +504,12 @@ export class CursorChatService extends EventEmitter {
       addNotice: (text, tone, id) => this.addNotice(text, tone, id),
       setPaused: (id) => this.setPaused(id)
     })
+    if (end.status === 'completed') {
+      const answer = this.transcript.snapshot()
+        .filter((item) => item.type === 'assistant' && item.turnId === turnId)
+        .map((item) => item.text).join('\n').trim()
+      void this.updatePromptSuggestion(answer)
+    }
   }
 
   private addNotice(text: string, tone: 'info' | 'error', turnId: string | null = this.activeTurnId): void {
@@ -528,9 +537,26 @@ export class CursorChatService extends EventEmitter {
   private setTurn(turnId: string | null): void {
     if (this.activeTurnId === turnId) return
     this.activeTurnId = turnId
-    if (turnId) this.setPaused(null)
+    if (turnId) {
+      this.setPaused(null)
+      this.setPromptSuggestion(null)
+    }
     this.bindBridge()
     this.emitEvent({ type: 'turn', turnId })
+  }
+
+  private async updatePromptSuggestion(answer: string): Promise<void> {
+    if (!answer) return
+    const sessionId = this.session?.sessionId
+    const suggestion = await generatePromptSuggestion('cursor', this.modelState.selectedModel, answer)
+    if (this.activeTurnId || this.session?.sessionId !== sessionId || !suggestion) return
+    this.setPromptSuggestion(suggestion)
+  }
+
+  private setPromptSuggestion(suggestion: string | null): void {
+    if (this.promptSuggestion === suggestion) return
+    this.promptSuggestion = suggestion
+    this.emitEvent({ type: 'promptSuggestion', suggestion })
   }
 
   /** Tool calls arrive on this pane's own bridge URL; the binding says which turn they belong to. */

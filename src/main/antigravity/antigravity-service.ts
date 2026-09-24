@@ -63,6 +63,7 @@ import {
   retryAntigravityWithoutUndeclaredTools,
   type AntigravityTurnRecoveryHost
 } from './antigravity-turn-recovery.js'
+import { generatePromptSuggestion } from '../chat-prompt-suggestions.js'
 
 export { ANTIGRAVITY_QUOTA_REUSE_MS, forgetAntigravityQuota } from './antigravity-quota.js'
 
@@ -91,6 +92,7 @@ export class AntigravityChatService extends EventEmitter {
   private readonly transcript: ChatTranscript
   private startPromise: Promise<void> | null = null
   private readonly sessionGuideState: SessionGuideDeliveryState = { lastDeliveredThreadKey: null }
+  private promptSuggestion: string | null = null
 
   constructor(
     readonly cwd: string,
@@ -124,6 +126,7 @@ export class AntigravityChatService extends EventEmitter {
       contextUsage: describeUsage(this.contextUsage),
       planUsage: this.planUsage,
       items: page?.items ?? this.transcript.snapshot(),
+      promptSuggestion: this.promptSuggestion,
       ...(page ? { history: { hasEarlier: page.hasEarlier, backgroundTasks: page.backgroundTasks } } : {})
     }
   }
@@ -460,6 +463,12 @@ export class AntigravityChatService extends EventEmitter {
       setPaused: (id) => this.setPaused(id)
     })
     this.persistTurn()
+    if (end.status === 'completed') {
+      const answer = this.transcript.snapshot()
+        .filter((item) => item.type === 'assistant' && item.turnId === turnId)
+        .map((item) => item.text).join('\n').trim()
+      void this.updatePromptSuggestion(answer)
+    }
   }
 
   /** Record the transcript as it stands, including a turn that ended in failure. */
