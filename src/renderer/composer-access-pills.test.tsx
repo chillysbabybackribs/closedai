@@ -12,7 +12,9 @@ test('composer access pills render browser and agents controls when workspace ac
       toggleBrowser: () => {},
       openAgentsView: () => {},
       focusChatTab: async () => {},
-      startAgentFromPane: async () => {}
+      startAgentFromPane: async () => {},
+      agentsMenuPaneId: null,
+      setAgentsMenuPaneId: () => {}
     }
   }, createElement(ComposerAccessPills, {
     paneId: 'pane-a',

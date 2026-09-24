@@ -9,6 +9,9 @@ export type WorkspacePaneActions = {
   /** Show an open chat tab, adding it to the tile that owns `anchorPaneId` when needed. */
   focusChatTab: (chatId: string, anchorPaneId: string) => Promise<void>
   startAgentFromPane: (paneId: string, options: AgentRunStartOptions) => Promise<void>
+  /** Which chat pane's composer Agents menu is open, if any. */
+  agentsMenuPaneId: string | null
+  setAgentsMenuPaneId: (paneId: string | null) => void
 }
 
 export const WorkspacePaneActionsContext = createContext<WorkspacePaneActions | null>(null)

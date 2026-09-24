@@ -1,10 +1,11 @@
 import type { JSX } from 'react'
-import { useEffect } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { ChevronDown, Users } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover.js'
 import { cn } from '../lib/utils.js'
 import type { SavedAgent } from '../shared/agent-library.js'
 import type { AgentRunStartOptions } from '../shared/agent-runs.js'
+import { useWorkspacePaneActions } from './chat-layout/workspace-pane-actions.js'
 import { useAgentLibrary } from './agent-library/agent-library-store.js'
 import { liveTilesByAgent, orderAgents } from './agent-library/agent-library-cards.js'
 import { useAgentRuns } from './agent-runs/agent-runs-store.js'
@@ -25,8 +26,9 @@ export type ComposerAgentsMenuProps = {
 
 const OPEN_EXISTING: ReadonlySet<DockTileState> = new Set(['running', 'retrying', 'approval'])
 
-/** Saved-agent quick start for this chat's tile; Manage opens the workspace Agents view. */
+/** Saved-agent picker scoped to one chat pane; at most one pane shows it open. */
 export function ComposerAgentsMenu({ paneId, startEnabled, runningTurn, onStart, onOpenRun, onManage, onNewAgent, onError }: ComposerAgentsMenuProps): JSX.Element {
+  const workspace = useWorkspacePaneActions()
   const agents = useAgentLibrary()
   const runs = useAgentRuns()
   const live = liveTilesByAgent(runs, dockTiles(runs, [], [], Date.now()))
@@ -34,11 +36,24 @@ export function ComposerAgentsMenu({ paneId, startEnabled, runningTurn, onStart,
   const runningCount = runs.filter((run) => run.status === 'running').length
   const { busy, error, act } = useAgentRunAction()
   const disabled = !startEnabled || runningTurn || busy
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const paneRef = useRef<HTMLElement | null>(null)
+  const open = workspace?.agentsMenuPaneId === paneId
+
+  const setOpen = useCallback((next: boolean): void => {
+    if (!workspace) return
+    workspace.setAgentsMenuPaneId(next ? paneId : workspace.agentsMenuPaneId === paneId ? null : workspace.agentsMenuPaneId)
+    if (next) paneRef.current = triggerRef.current?.closest('.chat-pane') ?? null
+  }, [paneId, workspace])
+
+  const closeMenu = useCallback((): void => setOpen(false), [setOpen])
+
   useEffect(() => {
     if (error) onError(error)
   }, [error, onError])
 
   const openOrStart = (agent: SavedAgent, liveState: DockTileState | undefined, liveChatId: string | undefined): void => {
+    closeMenu()
     void act(async () => {
       if (liveChatId && liveState && OPEN_EXISTING.has(liveState)) {
         await onOpenRun(liveChatId)
@@ -54,21 +69,33 @@ export function ComposerAgentsMenu({ paneId, startEnabled, runningTurn, onStart,
   }
 
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen} modal={false}>
       <PopoverTrigger asChild>
         <button
+          ref={triggerRef}
           type="button"
           className={cn('composer-pill', runningCount > 0 && 'composer-pill-attention')}
           data-ui="composer.agents"
+          data-ui-key={paneId}
           disabled={runningTurn}
           aria-haspopup="menu"
+          aria-expanded={open}
         >
           <Users size={14} strokeWidth={1.9} aria-hidden="true" />
           <span className="composer-pill-label">Agents{runningCount > 0 ? ` · ${runningCount}` : ''}</span>
           <ChevronDown className="composer-pill-chevron" size={11} strokeWidth={2} aria-hidden="true" />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="composer-agents-panel" align="start" side="top" sideOffset={8}>
+      <PopoverContent
+        className="composer-agents-panel"
+        container={paneRef.current}
+        align="start"
+        side="top"
+        sideOffset={8}
+        collisionPadding={12}
+        collisionBoundary={paneRef.current ?? undefined}
+        avoidCollisions
+      >
         <p className="composer-agents-heading">Saved agents</p>
         {ordered.length === 0 ? (
           <p className="composer-agents-empty">No saved agents yet.</p>
@@ -104,12 +131,16 @@ export function ComposerAgentsMenu({ paneId, startEnabled, runningTurn, onStart,
         )}
         <div className="composer-agents-foot">
           <button type="button" className="composer-agents-new" data-ui="composer.agents-new" onClick={() => {
+            closeMenu()
             queueAgentsViewIntent({ screen: 'build-new' })
             onNewAgent(paneId)
           }}>
             New agent…
           </button>
-          <button type="button" className="composer-agents-manage" data-ui="composer.agents-manage" onClick={() => onManage(paneId)}>
+          <button type="button" className="composer-agents-manage" data-ui="composer.agents-manage" onClick={() => {
+            closeMenu()
+            onManage(paneId)
+          }}>
             Manage
           </button>
         </div>

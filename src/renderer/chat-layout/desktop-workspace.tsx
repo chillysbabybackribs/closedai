@@ -68,6 +68,7 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
   const imageTabId = browser.browser.image?.tabId
   const [browserRevealVersion, setBrowserRevealVersion] = useState(0)
   const [presetsOpen, setPresetsOpen] = useState(false)
+  const [agentsMenuPaneId, setAgentsMenuPaneId] = useState<string | null>(null)
   const canvasSize = useRef<CanvasSize>({ width: 0, height: 0 })
   const chatsRef = useRef(chat.chats)
   chatsRef.current = chat.chats
@@ -196,8 +197,10 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
     toggleBrowser: toggleBrowserPane,
     openAgentsView: (anchorPaneId) => layout.openView('agents', anchorPaneId),
     focusChatTab,
-    startAgentFromPane: (paneId, options) => startAgentRef.current(paneId, options)
-  }), [toggleBrowserPane, layout.openView, focusChatTab])
+    startAgentFromPane: (paneId, options) => startAgentRef.current(paneId, options),
+    agentsMenuPaneId,
+    setAgentsMenuPaneId
+  }), [toggleBrowserPane, layout.openView, focusChatTab, agentsMenuPaneId])
   const viewContext = useMemo<WorkspaceViewContextValue>(() => ({
     tree: layout.tree, views: layout.views, selectedPaneId: chat.selectedPaneId, chats: chat.chats, title: chatTitle,
     listChats: chat.listChats, archiveChat: archiveChat ?? chat.archiveChat, activateChat: layout.activateTab,
