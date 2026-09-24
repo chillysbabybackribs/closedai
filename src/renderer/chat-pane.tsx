@@ -12,59 +12,43 @@ import { CHAT_RESUME_PROMPT } from '../shared/chat.js'
 import type { ChatAttachment } from '../shared/chat.js'
 import { ConnectionBanner, EmptyState, useProviderAvailability } from './chat-connection.js'
 import { useChatController, type ChatController } from './chat-controller.js'
-import { ChatHistory } from './chat-history.js'
+import type { ViewKind } from './chat-layout/layout-views.js'
 import { chatRunning } from './chat-state.js'
 import { ChatTranscript } from './chat-transcript.js'
 import { Composer } from './composer.js'
-import { injectComposerDraft } from './composer-drafts.js'
 import { CredentialApprovalCards } from './credential-approval-card.js'
 import type { AgentRunStartOptions } from '../shared/agent-runs.js'
-import { AgentLibraryDialog } from './agent-library/agent-library-dialog.js'
 import { AgentRunStrip } from './agent-runs/agent-run-strip.js'
 import { useAgentRun } from './agent-runs/agent-runs-store.js'
 import { errorMessage } from './error-message.js'
 import type { ComposerSetupHandle } from './composer-setup-menu.js'
 import { securityRequests } from './security-requests.js'
-import { ToolsModal } from './tools/tools-modal.js'
-import { TraceModal } from './trace/trace-modal.js'
 import { useCredentialApprovals } from './use-security-requests.js'
-
-/** Pane-scoped dialogs the shell's Agent and Developer menus can open on the selected chat pane. */
-export type ChatPaneDialog = 'tools' | 'trace' | 'agents'
 
 export const ChatPane = memo(function ChatPane({
   controller,
   zoom = 100,
   fontSize = 14,
   composerFontSize = 15,
-  historyOpen: controlledHistoryOpen,
-  onHistoryOpenChange,
-  dialog: controlledDialog,
-  onDialogChange,
   selected = true,
   onNewChat: _onNewChat,
+  onOpenView,
   onStartAgent,
   onContinueInNewChat,
-  archiveChat,
-  openHistoryChat
+  archiveChat: _archiveChat
 }: {
   controller?: ChatController
   zoom?: number
   fontSize?: number
   composerFontSize?: number
-  /** Supplied by the shell so the title bar menu and Ctrl+H reach this panel. */
-  historyOpen?: boolean
-  onHistoryOpenChange?: (open: boolean) => void
-  /** The Agent and Developer menus open these on the selected pane. */
-  dialog?: ChatPaneDialog | null
-  onDialogChange?: (dialog: ChatPaneDialog | null) => void
   selected?: boolean
   onNewChat: () => void
+  /** Trace, Agents, History and Tools are view tabs in this chat's tile (chat-layout/workspace-view.tsx). */
+  onOpenView?: (kind: ViewKind) => void
   onStartAgent?: (options: AgentRunStartOptions) => Promise<void>
   /** Opens a sibling tab with a digest-seeded chat (layout placement); message actions use this for full continue. */
   onContinueInNewChat?: () => Promise<void>
   archiveChat?: (chatId: string) => Promise<void>
-  openHistoryChat?: (chatId: string) => Promise<void>
 }): JSX.Element {
   const internalChat = useChatController(!controller)
   const chat = controller ?? internalChat
@@ -80,12 +64,6 @@ export const ChatPane = memo(function ChatPane({
   const ready = state.connection.state === 'ready'
   const running = chatRunning(state)
   const agentRun = useAgentRun(chat.selectedPaneId)
-  const [ownHistoryOpen, setOwnHistoryOpen] = useState(false)
-  const historyOpen = controlledHistoryOpen ?? ownHistoryOpen
-  const setHistoryOpen = onHistoryOpenChange ?? setOwnHistoryOpen
-  const [ownDialog, setOwnDialog] = useState<ChatPaneDialog | null>(null)
-  const dialog = controlledDialog === undefined ? ownDialog : controlledDialog
-  const setDialog = onDialogChange ?? setOwnDialog
   const hasMessages = state.items.length > 0
   // 'starting' is the step on the way to ready, not a failure. Treating it as one made every new
   // chat flash the connection guidance and drop the composer to the bottom for the frames before
@@ -98,7 +76,7 @@ export const ChatPane = memo(function ChatPane({
   // process was ready made every launch and every provider switch a pause the user could feel.
   const usable = ready || connecting
   // A continuation stays visually empty until its first message delivers the handoff to the model.
-  const centerComposer = !blocked && !hasMessages && !historyOpen
+  const centerComposer = !blocked && !hasMessages
   const modelMenuRef = useRef<ComposerSetupHandle>(null)
   const openModelMenu = (): void => modelMenuRef.current?.open()
   // What the pane itself could not do, shown above the composer until the next attempt.
@@ -125,7 +103,6 @@ export const ChatPane = memo(function ChatPane({
   }
 
   async function sendMessage(text: string, attachments: ChatAttachment[]): Promise<void> {
-    setHistoryOpen(false)
     await chat.send(text, attachments)
   }
 
@@ -146,25 +123,7 @@ export const ChatPane = memo(function ChatPane({
           '--composer-font-size': `${composerFontSize}px`
         } as React.CSSProperties}
       >
-        <ToolsModal open={dialog === 'tools'} onOpenChange={(open) => setDialog(open ? 'tools' : null)}
-          onSendToChat={(text) => { injectComposerDraft(chat.selectedPaneId, text); setDialog(null) }} />
-        <TraceModal open={dialog === 'trace'} onOpenChange={(open) => setDialog(open ? 'trace' : null)} paneId={chat.selectedPaneId} />
-        {onStartAgent && (
-          <AgentLibraryDialog open={dialog === 'agents'} onOpenChange={(open) => setDialog(open ? 'agents' : null)}
-            startEnabled={usable} onStart={onStartAgent} />
-        )}
-        {historyOpen ? (
-          <ChatHistory
-            activeChatId={chat.selectedPaneId}
-            busy={running}
-            listChats={chat.listChats}
-            chats={chat.chats}
-            openChat={openHistoryChat ?? chat.openChat}
-            archiveChat={archiveChat ?? chat.archiveChat}
-            onClose={() => setHistoryOpen(false)}
-          />
-        ) : (
-          <TranscriptScroller paneId={chat.selectedPaneId} preservePositionOnNewPrompts={Boolean(agentRun)}>
+        <TranscriptScroller paneId={chat.selectedPaneId} preservePositionOnNewPrompts={Boolean(agentRun)}>
             {!hasMessages && blocked ? (
               <EmptyState provider={state.provider} state={state.connection.state} message={state.connection.message} availability={availability}
                 onLogin={chat.loginWithChatGPT} onChooseModel={openModelMenu} />
@@ -182,9 +141,8 @@ export const ChatPane = memo(function ChatPane({
             ) : (
               <div aria-hidden="true" />
             )}
-          </TranscriptScroller>
-        )}
-        {hasMessages && blocked && !historyOpen && (
+        </TranscriptScroller>
+        {hasMessages && blocked && (
           <ConnectionBanner provider={state.provider} state={state.connection.state} message={state.connection.message}
             onLogin={chat.loginWithChatGPT} onChooseModel={openModelMenu} />
         )}
@@ -217,7 +175,7 @@ export const ChatPane = memo(function ChatPane({
           onModelChange={chat.selectModel}
           onReasoningEffortChange={chat.selectReasoningEffort}
           onSend={sendMessage}
-          onOpenAgents={onStartAgent ? () => setDialog('agents') : undefined}
+          onOpenAgents={onOpenView && onStartAgent ? () => onOpenView('agents') : undefined}
           onStop={chat.interrupt}
           paused={state.pausedTurnId !== null}
           onResume={() => sendMessage(CHAT_RESUME_PROMPT, [])}
