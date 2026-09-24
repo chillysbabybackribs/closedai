@@ -15,7 +15,7 @@ function LivePreview({ paneId }: { paneId: string }) {
   const messages = state?.items.filter((item) => item.type === 'user' || item.type === 'assistant').slice(-3)
   return <>
     <div className="chat-dock-preview-heading"><strong>{row?.title ?? 'Chat preview'}</strong>
-      <span>{state?.running || row?.running ? 'Working' : row?.paused ? 'Paused' : 'Chat'}</span></div>
+      <span>{state?.activeTurnId || row?.running ? 'Working' : row?.paused ? 'Paused' : 'Chat'}</span></div>
     <div className="chat-dock-preview-messages">
       {messages?.length ? messages.map((item) => <div key={item.id} className="chat-dock-message" data-role={item.type}>
         <span>{item.type === 'user' ? 'You' : 'Assistant'}</span>

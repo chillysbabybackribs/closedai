@@ -571,9 +571,11 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   contact shadow. Browser active tabs flow into a lighter (`#29292c`) toolbar,
   with a hairline beneath it and around the address field.
 - The window header has a soft charcoal (`#181819`) background in the dark theme.
-  It is 44 px tall, with 14 px menu/search text, a 34 px search field,
-  a Lucide globe icon for the browser toggle (same stroke weight and chrome ink as the other title-bar icons),
-  and enlarged window buttons.
+  It is 44 px tall, with a 30 px search field and a matching 30 px Radix menubar:
+  an 8 px rounded frame, theme-tinted fill, hairline border, and inset hover/open highlights.
+  Menu labels are 12.5 px; search and compact dropdown rows use 13 px text. Menus retain
+  Radix keyboard navigation, typeahead, hover switching while open, and Escape dismissal.
+  Window buttons sit at the right edge.
   The shell reserves the header's
   natural height so the workspace begins directly below its divider.
 - Header search reads chat records across directories, attached or detached, including child chats.
