@@ -12,12 +12,10 @@ import { CHAT_RESUME_PROMPT } from '../shared/chat.js'
 import type { ChatAttachment } from '../shared/chat.js'
 import { ConnectionBanner, EmptyState, useProviderAvailability } from './chat-connection.js'
 import { useChatController, type ChatController } from './chat-controller.js'
-import type { ViewKind } from './chat-layout/layout-views.js'
 import { chatRunning } from './chat-state.js'
 import { ChatTranscript } from './chat-transcript.js'
 import { Composer } from './composer.js'
 import { CredentialApprovalCards } from './credential-approval-card.js'
-import type { AgentRunStartOptions } from '../shared/agent-runs.js'
 import { AgentRunStrip } from './agent-runs/agent-run-strip.js'
 import { useAgentRun } from './agent-runs/agent-runs-store.js'
 import { errorMessage } from './error-message.js'
@@ -32,8 +30,6 @@ export const ChatPane = memo(function ChatPane({
   composerFontSize = 15,
   selected = true,
   onNewChat: _onNewChat,
-  onOpenView,
-  onStartAgent,
   onContinueInNewChat
 }: {
   controller?: ChatController
@@ -42,9 +38,6 @@ export const ChatPane = memo(function ChatPane({
   composerFontSize?: number
   selected?: boolean
   onNewChat: () => void
-  /** Trace, Agents, History and Tools are view tabs in this chat's tile (chat-layout/workspace-view.tsx). */
-  onOpenView?: (kind: ViewKind) => void
-  onStartAgent?: (options: AgentRunStartOptions) => Promise<void>
   /** Opens a sibling tab with a digest-seeded chat (layout placement); message actions use this for full continue. */
   onContinueInNewChat?: () => Promise<void>
 }): JSX.Element {

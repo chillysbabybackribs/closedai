@@ -74,10 +74,8 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
     const view = parseViewTab(id)
     if (view) return <WorkspaceViewHost viewId={view.id} kind={view.kind} />
     return <WorkspaceChat paneId={id} dispatch={dispatch} appearance={appearance}
-      onStartAgent={(options) => startAgentRef.current(id, options)}
       onContinueInNewChat={() => continueChatRef.current(id)}
-      onNewChat={() => { void layout.newChat(id) }}
-      onOpenView={(kind) => layout.openView(kind, id)} />
+      onNewChat={() => { void layout.newChat(id) }} />
   }
   const renderPane = useCallback((id: string) => renderPaneRef.current(id), [])
   const renderBrowser = useMemo(() => (

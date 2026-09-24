@@ -14,7 +14,7 @@ export type AgentLibraryViewProps = {
   onStart: (options: AgentRunStartOptions) => Promise<void>
 }
 
-/** The Agents view: opened from the composer's Agent button, the tile + menu, or Agent → Agents…. */
+/** The Agents view: opened from the tile + menu or Agent → Agents…. */
 export function AgentLibraryView({ active, startEnabled, onStart }: AgentLibraryViewProps): JSX.Element {
   const agents = useAgentLibrary()
   const now = useMemo(() => Date.now(), [active]) // eslint-disable-line react-hooks/exhaustive-deps
