@@ -546,6 +546,24 @@ writes the result to the same per-project saved layout as any hand-built arrange
 locked, no preset persists as a mode, and drag, resize, split, hide, and the browser grip apply to
 it immediately. **Cancel** (`layout.preset-cancel`) leaves the layout unchanged.
 
+The header's **Dock group** minus button (`layout.pane-minimize`) minimizes the whole tab
+group into a slim regional rail. Rails use Radix Toolbar buttons labelled **Group 1**, **Group 2**,
+and so on, and appear only where groups are docked. The browser divides the canvas into separate
+chat regions; each rail stops at its region boundary. Remaining tiles fill that region above the
+rail. A fully docked region keeps its rail available. The final visible chat has no dock control.
+Docking keeps the full split tree, tab membership, group label and divider ratios saved per project;
+restoring returns the group to that position. Docked panes stay mounted to preserve drafts and
+attachments, and their turns continue. Applying a layout preset includes and expands docked groups.
+
+Hovering a dock tab for 350 ms (or focusing it with the keyboard) opens a themed Radix Hover Card
+above it, constrained to the chat region. It shows the group's active chat (or first chat when a
+view is active), title, recent messages, activity and chat count. While open, that chat joins the
+existing display subscription for live text; closing releases this temporary subscription without
+changing chat selection. Clicking or pressing Enter/Space on `layout.dock-restore` restores the
+group. Toolbar arrow keys move between dock tabs; Escape dismisses the preview. History/search
+selection of a docked chat restores its group too. Removing the last expanded chat restores a
+remaining group so the workspace cannot be stranded with only dock tabs.
+
 `src/renderer/chat-layout/` owns the shared tree, geometry, persistence, and tile controls. The browser
 is a reserved layout leaf, excluded from chat subscriptions, tab lists, and the 32-chat limit.
 Hiding it only removes it from displayed geometry; its position and divider ratios remain saved.
