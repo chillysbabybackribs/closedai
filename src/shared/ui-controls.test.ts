@@ -7,6 +7,8 @@ import { UI_CONTROLS, uiControlFamilies } from './ui-controls.ts'
 
 const ROOTS = ['src/renderer', 'src/components']
 const ID = /\b(?:data-ui|control)="([a-z][a-z0-9-]*\.[a-z][a-z0-9-]*)"/g
+/** data-ui={`view.${kind}`}: the family is fixed and the name comes from a typed value. */
+const TEMPLATED = /\bdata-ui=\{`([a-z][a-z0-9-]*)\.\$\{/g
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir).flatMap((entry) => {
@@ -31,9 +33,14 @@ test('every rendered data-ui id is declared in the manifest', () => {
   assert.deepEqual(undeclared, [])
 })
 
+function templatedFamilies(): Set<string> {
+  return new Set(ROOTS.flatMap(sourceFiles).flatMap((file) => [...readFileSync(file, 'utf8').matchAll(TEMPLATED)].map((match) => match[1]!)))
+}
+
 test('every manifest id is rendered somewhere', () => {
   const rendered = renderedIds()
-  const unused = Object.keys(UI_CONTROLS).filter((id) => !rendered.has(id))
+  const families = templatedFamilies()
+  const unused = Object.keys(UI_CONTROLS).filter((id) => !rendered.has(id) && !families.has(id.split('.')[0]!))
   assert.deepEqual(unused, [])
 })
 
