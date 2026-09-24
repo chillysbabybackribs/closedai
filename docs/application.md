@@ -422,19 +422,18 @@ and a tool's `stop_agent` pause the run too; a user message sent between cycles 
 the loop rather than raced.
 
 The **agent dock** (`src/renderer/agent-dock/`) is a footer row under the workspace
-(`dock.bar`) with no rail of its own: the hero dock (`src/components/ui/hero-dock.tsx`, a
-token-coloured pill bar of raised 56px tiles that lift on hover, labelled through the shared tooltip)
-sits directly on the window chassis. The
+(`dock.bar`) with no rail of its own: the published hero dock (`src/components/ui/hero-dock.tsx`,
+its dark glass pill and raised tiles kept class for class) sits directly on the window chassis. The
 left of the row reads **Agents** and a summary (`2 running · 1 needs you`, blue when a run needs the
-user). The dock holds one tile per run (`dock.run`) with the run's initials and a status
-badge: green running (pulsing while retrying), grey paused, blue finished or waiting on a
-credential approval, red paused by failures; runs that need the user come first and carry a ring.
-Hovering an icon shows its state and current line; clicking opens a popover card with name, state,
+user). The dock holds one tile per run (`dock.run`) with the run's initials, its name beneath on
+hover, a small light under the tile while it works (pulsing while retrying), and the hero's white
+badge when it needs the user (`!` for a credential approval or a failure pause, `✓` when finished);
+runs that need the user come first. Clicking a tile opens a popover card with name, state,
 cycle, activity or pause reason, **Pause**/**Resume**/**Stop** (`dock.pause`, `dock.resume`,
 `dock.stop`; Stop reads **Dismiss** on a finished run), **Review** for a pending approval
 (`dock.review`), and an open-chat button (`dock.open-chat`). The plus tile after the separator (`dock.agents`)
-opens the Agents view. The row is always on screen, so nothing opens by itself; the popover and
-tooltips freeze the browser column to a still where they overlap it. Start still docks the run's chat as a tab. Models drive runs in other panes with `closedai_app.agent` (`start`
+opens the Agents view. The row is always on screen, so nothing opens by itself; the run card
+freezes the browser column to a still where it overlaps it. Start still docks the run's chat as a tab. Models drive runs in other panes with `closedai_app.agent` (`start`
 with a standing prompt attaches the same loop to an existing chat; `pause`, `resume`, `stop`). `closedai_app.state` reports the run under `chat.agentRun`. There is no collapsed mode;
 pending attachment chips sit above the line inside the card. The setup trigger opens a
 fixed-height panel (520px, or less when the pane is shorter), top to bottom: a Context line

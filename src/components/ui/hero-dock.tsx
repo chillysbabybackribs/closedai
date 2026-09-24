@@ -122,6 +122,7 @@ export function HeroDockIcon({ icon: Icon, children, label, badge, className, ..
   return (
     <button
       type="button"
+      data-slot="hero-dock-icon"
       aria-label={label}
       {...props}
       className={cn(
