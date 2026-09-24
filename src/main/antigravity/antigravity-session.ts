@@ -30,6 +30,7 @@ export type AntigravitySessionDeps = {
   /** When set, every stream-json line in either direction is recorded in the turn trace. */
   traceScope?: () => TraceScope
   idleMs?: number
+  childEnv?: () => NodeJS.ProcessEnv
 }
 
 export class AntigravitySession {
@@ -126,6 +127,7 @@ export class AntigravitySession {
       binary: this.deps.binary(),
       args: this.deps.spawnArgs(this.conversationId),
       cwd: this.deps.cwd,
+      env: this.deps.childEnv?.(),
       onEvent: (raw) => { if (this.process === process) this.onEvent(raw) },
       onExit: (info) => { if (this.process === process) this.onExit(info.stderr, info.signal) },
       onSpawnError: (message) => { if (this.process === process) this.onExit(message, null) }

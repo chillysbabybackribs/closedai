@@ -257,13 +257,16 @@ budgets (`chatCompactAtPercent`, `chatCompactAtTokens`), plus task-aware default
 transcript item count (`chatRotateAtItems`, default 100), tool calls since the latest user message
 (`chatRotateAtToolCallsSinceUser`, default 24), and tool-output characters in that span
 (`chatRotateAtToolOutputChars`, default 280000). Set any of those to `0` to disable that trigger.
-When a rotation is queued after a turn, an info notice explains which trigger fired. Source recall
+Queued rotations stay invisible in the transcript; Turn trace records `session.rotated` when one completes. Source recall
 on the same pane after rotation reads the in-memory transcript through the frozen boundary so tool
 output remains recoverable without reopening the dropped provider thread. With seamless rotation on,
 Claude Code auto-compaction stays off but background precompute compaction remains on by default
 (`chatClaudePrecomputeCompaction`; set false to disable). Disabling seamless rotation restores the
-native compaction path. For shell build or verify scripts, `node scripts/work-lock.mjs --cwd <repo> --
-…` serializes heavy work per workspace using `.closedai/work.lock`.
+native compaction path. Provider child processes (Codex, Claude Code, Cursor, Antigravity) prepend
+`scripts/closedai-bin` to `PATH` when `chatWorkLockEnabled` is on (default): `npm` and `node` shims
+wrap heavy build/verify invocations with `scripts/work-lock.mjs` and `.closedai/work.lock`. Per-pane
+spawns also set `CLOSEDAI_VERIFY_LEASE` so the verify janitor skips active Electron harness work.
+Manual wrap remains available: `node scripts/work-lock.mjs --cwd <repo> -- <command…>`.
 See [Model context](model-context.md) for trust and [Tools](tools.md) for limits.
 
 Cross-project memory uses `peer_chats.list(scope=history)` and `recall(scope=history)` against

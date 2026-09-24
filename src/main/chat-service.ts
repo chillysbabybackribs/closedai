@@ -131,7 +131,6 @@ export class ChatService extends EventEmitter {
       turnActive: () => this.activeTurnId !== null,
       transcriptItems: () => this.transcript.snapshot(),
       currentUsage: () => this.contextManager().current,
-      notice: (text) => this.addNotice(text, 'info', null),
       rotate: () => rotateCodexProviderSession(this.threadHost())
     })
     this.client.on('notification', (notification: AppServerNotification) => this.onNotification(notification))

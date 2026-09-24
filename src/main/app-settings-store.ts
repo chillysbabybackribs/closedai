@@ -51,7 +51,8 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   chatRotateAtItems: 100,
   chatRotateAtToolCallsSinceUser: 24,
   chatRotateAtToolOutputChars: 280_000,
-  chatClaudePrecomputeCompaction: true
+  chatClaudePrecomputeCompaction: true,
+  chatWorkLockEnabled: true
 }
 
 const MAX_COMPACT_AT_PERCENT = 95
@@ -113,7 +114,8 @@ function normalize(parsed: unknown): AppSettings {
     toolBatchMaxCalls: normalizeBatchMaxCalls(record.toolBatchMaxCalls),
     ...normalizeCompactionPolicy(record),
     chatMidTurnCompactTokens: normalizeAutoCompactTokens(record.chatMidTurnCompactTokens, DEFAULT_APP_SETTINGS.chatMidTurnCompactTokens),
-    ...normalizeRotationPressure(record)
+    ...normalizeRotationPressure(record),
+    chatWorkLockEnabled: record.chatWorkLockEnabled !== false
   }
 }
 

@@ -306,3 +306,13 @@ test('continuation notices are filtered out from transcript rows', () => {
   const rows = transcriptRows(items)
   assert.deepEqual(rows.map((row) => row.kind === 'item' ? row.item.id : row.id), ['u1', 'a1'])
 })
+
+test('rotation schedule notices are filtered out from transcript rows', () => {
+  const items: ChatTranscriptItem[] = [
+    { type: 'user', id: 'u1', turnId: 't1', text: 'Hello' },
+    { type: 'notice', id: 'n1', turnId: null, tone: 'info', text: 'Transcript has 466 items; provider context will rotate while idle' },
+    { type: 'assistant', id: 'a1', turnId: 't1', text: 'Hi', phase: null, streaming: false }
+  ]
+  const rows = transcriptRows(items)
+  assert.deepEqual(rows.map((row) => row.kind === 'item' ? row.item.id : row.id), ['u1', 'a1'])
+})

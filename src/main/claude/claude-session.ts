@@ -22,6 +22,8 @@ import { summarizeClaudeMessage } from '../trace/summaries.js'
 export type ClaudeSessionDeps = {
   sdk: ClaudeSdk
   cwd: string
+  /** Merged into every Claude Code child process (work-lock PATH shims, verify lease, …). */
+  childEnv?: () => NodeJS.ProcessEnv
   mcpServers: () => NonNullable<Options['mcpServers']>
   displayScreenshot: DisplayScreenshot
   apply: (op: TranscriptOp) => void
@@ -77,6 +79,7 @@ export class ClaudeSession {
       seamlessRotation: this.deps.seamlessRotation?.() === true,
       precomputeCompaction: this.deps.precomputeCompaction?.() === true,
       mcpServers: this.deps.mcpServers(),
+      env: this.deps.childEnv?.(),
       stderr: (data) => { const text = data.trim(); if (text) console.warn('[claude]', text) }
     })
     const runtime = new ClaudeRuntime(this.deps.sdk, id, options, {

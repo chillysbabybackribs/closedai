@@ -6,6 +6,7 @@ import type {
 } from '../../shared/chat.js'
 import type { RotationSettingsAccess } from '../chat-context/rotate-provider-session.js'
 import { createSessionRotator } from '../chat-context/session-rotator-factory.js'
+import { buildProviderChildEnv } from '../provider-work-env.js'
 import type { SessionRotator } from '../chat-context/session-rotation.js'
 import {
   detachCursorThread,
@@ -104,7 +105,6 @@ export class CursorChatService extends EventEmitter {
       threadId: () => (this.session?.sessionId ? cursorThreadId(this.session.sessionId) : null),
       turnActive: () => this.activeTurnId !== null,
       transcriptItems: () => this.transcript.snapshot(),
-      notice: (text) => this.addNotice(text, 'info', null),
       rotate: () => this.rotateProviderSession()
     })
   }
@@ -426,7 +426,12 @@ export class CursorChatService extends EventEmitter {
       onTurnEnd: (turnId, end) => this.onTurnEnd(turnId, end),
       displayScreenshot: (callId) => this.screenshots?.get(callId) ?? null,
       takeCallId: (namespace, tool) => this.bridge.takeCallId(this.bridgeKey, namespace, tool),
-      traceScope: () => ({ paneId: this.paneId, provider: 'cursor', turnId: this.activeTurnId })
+      traceScope: () => ({ paneId: this.paneId, provider: 'cursor', turnId: this.activeTurnId }),
+      childEnv: () => buildProviderChildEnv({
+        workspaceCwd: this.cwd,
+        paneId: this.paneId,
+        workLockEnabled: this.settings.get().chatWorkLockEnabled !== false
+      })
     })
   }
 

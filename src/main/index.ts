@@ -14,6 +14,7 @@ import { BrowserTabSessionStore } from './browser-tab-session-store.js'
 import { AppSettingsStore } from './app-settings-store.js'
 import { BrowserDownloadService } from './browser-download-service.js'
 import { maintainBrowserCache, scheduleBrowserCacheMaintenance } from './browser-cache-maintenance.js'
+import { setAppCheckoutPath } from './app-checkout.js'
 import { scheduleVerifyJanitor } from './verify-janitor.js'
 import { importDefaultBrowserCookies } from './browser-cookie-import.js'
 import { CodexWorkspaceRuntime } from './codex-workspace-runtime.js'
@@ -149,6 +150,7 @@ if (!claimProfileInstance(app, { profile: userData(), checkout: app.getAppPath()
 }
 
 async function main(): Promise<void> {
+  setAppCheckoutPath(app.getAppPath())
   logGpuFeatureStatus()
   await mkdir(userData(), { recursive: true })
   ;[browserHistory, savedSites, browserTabSession, settings, chatStore, securitySettings, agentLibrary] = await Promise.all([

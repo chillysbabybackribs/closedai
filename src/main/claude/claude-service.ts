@@ -23,6 +23,7 @@ import {
   type ClaudeThreadHost
 } from './claude-thread-lifecycle.js'
 import { createSessionRotator } from '../chat-context/session-rotator-factory.js'
+import { buildProviderChildEnv } from '../provider-work-env.js'
 import type { SessionRotator } from '../chat-context/session-rotation.js'
 import { applyPlanUsageSignal, planUsageUnavailable, type ClaudeRateLimitSignal } from '../chat-context/plan-usage.js'
 import {
@@ -110,7 +111,6 @@ export class ClaudeChatService extends EventEmitter {
       turnActive: () => this.activeTurnId !== null,
       transcriptItems: () => this.transcript.snapshot(),
       currentUsage: () => this.contextUsage,
-      notice: (text) => this.addNotice(text, 'info', null),
       rotate: () => rotateClaudeProviderSession(this.threadHost(), this.session)
     })
   }
@@ -399,7 +399,12 @@ export class ClaudeChatService extends EventEmitter {
       onPlanUsageSignal: (signal) => this.notePlanUsageSignal(signal),
       traceScope: () => ({ paneId: this.paneId, provider: 'claude', turnId: this.activeTurnId }),
       seamlessRotation: () => this.seamlessRotation(),
-      precomputeCompaction: () => this.claudePrecomputeCompaction()
+      precomputeCompaction: () => this.claudePrecomputeCompaction(),
+      childEnv: () => buildProviderChildEnv({
+        workspaceCwd: this.cwd,
+        paneId: this.paneId,
+        workLockEnabled: this.settings.get().chatWorkLockEnabled !== false
+      })
     })
     return session
   }

@@ -14,6 +14,7 @@ import { loadChatModels } from './chat-model-catalog.js'
 import { loadCodexModelContextWindows } from './codex-model-context.js'
 import type { TraceScope } from './trace/trace-log.js'
 import { nonEmptyString, recordOf } from './json-coerce.js'
+import { buildProviderChildEnv } from './provider-work-env.js'
 
 export type RuntimeSessionState = {
   account: unknown
@@ -127,7 +128,11 @@ export class CodexWorkspaceRuntime {
       cwd,
       () => appServerConfigArgs(settings.get()),
       (_direction, message) => this.scopeFor(message),
-      options.clientVersion
+      options.clientVersion,
+      () => buildProviderChildEnv({
+        workspaceCwd: cwd,
+        workLockEnabled: settings.get().chatWorkLockEnabled !== false
+      })
     )
     this.transport.on('notification', (notification: AppServerNotification) => this.route('notification', notification))
     this.transport.on('request', (request: AppServerRequest) => this.route('request', request))

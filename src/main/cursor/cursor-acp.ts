@@ -56,12 +56,17 @@ const PROMPT_TIMEOUT_MS = 60 * 60_000
 export class CursorAcpClient extends StdioJsonRpcClient {
   private caps: AcpCapabilities | null = null
 
-  constructor(cwd: string, traceScope: (() => TraceScope) | null = null) {
+  constructor(
+    cwd: string,
+    traceScope: (() => TraceScope) | null = null,
+    childEnv?: () => NodeJS.ProcessEnv
+  ) {
     super({
       peer: 'Cursor ACP',
       executable: cursorBinary(),
       cwd,
       args: cursorAcpArgs,
+      env: childEnv,
       version: '2.0',
       trace: traceScope
         ? {

@@ -40,6 +40,7 @@ export type CursorSessionDeps = {
   /** When set, every JSON-RPC line in either direction is recorded in the turn trace. */
   traceScope?: () => TraceScope
   idleMs?: number
+  childEnv?: () => NodeJS.ProcessEnv
 }
 
 export class CursorSession {
@@ -238,7 +239,7 @@ export class CursorSession {
   }
 
   private async openClient(): Promise<CursorAcpClient> {
-    const client = new CursorAcpClient(this.deps.cwd, this.deps.traceScope ?? null)
+    const client = new CursorAcpClient(this.deps.cwd, this.deps.traceScope ?? null, this.deps.childEnv)
     client.on('notification', (event: { method: string; params?: unknown }) => {
       if (this.client === client && event.method === 'session/update') this.onUpdate(event.params)
     })

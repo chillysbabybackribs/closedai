@@ -26,6 +26,7 @@ import { TranscriptAttachments } from './composer-attachments.js'
 import {
   activityHeadline,
   activityState,
+  hiddenTranscriptNotice,
   transcriptRows,
   turnActionMessageIds,
   type ActivityItem,
@@ -205,7 +206,7 @@ const TranscriptItem = memo(function TranscriptItem({
     return <AssistantMessage item={item} actions={actions} cwd={cwd} />
   }
   if (item.type === 'notice') {
-    if (item.tone === 'info' && item.text.startsWith('Continuing from')) return null
+    if (hiddenTranscriptNotice(item)) return null
     return (
       <Marker
         className="prompt-system-message w-fit"

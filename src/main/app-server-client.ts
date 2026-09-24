@@ -35,13 +35,16 @@ export class AppServerClient extends StdioJsonRpcClient {
     /** When set, every line in either direction is recorded in the turn trace under this scope. */
     traceScope: ((direction: 'in' | 'out', message: unknown) => TraceScope) | null = null,
     /** Announced as `clientInfo.version`; the Electron app passes `app.getVersion()`. */
-    private readonly clientVersion: string = '0.1.0'
+    private readonly clientVersion: string = '0.1.0',
+    /** When set, merged into the app-server child environment (work-lock shims, verify lease, …). */
+    childEnv?: () => NodeJS.ProcessEnv
   ) {
     super({
       peer: 'Codex app-server',
       executable,
       cwd,
       args: () => ['app-server', ...launchArgs(), '--listen', 'stdio://'],
+      env: childEnv,
       trace: traceScope
         ? {
             scope: traceScope,

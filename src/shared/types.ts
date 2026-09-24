@@ -205,6 +205,11 @@ export type AppSettings = {
    * background. Default on.
    */
   chatClaudePrecomputeCompaction: boolean
+  /**
+   * When true, provider child processes prepend PATH shims that serialize heavy build/verify
+   * commands through `.closedai/work.lock`. Default on.
+   */
+  chatWorkLockEnabled: boolean
 }
 
 /** A still of the page the user is looking at; `imageUrl` is a data URL. */

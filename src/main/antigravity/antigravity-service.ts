@@ -6,6 +6,7 @@ import type {
 import type { RotationSettingsAccess } from '../chat-context/rotate-provider-session.js'
 import { describeUsage, type ContextUsage } from '../chat-context/context-compaction.js'
 import { createSessionRotator } from '../chat-context/session-rotator-factory.js'
+import { buildProviderChildEnv } from '../provider-work-env.js'
 import type { SessionRotator } from '../chat-context/session-rotation.js'
 import { shrinkPastedImages } from '../chat-attachment-images.js'
 import {
@@ -117,7 +118,6 @@ export class AntigravityChatService extends EventEmitter {
       turnActive: () => this.activeTurnId !== null,
       transcriptItems: () => this.transcript.snapshot(),
       currentUsage: () => this.contextUsage,
-      notice: (text) => this.addNotice(text, 'info', null),
       rotate: () => this.rotateProviderSession()
     })
   }
@@ -416,7 +416,12 @@ export class AntigravityChatService extends EventEmitter {
       onConversationId: (conversationId) => this.adoptConversationId(conversationId),
       onTurnEnd: (turnId, end) => this.onTurnEnd(turnId, end),
       onTokenUsage: (usage) => this.noteTokenUsage(usage),
-      traceScope: () => ({ paneId: this.paneId, provider: 'antigravity', turnId: this.activeTurnId })
+      traceScope: () => ({ paneId: this.paneId, provider: 'antigravity', turnId: this.activeTurnId }),
+      childEnv: () => buildProviderChildEnv({
+        workspaceCwd: this.cwd,
+        paneId: this.paneId,
+        workLockEnabled: this.settings.get().chatWorkLockEnabled !== false
+      })
     })
   }
 

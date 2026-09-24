@@ -194,11 +194,17 @@ function sameTurn(last: Extract<TranscriptRow, { kind: 'activity' }>, item: Acti
   return !lastTurn || !item.turnId || lastTurn === item.turnId
 }
 
+export function hiddenTranscriptNotice(item: Extract<ChatTranscriptItem, { type: 'notice' }>): boolean {
+  if (item.tone !== 'info') return false
+  if (item.text.startsWith('Continuing from')) return true
+  return item.text.includes('provider context will rotate while idle')
+}
+
 function rowVisible(item: ChatTranscriptItem): boolean {
   if (isActivity(item)) return true
   if (item.type === 'assistant') return Boolean(item.text)
   if (item.type === 'user') return Boolean(item.text) || Boolean(item.attachments?.length)
-  if (item.type === 'notice' && item.tone === 'info' && item.text.startsWith('Continuing from')) return false
+  if (item.type === 'notice' && hiddenTranscriptNotice(item)) return false
   return true
 }
 

@@ -8,7 +8,6 @@ import {
   pressureTrigger,
   type RotationPressureThresholds
 } from './rotation-pressure.js'
-import { rotationScheduleNotice } from './rotation-schedule-notice.js'
 import { SessionRotator } from './session-rotation.js'
 
 export function rotationPressureThresholds(settings: AppSettings): RotationPressureThresholds {
@@ -25,7 +24,6 @@ type CreateSessionRotatorInput = {
   turnActive: () => boolean
   transcriptItems: () => readonly ChatTranscriptItem[]
   rotate: () => Promise<void>
-  notice?: (text: string) => void
   currentUsage?: () => ContextUsage | null
 }
 
@@ -39,15 +37,6 @@ export function createSessionRotator(input: CreateSessionRotatorInput): SessionR
     turnActive: input.turnActive,
     rotate: input.rotate,
     pressureTrigger: () => pressureTrigger(measureRotationPressure(input.transcriptItems()), thresholds()),
-    hasPressureThresholds: () => hasRotationPressureThreshold(thresholds()),
-    onScheduled: (reason) => {
-      if (!input.notice) return
-      input.notice(rotationScheduleNotice(reason, {
-        usage: input.currentUsage?.() ?? null,
-        pressure: measureRotationPressure(input.transcriptItems()),
-        percentThreshold: input.settings.get().chatCompactAtPercent,
-        tokenBudget: input.settings.get().chatCompactAtTokens
-      }))
-    }
+    hasPressureThresholds: () => hasRotationPressureThreshold(thresholds())
   })
 }
