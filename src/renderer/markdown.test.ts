@@ -108,6 +108,15 @@ test('links bare workspace paths with a slash in chat markdown', () => {
   assert.match(html, /data-ui-key="src\/renderer\/chat-transcript.tsx"/)
 })
 
+test('links absolute paths and backtick file paths in chat markdown', () => {
+  const html = renderToStaticMarkup(createElement(LocalFileMarkdown, {
+    cwd: '/repo',
+    children: 'Open /repo/README.md or `docs/application.md`'
+  }))
+  assert.match(html, /data-ui-key="\/repo\/README.md"/)
+  assert.match(html, /data-ui-key="docs\/application.md"/)
+})
+
 test('does not link file paths, code spans, or existing links', () => {
   const source = [
     'Edit src/renderer/chat-transcript.tsx and package.json now.',

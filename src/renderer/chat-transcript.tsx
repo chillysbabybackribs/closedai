@@ -222,7 +222,9 @@ const TranscriptItem = memo(function TranscriptItem({
           {item.attachments?.length ? <TranscriptAttachments attachments={item.attachments} /> : null}
           {text ? (
             <Bubble variant="secondary">
-              <BubbleContent className="prompt-message-user-content">{text}</BubbleContent>
+              <BubbleContent className="prompt-message-user-content">
+                <Markdown cwd={cwd}>{text}</Markdown>
+              </BubbleContent>
             </Bubble>
           ) : null}
         </MessageContent>

@@ -2,6 +2,8 @@
    handles hosts. Skips code and existing links so `package.json` in a sentence stays text unless
    it carries a path segment (for example `src/package.json`). */
 
+import { isWorkspaceFileHref } from '../../shared/local-files.js'
+
 type MdastNode = {
   type: string
   value?: string
@@ -13,12 +15,11 @@ const SKIPPED_NODES = new Set([
   'link', 'linkReference', 'definition', 'inlineCode', 'code', 'html', 'image', 'imageReference'
 ])
 
+/** Relative, absolute, and ./ paths; leading \b fails before `/home/...` so use a lookbehind. */
 const PATH = new RegExp(
-  String.raw`\b((?:\./|\.\./|(?:[A-Za-z0-9._-]+\/)+)[A-Za-z0-9._./-]+\.[A-Za-z0-9]+(?:#L\d+(?:-L?\d+)?|:\d+(?::\d+)?)?)\b`,
+  String.raw`(?<![A-Za-z0-9._/@])((?:\./|\.\./|(?:(?:/[A-Za-z0-9._-]+)+|[A-Za-z0-9._-]+/)[A-Za-z0-9._./-]*\.[A-Za-z0-9]+))(?![A-Za-z0-9._-])`,
   'g'
 )
-
-const LEADING_BOUNDARY = /[(/@\w-]/
 
 function trimTrailing(match: string): string {
   let end = match.length
@@ -33,10 +34,8 @@ function splitWorkspacePaths(value: string): MdastNode[] | null {
   let match: RegExpExecArray | null
   while ((match = PATH.exec(value))) {
     const start = match.index
-    const previous = start > 0 ? (value[start - 1] as string) : ''
-    if (previous && LEADING_BOUNDARY.test(previous)) continue
     const text = trimTrailing(match[1]!)
-    if (!text.includes('/')) continue
+    if (!isWorkspaceFileHref(text)) continue
     if (start > cursor) parts.push({ type: 'text', value: value.slice(cursor, start) })
     parts.push({ type: 'link', url: text, children: [{ type: 'text', value: text }] })
     cursor = start + match[1]!.length

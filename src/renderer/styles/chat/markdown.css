@@ -25,8 +25,14 @@
   color: var(--color-primary, #8cc8ff);
   font: inherit;
   text-align: inherit;
-  text-decoration: none;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
+  text-underline-offset: 2px;
   cursor: pointer;
+}
+
+.aui-md-local-file:hover {
+  text-decoration-color: currentColor;
 }
 
 .aui-md-local-file:disabled { cursor: wait; opacity: 0.65; }
