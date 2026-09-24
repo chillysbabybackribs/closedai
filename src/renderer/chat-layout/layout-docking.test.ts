@@ -58,6 +58,19 @@ test('docking preserves saved group labels, membership and divider ratios', () =
   assert.deepEqual(twice, docked)
 })
 
+test('dock rails span chat tiles beside the browser in the same row', () => {
+  let tree = split('outer', pane('left'), split('inner', pane('middle'), pane(BROWSER_PANE_ID)))
+  tree = setGroupDocked(tree, 'left', true)
+  const geometry = layoutGeometry(tree, 1600, 900)
+  assert.equal(geometry.rails.length, 1)
+  const rail = geometry.rails[0]!
+  assert.equal(rail.groups.map((group) => group.id).join(','), 'left')
+  assert.equal(geometry.panes.find((item) => item.id === 'left'), undefined, 'docked slot collapses')
+  const middle = geometry.panes.find((item) => item.id === 'middle')!
+  assert.ok(rail.rect.width > middle.rect.width + 100, 'rail spans every chat column in the row')
+  assert.ok(rail.rect.x + rail.rect.width <= geometry.panes.find((item) => item.id === BROWSER_PANE_ID)!.rect.x)
+})
+
 test('dock rails span consecutive chats when the tree nests horizontal splits', () => {
   let tree = split('outer', pane('left'), split('inner', pane('middle'), pane('right')))
   tree = setGroupDocked(tree, 'right', true)

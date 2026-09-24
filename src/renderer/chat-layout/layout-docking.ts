@@ -2,6 +2,8 @@ import { BROWSER_PANE_ID, isViewTabId, type ChatLayout } from './layout-tree.js'
 
 export const DOCK_HEIGHT = 36
 export type DockGroup = Extract<ChatLayout, { kind: 'pane' }>
+type LayoutRect = { x: number; y: number; width: number; height: number }
+export type DockRail = { id: string; groups: DockGroup[]; rect: LayoutRect; boundary: LayoutRect }
 
 export function layoutGroups(tree: ChatLayout): DockGroup[] {
   return tree.kind === 'pane' ? tree.id === BROWSER_PANE_ID ? [] : [tree]
@@ -10,37 +12,6 @@ export function layoutGroups(tree: ChatLayout): DockGroup[] {
 
 export function dockedGroups(tree: ChatLayout): DockGroup[] {
   return layoutGroups(tree).filter((group) => group.docked)
-}
-
-function horizontalHoistAnchor(node: ChatLayout, first: ChatLayout, second: ChatLayout): ChatLayout | null {
-  if (node.axis !== 'horizontal') return null
-  const left = dockRailAnchors(first)
-  const right = dockRailAnchors(second)
-  const tryHoist = (nested: ChatLayout[], sibling: ChatLayout, branch: ChatLayout): ChatLayout | null =>
-    nested.length === 1 && sibling.kind === 'pane' && !sibling.docked && branch.kind === 'split' && branch.axis === 'horizontal'
-      ? node : null
-  return tryHoist(left, second, first) ?? tryHoist(right, first, second)
-}
-
-/** Subtrees that own a regional dock rail (a horizontal row or a vertical chat column). */
-export function dockRailAnchors(node: ChatLayout): ChatLayout[] {
-  if (node.kind === 'pane') return []
-  if (hasBrowser(node)) return [...dockRailAnchors(node.first), ...dockRailAnchors(node.second)]
-  if (!dockedGroups(node).length) return []
-  const hoisted = horizontalHoistAnchor(node, node.first, node.second)
-  if (hoisted) return [hoisted]
-  const nested = [...dockRailAnchors(node.first), ...dockRailAnchors(node.second)]
-  return nested.length ? nested : [node]
-}
-
-/** Vertical space reserved for dock rails beneath chat bands in this subtree. */
-export function dockBandHeight(node: ChatLayout): number {
-  if (node.kind === 'pane') return 0
-  if (hasBrowser(node)) return Math.max(dockBandHeight(node.first), dockBandHeight(node.second))
-  if (dockRailAnchors(node).includes(node)) return DOCK_HEIGHT
-  return node.axis === 'vertical'
-    ? dockBandHeight(node.first) + dockBandHeight(node.second)
-    : Math.max(dockBandHeight(node.first), dockBandHeight(node.second))
 }
 
 export function hasBrowser(tree: ChatLayout): boolean {
@@ -57,6 +28,53 @@ export function expandedTree(tree: ChatLayout): ChatLayout | null {
 
 export function expandedPaneIds(tree: ChatLayout): string[] {
   return layoutGroups(tree).filter((group) => !group.docked).map((group) => group.id)
+}
+
+function unionRect(rects: LayoutRect[]): LayoutRect {
+  const first = rects[0]!
+  let { x, y, width, height } = first
+  for (const rect of rects.slice(1)) {
+    const right = Math.max(x + width, rect.x + rect.width)
+    const bottom = Math.max(y + height, rect.y + rect.height)
+    x = Math.min(x, rect.x)
+    y = Math.min(y, rect.y)
+    width = right - x
+    height = bottom - y
+  }
+  return { x, y, width, height }
+}
+
+function groupInRow(group: DockGroup, rowPanes: Array<{ id: string; tabs: string[] }>): boolean {
+  return rowPanes.some((pane) => pane.id === group.id || (group.tabs ?? [group.id]).some((tab) => pane.tabs.includes(tab)))
+}
+
+/** One rail per horizontal row of chat tiles that contains a docked group; browser columns are excluded. */
+export function dockRowRails(
+  panes: Array<{ id: string; tabs: string[]; rect: LayoutRect }>,
+  docked: DockGroup[],
+): DockRail[] {
+  if (!docked.length) return []
+  const chatPanes = panes.filter((pane) => pane.id !== BROWSER_PANE_ID)
+  const rows = new Map<string, typeof chatPanes>()
+  for (const pane of chatPanes) {
+    const key = `${pane.rect.y}|${pane.rect.height}`
+    const list = rows.get(key) ?? []
+    list.push(pane)
+    rows.set(key, list)
+  }
+  const rails: DockRail[] = []
+  for (const rowPanes of rows.values()) {
+    const groups = docked.filter((group) => groupInRow(group, rowPanes))
+    if (!groups.length) continue
+    const boundary = unionRect(rowPanes.map((pane) => pane.rect))
+    rails.push({
+      id: `dock-row-${boundary.y}`,
+      groups,
+      boundary,
+      rect: { ...boundary, y: boundary.y + boundary.height - DOCK_HEIGHT, height: DOCK_HEIGHT },
+    })
+  }
+  return rails.sort((left, right) => left.boundary.y - right.boundary.y)
 }
 
 export function setGroupDocked(tree: ChatLayout, id: string, docked: boolean): ChatLayout {

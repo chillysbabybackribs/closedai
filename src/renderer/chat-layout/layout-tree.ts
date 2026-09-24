@@ -1,4 +1,4 @@
-import { DOCK_HEIGHT, dockBandHeight, dockRailAnchors, dockedGroups, expandedTree, hasBrowser, layoutGroups, type DockGroup } from './layout-docking.js'
+import { DOCK_HEIGHT, dockRowRails, dockedGroups, expandedTree, hasBrowser, layoutGroups, type DockGroup } from './layout-docking.js'
 export type DockEdge = 'left' | 'right' | 'top' | 'bottom'
 export type ChatLayout = { kind: 'pane'; id: string; tabs?: string[]; docked?: boolean; dockNumber?: number } | {
   kind: 'split'; id: string; axis: 'horizontal' | 'vertical'; ratio: number
@@ -94,6 +94,17 @@ export function resizeSplit(tree: ChatLayout, id: string, ratio: number): ChatLa
   return { ...tree, first: resizeSplit(tree.first, id, ratio), second: resizeSplit(tree.second, id, ratio) }
 }
 
+function rowBandCount(tree: ChatLayout): number {
+  if (!dockedGroups(tree).length) return 0
+  const panes: Array<{ id: string; tabs: string[]; rect: Rect }> = []
+  visitLayout(tree, { x: 0, y: 0, width: 1200, height: 800 }, panes, [], undefined, false)
+  return dockRowRails(panes, dockedGroups(tree)).length
+}
+
+export function dockBandHeight(tree: ChatLayout): number {
+  return rowBandCount(tree) * DOCK_HEIGHT
+}
+
 export function minimumSize(tree: ChatLayout, region = true): { width: number; height: number } {
   if (region && !hasBrowser(tree) && dockedGroups(tree).length) {
     const expanded = expandedTree(tree)
@@ -111,38 +122,72 @@ export function minimumSize(tree: ChatLayout, region = true): { width: number; h
 export type SplitRatioOverrides = Readonly<Record<string, number>>
 export type SplitResizePhase = 'commit' | 'cancel'
 
+type LayoutPane = { id: string; tabs: string[]; rect: Rect }
+type LayoutDivider = { id: string; axis: 'horizontal' | 'vertical'; rect: Rect; parent: Rect; ratio: number; min: number; max: number }
+
+function visitLayout(
+  node: ChatLayout,
+  rect: Rect,
+  panes: LayoutPane[],
+  dividers: LayoutDivider[],
+  splitRatios: SplitRatioOverrides | undefined,
+  clampMinimums: boolean,
+): void {
+  if (node.kind === 'pane') {
+    panes.push({ id: node.id, tabs: node.tabs ?? [node.id], rect })
+    return
+  }
+  const horizontal = node.axis === 'horizontal'
+  const dimension = horizontal ? 'width' : 'height'
+  const available = rect[dimension] - DIVIDER_SIZE
+  let ratio = splitRatios?.[node.id] ?? node.ratio
+  let min = 0
+  let max = 1
+  if (clampMinimums) {
+    min = minimumSize(node.first)[dimension] / available
+    max = 1 - minimumSize(node.second)[dimension] / available
+    ratio = Math.max(min, Math.min(max, ratio))
+  }
+  const size = available * ratio
+  const first = { ...rect, [dimension]: size }
+  const second = { ...rect, [dimension]: available - size,
+    [horizontal ? 'x' : 'y']: (horizontal ? rect.x : rect.y) + size + DIVIDER_SIZE }
+  const divider = { ...rect, [dimension]: DIVIDER_SIZE,
+    [horizontal ? 'x' : 'y']: (horizontal ? rect.x : rect.y) + size }
+  dividers.push({ id: node.id, axis: node.axis, rect: divider, parent: rect, ratio, min, max })
+  visitLayout(node.first, first, panes, dividers, splitRatios, clampMinimums)
+  visitLayout(node.second, second, panes, dividers, splitRatios, clampMinimums)
+}
+
+function applyDockBandInsets(
+  panes: LayoutPane[],
+  rails: Array<{ boundary: Rect }>,
+  reference: LayoutPane[],
+): void {
+  for (const rail of rails) {
+    const rowIds = new Set(reference.filter((pane) => pane.id !== BROWSER_PANE_ID
+      && pane.rect.y === rail.boundary.y && pane.rect.height === rail.boundary.height).map((pane) => pane.id))
+    for (const pane of panes) {
+      if (rowIds.has(pane.id)) pane.rect = { ...pane.rect, height: pane.rect.height - DOCK_HEIGHT }
+    }
+  }
+}
+
 /** Flat geometry keeps React pane keys and composer state stable across tree rearrangements. */
 export function layoutGeometry(tree: ChatLayout, width: number, height: number, splitRatios?: SplitRatioOverrides) {
-  const panes: Array<{ id: string; tabs: string[]; rect: Rect }> = []
-  const dividers: Array<{ id: string; axis: 'horizontal' | 'vertical'; rect: Rect; parent: Rect; ratio: number; min: number; max: number }> = []
-  const rails: Array<{ id: string; groups: DockGroup[]; rect: Rect; boundary: Rect }> = []
-  const visit = (node: ChatLayout, rect: Rect, region = true): void => {
-    if (region && !hasBrowser(node) && dockRailAnchors(node).includes(node)) {
-      const groups = dockedGroups(node)
-      rails.push({ id: node.id, groups, boundary: rect, rect: { ...rect, y: rect.y + rect.height - DOCK_HEIGHT, height: DOCK_HEIGHT } })
-      const expanded = expandedTree(node)
-      if (expanded) visit(expanded, { ...rect, height: rect.height - DOCK_HEIGHT }, false)
-      return
-    }
-    if (node.kind === 'pane') { panes.push({ id: node.id, tabs: node.tabs ?? [node.id], rect }); return }
-    const horizontal = node.axis === 'horizontal'
-    const dimension = horizontal ? 'width' : 'height'
-    const available = rect[dimension] - DIVIDER_SIZE
-    const min = minimumSize(node.first)[dimension] / available
-    const max = 1 - minimumSize(node.second)[dimension] / available
-    const ratio = Math.max(min, Math.min(max, splitRatios?.[node.id] ?? node.ratio))
-    const size = available * ratio
-    const first = { ...rect, [dimension]: size }
-    const second = { ...rect, [dimension]: available - size,
-      [horizontal ? 'x' : 'y']: (horizontal ? rect.x : rect.y) + size + DIVIDER_SIZE }
-    const divider = { ...rect, [dimension]: DIVIDER_SIZE,
-      [horizontal ? 'x' : 'y']: (horizontal ? rect.x : rect.y) + size }
-    dividers.push({ id: node.id, axis: node.axis, rect: divider, parent: rect, ratio, min, max })
-    visit(node.first, first)
-    visit(node.second, second)
-  }
   const minimum = minimumSize(tree)
-  visit(tree, { x: 0, y: 0, width: Math.max(width, minimum.width), height: Math.max(height, minimum.height) })
+  const canvas = { x: 0, y: 0, width: Math.max(width, minimum.width), height: Math.max(height, minimum.height) }
+  const reference: LayoutPane[] = []
+  visitLayout(tree, canvas, reference, [], splitRatios, true)
+  const docked = dockedGroups(tree)
+  const rails = dockRowRails(reference, docked)
+  const placement = docked.length ? expandedTree(tree) : tree
+  const panes: LayoutPane[] = []
+  const dividers: LayoutDivider[] = []
+  if (placement) {
+    visitLayout(placement, canvas, panes, dividers, splitRatios, true)
+    applyDockBandInsets(panes, rails, reference)
+  }
   return { panes, dividers, minimum, rails }
 }
 
