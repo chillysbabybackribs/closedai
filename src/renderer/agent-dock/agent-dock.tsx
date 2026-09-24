@@ -8,8 +8,8 @@ import { securityRequests } from '../security-requests.js'
 import { dockSummary, dockTiles, type DockChatActivity } from './agent-dock-model.js'
 import { AgentDockIcon } from './agent-dock-icon.js'
 
-// The agent dock: a full-width footer row under the workspace holding a compact hero dock bar, one
-// tile per agent run plus a new-agent tile, with a one-line status on the left. It is always on
+// The agent dock: a hero dock bar under the workspace, sitting on the window chassis with no rail
+// behind it, one tile per agent run plus a new-agent tile, with a one-line status on the left. It is always on
 // screen, so a run that needs the user shows it here without opening anything over the work.
 
 export type AgentDockProps = {
@@ -32,13 +32,13 @@ export function AgentDock({ chats, onOpenChat, onOpenAgents }: AgentDockProps): 
   const runsApi = window.closedai.agentRuns
 
   return (
-    <footer className="agent-dock mt-2 grid h-12 grid-cols-[1fr_auto_1fr] items-center gap-3 border-t border-(--hairline-strong) bg-(--titlebar-surface) px-3 text-xs shadow-[inset_0_1px_0_var(--surface-highlight)]"
+    <footer className="agent-dock grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-3 py-2 text-xs"
       data-ui="dock.bar" aria-label="Agents">
       <p role="status" className="truncate">
         <span className="font-medium text-foreground">Agents</span>
         <span className={cn('ml-2', needsUser ? 'text-(--link-ink)' : 'text-muted-foreground')}>{dockSummary(tiles)}</span>
       </p>
-      <HeroDockBar size="compact">
+      <HeroDockBar>
         {tiles.map((tile) => (
           <AgentDockIcon key={tile.chatId} tile={tile} onOpenChat={onOpenChat}
             onPause={(id) => runsApi.pause(id)} onResume={(id) => runsApi.resume(id)} onStop={(id) => runsApi.stop(id)} />

@@ -421,9 +421,10 @@ with "App relaunched". A strip above the composer shows the state and cycle coun
 and a tool's `stop_agent` pause the run too; a user message sent between cycles is folded into
 the loop rather than raced.
 
-The **agent dock** (`src/renderer/agent-dock/`) is a full-width footer row under the workspace
-(`dock.bar`) built on the compact size of the hero dock (`src/components/ui/hero-dock.tsx`: a
-token-coloured pill bar of raised tiles that lift on hover, labelled through the shared tooltip). The
+The **agent dock** (`src/renderer/agent-dock/`) is a footer row under the workspace
+(`dock.bar`) with no rail of its own: the hero dock (`src/components/ui/hero-dock.tsx`, a
+token-coloured pill bar of raised 56px tiles that lift on hover, labelled through the shared tooltip)
+sits directly on the window chassis. The
 left of the row reads **Agents** and a summary (`2 running · 1 needs you`, blue when a run needs the
 user). The dock holds one tile per run (`dock.run`) with the run's initials and a status
 badge: green running (pulsing while retrying), grey paused, blue finished or waiting on a

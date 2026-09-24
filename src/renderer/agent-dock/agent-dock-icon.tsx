@@ -25,9 +25,9 @@ export function AgentDockIcon({ tile, onOpenChat, ...controls }: AgentDockTilePr
             <p className="font-medium">{tile.name}</p>
             <p className="text-muted-foreground">{DOCK_STATE_LABEL[tile.state]} · {tile.detail}</p>
           </>}>
-          <span className="text-[0.65rem] font-semibold tracking-wide">{dockInitials(tile.name)}</span>
+          <span className="text-sm font-semibold tracking-wide">{dockInitials(tile.name)}</span>
           <span aria-hidden="true"
-            className={cn('absolute -right-0.5 -bottom-0.5 size-2 rounded-full ring-2 ring-(--surface-raised)', DOCK_STATE_TONE[tile.state])} />
+            className={cn('absolute -right-1 -bottom-1 size-3 rounded-full ring-2 ring-(--surface-raised)', DOCK_STATE_TONE[tile.state])} />
         </HeroDockIcon>
       </PopoverTrigger>
       {/* Portaled content inherits body type; text-xs keeps the card's Buttons at their own size. */}
