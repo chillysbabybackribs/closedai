@@ -37,19 +37,19 @@
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
   font-family: var(--font-mono, monospace);
 }
 
 .file-viewer-meta {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--muted-foreground);
   white-space: nowrap;
 }
 
 .file-viewer-badge {
-  font-size: 11px;
+  font-size: 10px;
   font-family: var(--font-mono, monospace);
   padding: 1px 6px;
   border-radius: 4px;
@@ -74,7 +74,7 @@
   border-radius: 4px;
   background: transparent;
   color: var(--foreground);
-  font-size: 11px;
+  font-size: 10px;
   cursor: pointer;
   transition: background-color 0.15s;
 }

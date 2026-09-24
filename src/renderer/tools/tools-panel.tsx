@@ -93,8 +93,8 @@ export function ToolsPanel({ active: open, onSendToChat }: ToolsPanelProps): JSX
       <div className="tools-panel">
         <header className="tools-panel-head shrink-0 border-b px-6 py-3.5">
           <div className="min-w-0">
-            <h2 className="text-base font-semibold">Tools &amp; capabilities</h2>
-            <p className="mt-0.5 text-[13px] text-muted-foreground">
+            <h2 className="text-sm font-semibold">Tools &amp; capabilities</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
               {tools.manifest ? `${on} of ${total} on` : 'Loading…'}
             </p>
           </div>

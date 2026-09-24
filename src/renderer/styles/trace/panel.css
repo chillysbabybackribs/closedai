@@ -19,8 +19,8 @@
   border-bottom: 1px solid var(--border);
 }
 
-.trace-panel-title { margin: 0; font-size: 15px; font-weight: 600; line-height: 1.3; }
-.trace-panel-description { margin: 2px 0 0; color: var(--muted-foreground); font-size: 12.5px; line-height: 1.4; }
+.trace-panel-title { margin: 0; font-size: 13px; font-weight: 600; line-height: 1.3; }
+.trace-panel-description { margin: 2px 0 0; color: var(--muted-foreground); font-size: 11.5px; line-height: 1.4; }
 .trace-panel-header-actions { display: flex; gap: 4px; }
 
 .trace-panel-filters {

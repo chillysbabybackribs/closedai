@@ -33,7 +33,7 @@
   border-radius: 4px;
   background: transparent;
   color: var(--chrome-control-fg);
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 500;
   letter-spacing: var(--tracking-ui);
   cursor: pointer;

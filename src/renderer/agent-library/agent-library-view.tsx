@@ -26,8 +26,8 @@ export function AgentLibraryView({ active, startEnabled, onStart }: AgentLibrary
   return (
       <div className="agent-library-view">
         <header className="shrink-0 border-b px-6 py-3.5">
-          <h2 className="text-base font-semibold">Agents</h2>
-          <p className="text-muted-foreground text-sm">
+          <h2 className="text-sm font-semibold">Agents</h2>
+          <p className="text-muted-foreground text-xs">
             Standing instructions the app keeps driving cycle after cycle. Start opens a new chat beside the chat this view follows, with its model and folder.
           </p>
         </header>
