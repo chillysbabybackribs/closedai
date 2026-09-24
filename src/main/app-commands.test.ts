@@ -5,7 +5,7 @@ import test from 'node:test'
 import type { ChatWorkspaceSnapshot } from '../shared/chat-peers.ts'
 import type { ChatSnapshot, ChatThreadSummary } from '../shared/chat.ts'
 import { AppCommandAccess } from './app-commands.ts'
-import type { AppBrowserTabs, AppChatWorkspace } from './tools/app/host.ts'
+import type { AppBrowserTabs, AppChatWorkspace, AppUiHost } from './tools/app/host.ts'
 
 function chatSnapshot(overrides: Partial<ChatSnapshot> = {}): ChatSnapshot {
   return {
@@ -118,10 +118,26 @@ function browser(): AppBrowserTabs & { calls: unknown[] } {
   }
 }
 
-function access(workspace = new FakeWorkspace(), tabs = browser()) {
+function access(workspace = new FakeWorkspace(), tabs = browser(), ui: AppUiHost | null = null) {
+  const revealCalls: string[] = []
+  const uiHost: AppUiHost | null = ui ?? {
+    controls: async () => ({ surfaces: [], controls: [], total: 0, omitted: 0 }),
+    uiState: async () => ({
+      chatSearchOpen: false, historyOpen: false, downloadsOpen: false, dialogs: [], menus: [],
+      composer: null, focused: null, viewport: { width: 0, height: 0 }
+    }),
+    click: async () => ({}),
+    typeText: async () => ({}),
+    pressKey: async () => ({}),
+    scroll: async () => ({}),
+    waitFor: async (options) => ({ ...options, targetVisible: null, targetEnabled: null, textMatched: null, reached: true, elapsedMs: 0 }),
+    revealChatTab: async (paneId) => { revealCalls.push(paneId) }
+  }
   return {
-    workspace, tabs,
-    host: new AppCommandAccess({ chat: () => workspace, browser: () => tabs, downloads: () => ({ list: () => [] }), window: () => null })
+    workspace, tabs, revealCalls,
+    host: new AppCommandAccess({
+      chat: () => workspace, browser: () => tabs, downloads: () => ({ list: () => [] }), window: () => null, ui: () => uiHost
+    })
   }
 }
 
@@ -212,8 +228,9 @@ test('send_message awaits the turn and reports completion or timeout without fai
 })
 
 test('open_chat resolves panes, thread ids, and unique titles', async () => {
-  const { host, workspace } = access()
+  const { host, workspace, revealCalls } = access()
   assert.deepEqual(await host.openChat({ paneId: 'pane-2' }), { paneId: 'pane-2', threadId: 'thread-2' })
+  assert.deepEqual(revealCalls, ['pane-2'])
   assert.deepEqual(await host.openChat({ title: 'rerun' }), { paneId: 'pane-2', threadId: 'thread-3' })
   await assert.rejects(host.openChat({ title: 'benchmark' }), /2 threads match "benchmark"; pass thread_id\. thread-2: Benchmark run \| thread-3: Benchmark rerun/)
   await assert.rejects(host.openChat({ title: 'nothing' }), /No thread title contains/)

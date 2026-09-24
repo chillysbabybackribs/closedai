@@ -15,6 +15,7 @@ import type {
   AppSendRequest,
   AppSendResult,
   AppStateSection,
+  AppUiHost,
   AppWindowInfo
 } from './tools/app/host.js'
 
@@ -27,6 +28,7 @@ export type AppCommandDeps = {
   browser: () => AppBrowserTabs | null
   downloads: () => AppDownloadList | null
   window: () => AppWindowInfo | null
+  ui?: () => AppUiHost | null
   browserCoordination?: BrowserCoordination
   /** The agent run driving a chat, when one exists; projected beside the chat's own state. */
   agentRuns?: () => AppAgentRunDriver | null
@@ -183,6 +185,7 @@ export class AppCommandAccess implements AppCommandHost {
     const paneId = request.paneId ?? chat.snapshot().selectedPaneId
     if (request.paneId && !request.threadId && !request.title) {
       await chat.selectPane(request.paneId)
+      await this.deps.ui?.()?.revealChatTab(request.paneId)
       return { paneId: request.paneId, threadId: chat.paneSnapshot(request.paneId)?.threadId ?? null }
     }
     let threadId = request.threadId

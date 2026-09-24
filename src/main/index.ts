@@ -248,7 +248,7 @@ async function main(): Promise<void> {
   appAutomationAccess = new AppAutomationAccess(() => mainWindow)
   appCommandAccess = new AppCommandAccess({
     chat: () => chatService, browser: () => browserService, downloads: () => browserDownloads, window: () => mainWindow,
-    browserCoordination, agentRuns: () => agentRuns, agentLibrary: () => agentLibrary
+    ui: () => appAutomationAccess, browserCoordination, agentRuns: () => agentRuns, agentLibrary: () => agentLibrary
   })
   const captureAccess = new UiCaptureAccess(() => mainWindow, () => browserService)
   // Full-resolution captures for the transcript; the model only ever receives the scaled copy.

@@ -84,6 +84,7 @@ export type AppUiHost = {
   pressKey(key: string, modifiers: string[]): Promise<unknown>
   scroll(target: AppScrollTarget): Promise<unknown>
   waitFor(options: AppWaitOptions, signal: AbortSignal): Promise<AppWaitResult>
+  revealChatTab(paneId: string): Promise<void>
 }
 
 export type AppStateSection = 'workspace' | 'chat' | 'browser' | 'downloads' | 'window'

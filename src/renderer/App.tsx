@@ -3,6 +3,7 @@ import '@fontsource-variable/inter/wght.css'
 import '@fontsource-variable/inter/wght-italic.css'
 import '@fontsource-variable/geist-mono/wght.css'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { APP_REVEAL_CHAT_TAB_EVENT, type AppRevealChatTabDetail } from '../shared/app-ui-events.js'
 import { HeaderChatSearch } from './chat-history/header-search.js'
 import { useHistoryController } from './chat-history/history-controller.js'
 import { AppWindowControls } from './app-window-controls.js'
@@ -40,6 +41,15 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
   const openHistoryChat = useCallback(async (chatId: string) => {
     await (workspaceRef.current?.activateChat(chatId) ?? chatRef.current.openChat(chatId))
   }, [])
+  useEffect(() => {
+    const onReveal = (event: Event): void => {
+      const paneId = (event as CustomEvent<AppRevealChatTabDetail>).detail?.paneId
+      if (!paneId) return
+      void openHistoryChat(paneId)
+    }
+    window.addEventListener(APP_REVEAL_CHAT_TAB_EVENT, onReveal)
+    return () => window.removeEventListener(APP_REVEAL_CHAT_TAB_EVENT, onReveal)
+  }, [openHistoryChat])
   const history = useHistoryController(chat.sidebar, openHistoryChat)
   const searchRef = useRef<HTMLInputElement>(null)
   const focusSearch = useCallback(() => { searchRef.current?.focus(); searchRef.current?.select() }, [])

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import type { ChatWorkspaceSnapshot } from '../../shared/chat-peers.js'
 import { errorMessage } from '../error-message.js'
 import { BROWSER_PANE_ID, WORKSPACE_DOCK_ID, chatPaneIds, isViewTabId, withBrowser, dockBrowser, dockPane, paneIds, readLayout, removePane, resizeSplit, saveLayout, type ChatLayout, type DockEdge } from './layout-tree.js'
-import { addTab, chatTabIds, focusedCloseAction, isChatTabActive, moveTab, neighborTile, pruneTabs, removeTab, selectTab, tabIds, tabOwner, type TileDirection } from './layout-tabs.js'
+import { addTab, chatTabIds, focusChatTabInLayout, focusedCloseAction, isChatTabActive, moveTab, neighborTile, pruneTabs, removeTab, selectTab, tabIds, tabOwner, type TileDirection } from './layout-tabs.js'
 import { pinOnMove, pruneViewScopes, tileView, viewScope, viewTabId, type ViewKind } from './layout-views.js'
 import { removalNotice } from './layout-copy.js'
 import { assignGroups, presetLayout, presetSlots, singleGroup, type CanvasSize, type LayoutPreset } from './layout-presets.js'
@@ -113,14 +113,13 @@ export function useChatLayout(snapshot: ChatWorkspaceSnapshot) {
       let tree: ChatLayout | null = value.tree
       // A selection this hook made itself (a view tile focusing the chat it follows) is already
       // placed; re-asserting it would pull the chat out from behind the view.
-      if (next === previous && tree && tabIds(tree).includes(next)) return value
+      if (next === previous && tree && tabIds(tree).includes(next) && isChatTabActive(tree, next)) return value
       if (!tree || !paneIds(tree).length) tree = withBrowser({ kind: 'pane', id: next })
       else if (!tabIds(tree).includes(next)) {
         const anchor = paneIds(tree).includes(previous) ? previous : paneIds(tree)[0]!
         tree = selectTab(tree, anchor, next)
       } else if (!isChatTabActive(tree, next)) {
-        const anchor = paneIds(tree).includes(previous) ? previous : paneIds(tree)[0]!
-        tree = selectTab(tree, anchor, next)
+        tree = focusChatTabInLayout(tree, next)
       }
       return tree === value.tree ? value : { ...value, tree: tree! }
     })

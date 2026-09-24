@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { dockPane, layoutGeometry, paneIds, readLayout, resizeSplit, saveLayout, withBrowser, type ChatLayout } from './layout-tree.ts'
-import { addTab, focusedCloseAction, isChatTabActive, moveTab, neighborTile, pruneTabs, removeTab, selectTab, tabIds } from './layout-tabs.ts'
+import { addTab, focusedCloseAction, focusChatTabInLayout, isChatTabActive, moveTab, neighborTile, pruneTabs, removeTab, selectTab, tabIds } from './layout-tabs.ts'
+import { viewTabId } from './layout-views.ts'
 
 const split = (): ChatLayout => resizeSplit(dockPane({ kind: 'pane', id: 'a' }, 'b', 'a', 'right', 'split'), 'split', 0.6)
 
@@ -140,4 +141,14 @@ test('isChatTabActive is true only for the visible tab in a tile', () => {
   const focused = selectTab(tree, 'a', 'a')
   assert.equal(isChatTabActive(focused, 'a'), true)
   assert.equal(isChatTabActive(focused, 'b'), false)
+})
+
+test('focusChatTabInLayout surfaces a chat covered by a history view tab', () => {
+  const history = viewTabId('history', 'view-1')
+  let tree = addTab({ kind: 'pane', id: 'a' }, 'a', 'draft')
+  tree = selectTab(tree, 'draft', history)
+  assert.equal(isChatTabActive(tree, 'a'), false)
+  tree = focusChatTabInLayout(tree, 'a')
+  assert.equal(isChatTabActive(tree, 'a'), true)
+  assert.ok(tabIds(tree).includes(history))
 })

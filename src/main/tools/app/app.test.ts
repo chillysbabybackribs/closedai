@@ -31,6 +31,7 @@ function harness(overrides: { ui?: Partial<AppUiHost>; app?: Partial<AppCommandH
       calls.push(['waitFor', options, signal.aborted])
       return { ...options, reached: true, elapsedMs: 75, targetVisible: 1, targetEnabled: 1, textMatched: null }
     },
+    revealChatTab: async (paneId) => { calls.push(['revealChatTab', paneId]) },
     ...overrides.ui
   }
   const app: AppCommandHost = {

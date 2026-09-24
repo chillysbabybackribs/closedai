@@ -42,6 +42,13 @@ export function tabOwner(tree: ChatLayout | null, id: string): string | null {
     : tabOwner(tree.first, id) ?? tabOwner(tree.second, id)
 }
 
+/** Bring a conversation to the front of its tile when a view tab (history, tools, …) is covering it. */
+export function focusChatTabInLayout(tree: ChatLayout, chatId: string): ChatLayout {
+  if (!tabIds(tree).includes(chatId) || isChatTabActive(tree, chatId)) return tree
+  const owner = tabOwner(tree, chatId)
+  return owner ? selectTab(tree, owner, chatId) : tree
+}
+
 /** Whether `chatId` is the visible tab in its tile (not merely present as a background tab). */
 export function isChatTabActive(tree: ChatLayout | null, chatId: string): boolean {
   if (!tree) return false
