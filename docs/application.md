@@ -296,7 +296,9 @@ still detaches and stops it.
 Each tile header shows conversation and view tabs and a **+** button (`layout.add`) that opens
 the add menu: **New chat** (`layout.new-chat`), then the views the tile can show (`layout.open-view`:
 Trace, Agents, History, Tools, each with a live hint such as "2 running" or "Read-only"), then
-**Browser** (`layout.open-browser`, reveals the shared browser). New chat uses that tile's active
+**Browser** (`layout.open-browser`, reveals the shared browser; hint "Open" when already shown). The menu is
+the shared monochrome dropdown (`src/components/ui/dropdown-menu.tsx`, also used by the view scope chip),
+right-aligned to the + and dropped just below the tile header. New chat uses that tile's active
 chat model, adds a tab, and selects it while retaining the previous tabs and the other tiles and
 divider sizes.
 
