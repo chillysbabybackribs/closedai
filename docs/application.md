@@ -332,7 +332,7 @@ empty header space, so the grip is the reliable whole-tile target. The overlaid 
 hit area is a 24 × tab-height strip around the existing 11 px icon, without a larger hover chip.
 Click a tab to return to its conversation; arrow keys and Home/End
 also switch tabs, and Delete closes the focused tab. Only the active tab's close button is in the
-tab order. Tab strips scroll horizontally when full: narrow tiles keep a 72 px floor per tab so the
+tab order. Tab strips scroll horizontally when full: narrow tiles keep a 96 px floor per tab so the
 strip overflows instead of collapsing labels, a wheel over the strip pans it, and selecting a tab
 scrolls it into view. Mounted drafts and attachments survive
 switching tabs. Each tab's close button removes it from the layout without deleting its history
@@ -515,8 +515,10 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   headers and composers (`#262626`) and lighter active tabs (`#2f2f2f`). Browser
   tab headers retain the darker shell chrome (`#141415`); recessed workspace
   gutters (`#0c0c0e`) separate the panels.
-  The selected chat has a stronger neutral frame and a short top edge on its active
-  tab; transcript contrast stays constant across panes. Composers have a subtle
+  Chat tabs sit inside the header with 6 px rounded corners, a fine active outline,
+  and short separators between inactive neighbors. The selected chat has a stronger
+  neutral frame and a short top marker on its active tab; transcript contrast stays
+  constant across panes. Composers have a subtle
   contact shadow. Browser active tabs flow into a lighter (`#29292c`) toolbar,
   with a hairline beneath it and around the address field.
 - The window header has a soft charcoal (`#181819`) background in the dark theme.
