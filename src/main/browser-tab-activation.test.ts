@@ -25,7 +25,7 @@ test('a returning tab receives its visible surface before Electron attaches it',
     () => calls.push('raise')
   )
 
-  assert.deepEqual(calls, ['hide:previous', 'surface:next:true', 'attach', 'raise'])
+  assert.deepEqual(calls, ['surface:next:true', 'hide:previous', 'attach', 'raise'])
 })
 
 test('activation while the browser pane is hidden does not expose or raise a view', () => {

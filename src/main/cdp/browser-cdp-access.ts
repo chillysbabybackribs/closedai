@@ -14,7 +14,7 @@ import {
   parseResourceTiming,
   RESOURCE_TIMING_EXPRESSION
 } from './cdp-network.js'
-import { settleFrames } from '../browser-frame-settle.js'
+import { settleFrames, TAB_SWITCH_SETTLE_MS } from '../browser-frame-settle.js'
 import { dismissOverlayWithCdp } from './overlay/overlay-dismiss-cdp.js'
 import {
   armHeapSampling,
@@ -390,7 +390,7 @@ export class BrowserCdpAccess implements CdpToolHost {
     }
     // Re-resolve after a switch so the echoed tab metadata describes the tab as it now is.
     const target = focus.activated ? this.resolve(resolved.tab.id) : resolved
-    if (focus.activated) await settleFrames(target.session.contents)
+    if (focus.activated) await settleFrames(target.session.contents, TAB_SWITCH_SETTLE_MS)
     const result = await run(target)
     return {
       tab: target.tab,

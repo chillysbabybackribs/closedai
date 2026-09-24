@@ -5,6 +5,8 @@ import type { WebContents } from 'electron'
 // is how a click goes nowhere and a screenshot comes back blank. Two rAFs mean the page has
 // actually painted once, not merely that script ran.
 const FRAME_TIMEOUT_MS = 1_000
+/** After a human tab switch or foregrounding for real input — long enough for one paint, short enough to stay snappy. */
+export const TAB_SWITCH_SETTLE_MS = 400
 
 /**
  * Wait until a page has painted a frame; give up on the timeout so a stalled page cannot block.

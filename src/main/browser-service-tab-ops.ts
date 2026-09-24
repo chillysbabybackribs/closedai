@@ -7,6 +7,7 @@ import { ImageTab } from './local-files/image-tab.js'
 import { FileTab } from './local-files/file-tab.js'
 import type { TabRenderingPolicy } from './browser-tab-rendering.js'
 import type { TabCadencePolicy } from './browser-tab-cadence.js'
+import { settleFrames, TAB_SWITCH_SETTLE_MS } from './browser-frame-settle.js'
 
 export type BrowserServiceTabOpsHost = {
   window: BrowserWindow
@@ -45,16 +46,20 @@ export function setBrowserActiveTab(host: BrowserServiceTabOpsHost, id: string):
     host.emitTabs()
     return
   }
+  const visibility = browserSurfaceVisibility(host.bounds)
   host.setActiveId(id)
   activateTabSurface(
     host.tabs.filter((tab): tab is BrowserTab => tab instanceof BrowserTab),
     next,
     host.bounds,
-    browserSurfaceVisibility(host.bounds),
+    visibility,
     () => host.rendering.setActive(id),
     () => host.attachTabView(next.id)
   )
   host.cadence.handoff(next.id)
+  if (visibility.paneVisible && visibility.pageVisible) {
+    void settleFrames(next.view.webContents, TAB_SWITCH_SETTLE_MS).catch(() => {})
+  }
   host.emitTabState(next.getState())
   host.emitTabs()
 }

@@ -20,10 +20,12 @@ export function activateTabSurface(
   commitActive: () => void,
   raiseActive: () => void
 ): void {
+  // Show the incoming tab before hiding the outgoing one so the compositor never paints an
+  // empty browser box for a frame (the same handoff ordering used for chat tab reveals).
+  if (visibility.paneVisible) next.applyBounds(bounds, visibility.pageVisible)
   for (const tab of tabs) {
     if (tab.id !== next.id) tab.hide()
   }
-  if (visibility.paneVisible) next.applyBounds(bounds, visibility.pageVisible)
   commitActive()
   if (visibility.paneVisible) raiseActive()
 }

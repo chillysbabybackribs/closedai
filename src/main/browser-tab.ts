@@ -194,6 +194,7 @@ export class BrowserTab extends EventEmitter {
 
   // Show/position this tab's view, or hide it (used when another tab is active).
   applyBounds(bounds: BrowserBounds, show: boolean): void {
+    const wasVisible = this.visible
     this.bounds = sanitizeBounds(bounds)
     this.visible = show && this.bounds.width > 1 && this.bounds.height > 1
     if (!show && bounds.occluded === true && this.bounds.width > 1 && this.bounds.height > 1) {
@@ -206,6 +207,7 @@ export class BrowserTab extends EventEmitter {
     }
     this.view.setBounds(this.keepRealSurface() ? this.surfaceBounds() : hiddenBounds)
     this.view.setVisible(this.visible)
+    if (this.visible && !wasVisible) this.refreshVisibleSurface()
   }
 
   /**
