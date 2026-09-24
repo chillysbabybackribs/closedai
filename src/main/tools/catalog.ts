@@ -41,6 +41,7 @@ export const TOOL_CATALOG: Readonly<Record<string, ToolCatalogEntry>> = {
 
   'closedai_app.state': { group: 'controls-app', label: 'App state', summary: 'Read which chats, tabs, models, downloads, and dialogs are open.', offEffect: 'The model works blind to the app around it; commands become guesswork.' },
   'closedai_app.command': { group: 'controls-app', label: 'App commands', summary: 'Open chats, message other panes, switch models, manage browser tabs, switch project.', offEffect: 'The model cannot drive the app or other chats. Browser tools keep working in its own tab.' },
+  'closedai_app.agent': { group: 'controls-app', label: 'Agent runs', summary: 'Start, pause, resume, or stop the standing agent loop on another chat pane.', offEffect: 'The model cannot drive multi-cycle agent runs on other panes.' },
   'closedai_app.ui': { group: 'controls-app', label: 'Click the app', summary: 'List real controls and press them when no command can do the job.', offEffect: 'No real clicks or typing in ClosedAI itself.' },
   'closedai_ui.capture': { group: 'controls-app', label: 'Screenshots', summary: 'Capture the app window or a page for visual checks.', offEffect: 'No visual evidence; the model relies on text and structure only.' },
   'peer_chats.list': { group: 'controls-app', label: 'List other chats', summary: 'See which chats are open or in history and what they are doing.', offEffect: 'Other chats are invisible, so they cannot be read or messaged by id.' },

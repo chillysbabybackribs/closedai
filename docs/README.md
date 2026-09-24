@@ -45,7 +45,7 @@ guides when behavior diverges.
 | [parallel-web-research-2026-09-04.md](parallel-web-research-2026-09-04.md) | Parallel search design history |
 | [model-harness-audit-2026-09-04.md](model-harness-audit-2026-09-04.md), [model-latency-audit-2026-09-04.md](model-latency-audit-2026-09-04.md) | Harness/latency measurements |
 | [trace-research.md](trace-research.md), [codex-desktop-recon.md](codex-desktop-recon.md) | Provider/trace recon |
-| [electron-browser-platform-review.md](electron-browser-platform-review.md) | Platform permission/sandbox review |
+| [electron-browser-platform-review.md](electron-browser-platform-review.md) | Chromium/Electron sandbox and permission design record (2026-09-01) |
 | [frida-capability-assessment-2026-09-20.md](frida-capability-assessment-2026-09-20.md) | Native instrumentation assessment |
 | [source-guided-task-execution-plan-2026-09-20.md](source-guided-task-execution-plan-2026-09-20.md) | Implementation plan |
 | [tool-harness-simulation-plan-2026-09-23.md](tool-harness-simulation-plan-2026-09-23.md) | Historical prompt and tool optimization plan; its shared-prompt assumptions are retired |

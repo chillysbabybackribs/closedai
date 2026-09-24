@@ -13,6 +13,7 @@
     "browser_cdp.emulate": "CDP host stub pending (Phase 1 batch 2).",
     "closedai_app.state": "App state fixture overlay pending (Phase 1 batch 2).",
     "closedai_app.command": "Command host stub pending (Phase 1 batch 2).",
+    "closedai_app.agent": "Agent cycle host stub pending (Phase 1 batch 2).",
     "closedai_app.ui": "UI host stub pending (Phase 1 batch 2).",
     "closedai_ui.capture": "Capture host exists in tests; catalog extraction next (Phase 1 batch 2).",
     "peer_chats.list": "Peer harness exists in tests; catalog extraction next (Phase 1 batch 2).",

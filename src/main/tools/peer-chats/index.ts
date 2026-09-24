@@ -31,11 +31,15 @@ export function peerChatTools(getDirectory: () => PeerChatDirectory | null): Too
           'bodies; cwd narrows history to one project. Page with nextBeforeChatId as before_chat_id. Use recall(scope=history, ' +
           'chat_id=...) for transcript excerpts; read only for ids from scope open. Prefer explicit references over recency.',
         inputSchema: { type: 'object', additionalProperties: false, properties: {
-          scope: { type: 'string', enum: ['open', 'history'] },
-          query: { type: 'string', maxLength: 200 },
-          cwd: { type: 'string', minLength: 1, maxLength: 4096 },
-          before_chat_id: { type: 'string', minLength: 1, maxLength: 256 },
-          limit: { type: 'integer', minimum: 1, maximum: 8 }
+          scope: {
+            type: 'string',
+            enum: ['open', 'history'],
+            description: 'open (default): live peer summaries only — do not pass query, cwd, before_chat_id, or limit. history: search the chat store across projects.'
+          },
+          query: { type: 'string', maxLength: 200, description: 'Requires scope: history. Matches titles, previews, paths, checkpoint notes — not transcript bodies.' },
+          cwd: { type: 'string', minLength: 1, maxLength: 4096, description: 'Requires scope: history. Absolute project directory to narrow history.' },
+          before_chat_id: { type: 'string', minLength: 1, maxLength: 256, description: 'Requires scope: history. Page older entries (before_chat_id from a prior page).' },
+          limit: { type: 'integer', minimum: 1, maximum: 8, description: 'Requires scope: history. Default 5.' }
         } },
         run: async (input, context) => {
           const directory = getDirectory()
