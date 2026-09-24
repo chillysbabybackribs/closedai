@@ -128,6 +128,14 @@
 }
 .chat-layout-browser-frame:has(.chat-layout-browser-shield) .browser-tabstrip { position: relative; z-index: 5; }
 .chat-layout-canvas { position: relative; width: 100%; height: 100%; }
+.chat-layout-canvas[data-layout-drag='true'] .chat-layout-tile,
+.chat-layout-canvas[data-layout-drag='true'] .chat-layout-divider {
+  transition: left 110ms ease-out, top 110ms ease-out, width 110ms ease-out, height 110ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat-layout-canvas[data-layout-drag='true'] .chat-layout-tile,
+  .chat-layout-canvas[data-layout-drag='true'] .chat-layout-divider { transition: none; }
+}
 /* Geometry supplies both dimensions, so descendants can adapt to short rows as well as columns. */
 /* Each tile is a card lifted off the chassis: one drawn edge, a short contact shadow, and
    a soft cast. Dividers and the viewport gutter show the chassis between cards. */
@@ -345,39 +353,6 @@ body[data-layout-resize='horizontal'] * { cursor: col-resize !important; }
 body[data-layout-resize='vertical'],
 body[data-layout-resize='vertical'] * { cursor: row-resize !important; }
 
-.chat-layout-drop {
-  position: absolute;
-  z-index: 5;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  background: rgb(138 180 248 / 12%);
-  border: 2px solid #8ab4f8;
-  pointer-events: none;
-}
-.chat-layout-drop[data-edge='left'] { right: 50%; }
-.chat-layout-drop[data-edge='right'] { left: 50%; }
-.chat-layout-drop[data-edge='top'] { bottom: 50%; }
-.chat-layout-drop[data-edge='bottom'] { top: 50%; }
-.chat-layout-drop[data-edge='tab'] { bottom: auto; height: 38px; }
-.chat-layout-drop span { padding: 6px 10px; border-radius: 6px; background: var(--surface-chrome); font-size: 12px; }
-.chat-layout-browser-preview {
-  position: absolute;
-  box-sizing: border-box;
-  z-index: 5;
-  pointer-events: none;
-  border: 1px dashed rgb(138 180 248 / 55%);
-  border-radius: 8px;
-  background: rgb(138 180 248 / 4%);
-  display: grid;
-  place-items: center;
-  transition: left 110ms ease-out, top 110ms ease-out, width 110ms ease-out, height 110ms ease-out;
-}
-.chat-layout-browser-preview[data-browser='true'] { border: 2px solid #8ab4f8; background: rgb(138 180 248 / 18%); }
-.chat-layout-browser-preview span { max-width: 90%; padding: 10px 14px; border-radius: 8px; background: var(--surface-chrome); color: var(--chrome-fg-strong); font-size: 13px; text-align: center; }
-@media (prefers-reduced-motion: reduce) {
-  .chat-layout-browser-preview { transition: none; }
-}
 .chat-layout-error { padding: 5px 10px; color: #ffb4ab; font-size: 12px; }
 
 /* Bound draft growth to the tile in every layout, compensating for chat zoom. */
