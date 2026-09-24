@@ -44,7 +44,6 @@
 /* Paths pasted into a task: same Cursor path-chip treatment as assistant prose. */
 .user-message code {
   padding: 1px 5px;
-  border: 1px solid var(--path-chip-border, rgb(255 255 255 / 12%));
   border-radius: 4px;
   background: var(--path-chip-bg, rgb(255 255 255 / 8%));
   color: var(--tab-accent, #8ab4f8);

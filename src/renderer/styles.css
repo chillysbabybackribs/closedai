@@ -182,7 +182,6 @@
   /* Inline path/file chips: slate ink only — wrapper stays neutral grey like
      Cursor's file-mention pill (no blue wash on the chrome). */
   --path-chip-bg: rgb(255 255 255 / 8%);
-  --path-chip-border: rgb(255 255 255 / 12%);
 
   /* Transcript ink is intentionally separate from shell chrome. Assistant
      responses read like technical documents, and the document structure is
