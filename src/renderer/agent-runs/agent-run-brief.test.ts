@@ -30,7 +30,7 @@ test('between cycles and when paused the brief counts finished cycles; errors ge
   assert.equal(idle.cost, 'The provider has not reported context usage yet.')
   assert.equal(idle.error, '1 error across 2 steps. Last: npm test exited with code 1')
   const paused = texts(agentRunBrief(run({ status: 'paused', cycle: 1, lastTurnEndedAt: NOW - 20_000 }, { turnMs: 5_000 }), NOW))
-  assert.equal(paused.progress, '1 cycle finished, the last 20s ago. No commands, edits or tool calls yet over 5s of model time.')
+  assert.equal(paused.progress, '1 cycle finished, the last 20s ago. No commands, edits or tool calls yet over 5.0s of model time.')
   const fresh = texts(agentRunBrief(run({ cycle: 1, lastTurnEndedAt: null }), NOW))
   assert.equal(fresh.progress, 'No cycle has finished yet.')
   const hot = texts(agentRunBrief(run({}, { context: { usedTokens: 160_000, contextWindow: 200_000, percent: 80 } }), NOW))

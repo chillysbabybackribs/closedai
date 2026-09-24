@@ -454,7 +454,14 @@ selected chat's tile, then focuses it (Trace, History and Tools still dedupe per
 The title-bar icon shows selected while that tab exists. Its **Runs** screen (from the Library
 header's Runs control, whose label carries the summary of running and attention-needed runs)
 lists every agent run in a minimal table, with state, cycle, and current activity or pause
-reason. Runs needing the user appear first. Each run row offers **Open chat** (`agents.open-chat`), **Review** for a
+reason. Under each row a brief of two to four plain sentences reads from the run's tallies
+(`AgentRun.stats`, kept by main from the chat's own events, so an unmounted chat reads the same):
+progress (how long the live cycle has worked, or how many cycles finished and when; steps and
+file edits; model time in total), the last completed reply as an excerpt, cost (the context
+tokens every cycle re-sends and their share of the window, rotations that re-sent the
+instructions, and the account's plan windows with their resets), and, only when there are any,
+errors (failed commands and tool calls plus error notices, with the last one's text). Durations
+tick every ten seconds while a run is live on that screen. Runs needing the user appear first. Each run row offers **Open chat** (`agents.open-chat`), **Review** for a
 pending credential approval (`agents.review`), **Pause**/**Resume**/**Stop** (`agents.pause`,
 `agents.resume`, `agents.stop`; Stop reads **Dismiss** for a finished run). Opening a chat
 reveals it as a tab in the workspace. An empty Runs screen offers New agent. Starting a run
@@ -963,7 +970,7 @@ App-owned files live under Electron's `userData` (`~/.config/closedai/` on Linux
 |---|---|
 | `provider-catalogs.json` | The last model catalog read per workspace and provider, so a relaunch starts only the active provider and the picker still offers every model; a provider refreshes its own entry when selected |
 | `chat-transcripts/<chat id>.json` | The bounded tail of each chat as the app last showed it, so opening one paints before its provider replays; display-only, pruned against the store's live chat ids on launch |
-| `chats.json` | Every chat record: id, project directory, provider, model and effort, per-provider thread ids, title, preview, created/updated/last-turn times, archived flag, pin timestamp, parent chat, continuation digest, checkpoint, and the agent run driving the chat (`agentRun`: prompt, status, cycle, limits, failure count, last thread). Debounced atomic writes; flushed on quit |
+| `chats.json` | Every chat record: id, project directory, provider, model and effort, per-provider thread ids, title, preview, created/updated/last-turn times, archived flag, pin timestamp, parent chat, continuation digest, checkpoint, and the agent run driving the chat (`agentRun`: prompt, status, cycle, limits, failure count, last thread, and `stats`: step, edit, error and rotation counts, summed turn time, last reply and error excerpts, latest context and plan readings). Debounced atomic writes; flushed on quit |
 | `app-settings.json` | Cookie-import latch; active workspace/project; the open chat ids (`chatOpenIds`) and `chatSelectedPaneId`; saved per-project open ids and selection in `chatWorkspaces`; tool switches and context/batch settings. Legacy `chatPeers` and `chatWorkspaces[].peers` are imported into `chats.json` once, keeping each pane id as the chat id, and removed |
 | `browser-tabs.json`, `browser-history.json` | Restored tabs and omnibox history |
 | `agent-library.json` | Agents the user built and kept: id, name, standing instructions, cycle cap, created/updated times, last run and run count. Seeded with the built-in repair agent only when the file is missing; never pruned, debounced atomic writes, flushed on quit |
