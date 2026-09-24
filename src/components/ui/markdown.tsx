@@ -1,6 +1,5 @@
 import { Check, Copy } from 'lucide-react'
-import { marked } from 'marked'
-import { createElement, memo, useCallback, useId, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { createElement, memo, useCallback, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import ReactMarkdown, { defaultUrlTransform, type Components, type ExtraProps } from 'react-markdown'
 import remarkBreaks from 'remark-breaks'
 import remarkGfm from 'remark-gfm'
@@ -10,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Source, SourceContent, SourceTrigger } from '../prompt-kit/source.js'
 import { CodeBlock, CodeBlockCode } from './code-block.js'
 import { remarkBareUrls } from './markdown-links.js'
+import { splitMarkdownIntoBlocks } from './markdown-blocks.js'
 import { closeIncompleteMarkdown } from './markdown-stream.js'
 import { isWorkspaceFileHref, localFilePath } from '../../shared/local-files.js'
 import type { PluggableList } from 'unified'
@@ -24,14 +24,6 @@ export type MarkdownProps = {
   remarkPlugins?: PluggableList
   /** Override href normalization for local and workspace file links. */
   urlTransform?: (url: string, key: string) => string
-}
-
-function parseMarkdownIntoBlocks(markdown: string): string[] {
-  try {
-    return marked.lexer(markdown).map((token) => token.raw)
-  } catch {
-    return [markdown]
-  }
 }
 
 function extractLanguage(className?: string): string {
@@ -202,12 +194,15 @@ const MarkdownBlock = memo(function MarkdownBlock({ content, components, remarkP
 function MarkdownComponent({ children, id, className, components, streaming = false, remarkPlugins, urlTransform }: MarkdownProps) {
   const generatedId = useId()
   const blockId = id ?? generatedId
+  const blockCache = useRef<ReturnType<typeof splitMarkdownIntoBlocks> | null>(null)
 
   // Chat events already arrive in animation-frame batches. Lex their latest text in the same
   // render, keeping completed blocks memoized without a second timer or stale final frame.
   // While streaming, only the trailing block can be mid-token; earlier blocks are settled.
   const blocks = useMemo(() => {
-    const parsed = parseMarkdownIntoBlocks(children)
+    const split = splitMarkdownIntoBlocks(children, streaming, blockCache.current)
+    blockCache.current = split
+    const parsed = [...split.blocks]
     if (streaming && parsed.length > 0) {
       parsed[parsed.length - 1] = closeIncompleteMarkdown(parsed[parsed.length - 1]!)
     }

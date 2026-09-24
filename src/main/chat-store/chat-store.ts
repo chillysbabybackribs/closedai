@@ -232,7 +232,7 @@ export class ChatStore extends EventEmitter {
     if (!this.filePath || !this.dirty) return
     this.dirty = false
     const file: ChatStoreFile = { version: 1, chats: [...this.chats.values()] }
-    const contents = `${JSON.stringify(file, null, 2)}\n`
+    const contents = `${JSON.stringify(file)}\n`
     const path = this.filePath
     this.writing = this.writing
       .then(() => writeAtomic(path, contents))
