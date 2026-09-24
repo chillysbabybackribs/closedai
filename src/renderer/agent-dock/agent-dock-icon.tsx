@@ -29,7 +29,7 @@ export function AgentDockIcon({ tile, onOpenChat, ...controls }: AgentDockTilePr
                 <AvatarFallback className="bg-accent text-[0.65rem] font-semibold text-accent-foreground">
                   {dockInitials(tile.name)}
                 </AvatarFallback>
-                <AvatarBadge className={cn('size-2.5 ring-(--chassis)', DOCK_STATE_TONE[tile.state])} />
+                <AvatarBadge className={cn('size-2.5 ring-(--titlebar-surface)', DOCK_STATE_TONE[tile.state])} />
               </Avatar>
             </button>
           </PopoverTrigger>
