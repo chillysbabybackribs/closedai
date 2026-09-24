@@ -531,10 +531,8 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   with a hairline beneath it and around the address field.
 - The window header has a soft charcoal (`#181819`) background in the dark theme.
   It is 44 px tall, with 14 px menu/search text, a 34 px search field,
-  a 24 px textured Earth browser globe with a 15° axial tilt and a subtle brightness lift on hover,
-  and enlarged window buttons. Its locally bundled texture rotates continuously once per 24 seconds
-  and pauses while the document is hidden. Reduced motion
-  disables rotation and the 140 ms brightness fade. A local PNG remains the loading/failure fallback.
+  a Lucide globe icon for the browser toggle (same stroke weight and chrome ink as the other title-bar icons),
+  and enlarged window buttons.
   The shell reserves the header's
   natural height so the workspace begins directly below its divider.
 - Header search reads chat records across directories, attached or detached, including child chats.

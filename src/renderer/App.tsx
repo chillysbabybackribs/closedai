@@ -21,10 +21,9 @@ import { DesktopWorkspace, type ChatLayoutHandle } from './chat-layout/desktop-w
 import { ChatRenameDialog } from './chat-rename-dialog.js'
 import { SettingsDialog, type SettingsTab } from './settings/settings-dialog.js'
 import { useToolsPreset } from './tools/use-tools-preset.js'
-import { BrowserGlobeIcon } from './browser-globe-icon.js'
 import { useBrowserSavedSitesController } from './browser-saved-sites-controller.js'
 import { BrowserSavedSitesShelf } from './browser-saved-sites-shelf.js'
-import { Workflow } from 'lucide-react'
+import { Globe, Workflow } from 'lucide-react'
 import {
   normalizeAppearanceSettings,
   persistAppearanceSettings,
@@ -216,7 +215,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
             aria-pressed={browserVisible} aria-label={browserVisible ? 'Hide browser' : 'Show browser'}
             title={browserVisible ? 'Hide browser' : 'Show browser'}
             onClick={() => workspaceRef.current?.toggleBrowser()}>
-            <BrowserGlobeIcon size={24} />
+            <Globe size={19} aria-hidden="true" />
           </button>
         </div>
         <AppWindowControls />
