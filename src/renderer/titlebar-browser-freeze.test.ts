@@ -79,3 +79,40 @@ test('modal backdrop occludes the browser before an image dialog grows into it',
     else Reflect.deleteProperty(globalThis, 'Element')
   }
 })
+
+test('resized browser previews coalesce captures and discard obsolete frames', async () => {
+  const { createBrowserFreezeRefresh } = await import('./titlebar-browser-freeze.js')
+  type Shot = import('../shared/types.js').BrowserShot
+  const pending: Array<(shot: Shot | null) => void> = []
+  const published: string[] = []
+  const refresh = createBrowserFreezeRefresh(
+    () => new Promise((resolve) => pending.push(resolve)),
+    (shot) => published.push(shot.imageUrl)
+  )
+  const bounds = { x: 0, y: 0, width: 800, height: 600, visible: true, occluded: true }
+  const frame = (imageUrl: string): Shot => ({ imageUrl, tabId: 'a', url: '', title: '' })
+  const tick = () => new Promise<void>((resolve) => setImmediate(resolve))
+  refresh(bounds)
+  refresh({ ...bounds, width: 400 })
+  refresh({ ...bounds, width: 300 })
+  assert.equal(pending.length, 1, 'bounds updates do not start parallel captures')
+  pending.shift()!(frame('old'))
+  await tick()
+  assert.deepEqual(published, [])
+  assert.equal(pending.length, 1, 'only the newest dimensions need another capture')
+  pending.shift()!(frame('resized'))
+  await tick()
+  assert.deepEqual(published, ['resized'])
+  refresh(bounds)
+  refresh({ ...bounds, occluded: false })
+  pending.shift()!(frame('after-release'))
+  await tick()
+  assert.deepEqual(published, ['resized'], 'release invalidates the in-flight capture')
+  refresh(bounds)
+  pending.shift()!(null)
+  await tick()
+  refresh(bounds)
+  pending.shift()!(frame('recovered'))
+  await tick()
+  assert.deepEqual(published, ['resized', 'recovered'])
+})
