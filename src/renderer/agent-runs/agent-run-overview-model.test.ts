@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { AGENT_RUN_MAX_FAILURES, type AgentRun } from '../../shared/agent-runs.js'
-import { dockInitials, dockSummary, dockTiles } from './agent-dock-model.ts'
+import { dockSummary, dockTiles } from './agent-run-overview-model.ts'
 
 const run = (patch: Partial<AgentRun> = {}): AgentRun => ({ chatId: 'c1', prompt: 'Go.', status: 'running', cycle: 3, maxCycles: null,
   startedAt: 1, updatedAt: 10, lastTurnEndedAt: null, reason: null, failures: 0, threadId: null, agentId: null, name: 'Brief', ...patch })
@@ -38,11 +38,4 @@ test('failure pauses, finished limits, and credential approvals need the user; r
   assert.equal(byId.held!.attentionKey, null)
   assert.equal(dockSummary(tiles), '1 running · 3 need you · 1 paused')
   assert.equal(dockSummary([]), 'No agents running')
-})
-
-test('icons carry two letters that tell runs apart', () => {
-  assert.equal(dockInitials('Daily brief'), 'DB')
-  assert.equal(dockInitials('scraper'), 'SC')
-  assert.equal(dockInitials('  '), 'A')
-  assert.equal(dockInitials('état — watch'), 'ÉW')
 })
