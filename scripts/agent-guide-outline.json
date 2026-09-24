@@ -64,7 +64,7 @@
         "Tier 4 — Electron preview/dev for renderer behavior; browser:live only for real Chromium paths.",
         "Tier 5 — npm test or npm run check only for release preparation or an explicit user request. Full gates are not the default success criterion.",
         "Command: npm run test:one -- src/path/to/module.test.ts",
-        "Heavy build/verify: provider shells auto-wrap npm/node via scripts/closedai-bin when chatWorkLockEnabled (default on); manual: node scripts/work-lock.mjs --cwd <path> -- <command…> (.closedai/work.lock)."
+        "Heavy build/verify: provider shells auto-wrap npm via scripts/closedai-bin when chatWorkLockEnabled (default on); manual: node scripts/work-lock.mjs --cwd <path> -- <command…> (.closedai/work.lock)."
       ]
     }
   ]

@@ -263,8 +263,9 @@ output remains recoverable without reopening the dropped provider thread. With s
 Claude Code auto-compaction stays off but background precompute compaction remains on by default
 (`chatClaudePrecomputeCompaction`; set false to disable). Disabling seamless rotation restores the
 native compaction path. Provider child processes (Codex, Claude Code, Cursor, Antigravity) prepend
-`scripts/closedai-bin` to `PATH` when `chatWorkLockEnabled` is on (default): `npm` and `node` shims
-wrap heavy build/verify invocations with `scripts/work-lock.mjs` and `.closedai/work.lock`. Per-pane
+`scripts/closedai-bin` to `PATH` when `chatWorkLockEnabled` is on (default): an `npm` shim only
+(not `node`, so MCP and `#!/usr/bin/env node` stay on the real binary) wraps heavy build/verify
+invocations with `scripts/work-lock.mjs` and `.closedai/work.lock`. Per-pane
 spawns also set `CLOSEDAI_VERIFY_LEASE` so the verify janitor skips active Electron harness work.
 Manual wrap remains available: `node scripts/work-lock.mjs --cwd <repo> -- <command…>`.
 See [Model context](model-context.md) for trust and [Tools](tools.md) for limits.
