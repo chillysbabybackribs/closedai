@@ -154,7 +154,8 @@ function useNow(active: boolean): number {
   return now
 }
 
-function formatTokens(tokens: number): string {
+/** 61.2k below 100k, 200k above; small counts stay whole. */
+export function formatTokens(tokens: number): string {
   return tokens >= 1_000 ? `${(tokens / 1_000).toFixed(tokens >= 100_000 ? 0 : 1)}k` : String(tokens)
 }
 

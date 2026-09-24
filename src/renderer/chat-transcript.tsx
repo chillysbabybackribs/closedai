@@ -147,7 +147,7 @@ export const ChatTranscript = memo(function ChatTranscript({
           const isRunning = isActivityRowRunning(row, start + index, lastTurnIndex, activeTurnId)
           return (
             <MessageScrollerItem key={id} messageId={id}>
-              <ToolActivity items={row.items} isRunning={isRunning} />
+              <ToolActivity items={row.items} isRunning={isRunning} cwd={cwd} />
             </MessageScrollerItem>
           )
         }
@@ -158,7 +158,7 @@ export const ChatTranscript = memo(function ChatTranscript({
             scrollAnchor={row.item.type === 'user'}
             className={row.item.type === 'user' ? 'chat-turn-user' : undefined}
           >
-            <TranscriptItem item={row.item} actions={actionMessageIds.has(row.item.id) ? actions : undefined}
+            <TranscriptItem item={row.item} cwd={cwd} actions={actionMessageIds.has(row.item.id) ? actions : undefined}
               showContinue={row.item.id === latestActionId} />
           </MessageScrollerItem>
         )
@@ -206,11 +206,13 @@ function sameGroup<T extends { items: readonly unknown[] }>(previous: T, next: T
 const TranscriptItem = memo(function TranscriptItem({
   item,
   actions,
-  showContinue
+  showContinue,
+  cwd
 }: {
   actions?: MessageActionContext
   item: StandaloneItem
   showContinue?: boolean
+  cwd?: string
 }): JSX.Element | null {
   if (item.type === 'user') {
     const text = item.text ? displayUserMessageText(item.text) : ''
@@ -229,7 +231,7 @@ const TranscriptItem = memo(function TranscriptItem({
   }
   if (item.type === 'assistant') {
     if (!item.text) return null
-    return <AssistantMessage item={item} actions={actions} showContinue={showContinue} />
+    return <AssistantMessage item={item} actions={actions} showContinue={showContinue} cwd={cwd} />
   }
   if (item.type === 'notice') {
     if (item.tone === 'info' && item.text.startsWith('Continuing from')) return null
@@ -249,10 +251,12 @@ const TranscriptItem = memo(function TranscriptItem({
 
 const ToolActivity = memo(function ToolActivity({
   items,
-  isRunning
+  isRunning,
+  cwd
 }: {
   items: ActivityItem[]
   isRunning?: boolean
+  cwd?: string
 }): JSX.Element {
   const [open, setOpen] = useState(false)
   const [opened, setOpened] = useState(false)
@@ -290,12 +294,13 @@ const ToolActivity = memo(function ToolActivity({
       </Collapsible>
     </div>
   )
-}, (prev, next) => sameGroup(prev, next) && prev.isRunning === next.isRunning)
+}, (prev, next) => sameGroup(prev, next) && prev.isRunning === next.isRunning && prev.cwd === next.cwd)
 
-const AssistantMessage = memo(function AssistantMessage({ item, actions, showContinue }: {
+const AssistantMessage = memo(function AssistantMessage({ item, actions, showContinue, cwd }: {
   item: Extract<ChatTranscriptItem, { type: 'assistant' }>
   actions?: MessageActionContext
   showContinue?: boolean
+  cwd?: string
 }): JSX.Element | null {
   // The displayed text trails what has streamed in by a bounded catch-up window, so one-token,
   // sentence-burst, and whole-message chunk cadences all paint as the same typewriter. Settled

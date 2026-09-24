@@ -7,8 +7,10 @@ import { Markdown } from '../components/ui/markdown.js'
 import { LocalFileMarkdown } from './local-file-markdown.js'
 
 test('chat file links are actionable, preserve labels, and keep unsafe links inert', () => {
-  const html = renderToStaticMarkup(createElement(LocalFileMarkdown, { cwd: '/proj' },
-    '[**View mockups**](/tmp/my%20image.png) [Source](file:///tmp/code.ts#L12) [doc](docs/readme.md) [unsafe](javascript:alert(1))'))
+  const html = renderToStaticMarkup(createElement(LocalFileMarkdown, {
+    cwd: '/proj',
+    children: '[**View mockups**](/tmp/my%20image.png) [Source](file:///tmp/code.ts#L12) [doc](docs/readme.md) [unsafe](javascript:alert(1))'
+  }))
   assert.equal((html.match(/data-ui="chat.local-file"/g) ?? []).length, 3)
   assert.match(html, /<strong[^>]*>View mockups<\/strong>/)
   assert.match(html, /data-ui-key="file:\/\/\/tmp\/code.ts#L12"/)
@@ -99,8 +101,10 @@ test('leaves sentence punctuation and wrapping parentheses outside the link', ()
 })
 
 test('links bare workspace paths with a slash in chat markdown', () => {
-  const html = renderToStaticMarkup(createElement(LocalFileMarkdown, { cwd: '/repo' },
-    'Edit src/renderer/chat-transcript.tsx before shipping.'))
+  const html = renderToStaticMarkup(createElement(LocalFileMarkdown, {
+    cwd: '/repo',
+    children: 'Edit src/renderer/chat-transcript.tsx before shipping.'
+  }))
   assert.match(html, /data-ui-key="src\/renderer\/chat-transcript.tsx"/)
 })
 

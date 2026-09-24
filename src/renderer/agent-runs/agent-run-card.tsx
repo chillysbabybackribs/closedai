@@ -1,11 +1,12 @@
-import type { JSX } from 'react'
+import { Fragment, type JSX } from 'react'
 import { MessageSquareText } from 'lucide-react'
 import { Button } from '../../components/ui/button.js'
 import { cn } from '../../lib/utils.js'
 import { useAgentRunAction } from '../agent-runs/use-agent-run-action.js'
 import { DOCK_STATE_LABEL, type DockTile, type DockTileState } from './agent-run-overview-model.js'
 
-// One agent run row in the Agents tab runs table: status, activity, and controls.
+// One agent run in the Agents tab runs table: a row with status, activity, and controls, then a
+// second row of plain sentences on progress, the last reply, cost, and errors.
 
 /** The status colour a run shows on its icon badge, in theme tokens. */
 export const DOCK_STATE_TONE: Record<DockTileState, string> = {
@@ -32,6 +33,7 @@ export function AgentRunCard({ tile, onOpenChat, onPause, onResume, onStop }: Ag
   const detailTone = tile.state === 'failed' ? 'text-destructive' : review || finished ? 'text-(--link-ink)' : 'text-muted-foreground'
   const detail = error || tile.detail
   return (
+    <Fragment>
     <tr data-ui="agents.run" data-ui-key={tile.chatId} data-state={tile.state}>
       <td className="agent-run-table-name">
         <span className={cn('agent-run-table-dot', DOCK_STATE_TONE[tile.state])} aria-hidden="true" />
@@ -62,5 +64,14 @@ export function AgentRunCard({ tile, onOpenChat, onPause, onResume, onStop }: Ag
           disabled={busy} onClick={() => void act(() => onStop(tile.chatId))}>{finished ? 'Dismiss' : 'Stop'}</Button>
       </td>
     </tr>
+    <tr className="agent-run-table-brief" data-state={tile.state}>
+      <td colSpan={4}>
+        {tile.brief.map((line) => (
+          <p key={line.kind} className={cn('agent-run-brief-line', line.kind === 'error' && 'text-destructive')} data-kind={line.kind}
+            title={line.kind === 'reply' ? undefined : line.text}>{line.text}</p>
+        ))}
+      </td>
+    </tr>
+    </Fragment>
   )
 }

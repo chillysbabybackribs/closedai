@@ -201,6 +201,36 @@
   white-space: nowrap;
 }
 
+/* The brief under a run row (agent-run-card.tsx): the row's border moves to the brief so the
+   pair reads as one entry. Sentences wrap; only the reply excerpt is clipped to one line. */
+.agent-run-table tbody tr[data-ui='agents.run'] {
+  border-bottom: 0;
+}
+
+.agent-run-table-brief td {
+  padding: 0 0 10px;
+  vertical-align: top;
+}
+
+.agent-run-brief-line {
+  margin: 0 0 2px;
+  padding-left: 14px;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.agent-run-brief-line[data-kind='progress'] {
+  color: var(--foreground);
+}
+
+.agent-run-brief-line[data-kind='reply'] {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-style: italic;
+}
+
 /* Build (agent-library-panel.tsx): the editor fills the screen; the footer stays at the bottom. */
 .agent-library-editor {
   display: flex;

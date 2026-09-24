@@ -1,4 +1,5 @@
 import { AGENT_RUN_MAX_FAILURES, type AgentRun } from '../../shared/agent-runs.js'
+import { agentRunBrief, type AgentRunBriefLine } from './agent-run-brief.js'
 
 // What the Agents view shows: one card per run, ordered so runs that need the
 // user (an approval, a failure pause, a finished limit) come first. Pure so the rules are testable.
@@ -21,6 +22,8 @@ export type DockTile = {
   detail: string
   /** Set while the tile needs the user; changes when the reason changes, so it re-announces. */
   attentionKey: string | null
+  /** The sentences under the row: progress, last reply, cost, and errors (agent-run-brief.ts). */
+  brief: AgentRunBriefLine[]
 }
 
 /** How each state reads in the run card. */
@@ -53,7 +56,7 @@ function tileDetail(run: AgentRun, state: DockTileState, chat: DockChatActivity 
   return run.reason || 'Paused'
 }
 
-export function dockTiles(runs: readonly AgentRun[], chats: readonly DockChatActivity[], approvals: readonly DockApproval[]): DockTile[] {
+export function dockTiles(runs: readonly AgentRun[], chats: readonly DockChatActivity[], approvals: readonly DockApproval[], now: number = Date.now()): DockTile[] {
   const chatById = new Map(chats.map((chat) => [chat.paneId, chat]))
   return runs.map((run) => {
     const waiting = approvals.filter((request) => request.paneId === run.chatId)
@@ -68,7 +71,8 @@ export function dockTiles(runs: readonly AgentRun[], chats: readonly DockChatAct
       running: run.status === 'running',
       cycleLabel: run.maxCycles === null ? `Cycle ${run.cycle}` : `Cycle ${run.cycle} of ${run.maxCycles}`,
       detail: tileDetail(run, state, chatById.get(run.chatId), waiting),
-      attentionKey
+      attentionKey,
+      brief: agentRunBrief(run, now)
     }
   }).sort((a, b) => ORDER[a.state] - ORDER[b.state])
 }

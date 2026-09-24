@@ -1,6 +1,6 @@
 import type { AgentRun, AgentRunStats } from '../../shared/agent-runs.js'
 import { formatDuration } from '../activity-steps.js'
-import { resetNote } from '../context-meter.js'
+import { formatTokens, resetNote } from '../context-meter.js'
 
 // The two or three sentences under a run row: what the run has done and for how long, what a
 // cycle costs and why, and what went wrong. Built only from the run record's tallies, so a run
@@ -45,25 +45,27 @@ function workPhrase(stats: AgentRunStats): string {
   return `${steps}${edits}`
 }
 
-/** "Each cycle re-sends 61k tokens of context (31% of the window). 5-hour window at 42%, resets in 2h." */
+/** "Each cycle re-sends 61k tokens of context (31% of the 200k window), growing with every step. 5-hour plan window at 42%, resets in 2h." */
 function costLine(stats: AgentRunStats, now: number): string {
-  const parts: string[] = []
+  const sentences: string[] = []
   if (stats.context) {
     const { usedTokens, contextWindow, percent } = stats.context
-    const share = contextWindow > 0 ? ` (${percent}% of the ${formatTokens(contextWindow)} window` + (percent >= HOT_PERCENT ? ', a rotation is near)' : ')') : ''
-    parts.push(`Each cycle re-sends ${formatTokens(usedTokens)} tokens of context${share}, growing with every step`)
+    const near = percent >= HOT_PERCENT ? ', a rotation is near' : ''
+    const share = contextWindow > 0 ? ` (${percent}% of the ${formatTokens(contextWindow)} window${near})` : ''
+    sentences.push(`Each cycle re-sends ${formatTokens(usedTokens)} tokens of context${share}, growing with every step.`)
   } else {
-    parts.push('The provider has not reported context usage yet')
+    sentences.push('The provider has not reported context usage yet.')
   }
   if (stats.rotations > 0) {
-    parts.push(`the context was rotated ${stats.rotations === 1 ? 'once' : `${stats.rotations} times`}, re-sending the instructions each time`)
+    const times = stats.rotations === 1 ? 'once' : `${stats.rotations} times`
+    sentences.push(`The context was rotated ${times}, re-sending the instructions each time.`)
   }
   const windows = stats.plan?.windows ?? []
   if (windows.length > 0) {
-    parts.push(windows.slice(0, 2).map((window) =>
-      `${window.label} plan window at ${window.percent}%${window.resetsAt ? `, resets in ${resetNote(window.resetsAt, now)}` : ''}`).join('; '))
+    sentences.push(`${windows.slice(0, 2).map((window) =>
+      `${window.label} plan window at ${window.percent}%${window.resetsAt ? `, resets in ${resetNote(window.resetsAt, now)}` : ''}`).join('; ')}.`)
   }
-  return `${parts.join('. ').replace(/\. ([a-z])/g, (_, c: string) => `. ${c.toUpperCase()}`)}.`
+  return sentences.join(' ')
 }
 
 /** "2 of 12 steps failed. Last: npm test exited with code 1." */
@@ -82,8 +84,4 @@ function ago(ms: number): string {
 
 function clip(text: string, max: number): string {
   return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text
-}
-
-function formatTokens(tokens: number): string {
-  return tokens >= 1_000 ? `${(tokens / 1_000).toFixed(tokens >= 100_000 ? 0 : 1)}k` : String(tokens)
 }

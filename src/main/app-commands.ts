@@ -334,7 +334,9 @@ export function projectChat(paneId: string, snapshot: ChatSnapshot, agentRun: Ag
     // Present only for a chat the app is driving; the loop restarts this pane after every turn.
     ...(agentRun ? { agentRun: {
       status: agentRun.status, cycle: agentRun.cycle, maxCycles: agentRun.maxCycles, failures: agentRun.failures,
-      reason: agentRun.reason, agentId: agentRun.agentId, name: agentRun.name, summary: describeAgentRun(agentRun)
+      reason: agentRun.reason, agentId: agentRun.agentId, name: agentRun.name, summary: describeAgentRun(agentRun),
+      stats: { steps: agentRun.stats.steps, errors: agentRun.stats.errors, edits: agentRun.stats.edits, rotations: agentRun.stats.rotations,
+        turnMs: agentRun.stats.turnMs, lastError: agentRun.stats.lastError, contextPercent: agentRun.stats.context?.percent ?? null }
     } } : {}),
     contextUsage: snapshot.contextUsage ? {
       usedTokens: snapshot.contextUsage.usedTokens,

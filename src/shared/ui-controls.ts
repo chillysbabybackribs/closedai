@@ -159,7 +159,7 @@ export const UI_CONTROLS = {
   'agents.save': 'Save the editor as a new agent or update the loaded one (enabled while named and changed)',
   'agents.start': 'Start an agent run in a new chat from the Build screen, saving a named agent first, then return to the Library; main re-sends a cycle after every finished turn until paused',
   'agents.delete': 'Delete the saved agent open in the Build screen and return to the Library; the first click asks for confirmation',
-  'agents.run': 'An agent run row in the Agents tab runs table with state, cycle and current activity; item is the chat id',
+  'agents.run': 'An agent run row in the Agents tab runs table with state, cycle and current activity, followed by a brief row of sentences on progress and time, the last reply, per-cycle context cost and plan windows, and errors; item is the chat id',
   'agents.open-chat': 'Open an agent run\u2019s chat in the workspace; item is the chat id',
   'agents.review': 'Open an agent run\u2019s chat to answer its pending credential approval; item is the chat id',
   'agents.pause': 'Pause a running agent run after its current turn; item is the chat id',
