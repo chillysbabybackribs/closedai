@@ -100,15 +100,22 @@ export class CursorSession {
     return this.ensureSession(client)
   }
 
-  /** Start a turn: resolves when the message is accepted; the turn ends through `onTurnEnd`. */
-  async send(blocks: readonly AcpPromptBlock[]): Promise<string> {
+  /** Reserve a turn id before prompt assembly so the pane can show work in flight. */
+  beginTurn(turnId: string): void {
     if (this.activeTurnId) throw new Error('A Cursor turn is already running')
-    this.clearIdleTimer()
-    const turnId = cursorTurnId()
     this.activeTurnId = turnId
-    // Announce before session load and MCP attach so the pane shows work in flight while the
-    // agent process and tool bridge come up — most of the wait on a cached-catalog warm path.
-    this.deps.onTurn(turnId)
+  }
+
+  /** Drop a turn that never reached the agent, after prompt assembly fails. */
+  abortTurn(turnId: string): void {
+    if (this.activeTurnId !== turnId) return
+    this.endTurn({ status: 'failed', error: 'Turn did not start' })
+  }
+
+  /** Start a turn: resolves when the message is accepted; the turn ends through `onTurnEnd`. */
+  async send(blocks: readonly AcpPromptBlock[], turnId: string): Promise<string> {
+    if (this.activeTurnId !== turnId) throw new Error('A Cursor turn is already running')
+    this.clearIdleTimer()
     try {
       const client = await this.ensureClient()
       const setup = await this.ensureSession(client)

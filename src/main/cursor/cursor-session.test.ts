@@ -162,11 +162,12 @@ test('send announces the turn before opening the agent session', async () => {
     },
     prompt() { return Promise.resolve('end_turn') }
   } })
-  const send = thread.send([{ type: 'text', text: 'hi' }])
+  const turnId = 'cursor-turn-test'
+  thread.beginTurn(turnId)
+  const send = thread.send([{ type: 'text', text: 'hi' }], turnId)
   await Promise.resolve()
-  assert.equal(turns.length, 1)
-  assert.match(turns[0]!, /^cursor-turn-/)
+  assert.equal(thread.activeTurnId, turnId)
   releaseSession()
   await send
-  assert.deepEqual(turns.slice(1), [null])
+  assert.equal(thread.activeTurnId, null)
 })

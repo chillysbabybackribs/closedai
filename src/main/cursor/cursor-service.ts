@@ -43,7 +43,7 @@ import { CursorArchive } from './cursor-archive.js'
 import type { CursorToolBridge } from './cursor-mcp.js'
 import { isCursorAuthFailure, parseCursorAccountEmail, parseCursorPlan, readCursorAbout } from './cursor-cli.js'
 import { isMissingExecutable, missingProviderMessage } from '../provider-binary.js'
-import { cursorSessionIdOf, cursorThreadId } from './cursor-ids.js'
+import { cursorSessionIdOf, cursorThreadId, cursorTurnId } from './cursor-ids.js'
 import { buildCursorPrompt } from './cursor-input.js'
 import { cursorAcpModelId, cursorModelCatalog } from './cursor-models.js'
 import { CursorSession } from './cursor-session.js'
@@ -142,6 +142,7 @@ export class CursorChatService extends EventEmitter {
   }
 
   async send(text: string, attachments: ChatAttachment[] = [], prepare?: () => Promise<void>): Promise<void> {
+    let turnId: string | null = null
     try {
       const shrunk = shrinkPastedImages(attachments)
       const { prompt, input, summaries } = buildChatInput(text, shrunk)
@@ -155,6 +156,9 @@ export class CursorChatService extends EventEmitter {
       await this.ensureReady()
       const session = this.session!
       if (this.activeTurnId) throw new Error('A Cursor turn is already running')
+      turnId = cursorTurnId()
+      this.setTurn(turnId)
+      session.beginTurn(turnId)
       const sessionId = session.sessionId
       const pendingHandoff = this.settings.get().chatContinuation?.handoff ?? null
       const guideThreadKey = sessionGuideThreadKey(
@@ -175,12 +179,20 @@ export class CursorChatService extends EventEmitter {
         context,
         { images: this.supportsImages }
       )
-      if (!turn) return
-      if (this.session !== session || (sessionId && session.sessionId !== sessionId) || this.activeTurnId) throw new Error('Cursor conversation changed while preparing the turn')
-      await session.send(turn.blocks)
+      if (!turn) {
+        session.abortTurn(turnId)
+        this.setTurn(null)
+        return
+      }
+      if (this.session !== session || (sessionId && session.sessionId !== sessionId) || this.activeTurnId !== turnId) {
+        throw new Error('Cursor conversation changed while preparing the turn')
+      }
+      await session.send(turn.blocks, turnId)
       await this.clearDeliveredHandoff()
       if (attachGuide) markSessionGuideDelivered(this.sessionGuideState, guideThreadKey)
     } catch (error) {
+      if (turnId) this.session?.abortTurn(turnId)
+      if (turnId && this.activeTurnId === turnId) this.setTurn(null)
       this.addNotice(messageOf(error), 'error')
       throw error
     }
