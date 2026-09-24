@@ -1,4 +1,4 @@
-import { BROWSER_PANE_ID, dockPane, layoutGeometry, paneIds, type ChatLayout, type DockEdge, type Rect } from './layout-tree.js'
+import { BROWSER_PANE_ID, dockPane, layoutGeometry, paneIds, removePane, type ChatLayout, type DockEdge, type Rect } from './layout-tree.js'
 import { moveTab, removeTab, tabOwner } from './layout-tabs.js'
 import { browserDropPreview } from './browser-drop.js'
 
@@ -35,14 +35,18 @@ export function dragSplitPreview(
   drop: DragDropTarget,
   singleTab: boolean,
   width: number,
-  height: number
+  height: number,
+  browserVisible = true
 ): ReturnType<typeof layoutGeometry> | null {
   if (!drop.edge) return null
   if (sourceId === BROWSER_PANE_ID) {
     return browserDropPreview(tree, { target: drop.target, edge: drop.edge }, width, height)
   }
   const previewTree = dragPreviewTree(tree, sourceId, drop, singleTab)
-  return previewTree ? layoutGeometry(previewTree, width, height) : null
+  // Apply the move to the saved tree before projecting visibility, just as commit does.
+  // A hidden browser retains its dock position without taking up preview space.
+  const visiblePreview = previewTree && !browserVisible ? removePane(previewTree, BROWSER_PANE_ID) : previewTree
+  return visiblePreview ? layoutGeometry(visiblePreview, width, height) : null
 }
 
 /** Chat drop targets stay anchored to the layout before preview resizing. */

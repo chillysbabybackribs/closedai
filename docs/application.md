@@ -380,7 +380,8 @@ browser in a full-height column beside all chats. Moving the browser preserves i
 the selected chat; its position uses the same saved layout and resizable dividers.
 While a pane or the browser is dragged toward a split target, tiles and dividers live-resize to
 the layout that would result on release; chats and the browser page stay visible and track their
-new bounds. Splitting either the active or an inactive conversation tab out of a group
+new bounds. A hidden browser takes no space in the preview, so chats can occupy full-height
+columns across the workspace; its saved dock position is retained. Splitting either the active or an inactive conversation tab out of a group
 shows both the dragged conversation and the remaining group in their proposed shells before release.
 Hit targets for chat and browser drags stay fixed on the pre-drag layout so the destination
 does not flicker. Chat split choices hold through a 32-pixel boundary buffer (scaled down

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { BROWSER_PANE_ID, layoutGeometry, withBrowser, type ChatLayout } from './layout-tree.ts'
+import { BROWSER_PANE_ID, dockPane, layoutGeometry, removePane, withBrowser, type ChatLayout } from './layout-tree.ts'
 import { chatDropAt, dragPreviewPanes, dragSplitPreview } from './layout-drag-preview.ts'
 
 const pair: ChatLayout = {
@@ -107,3 +107,22 @@ test('browser halves hold near their midpoint but a different tile switches imme
   assert.equal(chatDropAt(panes, 610, 400, left)?.target, 'a')
   assert.equal(chatDropAt(panes, 603, 400, left), null)
 })
+
+for (const singleTab of [false, true]) {
+  test(`hidden browser leaves three full-height chat columns during ${singleTab ? 'tab' : 'pane'} drag`, () => {
+    const stacked: ChatLayout = { kind: 'split', id: 'stack', axis: 'vertical', ratio: 0.5,
+      first: { kind: 'pane', id: 'b' }, second: { kind: 'pane', id: 'c' } }
+    // Browser nested beside the source also exercises collapse of its saved split.
+    const tree: ChatLayout = { ...pair, second: { ...stacked, second: withBrowser(stacked.second) } }
+    const drop = { target: 'a', edge: 'right' as const }
+    const preview = dragSplitPreview(tree, 'c', drop, singleTab, 1500, 900, false)!
+    assert.equal(preview.panes.length, 3)
+    assert.ok(preview.panes.every(({ id, rect }) => id !== BROWSER_PANE_ID && rect.y === 0 && rect.height === 900))
+    assert.equal(Math.max(...preview.panes.map(({ rect }) => rect.x + rect.width)), 1500)
+    const committed = removePane(dockPane(tree, 'c', 'a', 'right', 'committed'), BROWSER_PANE_ID)!
+    assert.deepEqual(preview.panes, layoutGeometry(committed, 1500, 900).panes)
+    assert.equal(preview.dividers.length, 2)
+    const visible = dragSplitPreview(tree, 'c', drop, singleTab, 1500, 900, true)!
+    assert.ok(visible.panes.some(({ id }) => id === BROWSER_PANE_ID))
+  })
+}
