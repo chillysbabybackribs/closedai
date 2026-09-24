@@ -1,5 +1,6 @@
 import type { ChatFileChange, ChatTranscriptItem } from '../../shared/chat.js'
 import { recordOfOrEmpty as recordOf, stringOf } from '../json-coerce.js'
+import { GENERATE_IMAGE_LABEL, isNativeGenerateImageTool } from '../generated-image-transcript.js'
 import { closedAiToolItem, editDiff, jsonPreview, recordableToolOutput } from '../tool-transcript-shared.js'
 
 // Pure translations from ACP tool calls to the transcript vocabulary Codex items use, so the
@@ -76,7 +77,12 @@ export function cursorToolItem(call: CursorToolCall, turnId: string | null, cwd:
       exitCode: null
     }
   }
-  return { type: 'tool', id, turnId, label: call.title || call.kind || 'tool', detail: detailOf(rawInput), status: 'inProgress' }
+  const label = generateImageLabel(call.title, call.kind) || call.title || call.kind || 'tool'
+  return { type: 'tool', id, turnId, label, detail: detailOf(rawInput), status: 'inProgress' }
+}
+
+function generateImageLabel(title: string, kind: string): string | null {
+  return isNativeGenerateImageTool(title) || isNativeGenerateImageTool(kind) ? GENERATE_IMAGE_LABEL : null
 }
 
 /** The same item once ACP reported a settled status, with whatever the call produced. */

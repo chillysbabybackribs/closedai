@@ -7,6 +7,7 @@ import type {
   ChatTranscriptItem
 } from '../shared/chat.js'
 import { nullableString, recordOf, stringOf } from './json-coerce.js'
+import { GENERATE_IMAGE_LABEL, promoteGeneratedImage } from './generated-image-transcript.js'
 import { captureSurface, WITHHELD_TOOL_OUTPUT, toolResultWithheld } from './tool-transcript-shared.js'
 
 export { nullableString, recordOf, stringOf } from './json-coerce.js'
@@ -255,14 +256,20 @@ function normalizeGeneratedImage(
   }
   const result = stringOf(item.result)
   if (status === 'completed' && result) {
-    return {
-      type: 'screenshot', id, turnId, surface: 'generated_image', caption: '',
+    const savedPath = typeof item.savedPath === 'string' && item.savedPath ? item.savedPath : undefined
+    return promoteGeneratedImage({
+      itemId: id,
+      turnId,
+      failed: false,
       imageUrl: `data:image/png;base64,${result}`,
-      ...(typeof item.savedPath === 'string' && item.savedPath ? { savedPath: item.savedPath } : {})
+      savedPath
+    }) ?? {
+      type: 'tool', id, turnId, label: GENERATE_IMAGE_LABEL, detail: '', status,
+      output: 'Image generation returned no image.'
     }
   }
   return {
-    type: 'tool', id, turnId, label: 'Generate image', detail: '', status,
+    type: 'tool', id, turnId, label: GENERATE_IMAGE_LABEL, detail: '', status,
     ...(status === 'completed' ? { output: 'Image generation returned no image.' } : {})
   }
 }

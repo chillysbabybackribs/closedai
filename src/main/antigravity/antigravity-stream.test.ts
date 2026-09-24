@@ -58,6 +58,22 @@ test('native tool steps become command and file-change items with their output',
   assert.deepEqual(t.handle(step({ step_index: 3, state: 'DONE', step_type: 'tool', tool_name: 'write_to_file', tool_info: { name: 'write_to_file', parameters: {} } })).ops, [])
 })
 
+test('generate_image promotes inline when output includes a data url', () => {
+  const t = translator()
+  t.handle(step({ step_index: 6, state: 'ACTIVE', step_type: 'tool', tool_name: 'generate_image', tool_info: { name: 'generate_image', parameters: { Prompt: 'a cat' } } }))
+  const done = t.handle(step({
+    step_index: 6,
+    state: 'DONE',
+    step_type: 'tool',
+    tool_name: 'generate_image',
+    tool_info: { name: 'generate_image', parameters: { Prompt: 'a cat' }, output: 'data:image/png;base64,QQ==' }
+  }))
+  const row = items(done.ops).at(-1)!
+  assert.equal(row.type, 'screenshot')
+  assert.equal(row.surface, 'generated_image')
+  assert.equal(row.imageUrl, 'data:image/png;base64,QQ==')
+})
+
 test('ClosedAI MCP declarations keep the namespace label, and a held capture becomes a screenshot', () => {
   const t = translator((namespace, tool) => (namespace === 'closedai_ui' && tool === 'capture' ? 'call-9' : null), 'data:image/png;base64,QUJD')
   const page = t.handle(step({ step_index: 4, state: 'ACTIVE', step_type: 'tool', tool_name: 'mcp_embedded_browser_page', tool_info: { name: 'mcp_embedded_browser_page', parameters: { action: 'read' } } }))

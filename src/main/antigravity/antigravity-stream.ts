@@ -1,6 +1,7 @@
 import type { ChatTranscriptItem } from '../../shared/chat.js'
 import type { TranscriptOp, TurnEnd } from '../chat-transcript-ops.js'
 import { recordOfOrEmpty as recordOf, stringOf } from '../json-coerce.js'
+import { isGenerateImageToolLabel, promoteGeneratedImage, resolveGeneratedImageEvidence } from '../generated-image-transcript.js'
 import { promoteCaptureToScreenshot } from '../tool-transcript-shared.js'
 import { classifyAntigravityCache } from './antigravity-cache-diagnostics.js'
 import { antigravityToolItem, antigravityToolResult, resolveAntigravityTool, type AntigravityServerName } from './antigravity-tool-items.js'
@@ -129,10 +130,27 @@ export class AntigravityTurnTranslator {
     if (!inProgress(item)) return ops
     const failed = step.state === 'ERROR'
     const output = stringOf(info.output) || (failed ? describeError(info.error) : '')
-    const settled = this.screenshotItem(item, name, parameters, output, failed) ?? antigravityToolResult(item, { output, failed })
+    const settled = this.screenshotItem(item, name, parameters, output, failed)
+      ?? this.generatedImageItem(item, output, failed)
+      ?? antigravityToolResult(item, { output, failed })
     this.tools.set(index, settled)
     ops.push({ type: 'item', item: settled })
     return ops
+  }
+
+  /** Native generate_image becomes an inline generated-image row when the step output carries bytes or a path. */
+  private generatedImageItem(item: ChatTranscriptItem, output: string, failed: boolean): ChatTranscriptItem | null {
+    if (failed || item.type !== 'tool' || !isGenerateImageToolLabel(item.label)) return null
+    const evidence = resolveGeneratedImageEvidence(output)
+    if (!evidence) return null
+    return promoteGeneratedImage({
+      itemId: item.id,
+      turnId: item.turnId,
+      failed: false,
+      imageUrl: evidence.imageUrl,
+      savedPath: evidence.savedPath,
+      caption: output
+    })
   }
 
   /** A ClosedAI capture that the app still holds at full resolution becomes a screenshot row. */

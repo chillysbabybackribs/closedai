@@ -1,5 +1,12 @@
 import type { ChatFileChange, ChatTranscriptItem } from '../../shared/chat.js'
 import { recordOfOrEmpty, stringOf } from '../json-coerce.js'
+import {
+  GENERATE_IMAGE_LABEL,
+  isGenerateImageToolLabel,
+  isNativeGenerateImageTool,
+  promoteGeneratedImage,
+  resolveGeneratedImageEvidence
+} from '../generated-image-transcript.js'
 import { closedAiToolItem, editDiff, jsonPreview, prefixLines, promoteCaptureToScreenshot, recordableToolOutput } from '../tool-transcript-shared.js'
 
 // Pure translations from Claude Code tool calls to the transcript vocabulary Codex items use,
@@ -53,8 +60,29 @@ export function toolResultItem(
   if (item.type !== 'tool') return item
   const screenshot = captureScreenshot(item, result, displayScreenshot)
   if (screenshot) return screenshot
+  const generated = generatedImageScreenshot(item, result)
+  if (generated) return generated
   const output = recordableToolOutput(item.label, clip(text, MAX_DETAIL_CHARS).trim(), result.isError)
   return output ? { ...item, status, output } : { ...item, status }
+}
+
+function generatedImageScreenshot(
+  item: Extract<ChatTranscriptItem, { type: 'tool' }>,
+  result: ToolResultContent
+): ChatTranscriptItem | null {
+  if (result.isError || !isGenerateImageToolLabel(item.label)) return null
+  const text = resultText(result.content)
+  const evidence = resolveGeneratedImageEvidence(text, result.content)
+    ?? (resultImageUrl(result.content) ? { imageUrl: resultImageUrl(result.content)! } : null)
+  if (!evidence) return null
+  return promoteGeneratedImage({
+    itemId: item.id,
+    turnId: item.turnId,
+    failed: false,
+    imageUrl: evidence.imageUrl,
+    savedPath: evidence.savedPath,
+    caption: text
+  })
 }
 
 function captureScreenshot(
@@ -119,7 +147,9 @@ function builtinLabel(name: string, input: Record<string, unknown>): { label: st
     case 'Agent': return { label: 'Subagent', detail: stringOf(input.description) || stringOf(input.prompt) }
     case 'ToolSearch': return { label: 'Tool search', detail: stringOf(input.query) }
     case 'Skill': return { label: 'Skill', detail: stringOf(input.skill) }
-    default: return { label: name, detail: jsonPreview(input) }
+    default:
+      if (isNativeGenerateImageTool(name)) return { label: GENERATE_IMAGE_LABEL, detail: jsonPreview(input) }
+      return { label: name, detail: jsonPreview(input) }
   }
 }
 

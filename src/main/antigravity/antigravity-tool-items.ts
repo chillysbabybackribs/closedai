@@ -1,5 +1,6 @@
 import type { ChatFileChange, ChatTranscriptItem } from '../../shared/chat.js'
 import { recordOfOrEmpty as recordOf, stringOf } from '../json-coerce.js'
+import { GENERATE_IMAGE_LABEL } from '../generated-image-transcript.js'
 import { closedAiToolItem, editDiff, jsonPreview, prefixLines, recordableToolOutput } from '../tool-transcript-shared.js'
 
 // Pure translations from `agy` tool steps to the transcript vocabulary Codex items use, so the
@@ -93,6 +94,7 @@ function nativeLabel(name: string, input: Record<string, unknown>): { label: str
     case 'manage_task': return { label: 'Tasks', detail: jsonPreview(input) }
     case 'search_web': return { label: 'Web search', detail: stringOf(input.query) || stringOf(input.Query) }
     case 'read_url_content': return { label: 'Fetch page', detail: stringOf(input.Url) }
+    case 'generate_image': return { label: GENERATE_IMAGE_LABEL, detail: stringOf(input.Prompt) || jsonPreview(input) }
     default: return { label: name, detail: jsonPreview(input) }
   }
 }

@@ -81,6 +81,19 @@ test('a credential read row keeps a placeholder while every other registry resul
   assert.equal(listed.type === 'tool' && listed.output, '{"credentials":[]}')
 })
 
+test('generate_image tool results become generated-image transcript rows', () => {
+  const use = toolUseItem({ id: 'img-1', name: 'generate_image', input: { prompt: 'icon' } }, 'turn', '/w')
+  assert.equal(use.type === 'tool' && use.label, 'Generate image')
+  const done = toolResultItem(use, {
+    content: [{ type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'Q' } }],
+    isError: false
+  }, noScreenshot)
+  assert.equal(done.type, 'screenshot')
+  if (done.type !== 'screenshot') return
+  assert.equal(done.surface, 'generated_image')
+  assert.equal(done.imageUrl, 'data:image/png;base64,Q')
+})
+
 test('result text and images are read from either wire shape', () => {
   assert.equal(resultText('plain'), 'plain')
   assert.equal(resultText([{ type: 'text', text: 'a' }, { type: 'image' }, { type: 'text', text: 'b' }]), 'a\nb')

@@ -175,6 +175,24 @@ test('a served capture becomes a screenshot row when the app still holds the ima
   assert.deepEqual(taken, ['closedai_ui.capture'])
 })
 
+test('GenerateImage becomes a generated-image row when content carries image bytes', () => {
+  const instance = new CursorTurnTranslator({ turnId: 'cursor-turn-1', seed: 'cursor-turn-1', cwd: '/repo' })
+  const ops = apply(instance, [
+    { sessionUpdate: 'tool_call', toolCallId: 'gen-1', title: 'GenerateImage', kind: 'other', status: 'pending', rawInput: {} },
+    {
+      sessionUpdate: 'tool_call_update',
+      toolCallId: 'gen-1',
+      status: 'completed',
+      content: [{ type: 'image', mimeType: 'image/png', data: 'QQ==' }]
+    }
+  ])
+  const settled = ops.flatMap((op) => (op.type === 'item' ? [op.item] : [])).at(-1)
+  assert.equal(settled?.type, 'screenshot')
+  if (settled?.type !== 'screenshot') return
+  assert.equal(settled.surface, 'generated_image')
+  assert.equal(settled.imageUrl, 'data:image/png;base64,QQ==')
+})
+
 test('a capture the app no longer holds stays an ordinary tool row', () => {
   const instance = new CursorTurnTranslator({
     turnId: 'cursor-turn-1', seed: 'cursor-turn-1', cwd: '/repo',
