@@ -4,6 +4,8 @@ import type { AgentRunStartOptions } from '../../shared/agent-runs.js'
 /** Per-chat composer shortcuts into workspace-wide browser and agent surfaces. */
 export type WorkspacePaneActions = {
   toggleBrowser: () => void
+  /** Add and select a fresh chat tab in the tile that owns `paneId`. */
+  newChat: (paneId: string) => void
   /** Focus the workspace Agents tab, creating it beside `anchorPaneId` when missing. */
   openAgentsView: (anchorPaneId: string) => void
   /** Show an open chat tab, adding it to the tile that owns `anchorPaneId` when needed. */

@@ -1,5 +1,5 @@
 import type { JSX } from 'react'
-import { Globe2 } from 'lucide-react'
+import { Globe2, Plus } from 'lucide-react'
 import { useWorkspacePaneActions } from './chat-layout/workspace-pane-actions.js'
 import { ComposerAgentsMenu } from './composer-agents-menu.js'
 import { ComposerContinuePill } from './composer-continue-pill.js'
@@ -28,6 +28,16 @@ export function ComposerAccessPills({ paneId, startEnabled, runningTurn, continu
       >
         <Globe2 size={14} strokeWidth={1.9} aria-hidden="true" />
         <span className="composer-pill-label">Browser</span>
+      </button>
+      <button
+        type="button"
+        className="composer-pill"
+        data-ui="composer.new-chat"
+        data-ui-key={paneId}
+        onClick={() => workspace.newChat(paneId)}
+      >
+        <Plus size={14} strokeWidth={1.9} aria-hidden="true" />
+        <span className="composer-pill-label">New chat</span>
       </button>
       <ComposerAgentsMenu
         paneId={paneId}

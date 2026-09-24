@@ -10,6 +10,7 @@ test('composer access pills render browser and agents controls when workspace ac
   const html = renderToStaticMarkup(createElement(WorkspacePaneActionsContext.Provider, {
     value: {
       toggleBrowser: () => {},
+      newChat: () => {},
       openAgentsView: () => {},
       focusChatTab: async () => {},
       startAgentFromPane: async () => {},
@@ -23,6 +24,7 @@ test('composer access pills render browser and agents controls when workspace ac
     onComposerError: () => {}
   })))
   assert.match(html, /data-ui="composer\.browser"/)
+  assert.match(html, /data-ui="composer\.new-chat" data-ui-key="pane-a"/)
   assert.match(html, /data-ui="composer\.agents"/)
 })
 

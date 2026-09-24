@@ -190,12 +190,13 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
   }, [layout.activateTab, layout.tree])
   const paneActions = useMemo<WorkspacePaneActions>(() => ({
     toggleBrowser: toggleBrowserPane,
+    newChat: (paneId) => { void layout.newChat(paneId) },
     openAgentsView: (anchorPaneId) => layout.openView('agents', anchorPaneId),
     focusChatTab,
     startAgentFromPane: (paneId, options) => startAgentRef.current(paneId, options),
     agentsMenuPaneId,
     setAgentsMenuPaneId
-  }), [toggleBrowserPane, layout.openView, focusChatTab, agentsMenuPaneId])
+  }), [toggleBrowserPane, layout.newChat, layout.openView, focusChatTab, agentsMenuPaneId])
   const viewContext = useMemo<WorkspaceViewContextValue>(() => ({
     tree: layout.tree, views: layout.views, selectedPaneId: chat.selectedPaneId, chats: chat.chats, title: chatTitle,
     listChats: chat.listChats, archiveChat: archiveChat ?? chat.archiveChat, activateChat: layout.activateTab,

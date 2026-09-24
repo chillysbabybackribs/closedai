@@ -301,7 +301,7 @@ sit on either side of the browser. The browser starts on the right; drag a conve
 or empty chat header space onto the browser's left or right half to dock it on that side.
 During a chat drag, the native browser view is temporarily covered so the drop targets can receive
 the gesture. The **Browser** pill (`composer.browser`) under every composer hides/restores the browser in its saved position without
-closing tabs. Chat headers offer **New chat to the right**, **New chat below**, and **Hide chat pane**.
+closing tabs. **New chat** (`composer.new-chat`) beside it adds and selects a fresh conversation tab in the same tile. Chat headers offer **New chat to the right**, **New chat below**, and **Hide chat pane**.
 Hiding a tile neither detaches its runtime nor stops its turn; the model command `close_chat`
 still detaches and stops it.
 
@@ -415,8 +415,8 @@ footer bar beneath it with attach (`composer.upload`) on the left, the model set
 (`composer.setup`) naming the model (with a chevron), and the folder trigger (`composer.folder`)
 on the right naming the working folder. Model and folder controls share the same neutral color,
 with rounded hover surfaces inside a softly outlined composer. The model trigger fits its label
-and chevron, leaving the space before the folder outside its hover and click area. Under the card, **Browser** (`composer.browser`), **Agents** (`composer.agents`), and when the latest reply can hand off, **Fresh context** (`composer.continue`) appear in
-every chat. Browser toggles the embedded pane. **Fresh context** continues the full thread in a new tab with a digest on the first send. Agents opens a menu of saved agents: **Start new run**
+and chevron, leaving the space before the folder outside its hover and click area. Under the card, **Browser** (`composer.browser`), **New chat** (`composer.new-chat`), **Agents** (`composer.agents`), and when the latest reply can hand off, **Fresh context** (`composer.continue`) appear in
+every chat. Browser toggles the embedded pane. New chat matches the tile header add menu's new-chat action for that pane. **Fresh context** continues the full thread in a new tab with a digest on the first send. Agents opens a menu of saved agents: **Start new run**
 (`composer.agents-start`, a new tab beside **this** chat's tile and the run starts at once; only a
 **live** run for that agent offers **Open** instead), **New agent…** (`composer.agents-new`) and
 **Manage** (`composer.agents-manage`) for the workspace Agents tab. The pill shows how many runs are
