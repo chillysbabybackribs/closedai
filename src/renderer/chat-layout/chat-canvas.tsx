@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent as ReactDragEvent, type ReactNode } from 'react'
 import type { ChatReviewQueue } from '../chat-history/review-queue.js'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import { BROWSER_PANE_ID, CHAT_DRAG_TYPE, WORKSPACE_DOCK_ID, isViewTabId, layoutGeometry, minimumSize, paneIds, removePane, type ChatLayout, type DockEdge, type Rect, type SplitResizePhase } from './layout-tree.js'
@@ -205,11 +205,9 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
       dropTarget.current?.edge ? dropTarget.current as BrowserDrop : null)
   }
 
-  return <div className="chat-layout-viewport" ref={viewport}>
-    <div className="chat-layout-canvas" ref={canvasRef} style={{ minWidth: minimum.width, minHeight: minimum.height }}
-      // The shell's Escape handler leaves a drag in progress to the cancel listener above.
-      data-layout-drag={dragging ? 'true' : undefined}
-      onDragOverCapture={(event) => {
+  // Preview movement can put a different DOM element under a stationary pointer.
+  // Accept dragenter too, so release works before Chromium emits another dragover.
+  const acceptDrag = (event: ReactDragEvent<HTMLDivElement>): void => {
         if (!dragging || !event.dataTransfer.types.includes(CHAT_DRAG_TYPE)) return
         event.stopPropagation()
         if (busy) { event.dataTransfer.dropEffect = 'none'; return }
@@ -222,7 +220,14 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
         event.dataTransfer.dropEffect = next ? 'move' : 'none'
         if (next?.target === dropTarget.current?.target && next?.edge === dropTarget.current?.edge) return
         queueDrop(next)
-      }}
+      }
+
+  return <div className="chat-layout-viewport" ref={viewport}>
+    <div className="chat-layout-canvas" ref={canvasRef} style={{ minWidth: minimum.width, minHeight: minimum.height }}
+      // The shell's Escape handler leaves a drag in progress to the cancel listener above.
+      data-layout-drag={dragging ? 'true' : undefined}
+      onDragEnterCapture={acceptDrag}
+      onDragOverCapture={acceptDrag}
       onDragLeave={(event) => {
         if (!dragging) return
         const bounds = event.currentTarget.getBoundingClientRect()
