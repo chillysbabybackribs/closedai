@@ -92,8 +92,9 @@ export default function HeroDock(): JSX.Element {
 /** The published Dock: a pill bar, drawn slightly under size as the original is. */
 export function HeroDockBar({ className, children, ...props }: ComponentProps<"div">): JSX.Element {
   return (
-    <div className="relative flex scale-90 items-center gap-2 sm:scale-95 sm:gap-4">
+    <div data-slot="hero-dock-frame" className="relative flex scale-90 items-center gap-2 sm:scale-95 sm:gap-4">
       <div
+        data-slot="hero-dock-bar"
         {...props}
         className={cn(
           "flex items-center gap-3 rounded-[28px] bg-neutral-900/80 px-3 py-2 shadow-2xl ring-1 ring-white/10 backdrop-blur-lg sm:gap-5 sm:rounded-[48px] sm:px-6 sm:py-3",
@@ -107,7 +108,7 @@ export function HeroDockBar({ className, children, ...props }: ComponentProps<"d
 }
 
 export function HeroDockSeparator(): JSX.Element {
-  return <span className="mx-1 hidden h-6 w-px bg-white/10 sm:block" aria-hidden="true" />
+  return <span data-slot="hero-dock-separator" className="mx-1 hidden h-6 w-px bg-white/10 sm:block" aria-hidden="true" />
 }
 
 export type HeroDockIconProps = Omit<ComponentProps<"button">, "children"> & {
@@ -135,12 +136,12 @@ export function HeroDockIcon({ icon: Icon, children, label, badge, className, ..
       {Icon ? <Icon className="h-5 w-5 transition-transform duration-200 group-hover:scale-110" strokeWidth={2.1} /> : null}
       {children}
       {badge ? (
-        <span className="absolute -right-2 -top-2 grid h-5 min-w-5 place-items-center rounded-full bg-white px-1 text-[10px] font-semibold text-neutral-900 ring-1 ring-white/80">
+        <span data-slot="hero-dock-badge" className="absolute -right-2 -top-2 grid h-5 min-w-5 place-items-center rounded-full bg-white px-1 text-[10px] font-semibold text-neutral-900 ring-1 ring-white/80">
           {badge}
         </span>
       ) : null}
       {/* The published .tooltip: rests 6px low and transparent, rises into place on hover or focus. */}
-      <span className="pointer-events-none absolute -bottom-6 translate-y-[calc(50%+6px)] whitespace-nowrap text-[9px] tracking-wide text-white/70 opacity-0 transition-[opacity,translate] duration-200 group-hover:translate-y-1/2 group-hover:opacity-100 group-focus-visible:translate-y-1/2 group-focus-visible:opacity-100 sm:text-[10px]">
+      <span data-slot="hero-dock-label" className="pointer-events-none absolute -bottom-6 translate-y-[calc(50%+6px)] whitespace-nowrap text-[9px] tracking-wide text-white/70 opacity-0 transition-[opacity,translate] duration-200 group-hover:translate-y-1/2 group-hover:opacity-100 group-focus-visible:translate-y-1/2 group-focus-visible:opacity-100 sm:text-[10px]">
         {label}
       </span>
     </button>

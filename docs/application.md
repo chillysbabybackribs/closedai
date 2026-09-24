@@ -423,11 +423,11 @@ the loop rather than raced.
 
 The **agent dock** (`src/renderer/agent-dock/`) is a footer row under the workspace
 (`dock.bar`) with no rail of its own: the published hero dock (`src/components/ui/hero-dock.tsx`,
-its dark glass pill and raised tiles kept class for class) sits directly on the window chassis. The
-left of the row reads **Agents** and a summary (`2 running · 1 needs you`, blue when a run needs the
-user). The dock holds one tile per run (`dock.run`) with the run's initials, its name beneath on
-hover, a small light under the tile while it works (pulsing while retrying), and the hero's white
-badge when it needs the user (`!` for a credential approval or a failure pause, `✓` when finished);
+with theme-aware surfaces and raised tiles) sits directly on the window chassis. Inside the pill,
+**Agents** and a compact summary (`2 running · 1 needs you`, blue when a run needs the user)
+sit beside the tiles. A fine border and soft shadow separate the dock from the chassis; an open
+run card highlights its tile, and keyboard focus has a distinct outline. The dock holds one tile per run (`dock.run`) with the run's initials, its name beneath on
+hover, a small light under the tile while it works (pulsing while retrying), and a blue badge (red for a failure) when it needs the user (`!` for a credential approval or a failure pause, `✓` when finished);
 runs that need the user come first. Clicking a tile opens a popover card with name, state,
 cycle, activity or pause reason, **Pause**/**Resume**/**Stop** (`dock.pause`, `dock.resume`,
 `dock.stop`; Stop reads **Dismiss** on a finished run), **Review** for a pending approval

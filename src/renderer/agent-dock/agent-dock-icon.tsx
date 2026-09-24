@@ -17,12 +17,12 @@ export function AgentDockIcon({ tile, onOpenChat, ...controls }: AgentDockTilePr
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <HeroDockIcon data-ui="dock.run" data-ui-key={tile.chatId} data-state={tile.state}
+        <HeroDockIcon data-ui="dock.run" data-ui-key={tile.chatId} data-run-state={tile.state}
           aria-label={`${tile.name}: ${DOCK_STATE_LABEL[tile.state]}`} label={tile.name} badge={ATTENTION_BADGE[tile.state]}>
           <span className="text-sm font-semibold tracking-wide transition-transform duration-200 group-hover:scale-110">
             {dockInitials(tile.name)}
           </span>
-          {working && <span aria-hidden="true"
+          {working && <span aria-hidden="true" data-slot="agent-dock-working"
             className={cn('absolute -bottom-2 size-1 rounded-full bg-white/70', tile.state === 'retrying' && 'animate-pulse')} />}
         </HeroDockIcon>
       </PopoverTrigger>

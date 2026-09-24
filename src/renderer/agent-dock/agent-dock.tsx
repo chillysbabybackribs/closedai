@@ -9,7 +9,7 @@ import { dockSummary, dockTiles, type DockChatActivity } from './agent-dock-mode
 import { AgentDockIcon } from './agent-dock-icon.js'
 
 // The agent dock: a hero dock bar under the workspace, sitting on the window chassis with no rail
-// behind it, one tile per agent run plus a new-agent tile, with a one-line status on the left. It is always on
+// behind it, one tile per agent run plus a new-agent tile, with a status inside the pill. It is always on
 // screen, so a run that needs the user shows it here without opening anything over the work.
 
 export type AgentDockProps = {
@@ -32,13 +32,13 @@ export function AgentDock({ chats, onOpenChat, onOpenAgents }: AgentDockProps): 
   const runsApi = window.closedai.agentRuns
 
   return (
-    <footer className="agent-dock grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-3 pt-2 pb-6 text-xs"
+    <footer className="agent-dock"
       data-ui="dock.bar" aria-label="Agents">
-      <p role="status" className="truncate">
-        <span className="font-medium text-foreground">Agents</span>
-        <span className={cn('ml-2', needsUser ? 'text-(--link-ink)' : 'text-muted-foreground')}>{dockSummary(tiles)}</span>
-      </p>
       <HeroDockBar>
+      <p role="status" className="agent-dock-summary">
+        <span className="font-medium text-foreground">Agents</span>
+        <span className={cn('agent-dock-summary-detail', needsUser ? 'text-(--link-ink)' : 'text-muted-foreground')}>{dockSummary(tiles)}</span>
+      </p>
         {tiles.map((tile) => (
           <AgentDockIcon key={tile.chatId} tile={tile} onOpenChat={onOpenChat}
             onPause={(id) => runsApi.pause(id)} onResume={(id) => runsApi.resume(id)} onStop={(id) => runsApi.stop(id)} />
@@ -46,7 +46,6 @@ export function AgentDock({ chats, onOpenChat, onOpenAgents }: AgentDockProps): 
         {tiles.length > 0 && <HeroDockSeparator />}
         <HeroDockIcon icon={Plus} label="New agent" aria-label="New or saved agent" data-ui="dock.agents" onClick={onOpenAgents} />
       </HeroDockBar>
-      <span aria-hidden="true" />
     </footer>
   )
 }
