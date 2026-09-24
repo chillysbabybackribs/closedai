@@ -517,7 +517,7 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   tab headers retain the darker shell chrome (`#141415`); recessed workspace
   gutters (`#0c0c0e`) separate the panels.
   Chat tabs sit inside the header with 6 px rounded corners and short separators
-  between inactive neighbors. Each tile's active tab uses bold white text; inactive
+  between all neighboring tabs, including selected and hovered tabs. Each tile's active tab uses bold white text; inactive
   labels stay gray, including on hover. Selection has no tab outline or top marker.
   The selected chat keeps a stronger neutral frame; transcript contrast stays
   constant across panes. Composers have a subtle

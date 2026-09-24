@@ -57,7 +57,7 @@
 
 /* The padding is the chassis gutter around the tile cards; the canvas measures its
    content box, so tiles never overlap it. */
-.chat-layout-viewport { flex: 1; min-height: 0; min-width: 0; padding: 8px; overflow: auto; }
+.chat-layout-viewport { flex: 1; min-height: 0; min-width: 0; padding: 2px 8px 8px; overflow: auto; }
 .chat-layout-browser-frame { position: relative; display: flex; flex: 1; min-height: 0; min-width: 0; }
 .chat-layout-browser-frame > .workspace-right { flex: 1; }
 /* Inside a tile the tile is the card, so the browser drops its own gutter and shell edge. */
@@ -192,7 +192,7 @@
 .chat-layout-header > button.chat-layout-drag:disabled { opacity: 0.3; cursor: default; }
 /* Selection is carried by the active tab's bright, bold label. */
 .chat-layout-tile[data-selected='true'] > .chat-layout-header { color: var(--chrome-fg-strong); }
-/* Inset tabs share a dark surface; inactive neighbors share a short
+/* Inset tabs share a dark surface; neighboring tabs share a short
    separator. Keep the rail height fixed so pane and browser headers stay aligned. */
 .chat-layout-tabs {
   position: relative;
@@ -233,7 +233,7 @@
 .chat-layout-tab[data-active='true'] {
   color: var(--chat-tab-active-fg, var(--chrome-fg-strong));
 }
-.chat-layout-tab:not([data-active='true']):not(:hover):has(+ .chat-layout-tab:not([data-active='true']):not(:hover))::before {
+.chat-layout-tab:has(+ .chat-layout-tab)::before {
   content: '';
   position: absolute;
   top: 8px;
@@ -312,7 +312,7 @@
   border-radius: 2px;
 }
 .chat-layout-divider::before { background: transparent; }
-.chat-layout-divider[data-axis='horizontal']::before { width: 1px; top: 8px; bottom: 8px; }
+.chat-layout-divider[data-axis='horizontal']::before { width: 1px; top: 2px; bottom: 8px; }
 .chat-layout-divider[data-axis='vertical']::before { height: 1px; left: 8px; right: 8px; }
 .chat-layout-divider::after { background: color-mix(in srgb, var(--chrome-fg) 55%, var(--chassis)); }
 .chat-layout-divider[data-axis='horizontal']::after { width: 2px; height: 24px; }
