@@ -27,7 +27,7 @@
 
 /* Neutral charcoal chat surfaces, with dark headers and raised composers.
    Rebind semantic aliases here because root aliases resolve before inheritance. */
-:root:not([data-theme='warm']) .chat-layout-tile[data-pane-id],
+:root:not([data-theme='warm']) .chat-layout-tile:is([data-pane-id], [data-view-id]),
 :root:not([data-theme='warm']) .chat-pane {
   --surface-chrome: #262626;
   --surface-card: #1d1d1d;

@@ -10,6 +10,23 @@ export type ChatSearchHit = {
 }
 
 const DEFAULT_LIMIT = 8
+/** Below any title score: the weakest title match is one character at the end of a long title. */
+const PREVIEW_SCORE = -1_000_000
+
+/**
+ * One visibility rule for every chat-history surface. The main process already withholds blank,
+ * detached, unpinned records; this hides the blank panes it keeps (open "New chat" tabs) unless
+ * they are running or continue another chat, so header search and the History view list the
+ * same chats.
+ */
+export function listableChat(row: ChatRowSummary): boolean {
+  return Boolean(row.threadId || row.preview || row.running || row.continuedFrom)
+}
+
+/** Newest activity first; the same order on every surface. */
+export function sortByActivity(rows: readonly ChatRowSummary[]): ChatRowSummary[] {
+  return rows.slice().sort((a, b) => activityAt(b) - activityAt(a) || a.paneId.localeCompare(b.paneId))
+}
 
 export type ChatActivityHit = ChatSearchHit & {
   status: 'running' | 'paused' | 'completed' | 'open' | 'closed'
@@ -45,8 +62,12 @@ export type ChatSearchSection = {
 const compareActivity = (a: ChatActivityHit, b: ChatActivityHit): number =>
   activityAt(b.row) - activityAt(a.row) || a.row.paneId.localeCompare(b.row.paneId)
 
-/** Activity is never displaced by newer history; title queries retain their relevance ranking. */
-export function chatSearchView(rows: ChatRowSummary[], query: string, reviews: ChatReviewQueue): {
+/**
+ * Activity is never displaced by newer history; title queries retain their relevance ranking.
+ * Groups are not capped: the list scrolls and each caption carries its count, so what the header
+ * shows at rest is exactly what the History view shows.
+ */
+export function chatSearchView(rows: ChatRowSummary[], query: string, reviews: ChatReviewQueue, limit = Infinity): {
   sections: ChatSearchSection[]
   runningCount: number
   unreadCount: number
@@ -61,14 +82,14 @@ export function chatSearchView(rows: ChatRowSummary[], query: string, reviews: C
       completedAt: unread ? review.queuedAt : null
     }
   }
-  const recent = searchChats(rows, '', rows.length).map(withActivity)
+  const recent = searchChats(rows, '', Infinity).map(withActivity)
   const running = recent.filter(hit => hit.status === 'running')
   const completed = recent.filter(hit => hit.status === 'completed')
     .sort((a, b) => b.completedAt! - a.completedAt! || a.row.paneId.localeCompare(b.row.paneId))
-  const open = recent.filter(hit => hit.status === 'open').sort(compareActivity).slice(0, DEFAULT_LIMIT)
-  const closed = recent.filter(hit => hit.status === 'closed').sort(compareActivity).slice(0, DEFAULT_LIMIT)
+  const open = recent.filter(hit => hit.status === 'open').sort(compareActivity)
+  const closed = recent.filter(hit => hit.status === 'closed').sort(compareActivity)
   const sections = query.trim()
-    ? [{ label: 'Matching chats', hits: searchChats(rows, query).map(withActivity) }]
+    ? [{ label: 'Matching chats', hits: searchChats(rows, query, limit).map(withActivity) }]
     : [
         { label: 'Running', hits: running },
         { label: 'Paused', hits: recent.filter(hit => hit.status === 'paused') },
@@ -89,22 +110,22 @@ export function searchChats(
   limit: number = DEFAULT_LIMIT
 ): ChatSearchHit[] {
   const trimmed = query.trim()
-  if (trimmed === '') return rows
-    .filter(row => row.threadId || row.preview || row.running)
-    .slice()
-    .sort((a, b) => activityAt(b) - activityAt(a) || a.paneId.localeCompare(b.paneId))
+  const listable = rows.filter(listableChat)
+  if (trimmed === '') return sortByActivity(listable)
     .slice(0, Math.max(0, limit))
     .map(row => ({ row, titleRanges: [], folder: basename(row.cwd), score: 0 }))
 
+  const needle = trimmed.toLowerCase()
   const hits: ChatSearchHit[] = []
-  for (const row of rows) {
-    if (row.title.trim() === '') continue
+  for (const row of listable) {
     const folder = row.cwd === null ? null : basename(row.cwd)
-    const titleMatch = matchSubsequence(row.title, trimmed)
-    if (titleMatch === null) continue
-
-    const score = titleMatch.score
-    hits.push({ row, titleRanges: titleMatch?.ranges ?? [], folder, score })
+    const titleMatch = row.title.trim() === '' ? null : matchSubsequence(row.title, trimmed)
+    if (titleMatch) {
+      hits.push({ row, titleRanges: titleMatch.ranges, folder, score: titleMatch.score })
+      continue
+    }
+    // A chat is also findable by what was said in it; such hits rank below every title match.
+    if (row.preview.toLowerCase().includes(needle)) hits.push({ row, titleRanges: [], folder, score: PREVIEW_SCORE })
   }
 
   hits.sort(

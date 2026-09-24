@@ -508,7 +508,7 @@ existing consumers. Hidden panes retain their main-process state but do not stre
 
 ## Chat surface
 
-- Dark-theme chat panels use a neutral charcoal (`#1d1d1d`) canvas, with raised
+- Dark-theme chat and view tiles use a neutral charcoal (`#1d1d1d`) canvas, with raised
   composers (`#262626`) and a darker full-width tab header (`#191919`), including
   the tabs, pane grip, gaps, and header actions. Browser
   tab headers retain the darker shell chrome (`#141415`); recessed workspace
