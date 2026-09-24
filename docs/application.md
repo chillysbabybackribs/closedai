@@ -668,15 +668,15 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   The scroll-to-first-message button stays hidden until the user scrolls upward, and hides
   when they scroll downward or reach the top. Opening a chat and automatic positioning do not
   reveal it.
-- The renderer initially receives the latest turn. "View previous messages" reveals one earlier
-  turn at a time and keeps at most three turns mounted; scrolling back to the bottom trims
-  prepended history from renderer state. Older pages fetch by stable item id; stale responses
-  after a chat switch are ignored. The mounted display boundary also uses a stable row identity,
-  falling back to the latest turn when a snapshot removes that row, so trimming cannot leave
-  streamed messages hidden behind an out-of-range row offset. Earlier-page reveals apply once.
-  Provider sessions and the main-process transcript remain complete for continuation,
-  branching, and peer reads; this is display paging, not model compaction. Codex history replay
-  emits one replacement instead of streaming old items again.
+- The renderer initially receives the latest turn. All loaded transcript rows remain visible
+  and scrollable; sending a message, switching tabs, and scrolling to the bottom do not fold
+  earlier turns. The labeled **Load earlier messages** button fetches another turn by stable
+  item id and preserves the reading position. There is no three-turn reveal ceiling.
+  Stale pages after a thread change are ignored. Provider sessions and the main-process
+  transcript remain complete for continuation, branching, and peer reads; this is display
+  paging, not model compaction. Restoring overlapping provider history reconciles replayed
+  and optimistic prompt ids within the same turn, keeping prompts before their replies.
+  Codex history replay emits one replacement instead of streaming old items again.
 - The model menu is two columns in one panel: providers on the left, one row each, naming the
   model in use where that provider owns the selection, and the hovered provider's models on the
   right. It opens on the selected model's provider; hovering, focusing, or selecting another

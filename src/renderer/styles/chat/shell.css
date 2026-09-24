@@ -160,9 +160,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
+  gap: 6px;
   height: 28px;
-  padding: 0;
+  padding: 0 8px;
+  font-size: 12px;
   border: none;
   border-radius: 8px;
   background: none;

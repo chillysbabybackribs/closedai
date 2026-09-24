@@ -45,7 +45,14 @@ export async function restoreHubHistory(
 export function withHubHistory(snapshot: ChatSnapshot, carried: CarriedHistory | null, window?: ChatHistoryWindow): ChatSnapshot {
   if (!carried || carried.provider !== snapshot.provider) return snapshot
   const transcript = new ChatTranscript(snapshot.cwd, () => null, () => {})
-  transcript.replaceItems([...carried.items, ...snapshot.items])
+  // Replayed Codex prompts use provider ids; live prompts can retain optimistic ids.
+  // Match the same prompt within its turn before combining overlapping histories, otherwise
+  // duplicate prompts end up after the answer and become a false latest-turn boundary.
+  const liveUsers = new Map(snapshot.items.flatMap((item) =>
+    item.type === 'user' && item.turnId ? [[JSON.stringify([item.turnId, item.text]), item] as const] : []))
+  const retained = carried.items.map((item) => item.type === 'user' && item.turnId
+    ? liveUsers.get(JSON.stringify([item.turnId, item.text])) ?? item : item)
+  transcript.replaceItems([...retained, ...snapshot.items])
   const page = window ? transcript.page(window) : null
   return {
     ...snapshot,

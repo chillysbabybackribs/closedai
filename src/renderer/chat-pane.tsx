@@ -131,7 +131,7 @@ export const ChatPane = memo(function ChatPane({
             ) : showTranscript && hasMessages ? (
               <ChatTranscript items={state.items} activeTurnId={state.activeTurnId} cwd={project.cwd}
                 hasEarlier={state.history?.hasEarlier} loadEarlier={chat.loadEarlier}
-                onTrimMountedHistory={chat.trimMountedHistory} actions={{
+                actions={{
                 threadKey: state.threadId ?? chat.selectedPaneId,
                 running,
                 branch: (itemId) => chat.continueFromChat({

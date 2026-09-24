@@ -1,7 +1,6 @@
 import { BackgroundTasks } from './background-tasks.js'
 import type { CSSProperties, JSX } from 'react'
-import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { CHAT_MOUNTED_TURN_WINDOW } from '../shared/chat.js'
+import { memo, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { ChevronRight, ChevronUp, XCircle } from 'lucide-react'
 
 import { Bubble, BubbleContent } from '../components/ui/bubble.js'
@@ -13,10 +12,8 @@ import { NumberTicker } from '../components/ui/number-ticker.js'
 import {
   MessageScrollerItem,
   useMessageScroller,
-  useMessageScrollerPromptAnchorInset,
-  useMessageScrollerScrollable
+  useMessageScrollerPromptAnchorInset
 } from '../components/ui/message-scroller.js'
-import { shouldCollapseBrowsedHistory } from '../components/ui/message-scroller-state.js'
 import { usePacedText } from '../components/ui/paced-text.js'
 import type { ChatTranscriptItem } from '../shared/chat.js'
 import { displayUserMessageText } from '../shared/chat-display.js'
@@ -29,12 +26,7 @@ import { TranscriptAttachments } from './composer-attachments.js'
 import {
   activityHeadline,
   activityState,
-  anchoredVisibleStart,
-  clampVisibleStart,
-  lastTurnRowStart,
-  previousTurnRowStart,
   transcriptRows,
-  transcriptRowKey,
   turnActionMessageIds,
   type ActivityItem,
   type StandaloneItem,
@@ -47,7 +39,6 @@ export const ChatTranscript = memo(function ChatTranscript({
   actions,
   hasEarlier = false,
   loadEarlier,
-  onTrimMountedHistory,
   cwd
 }: {
   items: ChatTranscriptItem[]
@@ -55,7 +46,6 @@ export const ChatTranscript = memo(function ChatTranscript({
   activeTurnId?: string | null
   hasEarlier?: boolean
   loadEarlier?: () => Promise<number>
-  onTrimMountedHistory?: () => void
   cwd?: string
 }): JSX.Element {
   const actionMessageIds = useMemo(
@@ -63,76 +53,31 @@ export const ChatTranscript = memo(function ChatTranscript({
     [items, activeTurnId, actions?.running]
   )
   const rows = useMemo(() => transcriptRows(items), [items])
-  const tailStart = useMemo(() => lastTurnRowStart(rows), [rows])
-  const tailAnchorKey = useMemo(() => transcriptRowKey(rows[tailStart]), [rows, tailStart])
-  const [visibleAnchor, setVisibleAnchor] = useState(() => transcriptRowKey(rows[tailStart]))
   const [loadingEarlier, setLoadingEarlier] = useState(false)
   const [historyError, setHistoryError] = useState<string | null>(null)
-  const [loadEpoch, setLoadEpoch] = useState(0)
-  const browsedEarlier = useRef(false)
   const foldBannerRef = useRef<HTMLDivElement>(null)
-  const scrollToRevealedTurnRef = useRef(false)
-  const { prepareForPrepend, scrollToStart } = useMessageScroller()
+  const requestRef = useRef(false)
+  const { prepareForPrepend } = useMessageScroller()
   const setPromptAnchorTopInset = useMessageScrollerPromptAnchorInset()
-  const scrollable = useMessageScrollerScrollable()
-  const start = anchoredVisibleStart(visibleAnchor, rows, CHAT_MOUNTED_TURN_WINDOW)
-  const setVisibleStart = (index: number): void => setVisibleAnchor(transcriptRowKey(rows[index]))
-  const visibleRows = rows.slice(start)
-
-  // Reset only on chat/thread change or a new user turn — not on streaming/tool row updates.
-  useLayoutEffect(() => {
-    browsedEarlier.current = false
-    scrollToRevealedTurnRef.current = false
-    setVisibleAnchor(tailAnchorKey)
-  }, [actions?.threadKey, tailAnchorKey])
-
-  useLayoutEffect(() => {
-    if (loadEpoch === 0) return
-    setVisibleStart(clampVisibleStart(previousTurnRowStart(rows, tailStart), rows, CHAT_MOUNTED_TURN_WINDOW))
-    scrollToRevealedTurnRef.current = true
-    setLoadEpoch(0)
-  }, [loadEpoch, rows, tailStart])
-
-  useLayoutEffect(() => {
-    if (!scrollToRevealedTurnRef.current) return
-    scrollToRevealedTurnRef.current = false
-    scrollToStart()
-  }, [start, scrollToStart])
-
-  useEffect(() => {
-    if (start < tailStart) browsedEarlier.current = true
-  }, [start, tailStart])
-
-  useEffect(() => {
-    if (!shouldCollapseBrowsedHistory(scrollable, browsedEarlier.current)) return
-    browsedEarlier.current = false
-    setVisibleStart(tailStart)
-    onTrimMountedHistory?.()
-  }, [scrollable.end, scrollable.start, tailStart, onTrimMountedHistory])
 
   const revealEarlier = async (): Promise<void> => {
-    if (loadingEarlier) return
+    if (requestRef.current || !hasEarlier || !loadEarlier) return
+    requestRef.current = true
     prepareForPrepend()
-    if (start > 0) {
-      setVisibleStart(clampVisibleStart(previousTurnRowStart(rows, start), rows, CHAT_MOUNTED_TURN_WINDOW))
-      scrollToRevealedTurnRef.current = true
-      return
-    }
-    if (!hasEarlier || !loadEarlier) return
     setLoadingEarlier(true)
     setHistoryError(null)
     try {
-      const count = await loadEarlier()
-      if (count > 0) setLoadEpoch((epoch) => epoch + 1)
+      await loadEarlier()
     } catch (error) {
       setHistoryError(errorMessage(error, 'Could not load earlier messages. Try again.'))
     } finally {
+      requestRef.current = false
       setLoadingEarlier(false)
     }
   }
 
   const lastTurnIndex = useMemo(() => lastRowForTurn(rows, activeTurnId), [rows, activeTurnId])
-  const showEarlier = start > 0 || hasEarlier
+  const showEarlier = hasEarlier
 
   useLayoutEffect(() => {
     if (!showEarlier) {
@@ -155,14 +100,15 @@ export const ChatTranscript = memo(function ChatTranscript({
         <div ref={foldBannerRef} className="transcript-fold-banner" role="status">
           <button type="button" data-ui="chat.show-earlier" className="transcript-fold-toggle"
             disabled={loadingEarlier} aria-busy={loadingEarlier || undefined}
-            aria-label={loadingEarlier ? 'Loading earlier messages' : 'View previous messages'}
+            aria-label={loadingEarlier ? 'Loading earlier messages' : 'Load earlier messages'}
             onClick={() => { void revealEarlier() }}>
             <ChevronUp className="transcript-fold-chevron" aria-hidden="true" />
+            {loadingEarlier ? 'Loading earlier messages…' : 'Load earlier messages'}
           </button>
         </div>
       ) : null}
       {historyError ? <p className="transcript-history-error" role="alert">{historyError}</p> : null}
-      {visibleRows.map((row, index) => {
+      {rows.map((row, index) => {
         if (row.kind === 'background') {
           return <MessageScrollerItem key={`background:${row.id}`} messageId={`background:${row.id}`}>
             <BackgroundTasks items={row.items} />
@@ -170,7 +116,7 @@ export const ChatTranscript = memo(function ChatTranscript({
         }
         if (row.kind === 'activity') {
           const id = `activity:${row.id}:${row.items[0]?.id}`
-          const isRunning = isActivityRowRunning(row, start + index, lastTurnIndex, activeTurnId)
+          const isRunning = isActivityRowRunning(row, index, lastTurnIndex, activeTurnId)
           return (
             <MessageScrollerItem key={id} messageId={id}>
               <ToolActivity items={row.items} isRunning={isRunning} cwd={cwd} />
