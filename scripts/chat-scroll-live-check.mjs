@@ -153,6 +153,33 @@ async function runChecks(BrowserWindow) {
   await pause(200)
   const resized = await sample()
   assert.ok(resized.every((frame) => Math.abs(frame.anchor - 30) <= 1), 'Resizing must retain the prompt anchor')
+  // Revisit an attached pane after its workspace snapshot was reduced to the latest turn.
+  const historyItems = Array.from({ length: 5 }, (_, index) => [
+    { type: 'user', id: `history-user-${index}`, turnId: `history-turn-${index}`, text: `History prompt ${index}` },
+    { type: 'assistant', id: `history-answer-${index}`, turnId: `history-turn-${index}`,
+      text: `History answer ${index}`, phase: 'final_answer', streaming: false }
+  ]).flat()
+  const historyPane = { ...workspace.selected, threadId: 'history-check', activeTurnId: null,
+    items: historyItems, history: { hasEarlier: false } }
+  send({ type: 'replace', snapshot: historyPane })
+  await pause(250)
+  const answerCount = () => evaluate(`document.querySelectorAll('.prompt-message-assistant').length`)
+  assert.equal(await answerCount(), 5, 'Every loaded answer must render, beyond the old three-turn ceiling')
+  await evaluate(`(() => { const v = document.querySelector('.chat-scroll'); v.scrollTop = v.scrollHeight; v.dispatchEvent(new Event('scroll')); })()`)
+  await pause(200)
+  assert.equal(await answerCount(), 5, 'Reaching the bottom must not fold history')
+  const otherId = 'history-other-pane'
+  const otherPane = { ...historyPane, threadId: 'other-thread', items: [] }
+  const chats = [...workspace.chats, { ...workspace.chats[0], paneId: otherId, attached: true, title: 'Other chat' }]
+  window.webContents.send('chat:event', { type: 'workspace', snapshot: { ...workspace,
+    chats, selectedPaneId: otherId, selected: otherPane, panes: { [otherId]: otherPane } } })
+  await pause(250)
+  const tail = { ...historyPane, items: historyItems.slice(-2), history: { hasEarlier: true } }
+  window.webContents.send('chat:event', { type: 'workspace', snapshot: { ...workspace,
+    chats, selectedPaneId: paneId, selected: tail, panes: { [paneId]: tail } } })
+  await pause(250)
+  assert.equal(await answerCount(), 5, 'Returning to a tab must retain its loaded answers')
+  console.log('CHAT_HISTORY_CHECKS passed: five turns, bottom scrolling, tab return')
   await writeFile('/tmp/closedai-scroll-verification.png', (await window.webContents.capturePage()).toPNG())
   console.log('CHAT_SCROLL_CHECKS passed: streaming, idle, zoom, bottom following, wheel escape, next prompt, resize')
 }

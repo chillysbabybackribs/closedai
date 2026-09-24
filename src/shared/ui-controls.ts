@@ -65,7 +65,7 @@ export const UI_CONTROLS = {
   'chat.background-group': 'Expand or collapse background work; item is the first task id',
   'chat.background-task': 'Expand task description and result; item is the task id',
   'chat.history': 'Chat history list inside a History view tab (present only while one is open)',
-  'chat.show-earlier': 'View or load one earlier user/model turn in the current chat',
+  'chat.show-earlier': 'Load one earlier user/model turn while keeping loaded chat history visible',
   'chat.history-search': 'Filter the chat history list',
   'chat.history-open': 'Open a thread from history; item is the thread id',
   'chat.history-archive': 'Archive a thread from history immediately; item is the thread id',

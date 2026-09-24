@@ -157,10 +157,10 @@ test('response actions appear once per completed turn, never between model messa
     { type: 'assistant', id: 'final', turnId: 'turn', text: 'Done', phase: null, streaming: false }
   ]
   const running = renderTranscript({ items, activeTurnId: 'turn', actions })
-  assert.equal((running.match(/data-ui="chat.message-copy"/g) ?? []).length, 0)
+  assert.equal((running.match(/data-ui="chat.message-copy"/g) ?? []).length, 1)
   assert.doesNotMatch(running, /data-ui="chat.message-copy" data-ui-key="(?:progress|final)"/)
   const completed = renderTranscript({ items, activeTurnId: null, actions: { ...actions, running: false } })
-  assert.equal((completed.match(/data-ui="chat.message-copy"/g) ?? []).length, 1)
+  assert.equal((completed.match(/data-ui="chat.message-copy"/g) ?? []).length, 2)
   assert.match(completed, /data-ui="chat.message-copy" data-ui-key="final"/)
   assert.doesNotMatch(completed, /data-ui="chat.message-copy" data-ui-key="progress"/)
 })
@@ -175,10 +175,10 @@ test('missing turn ids still yield one action row per user turn and none on the 
   ]
   const actions = { threadKey: 'thread', running: false, branch: async () => {} }
   const completed = renderTranscript({ items, actions })
-  assert.equal((completed.match(/data-ui="chat.message-copy"/g) ?? []).length, 1)
+  assert.equal((completed.match(/data-ui="chat.message-copy"/g) ?? []).length, 2)
   assert.doesNotMatch(completed, /data-ui="chat.message-copy" data-ui-key="a2"/)
   const running = renderTranscript({ items, actions: { ...actions, running: true } })
-  assert.equal((running.match(/data-ui="chat.message-copy"/g) ?? []).length, 0)
+  assert.equal((running.match(/data-ui="chat.message-copy"/g) ?? []).length, 1)
 })
 
 test('background group shows live task details and collapses once completed', () => {

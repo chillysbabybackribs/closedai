@@ -115,7 +115,7 @@ test('an explicit new chat and a separate continuation do not restore retired hi
 
 test('overlapping replay and optimistic prompts stay before their answers when reopening', () => {
   const prompt: ChatTranscriptItem = { type: 'user', id: 'provider-user', turnId: 'turn', text: 'Go' }
-  const answer: ChatTranscriptItem = { type: 'assistant', id: 'answer', turnId: 'turn', text: 'Done', phase: 'final', streaming: false }
+  const answer: ChatTranscriptItem = { type: 'assistant', id: 'answer', turnId: 'turn', text: 'Done', phase: 'final_answer', streaming: false }
   const livePrompt = { ...prompt, id: 'user:optimistic' }
   const snapshot = { ...new FakeSurface('gpt').state, items: [livePrompt, answer] }
   const carried = { provider: snapshot.provider, threadName: null, items: [prompt, answer] }

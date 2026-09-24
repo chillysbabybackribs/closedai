@@ -39,3 +39,26 @@ test('moving a chat to a fresh runtime keeps previously expanded messages mounte
   assert.equal(moved.selected.cwd, '/new')
   assert.deepEqual(moved.selected.items.map((item) => item.id), ['earlier', 'latest'])
 })
+
+
+test('switching away and back keeps loaded history for attached chats', () => {
+  const a = { ...initialChatState(), threadId: 'a', items: [
+    { type: 'user' as const, id: 'old', turnId: 'old', text: 'Older prompt' },
+    { type: 'user' as const, id: 'latest', turnId: 'latest', text: 'Latest prompt' }
+  ] }
+  const b = { ...initialChatState(), threadId: 'b' }
+  const chats = [{ paneId: 'a', attached: true }, { paneId: 'b', attached: true }] as ChatWorkspaceSnapshot['chats']
+  const state = { selectedPaneId: 'a', selected: a, panes: { a }, chats }
+  const away = reduceChatWorkspaceEvent(state, { type: 'workspace', snapshot: {
+    selectedPaneId: 'b', selected: b, panes: { b }, chats
+  } })
+  const tail = { ...a, items: a.items.slice(1), history: { hasEarlier: true } }
+  const back = reduceChatWorkspaceEvent(away, { type: 'workspace', snapshot: {
+    selectedPaneId: 'a', selected: tail, panes: { a: tail }, chats
+  } })
+  assert.deepEqual(back.selected.items, a.items)
+  const closed = reduceChatWorkspaceEvent(back, { type: 'workspace', snapshot: {
+    selectedPaneId: 'b', selected: b, panes: { b }, chats: chats.slice(1)
+  } })
+  assert.equal(closed.panes?.a, undefined)
+})

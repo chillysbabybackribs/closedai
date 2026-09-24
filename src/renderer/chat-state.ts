@@ -105,10 +105,12 @@ export function reduceChatWorkspaceEvent(
     })
   }
   if (event.type === 'workspace') {
-    const panes = Object.fromEntries(Object.entries(event.snapshot.panes ?? {}).map(([id, next]) => {
+    const attached = new Set(event.snapshot.chats.filter((chat) => chat.attached).map((chat) => chat.paneId))
+    const retained = Object.fromEntries(Object.entries(state.panes ?? {}).filter(([id]) => attached.has(id)))
+    const panes = { ...retained, ...Object.fromEntries(Object.entries(event.snapshot.panes ?? {}).map(([id, next]) => {
       const previous = state.panes?.[id]
       return [id, previous ? preserveMountedHistory(previous, next) : next]
-    }))
+    })) }
     return { ...event.snapshot, panes, selected: panes[event.snapshot.selectedPaneId] ?? event.snapshot.selected }
   }
   if (event.type === 'chats') {
