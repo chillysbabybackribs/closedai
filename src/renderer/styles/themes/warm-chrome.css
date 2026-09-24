@@ -140,7 +140,6 @@
   --tab-fill-active: #292a29;
   --tab-fill-hover: rgb(238 234 228 / 7%);
   --tab-separator: rgb(238 234 228 / 18%);
-  background: #202223;
 }
 
 :root[data-theme='warm'] .browser-tab:hover,

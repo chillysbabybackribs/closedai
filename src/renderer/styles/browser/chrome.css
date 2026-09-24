@@ -55,7 +55,7 @@
   overflow-y: hidden;
   scrollbar-width: none;
   border-radius: 9px 9px 0 0;
-  background: var(--surface-chrome);
+  background: var(--tab-active-surface, #191919);
 }
 
 .browser-tabstrip::-webkit-scrollbar {
