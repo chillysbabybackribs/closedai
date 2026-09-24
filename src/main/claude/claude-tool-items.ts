@@ -2,6 +2,7 @@ import type { ChatFileChange, ChatTranscriptItem } from '../../shared/chat.js'
 import { recordOfOrEmpty, stringOf } from '../json-coerce.js'
 import {
   GENERATE_IMAGE_LABEL,
+  imagePathHintsFromValue,
   isGenerateImageToolLabel,
   isNativeGenerateImageTool,
   promoteGeneratedImage,
@@ -72,7 +73,7 @@ function generatedImageScreenshot(
 ): ChatTranscriptItem | null {
   if (result.isError || !isGenerateImageToolLabel(item.label)) return null
   const text = resultText(result.content)
-  const evidence = resolveGeneratedImageEvidence(text, result.content)
+  const evidence = resolveGeneratedImageEvidence(text, result.content, imagePathHintsFromValue(parseJson(item.detail)))
     ?? (resultImageUrl(result.content) ? { imageUrl: resultImageUrl(result.content)! } : null)
   if (!evidence) return null
   return promoteGeneratedImage({

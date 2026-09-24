@@ -1,7 +1,13 @@
 import type { ChatTranscriptItem } from '../../shared/chat.js'
 import type { TranscriptOp, TurnEnd } from '../chat-transcript-ops.js'
 import { recordOfOrEmpty as recordOf, stringOf } from '../json-coerce.js'
-import { isGenerateImageToolLabel, promoteGeneratedImage, resolveGeneratedImageEvidence } from '../generated-image-transcript.js'
+import {
+  imagePathHintsFromValue,
+  isGenerateImageToolLabel,
+  isNativeGenerateImageTool,
+  promoteGeneratedImage,
+  resolveGeneratedImageEvidence
+} from '../generated-image-transcript.js'
 import { promoteCaptureToScreenshot } from '../tool-transcript-shared.js'
 import { classifyAntigravityCache } from './antigravity-cache-diagnostics.js'
 import { antigravityToolItem, antigravityToolResult, resolveAntigravityTool, type AntigravityServerName } from './antigravity-tool-items.js'
@@ -46,6 +52,7 @@ const INTERRUPTED_STATUSES = new Set(['CANCELED', 'CANCELLED', 'INTERRUPTED'])
 
 export class AntigravityTurnTranslator {
   private readonly tools = new Map<number, ChatTranscriptItem>()
+  private readonly toolParameters = new Map<number, Record<string, unknown>>()
   private readonly texts = new Map<number, string>()
   private lastText: { id: string; text: string } | null = null
   private settled = false
@@ -80,6 +87,15 @@ export class AntigravityTurnTranslator {
     const ops: TranscriptOp[] = []
     for (const [index, item] of this.tools) {
       if (!inProgress(item)) continue
+      const hints = imagePathHintsFromValue(this.toolParameters.get(index))
+      const promoted = item.type === 'tool' && isGenerateImageToolLabel(item.label)
+        ? this.generatedImageItem(item, '', false, hints)
+        : null
+      if (promoted) {
+        this.tools.set(index, promoted)
+        ops.push({ type: 'item', item: promoted })
+        continue
+      }
       const closed = antigravityToolResult(item, { output: 'The turn ended before this tool call reported a result.', failed: true })
       this.tools.set(index, closed)
       ops.push({ type: 'item', item: closed })
@@ -124,14 +140,21 @@ export class AntigravityTurnTranslator {
     if (!item) {
       item = antigravityToolItem({ id, name, parameters }, this.options.turnId, this.options.cwd, this.options.servers)
       this.tools.set(index, item)
+      this.toolParameters.set(index, parameters)
       ops.push({ type: 'item', item })
+    } else if (Object.keys(parameters).length) {
+      this.toolParameters.set(index, parameters)
     }
     if (step.state !== 'DONE' && step.state !== 'ERROR') return ops
     if (!inProgress(item)) return ops
     const failed = step.state === 'ERROR'
     const output = stringOf(info.output) || (failed ? describeError(info.error) : '')
+    const hints = imagePathHintsFromValue(this.toolParameters.get(index) ?? parameters)
+    if (!failed && isNativeGenerateImageTool(name) && !resolveGeneratedImageEvidence(output, undefined, hints) && !output.trim()) {
+      return ops
+    }
     const settled = this.screenshotItem(item, name, parameters, output, failed)
-      ?? this.generatedImageItem(item, output, failed)
+      ?? this.generatedImageItem(item, output, failed, hints)
       ?? antigravityToolResult(item, { output, failed })
     this.tools.set(index, settled)
     ops.push({ type: 'item', item: settled })
@@ -139,9 +162,14 @@ export class AntigravityTurnTranslator {
   }
 
   /** Native generate_image becomes an inline generated-image row when the step output carries bytes or a path. */
-  private generatedImageItem(item: ChatTranscriptItem, output: string, failed: boolean): ChatTranscriptItem | null {
+  private generatedImageItem(
+    item: ChatTranscriptItem,
+    output: string,
+    failed: boolean,
+    hints: readonly string[] = []
+  ): ChatTranscriptItem | null {
     if (failed || item.type !== 'tool' || !isGenerateImageToolLabel(item.label)) return null
-    const evidence = resolveGeneratedImageEvidence(output)
+    const evidence = resolveGeneratedImageEvidence(output, undefined, hints)
     if (!evidence) return null
     return promoteGeneratedImage({
       itemId: item.id,
@@ -187,6 +215,7 @@ export class AntigravityTurnTranslator {
         return { ops, ...conversationId, turnEnd: { status: 'completed' } }
       }
       ops.push(...this.repairFinalText(response))
+      ops.push(...this.assistantGeneratedImageOps(response))
       this.emitTokenUsage()
       return { ops, ...conversationId, turnEnd: { status: 'completed' } }
     }
@@ -197,6 +226,24 @@ export class AntigravityTurnTranslator {
     const error = stringOf(result.error) || `Antigravity turn ended: ${status.toLowerCase()}`
     this.emitTokenUsage()
     return { ops, ...conversationId, turnEnd: { status: 'failed', error } }
+  }
+
+  /** When the model points at a brain artifact `.md`, promote the embedded image into chat. */
+  private assistantGeneratedImageOps(text: string): TranscriptOp[] {
+    const evidence = resolveGeneratedImageEvidence(text)
+    if (!evidence) return []
+    const duplicate = [...this.tools.values()].some((item) => item.type === 'screenshot'
+      && item.surface === 'generated_image'
+      && item.savedPath === evidence.savedPath)
+    if (duplicate) return []
+    const item = promoteGeneratedImage({
+      itemId: `${this.options.turnId}:artifact-image`,
+      turnId: this.options.turnId,
+      failed: false,
+      imageUrl: evidence.imageUrl,
+      savedPath: evidence.savedPath
+    })
+    return item ? [{ type: 'item', item }] : []
   }
 
   private emitTokenUsage(): void {

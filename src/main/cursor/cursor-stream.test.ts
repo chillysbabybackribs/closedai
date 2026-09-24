@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import test from 'node:test'
 import { CursorTurnTranslator, cursorTurnEnd, type TranscriptOp } from './cursor-stream.ts'
 
@@ -173,6 +176,32 @@ test('a served capture becomes a screenshot row when the app still holds the ima
   assert.equal(settled.surface, 'app_window')
   assert.equal(settled.imageUrl, 'data:image/png;base64,AAA')
   assert.deepEqual(taken, ['closedai_ui.capture'])
+})
+
+test('GenerateImage promotes file links and paths from tool output text', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'closedai-cursor-gen-'))
+  try {
+    const path = join(dir, 'puppy.png')
+    await writeFile(path, Buffer.from([0x89, 0x50, 0x4e, 0x47]))
+    const instance = new CursorTurnTranslator({ turnId: 'cursor-turn-1', seed: 'cursor-turn-1', cwd: '/repo' })
+    const ops = apply(instance, [
+      { sessionUpdate: 'tool_call', toolCallId: 'gen-2', title: 'Generating image', kind: 'other', status: 'pending', rawInput: {} },
+      {
+        sessionUpdate: 'tool_call_update',
+        toolCallId: 'gen-2',
+        status: 'completed',
+        content: [{ type: 'text', text: `file://${path}` }],
+        rawOutput: { path }
+      }
+    ])
+    const settled = ops.flatMap((op) => (op.type === 'item' ? [op.item] : [])).at(-1)
+    assert.equal(settled?.type, 'screenshot')
+    if (settled?.type !== 'screenshot') return
+    assert.equal(settled.surface, 'generated_image')
+    assert.equal(settled.savedPath, path)
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
 })
 
 test('GenerateImage becomes a generated-image row when content carries image bytes', () => {

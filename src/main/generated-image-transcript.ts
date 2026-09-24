@@ -41,18 +41,96 @@ export function promoteGeneratedImage(input: {
   }
 }
 
+export function isLikelyGenerateImageTitle(title: string): boolean {
+  const normalized = title.trim().toLowerCase()
+  if (!normalized.includes('image')) return false
+  return normalized.includes('generate') || normalized.includes('generating') || normalized.includes('generation')
+}
+
+/** Collect path-like strings from tool arguments for generate_image promotion. */
+export function imagePathHintsFromValue(value: unknown): string[] {
+  const hints: string[] = []
+  const visit = (entry: unknown): void => {
+    if (typeof entry === 'string') {
+      const trimmed = entry.trim()
+      if (trimmed) hints.push(trimmed)
+      return
+    }
+    if (Array.isArray(entry)) {
+      for (const item of entry) visit(item)
+      return
+    }
+    const record = recordOf(entry)
+    if (!record) return
+    for (const nested of Object.values(record)) visit(nested)
+  }
+  visit(value)
+  return hints
+}
+
 /** Pull inline image bytes or a saved path from tool output text and optional structured content. */
-export function resolveGeneratedImageEvidence(text: string, content?: unknown): { imageUrl: string; savedPath?: string } | null {
+export function resolveGeneratedImageEvidence(
+  text: string,
+  content?: unknown,
+  hints: readonly string[] = []
+): { imageUrl: string; savedPath?: string } | null {
   const fromBlocks = imageUrlFromContentBlocks(content)
   if (fromBlocks) return fromBlocks
-  const dataUrl = extractDataImageUrl(text)
-  if (dataUrl) return { imageUrl: dataUrl }
-  const path = extractImageFilePath(text)
-  if (!path || !existsSync(path)) return null
+  const candidates = [text, ...hints]
+  for (const candidate of candidates) {
+    const dataUrl = extractDataImageUrl(candidate)
+    if (dataUrl) return { imageUrl: dataUrl }
+    const path = extractImageFilePath(candidate)
+    const loaded = loadImageFile(path)
+    if (loaded) return loaded
+    const fromArtifact = resolveMarkdownArtifactImage(candidate)
+    if (fromArtifact) return fromArtifact
+  }
+  return null
+}
+
+/** Antigravity often references a brain artifact `.md` that embeds the generated `.jpg`. */
+function resolveMarkdownArtifactImage(text: string): { imageUrl: string; savedPath?: string } | null {
+  const mdPath = extractMarkdownFilePath(text)
+  if (!mdPath || !existsSync(mdPath)) return null
   try {
-    const mime = mimeFromExt(path)
-    const base64 = readFileSync(path).toString('base64')
-    return { imageUrl: `data:${mime};base64,${base64}`, savedPath: path }
+    const markdown = readFileSync(mdPath, 'utf8')
+    const imagePath = extractImageFilePath(markdown)
+    const loaded = loadImageFile(imagePath)
+    return loaded ? { ...loaded, savedPath: loaded.savedPath ?? imagePath ?? undefined } : null
+  } catch {
+    return null
+  }
+}
+
+export function resolveGeneratedImageToolOutcome(input: {
+  text: string
+  content?: unknown
+  rawOutput?: unknown
+  hints?: readonly string[]
+}): { imageUrl: string; savedPath?: string } | null {
+  const raw = recordOf(input.rawOutput)
+  const rawHints = [
+    stringOf(raw.path),
+    stringOf(raw.filePath),
+    stringOf(raw.file_path),
+    stringOf(raw.imagePath),
+    stringOf(raw.image_path),
+    stringOf(raw.savedPath),
+    stringOf(raw.saved_path),
+    stringOf(raw.url),
+    stringOf(raw.href)
+  ].filter(Boolean)
+  return resolveGeneratedImageEvidence(input.text, input.content, [...(input.hints ?? []), ...rawHints])
+}
+
+function loadImageFile(path: string | null): { imageUrl: string; savedPath: string } | null {
+  const normalized = normalizeAbsolutePath(path)
+  if (!normalized || !existsSync(normalized)) return null
+  try {
+    const mime = mimeFromExt(normalized)
+    const base64 = readFileSync(normalized).toString('base64')
+    return { imageUrl: `data:${mime};base64,${base64}`, savedPath: normalized }
   } catch {
     return null
   }
@@ -88,21 +166,63 @@ function extractDataImageUrl(text: string): string | null {
 }
 
 function extractImageFilePath(text: string): string | null {
+  const markdown = markdownImageTarget(text)
+  if (markdown) return markdown
+  const fileUrl = decodeFileUrl(text)
+  if (fileUrl && isImagePath(fileUrl)) return fileUrl
   const trimmed = text.trim()
   if (trimmed && isImagePath(trimmed)) return trimmed
   for (const line of text.split('\n')) {
     const candidate = line.trim()
+    const fromLine = markdownImageTarget(candidate) ?? decodeFileUrl(candidate)
+    if (fromLine && isImagePath(fromLine)) return fromLine
     if (isImagePath(candidate)) return candidate
   }
-  const embedded = /((?:\/|[A-Za-z]:\\)[^\s"']+\.(?:png|jpe?g|gif|webp))/i.exec(text)
-  if (embedded?.[1] && isImagePath(embedded[1])) return embedded[1]
+  const embedded = /((?:\/(?!\/)[^\s"')]+|[A-Za-z]:\\[^\s"')]+)\.(?:png|jpe?g|gif|webp))/i.exec(text)
+  if (embedded?.[1] && isImagePath(embedded[1])) return normalizeAbsolutePath(embedded[1])
   const quoted = /(?:path|file|saved|output)[:\s]+["']?([^\s"']+\.(?:png|jpe?g|gif|webp))["']?/i.exec(text)
   return quoted?.[1] ?? null
 }
 
+function extractMarkdownFilePath(text: string): string | null {
+  const match = /((?:\/|[A-Za-z]:\\)[^\s"')]+\.md)/i.exec(text)
+  return match?.[1] ?? null
+}
+
+function markdownImageTarget(text: string): string | null {
+  const match = /!\[[^\]]*]\(([^)]+)\)/.exec(text)
+  if (!match) return null
+  const target = match[1]!.trim().replace(/^["']|["']$/g, '')
+  if (target.startsWith('file://')) {
+    const path = decodeFileUrl(target)
+    return path && isImagePath(path) ? path : null
+  }
+  return isImagePath(target) ? target : null
+}
+
+function decodeFileUrl(text: string): string | null {
+  const match = /file:\/\/\/([^\s"'<>]+)|file:\/\/([^\s"'<>]+)/i.exec(text)
+  const raw = match?.[1] ?? match?.[2]
+  if (!raw) return null
+  try {
+    return decodeURIComponent(raw)
+  } catch {
+    return raw
+  }
+}
+
 function isImagePath(value: string): boolean {
-  if (!value || value.startsWith('{') || /^https?:\/\//i.test(value)) return false
-  return IMAGE_EXTENSIONS.has(extname(value).toLowerCase()) && (value.startsWith('/') || /^[A-Za-z]:\\/.test(value))
+  const path = normalizeAbsolutePath(value)
+  if (!path || path.startsWith('{') || /^https?:\/\//i.test(path)) return false
+  return IMAGE_EXTENSIONS.has(extname(path).toLowerCase()) && (path.startsWith('/') || /^[A-Za-z]:\\/.test(path))
+}
+
+function normalizeAbsolutePath(path: string | null): string | null {
+  if (!path) return null
+  const trimmed = path.trim()
+  if (/^[A-Za-z]:\\/.test(trimmed)) return trimmed
+  if (!trimmed.startsWith('/')) return trimmed
+  return trimmed.replace(/\/{2,}/g, '/')
 }
 
 function mimeFromExt(path: string): string {

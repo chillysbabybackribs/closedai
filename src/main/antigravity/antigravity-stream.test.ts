@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import test from 'node:test'
 import { AntigravityTurnTranslator, type TranscriptOp } from './antigravity-stream.js'
 
@@ -56,6 +59,35 @@ test('native tool steps become command and file-change items with their output',
   assert.equal(items(failed.ops)[0]!.status, 'failed')
   // A settled step reported again must not regress to in-progress.
   assert.deepEqual(t.handle(step({ step_index: 3, state: 'DONE', step_type: 'tool', tool_name: 'write_to_file', tool_info: { name: 'write_to_file', parameters: {} } })).ops, [])
+})
+
+test('generate_image promotes from a markdown artifact path in tool output', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'closedai-agy-gen-'))
+  try {
+    const imagePath = join(dir, 'puppy.jpg')
+    await writeFile(imagePath, Buffer.from([0xff, 0xd8, 0xff]))
+    const mdPath = join(dir, 'puppy.md')
+    await writeFile(mdPath, `# Puppy\n\n![Puppy](${imagePath})\n`)
+    const t = translator()
+    t.handle(step({ step_index: 7, state: 'ACTIVE', step_type: 'tool', tool_name: 'generate_image', tool_info: { name: 'generate_image', parameters: { Prompt: 'puppy' } } }))
+    const done = t.handle(step({
+      step_index: 7,
+      state: 'DONE',
+      step_type: 'tool',
+      tool_name: 'generate_image',
+      tool_info: {
+        name: 'generate_image',
+        parameters: { Prompt: 'puppy' },
+        output: `Saved ${mdPath}`
+      }
+    }))
+    const row = items(done.ops).at(-1)!
+    assert.equal(row.type, 'screenshot')
+    assert.equal(row.surface, 'generated_image')
+    assert.equal(row.savedPath, imagePath)
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
 })
 
 test('generate_image promotes inline when output includes a data url', () => {

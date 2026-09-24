@@ -6,8 +6,10 @@ and viewed in the embedded browser; local HTML file links instead open a text pr
 
 Native image generation from Codex (`imageGeneration`), Cursor (`GenerateImage`), Antigravity
 (`generate_image`), and Claude tools with the same names render inline in the transcript as
-`generated_image` screenshots when the provider returns image bytes or a saved path, both during
-live turns and when replaying a saved thread. Click a generated image to open the full-size
+`generated_image` screenshots when the provider returns image bytes, a saved path, a `file://`
+link, or a brain artifact `.md` that embeds the image, both during live turns and when replaying a
+saved thread. Claude Code sessions also load user skills from `~/.claude` so the `Skill` tool can
+run workflows such as `canvas-design`. Click a generated image to open the full-size
 browser-pane image viewer when a path is available. Pending generation remains an activity row;
 failures display an error. The revised generation prompt is not used as a caption. These images
 are display data, not instructions.

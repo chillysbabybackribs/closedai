@@ -19,8 +19,9 @@ and transcript notes were reviewed against current source on 2026-09-03, without
 - **No approval prompts**, matching the Codex lane: `permissionMode: 'bypassPermissions'` with the
   required `allowDangerouslySkipPermissions`. `AskUserQuestion` is disallowed because the app has
   no UI for it; ClosedAI adds no replacement instruction.
-- **Settings isolation.** `settingSources: ['project']` loads the workspace's `CLAUDE.md` and
-  `.claude/settings.json` only; the user's `~/.claude` settings never shape an app session.
+- **Settings isolation.** `settingSources: ['project', 'user']` loads the workspace's `CLAUDE.md`
+  and `.claude/settings.json`, plus the user's `~/.claude` skills (for example `canvas-design` for
+  raster art). User MCP connectors still do not load (`strictMcpConfig: true`).
   The SDK does not load `AGENTS.md`; ClosedAI no longer appends that policy to the model prompt.
   `strictMcpConfig: true` keeps the user's own MCP connectors (claude.ai connectors were observed
   loading without it) out of the session.

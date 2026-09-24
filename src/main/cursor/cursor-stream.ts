@@ -2,7 +2,11 @@ import type { ChatTranscriptItem } from '../../shared/chat.js'
 import { displayUserMessageText } from '../../shared/chat-display.js'
 import type { TranscriptOp, TurnEnd } from '../chat-transcript-ops.js'
 import { recordOfOrEmpty as recordOf, stringOf } from '../json-coerce.js'
-import { isGenerateImageToolLabel, promoteGeneratedImage, resolveGeneratedImageEvidence } from '../generated-image-transcript.js'
+import {
+  isGenerateImageToolLabel,
+  promoteGeneratedImage,
+  resolveGeneratedImageToolOutcome
+} from '../generated-image-transcript.js'
 import { promoteCaptureToScreenshot } from '../tool-transcript-shared.js'
 import {
   cursorStatus, cursorToolContent, cursorToolItem, cursorToolResult, resolveCursorTool,
@@ -161,7 +165,7 @@ export class CursorTurnTranslator {
     if (!item || !inProgress(item)) return []
     const { text, diffs } = cursorToolContent(update.content, update.rawOutput)
     const settled = this.screenshotItem(item, status, text)
-      ?? this.generatedImageItem(item, status, text, update.content)
+      ?? this.generatedImageItem(item, status, text, update.content, update.rawOutput)
       ?? cursorToolResult(item, { status, output: text, diffs })
     this.tools.set(id, settled)
     return [{ type: 'item', item: settled }]
@@ -178,10 +182,11 @@ export class CursorTurnTranslator {
     item: ChatTranscriptItem,
     status: 'completed' | 'failed',
     output: string,
-    content: unknown
+    content: unknown,
+    rawOutput: unknown
   ): ChatTranscriptItem | null {
     if (status === 'failed' || item.type !== 'tool' || !isGenerateImageToolLabel(item.label)) return null
-    const evidence = resolveGeneratedImageEvidence(output, content)
+    const evidence = resolveGeneratedImageToolOutcome({ text: output, content, rawOutput })
     if (!evidence) return null
     return promoteGeneratedImage({
       itemId: item.id,

@@ -40,6 +40,24 @@ test('resolveGeneratedImageEvidence reads data urls and image blocks', () => {
   ]), { imageUrl: 'data:image/png;base64,QQ==' })
 })
 
+test('resolveGeneratedImageEvidence reads markdown artifacts and file links', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'closedai-gen-md-'))
+  try {
+    const imagePath = join(dir, 'puppy.jpg')
+    await writeFile(imagePath, Buffer.from([0xff, 0xd8, 0xff]))
+    const mdPath = join(dir, 'puppy.md')
+    await writeFile(mdPath, `# Puppy\n\n![Puppy](${imagePath})\n`)
+    const evidence = resolveGeneratedImageEvidence(`Saved artifact ${mdPath}`)
+    assert.ok(evidence)
+    assert.equal(evidence.savedPath, imagePath)
+    assert.match(evidence.imageUrl, /^data:image\/jpeg;base64,/)
+    const linked = resolveGeneratedImageEvidence('![Puppy](/tmp/puppy.png)')
+    assert.equal(linked, null)
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
 test('resolveGeneratedImageEvidence loads a saved image path', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'closedai-gen-img-'))
   try {

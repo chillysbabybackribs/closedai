@@ -18,7 +18,7 @@ test('the session shape: no prompts, isolated settings, only app MCP servers, su
   const options = claudeQueryOptions(base)
   assert.equal(options.permissionMode, 'bypassPermissions')
   assert.equal(options.allowDangerouslySkipPermissions, true)
-  assert.deepEqual(options.settingSources, ['project'])
+  assert.deepEqual(options.settingSources, ['project', 'user'])
   assert.equal(options.strictMcpConfig, true)
   assert.equal(options.hooks, undefined, 'native tools must not be intercepted by app read suppression')
   assert.equal(options.includePartialMessages, true)

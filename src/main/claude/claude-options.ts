@@ -5,8 +5,10 @@ import { CLAUDE_RUNTIME_ID_ENV } from './claude-process-tree.js'
 // live against SDK 0.3.258 on 2026-09-02 (see docs/claude-code.md):
 // - bypassPermissions + allowDangerouslySkipPermissions: ClosedAI never shows approval prompts,
 //   matching the Codex thread's approvalPolicy 'never' / danger-full-access.
-// - settingSources ['project']: the workspace's CLAUDE.md and .claude/settings.json apply (the
-//   Codex lane reads AGENTS.md natively); the user's ~/.claude settings never leak into the app.
+// - settingSources ['project', 'user']: the workspace's CLAUDE.md and .claude/settings.json apply
+//   (the Codex lane reads AGENTS.md natively), and the user's ~/.claude skills (for example
+//   canvas-design) are available to the Skill tool. User MCP connectors stay blocked by
+//   strictMcpConfig; only ClosedAI's in-process servers are wired in.
 // - strictMcpConfig: only ClosedAI's in-process tool servers, never the user's own connectors.
 // - thinking display 'summarized': without it thinking blocks stream with empty text on every
 //   current model, and the transcript's reasoning items would be blank.
@@ -70,7 +72,7 @@ export function claudeQueryOptions(config: ClaudeQueryConfig): Options {
     promptSuggestions: true,
     permissionMode: 'bypassPermissions',
     allowDangerouslySkipPermissions: true,
-    settingSources: ['project'],
+    settingSources: ['project', 'user'],
     strictMcpConfig: true,
     allowedTools: CLAUDE_ALLOWED_TOOLS,
     disallowedTools: CLAUDE_DISALLOWED_TOOLS,
