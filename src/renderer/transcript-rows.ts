@@ -150,7 +150,7 @@ export function transcriptRows(items: ChatTranscriptItem[]): TranscriptRow[] {
 
 /** Message completion is not turn completion: tools may run after a settled message. */
 export function turnActionMessageIds(
-  items: ChatTranscriptItem[],
+  items: readonly ChatTranscriptItem[],
   activeTurnId?: string | null,
   running = Boolean(activeTurnId)
 ): Set<string> {
