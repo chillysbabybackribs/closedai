@@ -1,6 +1,7 @@
 import { open, stat } from 'node:fs/promises'
 import { basename, extname } from 'node:path'
-import { parseLocalFileTarget, type LocalFilePreview } from '../../shared/local-files.js'
+import type { LocalFileOpenOptions, LocalFilePreview } from '../../shared/local-files.js'
+import { resolveLocalFileOpenTarget } from './resolve-target.js'
 
 const IMAGE_TYPES: Record<string, string> = {
   '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
@@ -9,9 +10,9 @@ const IMAGE_TYPES: Record<string, string> = {
 const MAX_IMAGE_BYTES = 32 * 1024 * 1024
 
 /** User-clicked files are previewed in browser tabs (inert raster images or files); directories are revealed. */
-export async function openLocalFile(href: string, reveal: (path: string) => void): Promise<LocalFilePreview> {
-  const target = typeof href === 'string' ? parseLocalFileTarget(href) : null
-  if (!target) throw new Error('This is not an absolute local file link.')
+export async function openLocalFile(href: string, reveal: (path: string) => void, options?: LocalFileOpenOptions): Promise<LocalFilePreview> {
+  const target = typeof href === 'string' ? resolveLocalFileOpenTarget(href, options?.cwd) : null
+  if (!target) throw new Error('This is not a local file link in the workspace.')
   const { path, line, endLine } = target
   const info = await stat(path)
   if (!info.isFile() && !info.isDirectory()) throw new Error('This file type cannot be opened.')
@@ -29,10 +30,19 @@ export async function openLocalFile(href: string, reveal: (path: string) => void
         length += read.bytesRead
       }
       if (length > current.size) throw new Error('The image changed while opening. Try again.')
-      return { kind: 'image', name: basename(path), src: `data:${mime};base64,${bytes.subarray(0, length).toString('base64')}` }
+      return { kind: 'image', name: basename(path), path, src: `data:${mime};base64,${bytes.subarray(0, length).toString('base64')}` }
     } finally { await file.close() }
   }
-  if (info.isFile()) return { kind: 'file', path, ...(line ? { line } : {}), ...(endLine ? { endLine } : {}) }
+  if (info.isFile()) {
+    return {
+      kind: 'file',
+      path,
+      ...(line ? { line } : {}),
+      ...(endLine ? { endLine } : {}),
+      ...(options?.cwd ? { cwd: options.cwd } : {}),
+      ...(options?.diff ? { diff: options.diff } : {})
+    }
+  }
   reveal(path)
   return { kind: 'revealed' }
 }

@@ -1,10 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AlertCircle, Check, Copy, FileCode, FolderOpen, Loader2 } from 'lucide-react'
 import type { FileTabContent } from '../../shared/local-files.js'
-import { highlightTokens } from '../diff-viewer.js'
+import { DiffViewer, highlightTokens } from '../diff-viewer.js'
+import { LocalFileMarkdown } from '../local-file-markdown.js'
 
-export function FileViewer({ id, active, revision, line, endLine }: {
-  id: string; active: boolean; revision: number; line?: number; endLine?: number
+export function FileViewer({ id, active, revision, line, endLine, diff, cwd, fileName, path }: {
+  id: string
+  active: boolean
+  revision: number
+  line?: number
+  endLine?: number
+  diff?: string
+  cwd?: string
+  fileName?: string
+  path?: string
 }) {
   const [content, setContent] = useState<FileTabContent | null>(null)
   const [error, setError] = useState<string>('')
@@ -13,8 +22,15 @@ export function FileViewer({ id, active, revision, line, endLine }: {
   const [copiedContent, setCopiedContent] = useState(false)
   const targetRef = useRef<HTMLDivElement | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
+  const showDiff = Boolean(diff)
 
   useEffect(() => {
+    if (showDiff) {
+      setLoading(false)
+      setError('')
+      setContent(null)
+      return
+    }
     let live = true
     setLoading(true)
     setError('')
@@ -32,7 +48,7 @@ export function FileViewer({ id, active, revision, line, endLine }: {
         }
       })
     return () => { live = false }
-  }, [id, revision, line, endLine])
+  }, [id, revision, line, endLine, showDiff])
 
   useEffect(() => {
     if (active && targetRef.current) {
@@ -45,9 +61,15 @@ export function FileViewer({ id, active, revision, line, endLine }: {
     return content.content.split('\n')
   }, [content?.content])
 
+  const markdownPreview = useMemo(() => {
+    const name = content?.name ?? fileName ?? ''
+    return /\.(md|markdown)$/i.test(name)
+  }, [content?.name, fileName])
+
   function copyPath() {
-    if (!content?.path) return
-    void navigator.clipboard.writeText(content.path)
+    const path = content?.path
+    if (!path) return
+    void navigator.clipboard.writeText(path)
     setCopiedPath(true)
     setTimeout(() => setCopiedPath(false), 2000)
   }
@@ -65,8 +87,10 @@ export function FileViewer({ id, active, revision, line, endLine }: {
     })
   }
 
-  const targetLine = content?.line
-  const targetEndLine = content?.endLine
+  const targetLine = content?.line ?? line
+  const targetEndLine = content?.endLine ?? endLine
+  const displayName = content?.name ?? fileName ?? 'Loading file…'
+  const displayPath = content?.path ?? path
 
   return (
     <section
@@ -78,41 +102,49 @@ export function FileViewer({ id, active, revision, line, endLine }: {
     >
       <header className="file-viewer-toolbar" role="toolbar" aria-label="File controls">
         <FileCode className="file-viewer-icon" size={15} aria-hidden="true" />
-        <span className="file-viewer-name" title={content?.path ?? 'Loading file…'}>
-          {content?.name ?? 'Loading file…'}
+        <span className="file-viewer-name" title={displayPath ?? displayName}>
+          {displayName}
         </span>
-        {lines.length > 0 && (
+        {showDiff ? (
+          <span className="file-viewer-badge">Diff</span>
+        ) : null}
+        {!showDiff && lines.length > 0 && (
           <span className="file-viewer-meta">{lines.length} {lines.length === 1 ? 'line' : 'lines'}</span>
         )}
-        {targetLine && (
+        {targetLine && !showDiff ? (
           <span className="file-viewer-badge">
             {targetEndLine ? `Lines ${targetLine}–${targetEndLine}` : `Line ${targetLine}`}
           </span>
-        )}
+        ) : null}
         <div className="file-viewer-actions">
-          <button
-            type="button"
-            className="file-viewer-btn"
-            onClick={copyPath}
-            title={copiedPath ? 'Path copied!' : 'Copy path'}
-            aria-label="Copy path"
-            data-ui="file.copy-path"
-          >
-            {copiedPath ? <Check size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />}
-            <span>{copiedPath ? 'Copied' : 'Path'}</span>
-          </button>
-          <button
-            type="button"
-            className="file-viewer-btn"
-            onClick={copyCode}
-            disabled={!content?.content}
-            title={copiedContent ? 'Content copied!' : 'Copy content'}
-            aria-label="Copy content"
-            data-ui="file.copy-content"
-          >
-            {copiedContent ? <Check size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />}
-            <span>{copiedContent ? 'Copied' : 'Copy'}</span>
-          </button>
+          {!showDiff && (
+            <button
+              type="button"
+              className="file-viewer-btn"
+              onClick={copyPath}
+              disabled={!displayPath}
+              title={copiedPath ? 'Path copied!' : 'Copy path'}
+              aria-label="Copy path"
+              data-ui="file.copy-path"
+            >
+              {copiedPath ? <Check size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />}
+              <span>{copiedPath ? 'Copied' : 'Path'}</span>
+            </button>
+          )}
+          {!showDiff && (
+            <button
+              type="button"
+              className="file-viewer-btn"
+              onClick={copyCode}
+              disabled={!content?.content}
+              title={copiedContent ? 'Content copied!' : 'Copy content'}
+              aria-label="Copy content"
+              data-ui="file.copy-content"
+            >
+              {copiedContent ? <Check size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />}
+              <span>{copiedContent ? 'Copied' : 'Copy'}</span>
+            </button>
+          )}
           <button
             type="button"
             className="file-viewer-btn"
@@ -128,14 +160,14 @@ export function FileViewer({ id, active, revision, line, endLine }: {
       </header>
 
       <div ref={containerRef} className="file-viewer-body" tabIndex={0}>
-        {loading && (
+        {loading && !showDiff && (
           <div className="file-viewer-loading">
             <Loader2 className="file-viewer-spinner" size={20} aria-hidden="true" />
             <span>Loading file content…</span>
           </div>
         )}
 
-        {!loading && error && (
+        {!loading && error && !showDiff && (
           <div className="file-viewer-error" role="alert">
             <AlertCircle size={18} aria-hidden="true" />
             <div className="file-viewer-error-text">
@@ -149,7 +181,19 @@ export function FileViewer({ id, active, revision, line, endLine }: {
           </div>
         )}
 
-        {!loading && !error && content && (
+        {showDiff && diff && displayPath && (
+          <div className="file-viewer-diff">
+            <DiffViewer path={displayPath} diff={diff} defaultViewMode="unified" />
+          </div>
+        )}
+
+        {!loading && !error && !showDiff && content && markdownPreview && (
+          <div className="file-viewer-markdown">
+            <LocalFileMarkdown cwd={cwd ?? content.cwd}>{content.content}</LocalFileMarkdown>
+          </div>
+        )}
+
+        {!loading && !error && !showDiff && content && !markdownPreview && (
           <div className="file-viewer-code-table">
             {lines.map((lineText, idx) => {
               const lineNum = idx + 1

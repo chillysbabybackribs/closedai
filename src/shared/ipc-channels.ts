@@ -18,7 +18,7 @@ import type {
 
 /** Invoke channels the preload bridge exposes on `window.closedai`. */
 export type IpcInvokeChannels = {
-  'localFiles:open': { args: [string]; result: import('./local-files.js').LocalFileResult }
+  'localFiles:open': { args: [string, import('./local-files.js').LocalFileOpenOptions?]; result: import('./local-files.js').LocalFileResult }
   'localFiles:openImage': { args: [{ name: string; src: string }]; result: string }
   'localFiles:image': { args: [string]; result: import('./local-files.js').ImageTabContent }
   'localFiles:revealImage': { args: [string]; result: void }

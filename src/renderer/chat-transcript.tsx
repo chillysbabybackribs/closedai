@@ -44,7 +44,8 @@ export const ChatTranscript = memo(function ChatTranscript({
   actions,
   hasEarlier = false,
   loadEarlier,
-  onTrimMountedHistory
+  onTrimMountedHistory,
+  cwd
 }: {
   items: ChatTranscriptItem[]
   actions?: MessageActionContext
@@ -52,6 +53,7 @@ export const ChatTranscript = memo(function ChatTranscript({
   hasEarlier?: boolean
   loadEarlier?: () => Promise<number>
   onTrimMountedHistory?: () => void
+  cwd?: string
 }): JSX.Element {
   const actionMessageIds = useMemo(
     () => turnActionMessageIds(items, activeTurnId, actions?.running || Boolean(activeTurnId)),
@@ -281,7 +283,7 @@ const ToolActivity = memo(function ToolActivity({
         {opened ? (
           <CollapsibleContent className="prompt-tool-activity-content">
             <div className="prompt-tool-activity-card">
-              <ActivitySteps items={items} />
+              <ActivitySteps items={items} cwd={cwd} />
             </div>
           </CollapsibleContent>
         ) : null}
@@ -306,7 +308,7 @@ const AssistantMessage = memo(function AssistantMessage({ item, actions, showCon
       <MessageContent>
         <Bubble variant="ghost">
           <BubbleContent className="prompt-message-assistant-content prose max-w-none dark:prose-invert">
-            <Markdown streaming={streaming}>{text}</Markdown>
+            <Markdown streaming={streaming} cwd={cwd}>{text}</Markdown>
           </BubbleContent>
         </Bubble>
         {actions ? <MessageActions key={actions.threadKey + item.id} item={item} context={actions}

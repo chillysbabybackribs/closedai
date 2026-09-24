@@ -236,7 +236,7 @@ export class BrowserService extends EventEmitter {
       (id) => { this.setActive(id) }, (state) => { this.emit('state', state) })
   }
 
-  openFileTab(content: { path: string; name: string; line?: number; endLine?: number }): string {
+  openFileTab(content: { path: string; name: string; line?: number; endLine?: number; cwd?: string; diff?: string }): string {
     return openFileViewerTab(this.tabs, this.activeId, content, (tab, index) => { this.registerTab(tab, index) },
       (id) => { this.setActive(id) }, (state) => { this.emit('state', state) })
   }

@@ -31,14 +31,14 @@ export function openImageTab(
 export function openFileViewerTab(
   tabs: TabStrip,
   activeId: string | null,
-  content: { path: string; name: string; line?: number; endLine?: number },
+  content: { path: string; name: string; line?: number; endLine?: number; cwd?: string; diff?: string },
   register: (tab: FileTab, index?: number) => void,
   setActive: (id: string) => void,
   emitState: (state: ReturnType<FileTab['getState']>) => void
 ): string {
   const existing = tabs.find((tab) => tab instanceof FileTab && tab.key === content.path)
   if (existing instanceof FileTab) {
-    existing.updateLine(content.line, content.endLine)
+    existing.updateView({ line: content.line, endLine: content.endLine, diff: content.diff, cwd: content.cwd })
     setActive(existing.id)
     emitState(existing.getState())
     return existing.id

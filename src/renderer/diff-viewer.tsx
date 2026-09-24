@@ -32,12 +32,14 @@ export type DiffViewerProps = {
   path: string
   diff: string
   defaultViewMode?: DiffViewMode
+  cwd?: string
 }
 
 export const DiffViewer = memo(function DiffViewer({
   path,
   diff,
-  defaultViewMode = 'unified'
+  defaultViewMode = 'unified',
+  cwd
 }: DiffViewerProps): JSX.Element {
   const [copied, setCopied] = useState(false)
   const [copiedHunk, setCopiedHunk] = useState<number | null>(null)
@@ -82,8 +84,8 @@ export const DiffViewer = memo(function DiffViewer({
   }
 
   function openFile(): void {
-    const href = path.startsWith('file://') ? path : `file://${path.startsWith('/') ? '' : '/'}${path}`
-    void window.closedai.localFiles.open(href)
+    const href = path.startsWith('file://') ? path : (path.startsWith('/') ? path : path)
+    void window.closedai.localFiles.open(href, { cwd, diff })
   }
 
   const totalChanges = parsed.additions + parsed.deletions

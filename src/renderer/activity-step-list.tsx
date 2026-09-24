@@ -21,7 +21,7 @@ import { DiffViewer } from './diff-viewer.js'
  * step reveals its details beneath the line without adding another box to the reel.
  * Failures announce themselves on a line above the list and open their output by default.
  */
-export const ActivitySteps = memo(function ActivitySteps({ items }: { items: ActivityItem[] }): JSX.Element {
+export const ActivitySteps = memo(function ActivitySteps({ items, cwd }: { items: ActivityItem[]; cwd?: string }): JSX.Element {
   const live = items.some((item) => item.status.toLowerCase().includes('progress') || item.status.toLowerCase().includes('running'))
   const now = useClock(live)
   const steps = useMemo(() => activitySteps(items, now), [items, now])
@@ -42,7 +42,7 @@ export const ActivitySteps = memo(function ActivitySteps({ items }: { items: Act
         </div>
       ) : null}
       <ol className="activity-steps-list">
-        {steps.map((step) => <StepRow key={step.id} step={step} />)}
+        {steps.map((step) => <StepRow key={step.id} step={step} cwd={cwd} />)}
       </ol>
     </div>
   )
@@ -60,7 +60,7 @@ function useClock(live: boolean): number {
   return now
 }
 
-const StepRow = memo(function StepRow({ step }: { step: ActivityStep }): JSX.Element {
+const StepRow = memo(function StepRow({ step, cwd }: { step: ActivityStep; cwd?: string }): JSX.Element {
   const expandable = step.body !== null
   const [open, setOpen] = useState(step.phase === 'failed')
   // Opening a group mounts every step at once; a body Radix has to measure on mount is a forced
@@ -85,7 +85,7 @@ const StepRow = memo(function StepRow({ step }: { step: ActivityStep }): JSX.Ele
         </CollapsibleTrigger>
         {step.body && opened ? (
           <CollapsibleContent className="activity-step-body">
-            <StepBodyView body={step.body} />
+            <StepBodyView body={step.body} cwd={cwd} />
           </CollapsibleContent>
         ) : null}
       </Collapsible>
@@ -115,7 +115,7 @@ function StepIcon({ step }: { step: ActivityStep }): JSX.Element {
  * surface, the invocation behind a prompt, the output, and the outcome in the corner. The
  * invocation clamps to a few lines and opens on click.
  */
-function StepBodyView({ body }: { body: StepBody }): JSX.Element {
+function StepBodyView({ body, cwd }: { body: StepBody; cwd?: string }): JSX.Element {
   const [fullInvocation, setFullInvocation] = useState(false)
   return (
     <div className="activity-card" data-tone={body.status.tone}>
@@ -134,7 +134,7 @@ function StepBodyView({ body }: { body: StepBody }): JSX.Element {
       ) : null}
       {body.output ? <pre className="activity-card-output">{body.output}</pre> : null}
       {body.diffs.map((entry) => (
-        <DiffViewer key={entry.path} path={entry.path} diff={entry.diff} />
+        <DiffViewer key={entry.path} path={entry.path} diff={entry.diff} cwd={cwd} />
       ))}
       <div className="activity-card-footer">
         <StatusMark tone={body.status.tone} />

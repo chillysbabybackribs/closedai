@@ -20,7 +20,7 @@ export type Unsubscribe = () => void
 /** The contextBridge surface the renderer sees as `window.closedai`. */
 export type ClosedaiApi = {
   localFiles: {
-    open: (href: string) => Promise<import('./local-files.js').LocalFileResult>
+    open: (href: string, options?: import('./local-files.js').LocalFileOpenOptions) => Promise<import('./local-files.js').LocalFileResult>
     openImage: (image: { name: string; src: string }) => Promise<string>
     image: (id: string) => Promise<import('./local-files.js').ImageTabContent>
     revealImage: (id: string) => Promise<void>

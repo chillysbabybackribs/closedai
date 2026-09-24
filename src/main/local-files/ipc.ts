@@ -4,7 +4,7 @@ import { registerInvoke } from '../ipc-register.js'
 import { openLocalFile } from './open.js'
 import { realpath } from 'node:fs/promises'
 import { basename } from 'node:path'
-import { localFilePath } from '../../shared/local-files.js'
+import type { LocalFileOpenOptions } from '../../shared/local-files.js'
 import type { BrowserService } from '../browser-service.js'
 import { validateImageSource } from './image-tab.js'
 
@@ -14,11 +14,11 @@ export function registerLocalFilesIpc(ipcMain: Pick<IpcMain, 'handle'>, getBrows
     if (!service) throw new Error('The browser pane is not available.')
     return service
   }
-  registerInvoke(ipcMain, IPC.invoke.localFiles.open, async (_event, href) => {
-    const result = await openLocalFile(href, (path) => shell.showItemInFolder(path))
+  registerInvoke(ipcMain, IPC.invoke.localFiles.open, async (_event, href, options?: LocalFileOpenOptions) => {
+    const result = await openLocalFile(href, (path) => shell.showItemInFolder(path), options)
     if (result.kind === 'image') {
-      const path = await realpath(localFilePath(href)!)
-      return { kind: 'image', tabId: browser().openImage({ ...result, path }) }
+      const path = await realpath(result.path)
+      return { kind: 'image', tabId: browser().openImage({ name: result.name, src: result.src, path }) }
     }
     if (result.kind === 'file') {
       const path = await realpath(result.path)
@@ -26,7 +26,9 @@ export function registerLocalFilesIpc(ipcMain: Pick<IpcMain, 'handle'>, getBrows
         path,
         name: basename(path),
         line: result.line,
-        endLine: result.endLine
+        endLine: result.endLine,
+        cwd: result.cwd,
+        diff: result.diff
       })
       return { kind: 'file', tabId }
     }

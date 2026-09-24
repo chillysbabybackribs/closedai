@@ -1,16 +1,22 @@
 import { useMemo, useState } from 'react'
 import type { Components } from 'react-markdown'
+import remarkBreaks from 'remark-breaks'
+import remarkGfm from 'remark-gfm'
 import { Markdown, MarkdownLink } from '../components/ui/markdown.js'
-import { localFilePath } from '../shared/local-files.js'
+import { remarkBareUrls } from '../components/ui/markdown-links.js'
+import { remarkWorkspaceFilePaths } from '../components/ui/markdown-workspace-paths.js'
+import { isWorkspaceFileHref, localFilePath } from '../shared/local-files.js'
 
-function LocalFileLink({ href, children }: { href: string; children?: React.ReactNode }) {
+const CHAT_REMARK_PLUGINS = [remarkGfm, remarkBreaks, remarkBareUrls, remarkWorkspaceFilePaths]
+
+function LocalFileLink({ href, cwd, children }: { href: string; cwd?: string; children?: React.ReactNode }) {
   const [error, setError] = useState('')
   const [opening, setOpening] = useState(false)
   async function open() {
     setOpening(true)
     setError('')
     try {
-      await window.closedai.localFiles.open(href)
+      await window.closedai.localFiles.open(href, cwd ? { cwd } : undefined)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not open this file.')
     } finally { setOpening(false) }
@@ -22,13 +28,13 @@ function LocalFileLink({ href, children }: { href: string; children?: React.Reac
   </>
 }
 
-export function LocalFileMarkdown({ children, streaming }: { children: string; streaming?: boolean }) {
+export function LocalFileMarkdown({ children, streaming, cwd }: { children: string; streaming?: boolean; cwd?: string }) {
   const components = useMemo<Partial<Components>>(() => ({
     a: function FileOrWebLink(props) {
-      return localFilePath(props.href)
-        ? <LocalFileLink href={props.href!}>{props.children}</LocalFileLink>
+      return isWorkspaceFileHref(props.href)
+        ? <LocalFileLink href={props.href!} cwd={cwd}>{props.children}</LocalFileLink>
         : <MarkdownLink {...props} />
     }
-  }), [])
-  return <Markdown components={components} streaming={streaming}>{children}</Markdown>
+  }), [cwd])
+  return <Markdown components={components} remarkPlugins={CHAT_REMARK_PLUGINS} streaming={streaming}>{children}</Markdown>
 }

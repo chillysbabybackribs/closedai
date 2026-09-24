@@ -77,7 +77,9 @@ export const BrowserPane = memo(function BrowserPane({
           {controller.tabs.filter((tab) => tab.image).map((tab) =>
             <ImageViewer key={tab.id} id={tab.id} active={controller.browser.image?.tabId === tab.id} />)}
           {controller.tabs.filter((tab) => tab.file).map((tab) =>
-            <FileViewer key={tab.id} id={tab.id} revision={tab.file!.revision} line={tab.file!.line} endLine={tab.file!.endLine} active={controller.browser.file?.tabId === tab.id} />)}
+            <FileViewer key={tab.id} id={tab.id} revision={tab.file!.revision} line={tab.file!.line} endLine={tab.file!.endLine}
+              diff={tab.file!.diff} cwd={tab.file!.cwd} fileName={tab.file!.name} path={tab.file!.path}
+              active={controller.browser.file?.tabId === tab.id} />)}
           {controller.browser.navigationError ? (
             <BrowserNavigationError
               error={controller.browser.navigationError}

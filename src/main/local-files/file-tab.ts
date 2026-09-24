@@ -14,7 +14,7 @@ export class FileTab extends EventEmitter {
   constructor(
     readonly id: string,
     readonly key: string,
-    readonly info: { path: string; name: string; line?: number; endLine?: number },
+    readonly info: { path: string; name: string; line?: number; endLine?: number; cwd?: string; diff?: string },
     public previousTabId: string | null
   ) {
     super()
@@ -29,7 +29,9 @@ export class FileTab extends EventEmitter {
       path,
       revision: this.revision,
       ...(line ? { line } : {}),
-      ...(endLine ? { endLine } : {})
+      ...(endLine ? { endLine } : {}),
+      ...(this.info.cwd ? { cwd: this.info.cwd } : {}),
+      ...(this.info.diff ? { diff: this.info.diff } : {})
     }
     return {
       file: fileIdentity,
@@ -67,10 +69,24 @@ export class FileTab extends EventEmitter {
     this.emit('state')
   }
 
+  updateView(patch: { line?: number; endLine?: number; diff?: string; cwd?: string }): void {
+    if (patch.line !== undefined) this.info.line = patch.line
+    if (patch.endLine !== undefined) this.info.endLine = patch.endLine
+    if (patch.diff !== undefined) this.info.diff = patch.diff
+    if (patch.cwd !== undefined) this.info.cwd = patch.cwd
+    this.emit('state')
+  }
+
   async readContent(): Promise<FileTabContent> {
     const { path, name, line, endLine } = this.info
     if (this.cachedContent !== null) {
-      return { path, name, content: this.cachedContent, ...(line ? { line } : {}), ...(endLine ? { endLine } : {}) }
+      return {
+        path, name, content: this.cachedContent,
+        ...(line ? { line } : {}),
+        ...(endLine ? { endLine } : {}),
+        ...(this.info.cwd ? { cwd: this.info.cwd } : {}),
+        ...(this.info.diff ? { diff: this.info.diff } : {})
+      }
     }
     const revision = this.revision
     const file = await open(path, 'r')
@@ -95,6 +111,12 @@ export class FileTab extends EventEmitter {
     }
     const content = buffer.toString('utf8')
     if (revision === this.revision) this.cachedContent = content
-    return { path, name, content, ...(line ? { line } : {}), ...(endLine ? { endLine } : {}) }
+    return {
+      path, name, content,
+      ...(line ? { line } : {}),
+      ...(endLine ? { endLine } : {}),
+      ...(this.info.cwd ? { cwd: this.info.cwd } : {}),
+      ...(this.info.diff ? { diff: this.info.diff } : {})
+    }
   }
 }

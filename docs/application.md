@@ -710,10 +710,13 @@ existing consumers. Hidden panes retain their main-process state but do not stre
   runs `remarkBareUrls` (`markdown-links.ts`) after remark-gfm so scheme-less hosts such as
   `example.com/path` become links too; the transformer skips code, existing links, and hosts outside
   its curated TLD list, which is what keeps `chat-transcript.tsx` and `package.json` as plain text.
-  Explicit absolute local file links (including `file://` and optional line suffixes) are
-  clickable in chat responses. Raster images open in browser-pane image tabs through a
-  bounded 32 MB read; other files open in an inert text viewer with a bounded 5 MB read and
-  line highlighting. Binary files show a preview error; directories are revealed in the file manager.
+  Local file links in chat responses include absolute paths (`file://` or `/…`), workspace-relative
+  paths such as `src/foo.ts` (resolved against the chat cwd), and bare path-shaped prose with a slash.
+  Raster images open in browser-pane image tabs through a bounded 32 MB read; other files open in an
+  inert browser-tab viewer with a bounded 5 MB read, syntax highlighting, rendered Markdown for
+  `.md` files, and line-range emphasis when the link carries a line suffix. Clicking a path on an
+  inline tool diff opens the same viewer in diff mode (red/green unified view). Binary files show a
+  preview error; directories are revealed in the file manager.
   Files are never executed. Missing files and preview failures show an error. Other non-http schemes stay
   inert. This holds for every provider lane.
 

@@ -3,7 +3,37 @@
 // durable state behind the pane's agent strip, the closedai_app state projection, and restore
 // after a relaunch. A run never restarts itself after a relaunch; it comes back paused.
 
+import type { ChatContextUsage, ChatPlanUsage } from './chat.js'
+
 export type AgentRunStatus = 'running' | 'paused'
+
+/**
+ * Running tallies main keeps as it watches the run's chat, so the Agents tab can say what the
+ * run has done, what it costs, and what went wrong without reading the transcript. Counts span
+ * every cycle since the start; readings are the latest the provider reported on this chat.
+ */
+export type AgentRunStats = {
+  /** Commands, file edits, and tool calls the model has made. */
+  steps: number
+  /** Steps that failed (non-zero exit, tool error) plus error notices the chat surfaced. */
+  errors: number
+  /** File edits among the steps. */
+  edits: number
+  /** Provider thread changes since the start; each one re-sent the standing instructions. */
+  rotations: number
+  /** Wall-clock spent inside turns, summed over finished cycles. */
+  turnMs: number
+  /** When the turn in flight started; null between cycles. */
+  turnStartedAt: number | null
+  /** The last error text the chat surfaced, clipped. */
+  lastError: string | null
+  /** The model's latest completed reply, clipped: its own account of the cycle. */
+  lastMessage: string | null
+  /** Context window reading after the latest response: what every following cycle replays. */
+  context: ChatContextUsage | null
+  /** The account's plan windows as last reported on this chat; account-wide, not this run's alone. */
+  plan: ChatPlanUsage | null
+}
 
 export type AgentRun = {
   /** The chat's stable store id, equal to its pane id while attached. */
@@ -28,6 +58,7 @@ export type AgentRun = {
   agentId: string | null
   /** The saved agent's name at start time, shown on the strip; null for a one-off. */
   name: string | null
+  stats: AgentRunStats
 }
 
 export type AgentRunStartOptions = {
@@ -50,6 +81,24 @@ export const AGENT_RUN_RETRY_DELAYS_MS = [3_000, 8_000, 20_000, 45_000, 90_000] 
 export const AGENT_RUN_TURN_START_TIMEOUT_MS = 60_000
 /** Standing instructions longer than this are refused rather than silently clipped. */
 export const AGENT_RUN_MAX_PROMPT_CHARS = 20_000
+/** Reply and error excerpts kept on the run record; the tab clips further for display. */
+export const AGENT_RUN_EXCERPT_CHARS = 240
+
+export function emptyAgentRunStats(): AgentRunStats {
+  return { steps: 0, errors: 0, edits: 0, rotations: 0, turnMs: 0, turnStartedAt: null, lastError: null, lastMessage: null, context: null, plan: null }
+}
+
+/** One line of prose from a reply or error: markdown markers and whitespace collapsed, then clipped. */
+export function agentRunExcerpt(text: string, max = AGENT_RUN_EXCERPT_CHARS): string | null {
+  const flat = text
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/^\s{0,3}(?:#{1,6}\s+|[-*+]\s+|\d+\.\s+|>\s?)/gm, '')
+    .replace(/[*_`]+/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  if (!flat) return null
+  return flat.length > max ? `${flat.slice(0, max - 1).trimEnd()}…` : flat
+}
 
 export function agentRunRetryDelay(failures: number): number {
   const index = Math.min(Math.max(failures, 1), AGENT_RUN_RETRY_DELAYS_MS.length) - 1
@@ -93,8 +142,36 @@ export function normalizeAgentRun(candidate: unknown, chatId: string): AgentRun 
     failures: nonNegativeInt(record.failures) ?? 0,
     threadId: typeof record.threadId === 'string' && record.threadId.length > 0 ? record.threadId : null,
     agentId: typeof record.agentId === 'string' && record.agentId.length > 0 ? record.agentId : null,
-    name: typeof record.name === 'string' && record.name.trim().length > 0 ? record.name.trim() : null
+    name: typeof record.name === 'string' && record.name.trim().length > 0 ? record.name.trim() : null,
+    stats: normalizeStats(record.stats)
   }
+}
+
+function normalizeStats(candidate: unknown): AgentRunStats {
+  const empty = emptyAgentRunStats()
+  if (!candidate || typeof candidate !== 'object') return empty
+  const record = candidate as Record<string, unknown>
+  const context = record.context as Record<string, unknown> | null | undefined
+  const plan = record.plan as Record<string, unknown> | null | undefined
+  return {
+    steps: nonNegativeInt(record.steps) ?? 0,
+    errors: nonNegativeInt(record.errors) ?? 0,
+    edits: nonNegativeInt(record.edits) ?? 0,
+    rotations: nonNegativeInt(record.rotations) ?? 0,
+    turnMs: nonNegativeInt(record.turnMs) ?? 0,
+    // A turn that was in flight at quit never ends, so its start is dropped rather than counted forever.
+    turnStartedAt: null,
+    lastError: excerptOrNull(record.lastError),
+    lastMessage: excerptOrNull(record.lastMessage),
+    context: context && nonNegativeInt(context.usedTokens) !== null && positiveInt(context.contextWindow) !== null
+      ? { usedTokens: Number(context.usedTokens), contextWindow: Number(context.contextWindow), percent: nonNegativeInt(context.percent) ?? 0 }
+      : null,
+    plan: plan && Array.isArray(plan.windows) ? (plan as unknown as ChatPlanUsage) : null
+  }
+}
+
+function excerptOrNull(value: unknown): string | null {
+  return typeof value === 'string' && value.length > 0 ? value.slice(0, AGENT_RUN_EXCERPT_CHARS) : null
 }
 
 function positiveTime(value: unknown): number | null {

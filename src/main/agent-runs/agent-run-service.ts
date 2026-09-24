@@ -1,9 +1,10 @@
 import { EventEmitter } from 'node:events'
 import {
   AGENT_RUN_CONTINUE_DELAY_MS, AGENT_RUN_MAX_FAILURES, AGENT_RUN_MAX_PROMPT_CHARS, AGENT_RUN_TURN_START_TIMEOUT_MS,
-  agentCycleMessage, agentRunRetryDelay, type AgentRun, type AgentRunStartOptions, type AgentRunsEvent
+  agentCycleMessage, agentRunExcerpt, agentRunRetryDelay, emptyAgentRunStats,
+  type AgentRun, type AgentRunStartOptions, type AgentRunStats, type AgentRunsEvent
 } from '../../shared/agent-runs.js'
-import type { ChatEvent, ChatSnapshot } from '../../shared/chat.js'
+import { activityPhase, type ChatEvent, type ChatSnapshot, type ChatTranscriptItem } from '../../shared/chat.js'
 import type { ChatWorkspaceEvent } from '../../shared/chat-peers.js'
 import type { ChatStore, ChatStoreChange } from '../chat-store/chat-store.js'
 
@@ -16,6 +17,10 @@ import type { ChatStore, ChatStoreChange } from '../chat-store/chat-store.js'
 // signed out, disconnected, or rejecting the send ends turns immediately, and re-sending on
 // every one of those would loop as fast as the provider fails. Failures back off and finally
 // pause the run with the reason on the strip.
+//
+// The same event stream feeds the run's tallies (`AgentRun.stats`): steps and failures are
+// counted once per item id as items settle, the reply excerpt is the last completed assistant
+// message, and context and plan readings are copied as the provider reports them.
 
 /** What the runtime needs from the chat workspace; `ChatPeerManager` satisfies it. */
 export type AgentRunChatHost = {
@@ -36,6 +41,8 @@ type LiveState = {
   awaitingStart: boolean
   /** The thread changed as a turn started (a rotation at send time), so the next cycle re-seeds. */
   reseed: boolean
+  /** Items counted in the turn in flight, so a streamed item is tallied once and a failure once. */
+  counted: Map<string, { failed: boolean }>
 }
 
 export const AGENT_RUN_RELAUNCH_REASON = 'App relaunched'
@@ -103,7 +110,8 @@ export class AgentRunService extends EventEmitter {
     const run: AgentRun = {
       chatId, prompt, status: 'running', cycle: 0, maxCycles, startedAt: at, updatedAt: at,
       lastTurnEndedAt: null, reason: null, failures: 0, threadId: null,
-      agentId: typeof options.agentId === 'string' && options.agentId ? options.agentId : null, name
+      agentId: typeof options.agentId === 'string' && options.agentId ? options.agentId : null, name,
+      stats: emptyAgentRunStats()
     }
     this.store.update(chatId, { agentRun: run })
     this.emitChange()
@@ -164,10 +172,49 @@ export class AgentRunService extends EventEmitter {
       else if (!event.snapshot.activeTurnId && live.turnActive) this.noteTurnEnded(chatId, live)
     } else if (event.type === 'item') {
       if (live.turnActive && event.item.type !== 'user' && event.item.type !== 'notice') live.sawOutput = true
+      this.noteItem(chatId, live, event.item)
+    } else if (event.type === 'context') {
+      if (event.usage) this.patchStats(chatId, { context: event.usage })
+    } else if (event.type === 'planUsage') {
+      if (event.usage) this.patchStats(chatId, { plan: event.usage })
     } else if (event.type === 'paused') {
       // The composer's pause button or a tool's stop_agent ended the turn: that is the user's stop signal.
       if (event.turnId && this.get(chatId)?.status === 'running') void this.pauseRun(chatId, 'Paused from the composer')
     }
+  }
+
+  /** Tally a transcript item: each step and failure once, the latest reply and error as excerpts. */
+  private noteItem(chatId: string, live: LiveState, item: ChatTranscriptItem): void {
+    const run = this.get(chatId)
+    if (!run) return
+    const stats = run.stats
+    if (item.type === 'assistant') {
+      if (item.streaming || item.phase === 'commentary') return
+      const excerpt = agentRunExcerpt(item.text)
+      if (excerpt && excerpt !== stats.lastMessage) this.patchStats(chatId, { lastMessage: excerpt })
+      return
+    }
+    if (item.type === 'notice') {
+      if (item.tone !== 'error' || live.counted.has(item.id)) return
+      live.counted.set(item.id, { failed: true })
+      this.patchStats(chatId, { errors: stats.errors + 1, lastError: agentRunExcerpt(item.text) ?? stats.lastError })
+      return
+    }
+    if (item.type !== 'command' && item.type !== 'fileChange' && item.type !== 'tool') return
+    const failed = activityPhase(item.status, item.type === 'command' ? item.exitCode : null) === 'failed'
+    const seen = live.counted.get(item.id)
+    if (seen?.failed === failed) return
+    const patch: Partial<AgentRunStats> = {}
+    if (!seen) {
+      patch.steps = stats.steps + 1
+      if (item.type === 'fileChange') patch.edits = stats.edits + 1
+    }
+    if (failed && !seen?.failed) {
+      patch.errors = stats.errors + 1
+      patch.lastError = failureText(item) ?? stats.lastError
+    }
+    live.counted.set(item.id, { failed: failed || Boolean(seen?.failed) })
+    this.patchStats(chatId, patch)
   }
 
   private noteTurnStarted(chatId: string, live: LiveState): void {
@@ -175,15 +222,23 @@ export class AgentRunService extends EventEmitter {
     live.turnActive = true
     live.sawOutput = false
     live.awaitingStart = false
+    live.counted.clear()
     // The thread the turn runs in; the first turn creates it, so the send-time id may be null.
     const threadId = this.chat.paneSnapshot(chatId)?.threadId ?? null
     const run = this.get(chatId)
-    if (run && threadId && run.threadId !== threadId) {
+    if (!run) return
+    const stats: Partial<AgentRunStats> = { turnStartedAt: this.now() }
+    if (threadId && run.threadId !== threadId) {
       // A rotation that landed with this send moved the turn to a thread that never saw the
       // standing instructions; the send-time comparison missed it, so the next cycle carries them.
-      if (run.threadId !== null) live.reseed = true
-      this.patch(chatId, { threadId })
+      if (run.threadId !== null) {
+        live.reseed = true
+        stats.rotations = run.stats.rotations + 1
+      }
+      this.patch(chatId, { threadId, stats: { ...run.stats, ...stats } })
+      return
     }
+    this.patchStats(chatId, stats)
   }
 
   private noteTurnEnded(chatId: string, live: LiveState): void {
@@ -191,18 +246,20 @@ export class AgentRunService extends EventEmitter {
     const run = this.get(chatId)
     if (!run) return
     const at = this.now()
+    const started = run.stats.turnStartedAt
+    const stats: AgentRunStats = { ...run.stats, turnStartedAt: null, turnMs: run.stats.turnMs + (started ? Math.max(0, at - started) : 0) }
     if (run.status !== 'running') {
-      this.patch(chatId, { lastTurnEndedAt: at })
+      this.patch(chatId, { lastTurnEndedAt: at, stats })
       return
     }
     if (live.sawOutput) {
       const done = run.maxCycles !== null && run.cycle >= run.maxCycles
-      this.patch(chatId, { lastTurnEndedAt: at, failures: 0, reason: done ? `Reached ${run.maxCycles} cycles` : null,
+      this.patch(chatId, { lastTurnEndedAt: at, stats, failures: 0, reason: done ? `Reached ${run.maxCycles} cycles` : null,
         ...(done ? { status: 'paused' as const } : {}) })
       if (!done) this.schedule(chatId, AGENT_RUN_CONTINUE_DELAY_MS)
       return
     }
-    this.noteFailure(chatId, 'The turn ended without a response', { lastTurnEndedAt: at })
+    this.noteFailure(chatId, 'The turn ended without a response', { lastTurnEndedAt: at, stats })
   }
 
   private noteFailure(chatId: string, detail: string, extra: Partial<AgentRun> = {}): void {
@@ -243,9 +300,11 @@ export class AgentRunService extends EventEmitter {
       live.turnActive = true
       return
     }
-    const threadChanged = live.reseed || (run.threadId !== null && snapshot.threadId !== null && snapshot.threadId !== run.threadId)
+    const rotated = run.threadId !== null && snapshot.threadId !== null && snapshot.threadId !== run.threadId
+    const threadChanged = live.reseed || rotated
     const text = agentCycleMessage(run, threadChanged)
-    this.patch(chatId, { cycle: run.cycle + 1, threadId: snapshot.threadId ?? run.threadId, reason: null })
+    this.patch(chatId, { cycle: run.cycle + 1, threadId: snapshot.threadId ?? run.threadId, reason: null,
+      ...(rotated ? { stats: { ...run.stats, rotations: run.stats.rotations + 1 } } : {}) })
     live.reseed = false
     live.awaitingStart = true
     live.sawOutput = false
@@ -289,6 +348,13 @@ export class AgentRunService extends EventEmitter {
     return next
   }
 
+  private patchStats(chatId: string, patch: Partial<AgentRunStats>): void {
+    if (Object.keys(patch).length === 0) return
+    const current = this.get(chatId)
+    if (!current) return
+    this.patch(chatId, { stats: { ...current.stats, ...patch } })
+  }
+
   private forget(chatId: string): void {
     const live = this.live.get(chatId)
     if (live) this.clearTimer(live)
@@ -300,7 +366,7 @@ export class AgentRunService extends EventEmitter {
   private liveFor(chatId: string): LiveState {
     let live = this.live.get(chatId)
     if (!live) {
-      live = { timer: null, turnActive: Boolean(this.chat.paneSnapshot(chatId)?.activeTurnId), sawOutput: false, awaitingStart: false, reseed: false }
+      live = { timer: null, turnActive: Boolean(this.chat.paneSnapshot(chatId)?.activeTurnId), sawOutput: false, awaitingStart: false, reseed: false, counted: new Map() }
       this.live.set(chatId, live)
     }
     return live
@@ -318,4 +384,15 @@ export class AgentRunService extends EventEmitter {
 
 function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
+}
+
+/** What a failed step says on the run: the command and its exit code, or the tool and its error. */
+function failureText(item: Extract<ChatTranscriptItem, { type: 'command' | 'fileChange' | 'tool' }>): string | null {
+  if (item.type === 'command') {
+    const command = agentRunExcerpt(item.command, 80) ?? 'Command'
+    return item.exitCode !== null && item.exitCode !== 0 ? `${command} exited with code ${item.exitCode}` : `${command} failed`
+  }
+  if (item.type === 'fileChange') return `Editing ${item.changes.map((change) => change.path).join(', ')} failed`
+  const output = item.output ? agentRunExcerpt(item.output, 160) : null
+  return output ? `${item.label}: ${output}` : `${item.label} failed`
 }

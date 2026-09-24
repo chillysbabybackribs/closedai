@@ -4,7 +4,8 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { openLocalFile } from './open.js'
-import { localFilePath, parseLocalFileTarget } from '../../shared/local-files.js'
+import { isWorkspaceFileHref, localFilePath, parseLocalFileTarget } from '../../shared/local-files.js'
+import { resolveLocalFileOpenTarget } from './resolve-target.js'
 
 test('line targets read ranges from #L anchors and a line, never a range, from compiler suffixes', () => {
   assert.deepEqual(parseLocalFileTarget('/tmp/code.ts'), { path: '/tmp/code.ts' })
@@ -36,7 +37,7 @@ test('images return preview bytes; files return path; directories reveal', async
     const revealed: string[] = []
     const reveal = (path: string) => { revealed.push(path) }
     const preview = await openLocalFile(image, reveal)
-    assert.deepEqual(preview, { kind: 'image', name: 'mockup.png', src: `data:image/png;base64,${bytes.toString('base64')}` })
+    assert.deepEqual(preview, { kind: 'image', name: 'mockup.png', path: image, src: `data:image/png;base64,${bytes.toString('base64')}` })
     assert.deepEqual(revealed, [])
     const script = join(root, 'run.sh')
     await writeFile(script, 'exit 1')
@@ -47,7 +48,16 @@ test('images return preview bytes; files return path; directories reveal', async
     assert.deepEqual(await openLocalFile(folder, reveal), { kind: 'revealed' })
     assert.deepEqual(revealed, [folder])
     await assert.rejects(openLocalFile(join(root, 'missing.png'), reveal), /ENOENT/)
-    await assert.rejects(openLocalFile('https://example.com/a.png', reveal), /absolute local/)
+    await assert.rejects(openLocalFile('https://example.com/a.png', reveal), /workspace/)
+    const nested = join(root, 'src', 'app.ts')
+    await mkdir(join(root, 'src'), { recursive: true })
+    await writeFile(nested, 'export {}')
+    assert.deepEqual(
+      await openLocalFile('src/app.ts:3', reveal, { cwd: root }),
+      { kind: 'file', path: nested, line: 3, cwd: root }
+    )
+    assert.ok(isWorkspaceFileHref('src/app.ts'))
+    assert.equal(resolveLocalFileOpenTarget('src/app.ts', root)?.path, nested)
     const oversized = join(root, 'large.png')
     await writeFile(oversized, Buffer.alloc(32 * 1024 * 1024 + 1))
     await assert.rejects(openLocalFile(oversized, reveal), /32 MB/)

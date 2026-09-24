@@ -195,3 +195,25 @@
   white-space: pre;
   padding-right: 16px;
 }
+
+.file-viewer-markdown {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px 20px 24px;
+}
+
+.file-viewer-markdown .prompt-markdown {
+  max-width: 72ch;
+}
+
+.file-viewer-diff {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 8px 10px 16px;
+}
+
+.file-viewer-diff .activity-card-diff-container {
+  margin: 0;
+}

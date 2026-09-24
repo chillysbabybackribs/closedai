@@ -11,7 +11,8 @@ import { Source, SourceContent, SourceTrigger } from '../prompt-kit/source.js'
 import { CodeBlock, CodeBlockCode } from './code-block.js'
 import { remarkBareUrls } from './markdown-links.js'
 import { closeIncompleteMarkdown } from './markdown-stream.js'
-import { localFilePath } from '../../shared/local-files.js'
+import { isWorkspaceFileHref, localFilePath } from '../../shared/local-files.js'
+import type { PluggableList } from 'unified'
 
 export type MarkdownProps = {
   children: string
@@ -20,6 +21,9 @@ export type MarkdownProps = {
   components?: Partial<Components>
   /** Still-streaming text: the trailing block's unfinished inline syntax is closed before lexing. */
   streaming?: boolean
+  remarkPlugins?: PluggableList
+  /** Override href normalization for local and workspace file links. */
+  urlTransform?: (url: string, key: string) => string
 }
 
 function parseMarkdownIntoBlocks(markdown: string): string[] {
@@ -180,11 +184,22 @@ function hostname(href: string): string {
   return new URL(href).hostname.replace(/^www\./, '')
 }
 
-const MarkdownBlock = memo(function MarkdownBlock({ content, components }: { content: string; components: Partial<Components> }) {
-  return <ReactMarkdown urlTransform={(url, key) => key === 'href' && localFilePath(url) ? url : defaultUrlTransform(url)} remarkPlugins={[remarkGfm, remarkBreaks, remarkBareUrls]} components={components}>{content}</ReactMarkdown>
-}, (previous, next) => previous.content === next.content && previous.components === next.components)
+const DEFAULT_REMARK_PLUGINS = [remarkGfm, remarkBreaks, remarkBareUrls]
 
-function MarkdownComponent({ children, id, className, components, streaming = false }: MarkdownProps) {
+function chatUrlTransform(url: string, key: string): string {
+  return key === 'href' && (localFilePath(url) || isWorkspaceFileHref(url)) ? url : defaultUrlTransform(url)
+}
+
+const MarkdownBlock = memo(function MarkdownBlock({ content, components, remarkPlugins, urlTransform }: {
+  content: string
+  components: Partial<Components>
+  remarkPlugins: PluggableList
+  urlTransform: (url: string, key: string) => string
+}) {
+  return <ReactMarkdown urlTransform={urlTransform} remarkPlugins={remarkPlugins} components={components}>{content}</ReactMarkdown>
+}, (previous, next) => previous.content === next.content && previous.components === next.components && previous.remarkPlugins === next.remarkPlugins)
+
+function MarkdownComponent({ children, id, className, components, streaming = false, remarkPlugins, urlTransform }: MarkdownProps) {
   const generatedId = useId()
   const blockId = id ?? generatedId
 
@@ -200,10 +215,12 @@ function MarkdownComponent({ children, id, className, components, streaming = fa
   }, [children, streaming])
 
   const mergedComponents = useMemo(() => ({ ...DEFAULT_COMPONENTS, ...components }), [components])
+  const plugins = remarkPlugins ?? DEFAULT_REMARK_PLUGINS
+  const transform = urlTransform ?? chatUrlTransform
   return (
     <div data-slot="markdown" className={cn('aui-md prompt-markdown', className)}>
       {blocks.map((block, index) => (
-        <MarkdownBlock key={`${blockId}-${index}`} content={block} components={mergedComponents} />
+        <MarkdownBlock key={`${blockId}-${index}`} content={block} components={mergedComponents} remarkPlugins={plugins} urlTransform={transform} />
       ))}
     </div>
   )
