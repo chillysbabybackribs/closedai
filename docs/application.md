@@ -868,7 +868,7 @@ instrumentation.
 | Store file reads that set a damaged file aside, durable atomic writes | `src/main/store-recovery.ts`, `src/main/atomic-write.ts` |
 | Attach/detach lifecycle, summaries, per-chat settings, idle parking, catalog reconciliation | `src/main/chat-peers/` |
 | Agent runs: the turn-by-turn loop behind agent chats, retry and pause policy, relaunch restore | `src/main/agent-runs/`, `src/shared/agent-runs.ts` |
-| Agent library: the saved agents the Agents dialog lists, seeds, and counts runs for | `src/main/agent-library/`, `src/shared/agent-library.ts`, `src/renderer/agent-library/` |
+| Agent library: the saved agents the Agents view lists, seeds, and counts runs for | `src/main/agent-library/`, `src/shared/agent-library.ts`, `src/renderer/agent-library/` |
 | Per-workspace provider model catalog cache | `src/main/chat-context/provider-catalog-cache.ts` |
 | Provider routing and id families | `src/main/chat-hub.ts`, `src/shared/chat-providers.ts` |
 | Workspace Codex process, pane routing, and transcript normalization | `src/main/codex-workspace-runtime.ts`, `src/main/chat-service.ts`, `src/main/app-server-client.ts`, `src/main/chat-normalizers.ts` |
