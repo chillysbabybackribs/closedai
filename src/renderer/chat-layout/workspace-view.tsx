@@ -38,15 +38,16 @@ export type WorkspaceViewProps = {
 /**
  * A view tab's body: a quiet toolbar whose only control is the scope chip, then the panel that
  * used to live in a dialog. Following a tile means the panel retargets as the tile's chat changes;
- * pinned means it does not.
+ * pinned means it does not. Agents shows no toolbar: it is workspace-wide, and scope only picks
+ * the tile a new run docks beside, which is always this one.
  */
 export const WorkspaceView = memo(function WorkspaceView({ viewId, kind, active, scope, pinOptions, onPin, onClose, onSendToChat, onStartAgent, startEnabled, history }: WorkspaceViewProps): ReactNode {
   const chatTitle = pinOptions.find((option) => option.id === scope.chatId)?.title ?? 'this chat'
   return <section className="workspace-view" data-ui={`view.${kind}`} data-ui-key={viewId} data-kind={kind}
     aria-label={`${VIEW_LABELS[kind]} view`}>
-    <div className="workspace-view-bar">
+    {kind !== 'agents' && <div className="workspace-view-bar">
       <ScopeChip viewId={viewId} scope={scope} chatTitle={chatTitle} pinOptions={pinOptions} onPin={onPin} />
-    </div>
+    </div>}
     <div className="workspace-view-body">
       {kind === 'trace' && <TracePanel paneId={scope.chatId} active={active} />}
       {kind === 'tools' && <ToolsPanel active={active} onSendToChat={(text) => onSendToChat(scope.chatId, text)} />}

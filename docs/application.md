@@ -416,16 +416,21 @@ footer bar beneath it with attach (`composer.upload`) on the left, the model set
 on the right naming the working folder. Model and folder controls share the same neutral color,
 with rounded hover surfaces inside a softly outlined composer. The model trigger fits its label
 and chevron, leaving the space before the folder outside its hover and click area. The footer has no Agent button.
-Agent → Agents… or the tile + menu opens the **Agents** view tab (`view.agents`, `src/renderer/agent-library/`) in this chat's tile: a short numbered getting-started
-list at the top, a **Runs** table (hairline rows, no card chrome), then the saved-agent library on
-the left as a flat table (`agents.item`, most recently used first, each with its run count and last run;
-`agents.new` clears the editor; the editor opens on a blank draft) and an editor on the right with a name (`agents.name`), a
+Agent → Agents… or the tile + menu opens the **Agents** view tab (`view.agents`,
+`src/renderer/agent-library/`), which shows no scope chip and stacks three screens under a one-line
+header. The **Library** opens first: a grid of saved-agent cards (`agents.card`; live runs first,
+then most recently used, then never-run by name), each with the name, the first two lines of its
+instructions, and its run count and last run, or its live run's state and cycle, plus **Edit**
+(`agents.edit`) and **Start** (`agents.card-start`, which stays on the Library). The header offers
+**Runs** (`agents.runs`, its label carrying the run summary) and **New agent** (`agents.new`); an
+emptied library shows an empty state with New agent. **Build** (its back control, `agents.back`,
+returns to the Library and keeps an unsaved draft for the session) is the editor: a name (`agents.name`), a
 max-cycles cap (`agents.max-cycles`, blank runs until paused), and the standing instructions
 (`agents.prompt`). The library (`src/main/agent-library/`, `agent-library.json`) is user-owned
 and never pruned; a first open seeds it with the built-in repair agent (`BUILT_IN_AGENTS` in
 `src/shared/agent-library.ts`), and an emptied library stays empty. **Save** (`agents.save`)
 keeps a new entry or the loaded one's edits; **Delete** (`agents.delete`) removes the loaded
-entry. **Start** (`agents.start`) docks a new chat and starts an **agent run** on it
+entry and returns to the Library. **Start** (`agents.start`, also returning to the Library) docks a new chat and starts an **agent run** on it
 (`agentRuns.start`) using the launching pane's model and folder. The run records the library
 entry it came from (`agentId`, `name`), the strip and `closedai_app.state` show the agent's
 name, and main counts the run on the entry (`lastRunAt`, `runCount`) once its first cycle is
@@ -446,13 +451,14 @@ The **Agents tab** opens from the workflow icon beside Search chats in the title
 (`titlebar.agents`), the tile + menu, or Agent → Agents…. There is at most one Agents tab in
 the workspace: any of those entry points opens it in its existing tile or creates it in the
 selected chat's tile, then focuses it (Trace, History and Tools still dedupe per tile only).
-The title-bar icon shows selected while that tab exists. Its Runs section lists every agent run in a minimal table, with state, cycle, current
-activity or pause reason, and a summary of running and attention-needed runs. Runs needing
-the user appear first. Each run row offers **Open chat** (`agents.open-chat`), **Review** for a
+The title-bar icon shows selected while that tab exists. Its **Runs** screen (from the Library
+header's Runs control, whose label carries the summary of running and attention-needed runs)
+lists every agent run in a minimal table, with state, cycle, and current activity or pause
+reason. Runs needing the user appear first. Each run row offers **Open chat** (`agents.open-chat`), **Review** for a
 pending credential approval (`agents.review`), **Pause**/**Resume**/**Stop** (`agents.pause`,
 `agents.resume`, `agents.stop`; Stop reads **Dismiss** for a finished run). Opening a chat
-reveals it as a tab in the workspace. The saved-agent library and editor remain below the
-run overview. Starting a run still adds its chat as a tab. Models drive runs in other panes
+reveals it as a tab in the workspace. An empty Runs screen offers New agent. Starting a run
+still adds its chat as a tab. Models drive runs in other panes
 with `closedai_app.agent` (`start` with a standing prompt attaches the same loop to an
 existing chat; `pause`, `resume`, `stop`). `closedai_app.state` reports the run under
 `chat.agentRun`. There is no collapsed mode;
@@ -649,8 +655,8 @@ existing consumers. Hidden panes retain their main-process state but do not stre
 - There is no project rail: the folder lives in the composer's setup panel. The title bar has four menus.
   File owns chat creation, history, Settings (Appearance, Models, Credentials, and Security tabs), and closing the
   window; View owns browser visibility, Saved sites, layout, chat zoom, and fullscreen; Agent owns the
-  Agents view (Agents…, the saved-agent library and editor, opened as a tab in the selected chat's
-  tile), what the model is given (Tools & capabilities, likewise a view tab) and a "Selected chat" section naming
+  Agents view (Agents…, the saved-agent Library with its Build and Runs screens, one tab per
+  workspace), what the model is given (Tools & capabilities, likewise a view tab) and a "Selected chat" section naming
   the pane its rows act on (Compact context, Stop turn; rows that do not apply are disabled, not
   hidden); Developer owns Turn trace (a view tab), Reload renderer, and Toggle DevTools.
   Shortcuts: Ctrl+Shift+T tools, Ctrl+Shift+I trace, Ctrl+R reload, F12 DevTools.

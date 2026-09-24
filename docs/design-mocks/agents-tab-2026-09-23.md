@@ -1,8 +1,8 @@
-# Agents tab redesign — 2026-09-23 (design, not implemented)
+# Agents tab redesign — 2026-09-23 (implemented the same day)
 
-Scope: the Agents view tab (`view.agents`, `src/renderer/agent-library/`). Design only; nothing
-in `src/` changes until the owner picks a direction. No HTML mock: the draft renders with the
-real registry components once approved.
+Scope: the Agents view tab (`view.agents`, `src/renderer/agent-library/`). Approved and built on
+2026-09-23; `docs/application.md` is the current description. No HTML mock: the screens render
+with the real registry components.
 
 ## Jobs
 
