@@ -24,7 +24,7 @@ import { useToolsPreset } from './tools/use-tools-preset.js'
 import { BrowserGlobeIcon } from './browser-globe-icon.js'
 import { useBrowserSavedSitesController } from './browser-saved-sites-controller.js'
 import { BrowserSavedSitesShelf } from './browser-saved-sites-shelf.js'
-import { AgentDock } from './agent-dock/agent-dock.js'
+import { Bot } from 'lucide-react'
 import {
   normalizeAppearanceSettings,
   persistAppearanceSettings,
@@ -205,6 +205,12 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
         />
         <div className="titlebar-search-tools">
           <HeaderChatSearch chats={chat.chats} controller={history} inputRef={searchRef} />
+          <button type="button" className="titlebar-icon-button titlebar-agent-toggle"
+            data-ui="titlebar.agents" disabled={!chat.selectedPaneId}
+            aria-label="Open Agents tab" title="Open Agents tab"
+            onClick={() => workspaceRef.current?.openView('agents')}>
+            <Bot size={19} aria-hidden="true" />
+          </button>
           <button type="button" className={`titlebar-icon-button titlebar-browser-toggle${browserVisible ? ' is-selected' : ''}`}
             data-ui="layout.browser-toggle" disabled={!chat.selectedPaneId}
             aria-pressed={browserVisible} aria-label={browserVisible ? 'Hide browser' : 'Show browser'}
@@ -237,9 +243,6 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
           archiveChat={history.deleteRow}
         />}
       </div>
-      {chat.selectedPaneId && <AgentDock chats={chat.chats} onOpenChat={(chatId) => {
-        openHistoryChat(chatId).catch(report('Could not open the agent chat'))
-      }} onOpenAgents={() => workspaceRef.current?.openView('agents')} />}
       {savedSites.isOpen && <BrowserSavedSitesShelf controller={savedSites} onError={report('Could not update saved sites')}
         onOpenSite={(url) => {
           if (!browserVisible) workspaceRef.current?.toggleBrowser()
