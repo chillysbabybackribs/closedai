@@ -47,7 +47,7 @@
   border: 1px solid var(--path-chip-border, rgb(255 255 255 / 12%));
   border-radius: 4px;
   background: var(--path-chip-bg, rgb(255 255 255 / 8%));
-  color: var(--cwd-ink, #7eb0e0);
+  color: var(--tab-accent, #8ab4f8);
   font-family: var(--font-mono);
   font-size: 0.86em;
   font-weight: 500;

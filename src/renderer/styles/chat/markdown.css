@@ -98,15 +98,17 @@
 }
 
 /* Inline code keeps a background and rounded corners; a fenced block does not,
-   because its header and border already frame it. */
+   because its header and border already frame it. Same Cursor path-chip treatment
+   as user-message chips: neutral grey wrapper, ink in the send button's accent. */
 .aui-md .aui-md-inline-code {
   padding: 1.5px 5.5px;
-  border: 1px solid rgb(255 255 255 / 10%);
+  border: 1px solid var(--path-chip-border, rgb(255 255 255 / 12%));
   border-radius: 5px;
-  background: rgb(255 255 255 / 6%);
-  color: #e0e0e0;
+  background: var(--path-chip-bg, rgb(255 255 255 / 8%));
+  color: var(--tab-accent, #8ab4f8);
   font-family: var(--font-mono);
   font-size: 0.85em;
+  font-weight: 500;
 }
 
 .aui-md .aui-md-inline-code::before,

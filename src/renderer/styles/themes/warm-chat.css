@@ -171,16 +171,11 @@
   background: #c1bbb3;
 }
 
-:root[data-theme='warm'] .user-message code {
+:root[data-theme='warm'] .user-message code,
+:root[data-theme='warm'] .aui-md .aui-md-inline-code {
   border-color: var(--path-chip-border, rgb(32 34 35 / 14%));
   background: var(--path-chip-bg, rgb(32 34 35 / 8%));
-  color: var(--cwd-ink, #3f5f86);
-}
-
-:root[data-theme='warm'] .markdown-body :not(pre) > code {
-  border-color: var(--path-chip-border, rgb(32 34 35 / 14%));
-  color: var(--cwd-ink, #3f5f86);
-  background: var(--path-chip-bg, rgb(32 34 35 / 8%));
+  color: var(--tab-accent, #3f5f86);
 }
 
 :root[data-theme='warm'] .markdown-body th {
