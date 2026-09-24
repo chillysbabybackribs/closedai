@@ -19,6 +19,7 @@ import { CredentialApprovalCards } from './credential-approval-card.js'
 import { AgentRunStrip } from './agent-runs/agent-run-strip.js'
 import { useAgentRun } from './agent-runs/agent-runs-store.js'
 import { composerAnchoredBottom, paneHasTranscript } from './chat-composer-layout.js'
+import { latestContinueEligibleMessageId } from './transcript-rows.js'
 import { errorMessage } from './error-message.js'
 import type { ComposerSetupHandle } from './composer-setup-menu.js'
 import { securityRequests } from './security-requests.js'
@@ -78,6 +79,9 @@ export const ChatPane = memo(function ChatPane({
   // What the pane itself could not do, shown above the composer until the next attempt.
   const [notice, setNotice] = useState('')
   const canCompact = manualCompact && ready && !running && state.items.some((item) => item.type === 'user')
+  const continueMessageId = showTranscript && onContinueInNewChat
+    ? latestContinueEligibleMessageId(state.items, state.activeTurnId, running)
+    : null
   // Credential approvals (Settings → Security, off by default): this agent's requests, plus in the
   // selected pane any request without an open pane. Empty until the user turns the option on.
   const openPaneIds = chat.chats.filter((row) => row.attached).map((row) => row.paneId)
@@ -132,8 +136,7 @@ export const ChatPane = memo(function ChatPane({
                 running,
                 branch: (itemId) => chat.continueFromChat({
                   paneId: chat.selectedPaneId, threadId: state.threadId, throughItemId: itemId
-                }, state.selectedModel),
-                continueInNewChat: onContinueInNewChat
+                }, state.selectedModel)
               }} />
             ) : (
               <div aria-hidden="true" />
@@ -185,6 +188,8 @@ export const ChatPane = memo(function ChatPane({
           onClearProject={() => window.closedai.chat.clearProject(chat.selectedPaneId)}
           onCompactConversation={manualCompact ? compactConversation : undefined}
           compactConversationEnabled={canCompact}
+          continueMessageId={continueMessageId}
+          onContinueInNewChat={onContinueInNewChat}
         />
       </div>
     </aside>

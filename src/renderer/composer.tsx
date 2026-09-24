@@ -47,6 +47,9 @@ export type ComposerProps = {
   onCompactConversation?: () => Promise<void>
   compactConversationEnabled?: boolean
   paneId?: string | null
+  /** Latest response that can hand off to a new tab; shown as a composer pill when set. */
+  continueMessageId?: string | null
+  onContinueInNewChat?: () => Promise<void>
   /** Lets the pane's connection guidance open the setup panel on its model list. */
   setupMenuRef?: Ref<ComposerSetupHandle>
 }
@@ -76,7 +79,7 @@ export function Composer({
   onResume,
   cwd, projectPath, projectPending, recentProjects,
   onChooseProject, onSelectProject, onClearProject,
-  onCompactConversation, compactConversationEnabled = false, paneId, setupMenuRef
+  onCompactConversation, compactConversationEnabled = false, paneId, continueMessageId, onContinueInNewChat, setupMenuRef
 }: ComposerProps): JSX.Element {
   const { input, setInput, attachments, setAttachments, clearDraft } = useComposerDraft(paneId)
   // One alert row for whatever the composer's own controls could not do: attach, pause, pick.
@@ -315,6 +318,8 @@ export function Composer({
           paneId={paneId}
           startEnabled={enabled}
           runningTurn={running || sending}
+          continueMessageId={continueMessageId}
+          onContinueInNewChat={onContinueInNewChat}
           onComposerError={setComposerError}
         />
       )}

@@ -215,8 +215,8 @@ minting a new id. Main retains existing attached chats unless a departed chat is
 longer visible. The renderer decides which tile displays a selected chat, as described below.
 
 Continuation creates a new chat tab in the source tile with a local transcript digest, delivered once on its
-next message. **Continue in new chat** (`chat.message-continue`) sits on the latest completed response
-next to **Branch**; it is disabled while that chat's turn is actively running (`activeTurnId` set).
+next message. **Fresh context** (`composer.continue`) sits under the composer beside Browser and Agents
+when the latest response can hand off; it is disabled while that chat's turn is actively running (`activeTurnId` set).
 **Branch** (`chat.message-branch`) starts a new chat whose digest and `peer_chats.recall` boundary end at
 that specific assistant message; **Continue** carries the full conversation through its current end.
 Pausing a turn clears the active run (`activeTurnId`) and sets `pausedTurnId`, so Continue and Branch become
@@ -415,8 +415,8 @@ footer bar beneath it with attach (`composer.upload`) on the left, the model set
 (`composer.setup`) naming the model (with a chevron), and the folder trigger (`composer.folder`)
 on the right naming the working folder. Model and folder controls share the same neutral color,
 with rounded hover surfaces inside a softly outlined composer. The model trigger fits its label
-and chevron, leaving the space before the folder outside its hover and click area. Under the card, **Browser** (`composer.browser`) and **Agents** (`composer.agents`) pills appear in
-every chat. Browser toggles the embedded pane. Agents opens a menu of saved agents: **Start new run**
+and chevron, leaving the space before the folder outside its hover and click area. Under the card, **Browser** (`composer.browser`), **Agents** (`composer.agents`), and when the latest reply can hand off, **Fresh context** (`composer.continue`) appear in
+every chat. Browser toggles the embedded pane. **Fresh context** continues the full thread in a new tab with a digest on the first send. Agents opens a menu of saved agents: **Start new run**
 (`composer.agents-start`, a new tab beside **this** chat's tile and the run starts at once; only a
 **live** run for that agent offers **Open** instead), **New agent…** (`composer.agents-new`) and
 **Manage** (`composer.agents-manage`) for the workspace Agents tab. The pill shows how many runs are

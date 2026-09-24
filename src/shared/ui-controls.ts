@@ -59,7 +59,7 @@ export const UI_CONTROLS = {
   'chat.local-file': 'Open a local image in a browser-pane image tab or reveal another local file; item is the file link',
   'chat.generated-image': 'Open a generated image at full size in a browser-pane image tab; item is the transcript image id',
   'chat.message-branch': 'Branch in a new chat through this response; digest and recall stop at this message; item is the message id',
-  'chat.message-continue': 'Continue the full conversation in a new tab with a fresh context window; only on the latest completed response; item is the message id',
+  'composer.continue': 'Continue the full conversation in a new tab with a fresh context window; shown under the composer when the latest response can hand off; item is the message id',
   'chat.background-group': 'Expand or collapse background work; item is the first task id',
   'chat.background-task': 'Expand task description and result; item is the task id',
   'chat.history': 'Chat history list inside a History view tab (present only while one is open)',

@@ -354,6 +354,14 @@
   color: var(--foreground);
 }
 
+.composer-pill-continue:not(:disabled) {
+  color: color-mix(in srgb, var(--foreground) 88%, transparent);
+}
+
+.composer-pill-continue:not(:disabled):hover {
+  color: var(--foreground);
+}
+
 .composer-pill-label {
   min-width: 0;
 }

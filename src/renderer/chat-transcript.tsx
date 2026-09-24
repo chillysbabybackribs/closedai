@@ -62,13 +62,6 @@ export const ChatTranscript = memo(function ChatTranscript({
     () => turnActionMessageIds(items, activeTurnId, actions?.running || Boolean(activeTurnId)),
     [items, activeTurnId, actions?.running]
   )
-  const latestActionId = useMemo(() => {
-    let latest: string | null = null
-    for (const item of items) {
-      if (actionMessageIds.has(item.id)) latest = item.id
-    }
-    return latest
-  }, [items, actionMessageIds])
   const rows = useMemo(() => transcriptRows(items), [items])
   const tailStart = useMemo(() => lastTurnRowStart(rows), [rows])
   const tailAnchorKey = useMemo(() => transcriptRowKey(rows[tailStart]), [rows, tailStart])
@@ -190,8 +183,7 @@ export const ChatTranscript = memo(function ChatTranscript({
             scrollAnchor={row.item.type === 'user'}
             className={row.item.type === 'user' ? 'chat-turn-user' : undefined}
           >
-            <TranscriptItem item={row.item} cwd={cwd} actions={actionMessageIds.has(row.item.id) ? actions : undefined}
-              showContinue={row.item.id === latestActionId} />
+            <TranscriptItem item={row.item} cwd={cwd} actions={actionMessageIds.has(row.item.id) ? actions : undefined} />
           </MessageScrollerItem>
         )
       })}
@@ -238,12 +230,10 @@ function sameGroup<T extends { items: readonly unknown[] }>(previous: T, next: T
 const TranscriptItem = memo(function TranscriptItem({
   item,
   actions,
-  showContinue,
   cwd
 }: {
   actions?: MessageActionContext
   item: StandaloneItem
-  showContinue?: boolean
   cwd?: string
 }): JSX.Element | null {
   if (item.type === 'user') {
@@ -265,7 +255,7 @@ const TranscriptItem = memo(function TranscriptItem({
   }
   if (item.type === 'assistant') {
     if (!item.text) return null
-    return <AssistantMessage item={item} actions={actions} showContinue={showContinue} cwd={cwd} />
+    return <AssistantMessage item={item} actions={actions} cwd={cwd} />
   }
   if (item.type === 'notice') {
     if (item.tone === 'info' && item.text.startsWith('Continuing from')) return null
@@ -346,10 +336,9 @@ const ToolActivity = memo(function ToolActivity({
   )
 }, (prev, next) => sameGroup(prev, next) && prev.isRunning === next.isRunning && prev.cwd === next.cwd)
 
-const AssistantMessage = memo(function AssistantMessage({ item, actions, showContinue, cwd }: {
+const AssistantMessage = memo(function AssistantMessage({ item, actions, cwd }: {
   item: Extract<ChatTranscriptItem, { type: 'assistant' }>
   actions?: MessageActionContext
-  showContinue?: boolean
   cwd?: string
 }): JSX.Element | null {
   // The displayed text trails what has streamed in by a bounded catch-up window, so one-token,
@@ -366,8 +355,7 @@ const AssistantMessage = memo(function AssistantMessage({ item, actions, showCon
             <Markdown streaming={streaming} cwd={cwd}>{text}</Markdown>
           </BubbleContent>
         </Bubble>
-        {actions ? <MessageActions key={actions.threadKey + item.id} item={item} context={actions}
-          showContinue={showContinue} /> : null}
+        {actions ? <MessageActions key={actions.threadKey + item.id} item={item} context={actions} /> : null}
       </MessageContent>
     </Message>
   )

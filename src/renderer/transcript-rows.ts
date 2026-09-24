@@ -174,6 +174,20 @@ export function turnActionMessageIds(
   ))
 }
 
+/** Latest assistant message that can carry "Continue in new chat" (same rule as the transcript action row). */
+export function latestContinueEligibleMessageId(
+  items: readonly ChatTranscriptItem[],
+  activeTurnId: string | null | undefined,
+  running: boolean
+): string | null {
+  const eligible = turnActionMessageIds(items, activeTurnId, running || Boolean(activeTurnId))
+  let latest: string | null = null
+  for (const item of items) {
+    if (eligible.has(item.id)) latest = item.id
+  }
+  return latest
+}
+
 function sameTurn(last: Extract<TranscriptRow, { kind: 'activity' }>, item: ActivityItem): boolean {
   const lastTurn = last.items[0]?.turnId
   if (lastTurn && item.turnId) return lastTurn === item.turnId

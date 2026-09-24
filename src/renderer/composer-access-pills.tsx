@@ -2,16 +2,19 @@ import type { JSX } from 'react'
 import { Globe2 } from 'lucide-react'
 import { useWorkspacePaneActions } from './chat-layout/workspace-pane-actions.js'
 import { ComposerAgentsMenu } from './composer-agents-menu.js'
+import { ComposerContinuePill } from './composer-continue-pill.js'
 
 export type ComposerAccessPillsProps = {
   paneId: string
   startEnabled: boolean
   runningTurn: boolean
+  continueMessageId?: string | null
+  onContinueInNewChat?: () => Promise<void>
   onComposerError: (message: string) => void
 }
 
 /** Browser toggle and agent launcher shown under every chat composer. */
-export function ComposerAccessPills({ paneId, startEnabled, runningTurn, onComposerError }: ComposerAccessPillsProps): JSX.Element | null {
+export function ComposerAccessPills({ paneId, startEnabled, runningTurn, continueMessageId, onContinueInNewChat, onComposerError }: ComposerAccessPillsProps): JSX.Element | null {
   const workspace = useWorkspacePaneActions()
   if (!workspace) return null
 
@@ -36,6 +39,14 @@ export function ComposerAccessPills({ paneId, startEnabled, runningTurn, onCompo
         onNewAgent={(id) => workspace.openAgentsView(id)}
         onError={onComposerError}
       />
+      {continueMessageId && onContinueInNewChat ? (
+        <ComposerContinuePill
+          messageId={continueMessageId}
+          runningTurn={runningTurn}
+          onContinue={onContinueInNewChat}
+          onError={onComposerError}
+        />
+      ) : null}
     </div>
   )
 }

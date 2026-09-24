@@ -1,13 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, Copy, MessageSquareShare } from 'lucide-react'
+import { Check, Copy } from 'lucide-react'
 import type { ChatTranscriptItem } from '../shared/chat.js'
 
 export type MessageActionContext = {
   threadKey: string
   running: boolean
   branch: (itemId: string) => Promise<void>
-  /** Full-conversation continue; only offered on the latest completed response row. */
-  continueInNewChat?: () => Promise<void>
 }
 type AssistantItem = Extract<ChatTranscriptItem, { type: 'assistant' }>
 type MessageMetadata = { createdAt?: number }
@@ -21,11 +19,9 @@ function readMetadata(key: string): MessageMetadata {
   } catch { return {} }
 }
 
-export function MessageActions({ item, context, showContinue }: {
+export function MessageActions({ item, context }: {
   item: AssistantItem
   context: MessageActionContext
-  /** True on the latest settled assistant answer for the thread. */
-  showContinue?: boolean
 }) {
   const storageKey = 'closedai:message:' + JSON.stringify([context.threadKey, item.id])
   const [metadata] = useState<MessageMetadata>(() => {
@@ -34,7 +30,6 @@ export function MessageActions({ item, context, showContinue }: {
   })
   const [copied, setCopied] = useState(false)
   const [branching, setBranching] = useState(false)
-  const [continuing, setContinuing] = useState(false)
   const [error, setError] = useState('')
   const resetCopy = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => () => { if (resetCopy.current) clearTimeout(resetCopy.current) }, [])
@@ -62,19 +57,9 @@ export function MessageActions({ item, context, showContinue }: {
     } finally { setBranching(false) }
   }
 
-  async function continueChat(): Promise<void> {
-    if (!context.continueInNewChat) return
-    setContinuing(true)
-    setError('')
-    try { await context.continueInNewChat() }
-    catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not continue in a new chat.')
-    } finally { setContinuing(false) }
-  }
-
   if (item.streaming || item.phase === 'commentary') return null
   const timestamp = metadata.createdAt ? new Date(metadata.createdAt) : null
-  const busy = context.running || branching || continuing
+  const busy = context.running || branching
   return (
     <div className="message-actions-wrap">
       <div className="message-actions" role="group" aria-label="Response actions">
@@ -89,13 +74,6 @@ export function MessageActions({ item, context, showContinue }: {
             <path d="M4 12h6l10-10M12 2h8v8M13 15v7h7" />
           </svg>
         </button>
-        {showContinue && context.continueInNewChat ? (
-          <button type="button" data-ui="chat.message-continue" data-ui-key={item.id}
-            title={context.running ? 'Wait for the current turn to finish' : 'Continue in new chat with fresh context'}
-            aria-label="Continue in new chat with fresh context" disabled={busy} onClick={() => void continueChat()}>
-            <MessageSquareShare aria-hidden="true" />
-          </button>
-        ) : null}
         <span className="sr-only" role="status">{copied ? 'Response copied' : ''}</span>
       </div>
       {timestamp ? <time className="message-timestamp" dateTime={timestamp.toISOString()} title={timestamp.toLocaleString()}>
