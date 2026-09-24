@@ -30,7 +30,7 @@ export function AgentRunStrip({ run, onPause, onResume, onStop }: AgentRunStripP
         {running ? (
           <Button type="button" variant="outline" size="xs" data-ui="chat.agent-pause" disabled={busy} onClick={() => void act(onPause)}>Pause</Button>
         ) : (
-          <Button type="button" variant="outline" size="xs" data-ui="chat.agent-resume" disabled={busy} onClick={() => void act(onResume)}>Resume</Button>
+          <Button type="button" variant="outline" size="xs" className="agent-run-strip-resume" data-ui="chat.agent-resume" disabled={busy} onClick={() => void act(onResume)}>Resume</Button>
         )}
         <Button type="button" variant="ghost" size="xs" data-ui="chat.agent-stop" disabled={busy} onClick={() => void act(onStop)}>Stop</Button>
       </span>

@@ -52,6 +52,17 @@
   gap: 4px;
 }
 
+.agent-run-strip-resume {
+  border-color: transparent;
+  background: var(--primary, #eeeef0);
+  color: var(--primary-foreground, #141415);
+}
+
+.agent-run-strip-resume:not(:disabled):hover {
+  background: color-mix(in srgb, var(--primary, #eeeef0) 92%, white);
+  color: var(--primary-foreground, #141415);
+}
+
 @keyframes agent-run-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.35; }
