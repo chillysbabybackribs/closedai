@@ -59,6 +59,7 @@ import type { ScreenshotStore } from './tools/capture/screenshot-store.js'
 import { traceLog } from './trace/trace-log.js'
 import { CodexWorkspaceRuntime, type CodexRuntimeSession } from './codex-workspace-runtime.js'
 import { MISSING_BINARY_RETRY_MS, isMissingExecutable, missingProviderMessage } from './provider-binary.js'
+import { generatePromptSuggestion } from './chat-prompt-suggestions.js'
 
 /** One pane's Codex state, backed by the workspace's shared app-server runtime. */
 export class ChatService extends EventEmitter {
@@ -90,6 +91,7 @@ export class ChatService extends EventEmitter {
   private restartAttempt = 0
   private stopping = false
   private readonly sessionGuideState: SessionGuideDeliveryState = { lastDeliveredThreadKey: null }
+  private promptSuggestion: string | null = null
 
   constructor(
     readonly cwd: string,
@@ -154,6 +156,7 @@ export class ChatService extends EventEmitter {
       contextUsage: describeUsage(this.contextManager().current),
       planUsage: this.planUsage,
       items: page?.items ?? this.transcript.snapshot(),
+      promptSuggestion: this.promptSuggestion,
       ...(page ? { history: { hasEarlier: page.hasEarlier, backgroundTasks: page.backgroundTasks } } : {})
     }
   }
@@ -491,6 +494,16 @@ export class ChatService extends EventEmitter {
       contextCompacted: () => this.compactor.compacted(),
       emit: (event) => this.emitEvent(event)
     })
+    if (notification.method === 'turn/completed') {
+      const params = notification.params as { turn?: { id?: string; status?: string }; threadId?: string } | undefined
+      const turn = params?.turn
+      if (turn?.status === 'completed' && (!params?.threadId || params.threadId === this.threadId)) {
+        const answer = this.transcript.snapshot()
+          .filter((item) => item.type === 'assistant' && item.turnId === turn.id && item.phase === 'final_answer')
+          .map((item) => item.text).join('\n').trim()
+        void this.updatePromptSuggestion(turn.id ?? '', answer)
+      }
+    }
   }
 
   private refreshSession(): void {
@@ -520,6 +533,7 @@ export class ChatService extends EventEmitter {
     if (this.activeTurnId === turnId) return
     this.activeTurnId = turnId
     if (turnId) {
+      this.setPromptSuggestion(null)
       this.setPaused(null)
       this.contextManager().turnStarted()
     }
@@ -528,6 +542,19 @@ export class ChatService extends EventEmitter {
       this.contextManager().turnFinished()
       void this.refreshPlanUsage()
     }
+  }
+
+  private async updatePromptSuggestion(turnId: string, answer: string): Promise<void> {
+    if (!turnId || !answer) return
+    const suggestion = await generatePromptSuggestion('codex', this.modelState.selectedModel, answer)
+    if (this.activeTurnId || !suggestion || this.threadId === null) return
+    this.setPromptSuggestion(suggestion)
+  }
+
+  private setPromptSuggestion(suggestion: string | null): void {
+    if (this.promptSuggestion === suggestion) return
+    this.promptSuggestion = suggestion
+    this.emitEvent({ type: 'promptSuggestion', suggestion })
   }
 
   /**
