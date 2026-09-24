@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { CachedChatView } from '../chat-store/chat-transcript-cache.js'
-import { readableView, rendererChatBatcher, rendererSnapshot, rowSummary } from './peer-events.js'
+import { chatRowSummariesEqual, readableView, rendererChatBatcher, rendererSnapshot, rowSummary } from './peer-events.js'
 import { chatRecord, FakeSurface } from './peer-manager-harness.js'
 
 const cached: CachedChatView = {
@@ -127,4 +127,10 @@ test('IPC batching merges adjacent deltas and flushes them before ordering barri
   } finally {
     batch.dispose()
   }
+})
+
+test('chatRowSummariesEqual compares drawer fields, not array identity', () => {
+  const row = rowSummary(chatRecord('pane-a', 'gpt', { title: 'T' }), null)
+  assert.ok(chatRowSummariesEqual([row], [{ ...row }]))
+  assert.equal(chatRowSummariesEqual([row], [{ ...row, preview: 'other' }]), false)
 })

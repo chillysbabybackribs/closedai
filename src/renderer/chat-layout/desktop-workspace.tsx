@@ -77,15 +77,15 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
     return view ? VIEW_LABELS[view.kind] : chatTitle(id)
   }, [chatTitle])
   const chatRow = useCallback((id: string) => chatsRef.current.find((row) => row.paneId === id), [])
-  const renderPaneRef = useRef<(id: string) => ReactElement>(() => null as unknown as ReactElement)
-  renderPaneRef.current = (id: string) => {
+  const renderPaneRef = useRef<(id: string, visible: boolean) => ReactElement>(() => null as unknown as ReactElement)
+  renderPaneRef.current = (id: string, visible: boolean) => {
     const view = parseViewTab(id)
     if (view) return <WorkspaceViewHost viewId={view.id} kind={view.kind} />
-    return <WorkspaceChat paneId={id} dispatch={dispatch} appearance={appearance}
+    return <WorkspaceChat paneId={id} dispatch={dispatch} appearance={appearance} panelVisible={visible}
       onContinueInNewChat={() => continueChatRef.current(id)}
       onNewChat={() => { void layout.newChat(id) }} />
   }
-  const renderPane = useCallback((id: string) => renderPaneRef.current(id), [])
+  const renderPane = useCallback((id: string, visible: boolean) => renderPaneRef.current(id, visible), [])
   const renderBrowser = useMemo(() => (
     <div className="workspace-right" data-mode="browser" data-with-browser={layout.browserVisible ? 'yes' : 'no'}>
       <div className={`workspace-surface workspace-surface-browser${layout.browserVisible ? '' : ' is-collapsed'}`}>

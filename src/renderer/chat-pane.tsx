@@ -29,6 +29,7 @@ export const ChatPane = memo(function ChatPane({
   fontSize = 14,
   composerFontSize = 15,
   selected = true,
+  panelVisible = true,
   onNewChat: _onNewChat,
   onContinueInNewChat
 }: {
@@ -37,6 +38,7 @@ export const ChatPane = memo(function ChatPane({
   fontSize?: number
   composerFontSize?: number
   selected?: boolean
+  panelVisible?: boolean
   onNewChat: () => void
   /** Opens a sibling tab with a digest-seeded chat (layout placement); message actions use this for full continue. */
   onContinueInNewChat?: () => Promise<void>
@@ -114,7 +116,8 @@ export const ChatPane = memo(function ChatPane({
           '--composer-font-size': `${composerFontSize}px`
         } as React.CSSProperties}
       >
-        <TranscriptScroller paneId={chat.selectedPaneId} preservePositionOnNewPrompts={Boolean(agentRun)}>
+        <TranscriptScroller paneId={chat.selectedPaneId} panelVisible={panelVisible}
+          preservePositionOnNewPrompts={Boolean(agentRun)}>
             {!hasMessages && blocked ? (
               <EmptyState provider={state.provider} state={state.connection.state} message={state.connection.message} availability={availability}
                 onLogin={chat.loginWithChatGPT} onChooseModel={openModelMenu} />
@@ -187,10 +190,12 @@ export const ChatPane = memo(function ChatPane({
 
 function TranscriptScroller({
   paneId,
+  panelVisible = true,
   preservePositionOnNewPrompts = false,
   children
 }: {
   paneId: string
+  panelVisible?: boolean
   preservePositionOnNewPrompts?: boolean
   children: JSX.Element
 }): JSX.Element {
@@ -203,6 +208,7 @@ function TranscriptScroller({
       key={paneId}
       autoScroll
       anchorPrompts
+      contentVisible={panelVisible}
       defaultScrollPosition="end"
       preservePositionOnNewPrompts={preservePositionOnNewPrompts}
       scrollPreviousItemPeek={12}

@@ -53,6 +53,7 @@ export function MessageScrollerProvider({
   anchorPrompts = false,
   autoScroll = false,
   children,
+  contentVisible = true,
   defaultScrollPosition = 'end',
   preservePositionOnNewPrompts = false,
   scrollPreviousItemPeek = 0
@@ -64,6 +65,8 @@ export function MessageScrollerProvider({
    */
   anchorPrompts?: boolean
   autoScroll?: boolean
+  /** False while an inactive chat tab stays mounted but `display: none`; snap scroll on reveal. */
+  contentVisible?: boolean
   /** Keep agent cycle prompts from pulling a reader away from the transcript they are browsing. */
   preservePositionOnNewPrompts?: boolean
   children: ReactNode
@@ -88,6 +91,7 @@ export function MessageScrollerProvider({
   const scrollTargetRef = useRef<ScrollPosition | null>(null)
   const frameRef = useRef<number | null>(null)
   const spacerHeightRef = useRef(0)
+  const contentVisibleRef = useRef(contentVisible)
 
   const setSpacerHeight = useCallback((height: number) => {
     if (!spacer) return
@@ -135,6 +139,19 @@ export function MessageScrollerProvider({
       syncFromViewport()
     })
   }, [syncFromViewport])
+
+  const snapDefaultScroll = useCallback((): void => {
+    if (!viewport || !content) return
+    userScrollingRef.current = false
+    anchoredRef.current = null
+    setSpacerHeight(0)
+    followingRef.current = autoScroll && defaultScrollPosition === 'end'
+    followResumeBlockedRef.current = false
+    scrollTargetRef.current = null
+    viewport.scrollTop = defaultScrollPosition === 'end' ? viewport.scrollHeight : 0
+    lastScrollTopRef.current = viewport.scrollTop
+    syncFromViewport()
+  }, [autoScroll, content, defaultScrollPosition, setSpacerHeight, syncFromViewport, viewport])
 
   const scrollToStart = useCallback((behavior: ScrollBehavior = 'smooth') => {
     if (!viewport) return
@@ -215,10 +232,22 @@ export function MessageScrollerProvider({
       anchorToElement(lastAnchor)
       return
     }
-    viewport.scrollTop = defaultScrollPosition === 'end' ? viewport.scrollHeight : 0
-    lastScrollTopRef.current = viewport.scrollTop
-    syncFromViewport()
-  }, [anchorToElement, content, defaultScrollPosition, spacer, syncFromViewport, viewport])
+    snapDefaultScroll()
+  }, [anchorToElement, content, defaultScrollPosition, snapDefaultScroll, spacer, viewport])
+
+  useLayoutEffect(() => {
+    const wasVisible = contentVisibleRef.current
+    contentVisibleRef.current = contentVisible
+    if (contentVisible && !wasVisible) {
+      setState((previous) => ({ ...previous, pending: true }))
+      snapDefaultScroll()
+      // Markdown and highlighting settle over the next frame; one more snap avoids a visible jump.
+      window.requestAnimationFrame(() => {
+        snapDefaultScroll()
+        setState((previous) => ({ ...previous, pending: false }))
+      })
+    }
+  }, [contentVisible, snapDefaultScroll])
 
   useEffect(() => {
     if (!viewport || !content) return

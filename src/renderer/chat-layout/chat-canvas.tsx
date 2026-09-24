@@ -26,7 +26,7 @@ type ChatCanvasProps = {
   activity?: (id: string) => TabActivity
   reviewQueue?: ChatReviewQueue
   chatRow?: (id: string) => ChatRowSummary | undefined
-  renderPane: (id: string) => ReactNode
+  renderPane: (id: string, visible: boolean) => ReactNode
   onSelect: (id: string) => void
   onSelectTab: (id: string) => void
   onCloseTab: (id: string) => void
@@ -279,7 +279,7 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
               ? 'Drop above or below a chat to stack; use the workspace edges for a full-height column'
               : 'Drop on either side to place a chat beside the browser'}</div>}
           </div> : tabs.map((tabId) => <div key={tabId} className="chat-layout-content" role="tabpanel" id={`chat-panel-${tabId}`}
-            aria-label={title(tabId)} hidden={tabId !== activeId}>{renderPane(tabId)}</div>)}
+            aria-label={title(tabId)} hidden={tabId !== activeId}>{renderPane(tabId, tabId === activeId)}</div>)}
           {dragging?.id !== BROWSER_PANE_ID && drop?.target === activeId && (dragging?.id !== activeId || (dragging.singleTab && tabs.length > 1)) && <div className="chat-layout-drop" data-edge={drop.edge ?? 'tab'}>
             <span>{drop.edge === null ? 'Move to tab strip' : drop.edge === 'top' ? 'Place above' : drop.edge === 'bottom' ? 'Place below' : `Place on the ${drop.edge}`}</span>
           </div>}

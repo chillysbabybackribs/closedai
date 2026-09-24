@@ -175,6 +175,43 @@ export class PeerEmitThrottle {
   }
 }
 
+/** Whether two drawer row lists would paint the same; order matters. */
+export function chatRowSummariesEqual(left: ChatRowSummary[], right: ChatRowSummary[]): boolean {
+  if (left.length !== right.length) return false
+  for (let index = 0; index < left.length; index += 1) {
+    const a = left[index]!
+    const b = right[index]!
+    if (a.paneId !== b.paneId || a.updatedAt !== b.updatedAt || a.preview !== b.preview || a.title !== b.title
+      || a.running !== b.running || a.attached !== b.attached || a.pinnedAt !== b.pinnedAt
+      || a.threadId !== b.threadId || a.provider !== b.provider || a.modelId !== b.modelId
+      || a.parentPaneId !== b.parentPaneId || a.kind !== b.kind || a.paused !== b.paused
+      || a.activity !== b.activity || a.cwd !== b.cwd || a.projectPath !== b.projectPath
+      || a.createdAt !== b.createdAt || a.lastTurnEndedAt !== b.lastTurnEndedAt) return false
+    if (!pendingProjectEqual(a.pendingProject, b.pendingProject)) return false
+    if (!continuedFromEqual(a.continuedFrom, b.continuedFrom)) return false
+  }
+  return true
+}
+
+function pendingProjectEqual(
+  left: ChatRowSummary['pendingProject'],
+  right: ChatRowSummary['pendingProject']
+): boolean {
+  if (left === right) return true
+  if (!left || !right) return !left && !right
+  return left.cwd === right.cwd && left.projectPath === right.projectPath
+}
+
+function continuedFromEqual(
+  left: ChatRowSummary['continuedFrom'],
+  right: ChatRowSummary['continuedFrom']
+): boolean {
+  if (left === right) return true
+  if (!left || !right) return !left && !right
+  return left.paneId === right.paneId && left.title === right.title && left.handoff === right.handoff
+    && left.previewUser === right.previewUser && left.previewAssistant === right.previewAssistant
+}
+
 /** A drawer row: the record's facts, overlaid with the live summary when the chat is attached. */
 export function rowSummary(record: ChatRecord, live: ChatPeerSummary | null): ChatRowSummary {
   const base = live ?? summaryForRecord(record.id, record)

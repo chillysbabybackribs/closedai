@@ -71,6 +71,10 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   private readonly paneOperations = new Map<ChatPaneId, Promise<void>>()
   private readonly chatsEmit = new PeerEmitThrottle(() => this.emitChats())
   private readonly chatRowsCache = new PeerChatRowsCache()
+  private readonly chatRowsEmitState: { rows: ChatRowSummary[] | null; selectedPaneId: ChatPaneId | null } = {
+    rows: null,
+    selectedPaneId: null
+  }
   private readonly archives: PeerArchives
 
   constructor(
@@ -557,7 +561,8 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       visiblePaneIds: () => this.visiblePaneIds,
       retainedTabIds: () => this.retainedTabIds,
       emitWorkspaceEvent: (event) => { this.emit('event', event) },
-      chatRowsCache: this.chatRowsCache
+      chatRowsCache: this.chatRowsCache,
+      chatRowsEmitState: this.chatRowsEmitState
     }
   }
 

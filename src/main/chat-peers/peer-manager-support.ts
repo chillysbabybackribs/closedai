@@ -14,7 +14,7 @@ import type { ChatSurface } from '../chat-hub.js'
 import type { ChatStore } from '../chat-store/chat-store.js'
 import type { ChatTranscriptCache } from '../chat-store/chat-transcript-cache.js'
 import type { BrowserAssignmentIdleRelease } from '../tools/browser/assignment-idle-release.js'
-import { rowSummary } from './peer-events.js'
+import { chatRowSummariesEqual, rowSummary } from './peer-events.js'
 import { handlePeerPaneEvent, peerRendererView, rememberPeerTranscript, withSerializedAwake, type PeerPaneOpsHost } from './peer-manager-pane-ops.js'
 import type { PeerIdleParking } from './peer-idle-parking.js'
 import type { PeerLifecycle, PeerEntry } from './peer-lifecycle.js'
@@ -45,6 +45,8 @@ export type PeerManagerSupportHost = {
   retainedTabIds: () => Set<ChatPaneId>
   emitWorkspaceEvent: (event: ChatWorkspaceEvent) => void
   chatRowsCache?: PeerChatRowsCache
+  /** Skips redundant drawer IPC when throttled emits rebuild the same row summaries. */
+  chatRowsEmitState?: { rows: ChatRowSummary[] | null; selectedPaneId: ChatPaneId | null }
 }
 
 export function peerManagerReadable(host: PeerManagerSupportHost): ReadablePeerHost {
@@ -163,10 +165,18 @@ export function peerManagerEmitWorkspace(host: PeerManagerSupportHost, snapshot:
 }
 
 export function peerManagerEmitChats(host: PeerManagerSupportHost): void {
+  const selectedPaneId = host.selectedPaneId()
+  const chats = peerManagerChatRows(host)
+  const cache = host.chatRowsEmitState
+  if (cache?.rows && cache.selectedPaneId === selectedPaneId && chatRowSummariesEqual(cache.rows, chats)) return
+  if (cache) {
+    cache.rows = chats
+    cache.selectedPaneId = selectedPaneId
+  }
   host.emitWorkspaceEvent({
     type: 'chats',
-    selectedPaneId: host.selectedPaneId(),
-    chats: peerManagerChatRows(host)
+    selectedPaneId,
+    chats
   } satisfies ChatWorkspaceEvent)
 }
 

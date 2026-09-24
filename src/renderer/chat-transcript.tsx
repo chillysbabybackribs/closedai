@@ -1,6 +1,6 @@
 import { BackgroundTasks } from './background-tasks.js'
 import type { CSSProperties, JSX } from 'react'
-import { memo, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { CHAT_MOUNTED_TURN_WINDOW } from '../shared/chat.js'
 import { ChevronRight, ChevronUp, XCircle } from 'lucide-react'
 
@@ -81,10 +81,10 @@ export const ChatTranscript = memo(function ChatTranscript({
   const setVisibleStart = (index: number): void => setVisibleAnchor(transcriptRowKey(rows[index]))
   const visibleRows = rows.slice(start)
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     browsedEarlier.current = false
     setVisibleStart(tailStart)
-  }, [actions?.threadKey])
+  }, [actions?.threadKey, rows, tailStart])
 
   useEffect(() => {
     if (loadEpoch === 0) return

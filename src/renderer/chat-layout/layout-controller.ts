@@ -230,13 +230,22 @@ export function useChatLayout(
     if (pending.current) return
     const view = isViewTabId(id)
     if (!view) selected.current = id
-    setLayout((value) => {
-      const tile = anchor && paneIds(value.tree).includes(anchor) ? anchor : paneIds(value.tree)[0]!
-      return { ...value, tree: selectTab(value.tree, tile, id) }
-    })
+    const focusTab = (): void => {
+      setLayout((value) => {
+        const tile = anchor && paneIds(value.tree).includes(anchor) ? anchor : paneIds(value.tree)[0]!
+        return { ...value, tree: selectTab(value.tree, tile, id) }
+      })
+    }
     try {
-      if (view) await selectViewChat(id)
-      else await window.closedai.chat.openChat(id)
+      if (view) {
+        focusTab()
+        await selectViewChat(id)
+      } else {
+        // Load the saved transcript before the tab panel unhides so the pane does not flash empty
+        // and jump when cached messages land.
+        await window.closedai.chat.openChat(id)
+        focusTab()
+      }
       clearError()
     } catch (reason) {
       fail(reason)
