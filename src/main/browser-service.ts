@@ -63,6 +63,7 @@ export class BrowserService extends EventEmitter {
   // Whether the active page's pixels were on screen at the last bounds report, so a return
   // from behind app chrome can be distinguished from an ordinary resize.
   private pageVisible = true
+  private overlayCapture: Promise<BrowserShot | null> | null = null
   // One colour memory for the whole window: what a site paints is a property of the site.
   // See browser-page-background.ts for what it buys.
   private readonly pageBackgrounds = new PageBackgroundMemory()
@@ -327,6 +328,9 @@ export class BrowserService extends EventEmitter {
 
   async setBounds(bounds: BrowserBounds): Promise<void> {
     this.bounds = browserPaneBounds(this.bounds, bounds)
+    // A preview capture briefly owns a hidden host. Restore only after it has returned
+    // the view, so the renderer cannot remove its still before the native page is back.
+    if (bounds.occluded !== true && this.overlayCapture) await this.overlayCapture
     const { paneVisible, pageVisible } = browserSurfaceVisibility(this.bounds)
     const revealing = pageVisible && !this.pageVisible
     this.pageVisible = pageVisible
@@ -336,6 +340,9 @@ export class BrowserService extends EventEmitter {
       parkWebBrowserTabs(this.tabOpsHost())
       return
     }
+    // Do not move a leased capture off its hidden host's viewport mid-frame. Its release
+    // reapplies the newest pane bounds; the renderer then requests the latest preview size.
+    if (!pageVisible && active && this.overlayCapture && this.captureSurfaces.has(active.id)) return
     // Keep the loaded surface attached and full-sized, using the same parking path as an
     // overlay. Place it beyond the current window even if the window grew while hidden.
     active?.applyBounds(paneVisible ? this.bounds : {
@@ -495,18 +502,25 @@ export class BrowserService extends EventEmitter {
   // A still of the active tab for the renderer's overlay freeze (the native view composites
   // above the DOM, so a shelf or dialog shows this image while the live pixels are hidden).
   async capture(): Promise<BrowserShot | null> {
+    if (this.overlayCapture) return this.overlayCapture
     const tab = this.active
     if (!(tab instanceof BrowserTab)) return null
-    // A detached or just-revealed tab has no frame to capture, and capturePage against one
-    // returns the empty surface rather than the page. Hold its compositor and let it paint.
+    // Off-window views can keep returning their pre-resize compositor frame. Reuse the
+    // hidden capture host to paint at the requested size without intercepting drag input.
     const release = this.leaseTabRendering(tab.id) ?? (() => {})
-    const imageUrl = await settleFrames(tab.view.webContents, CAPTURE_SETTLE_MS)
+    const pending = settleFrames(tab.view.webContents, CAPTURE_SETTLE_MS)
       .then(() => tab.screenshot())
+      .then((imageUrl): BrowserShot | null => {
+        if (!imageUrl || this.active !== tab) return null
+        const state = tab.getState()
+        return { imageUrl, tabId: tab.id, url: state.url, title: state.title }
+      })
       .catch(() => null)
-      .finally(release)
-    if (!imageUrl) return null
-    const state = tab.getState()
-    return { imageUrl, tabId: tab.id, url: state.url, title: state.title }
+      .finally(() => {
+        try { release() } finally { this.overlayCapture = null }
+      })
+    this.overlayCapture = pending
+    return pending
   }
 
   searchHistory(input: string) {
