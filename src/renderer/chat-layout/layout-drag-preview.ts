@@ -46,15 +46,38 @@ export function dragSplitPreview(
 }
 
 /** Chat drop targets stay anchored to the layout before preview resizing. */
-export function chatDropAt(panes: Array<{ id: string; rect: Rect }>, x: number, y: number): DragDropTarget | null {
+export function chatDropAt(
+  panes: Array<{ id: string; rect: Rect }>, x: number, y: number,
+  previous: DragDropTarget | null = null
+): DragDropTarget | null {
   const tile = panes.find(({ rect }) => x >= rect.x && x <= rect.x + rect.width && y >= rect.y && y <= rect.y + rect.height)
   if (!tile) return null
   const dx = (x - tile.rect.x) / tile.rect.width
   const dy = (y - tile.rect.y) / tile.rect.height
-  if (tile.id === BROWSER_PANE_ID) return { target: tile.id, edge: dx < 0.5 ? 'left' : 'right' }
-  if (y - tile.rect.y < 38) return { target: tile.id, edge: null }
-  const edges: Array<[DockEdge, number]> = [['left', dx], ['right', 1 - dx], ['top', dy], ['bottom', 1 - dy]]
-  return { target: tile.id, edge: edges.sort((a, b) => a[1] - b[1])[0]![0] }
+  const held = previous?.target === tile.id ? previous : null
+  if (tile.id === BROWSER_PANE_ID) {
+    const margin = Math.min(0.1, 32 / tile.rect.width)
+    if (held?.edge === 'left' && dx <= 0.5 + margin) return held
+    if (held?.edge === 'right' && dx >= 0.5 - margin) return held
+    return { target: tile.id, edge: dx < 0.5 ? 'left' : 'right' }
+  }
+  // Enter the tab strip deliberately; once there, allow a little downward drift.
+  const stripBoundary = held ? (held.edge === null ? 50 : 26) : 38
+  if (y - tile.rect.y < stripBoundary) return { target: tile.id, edge: null }
+  const distances: Record<DockEdge, number> = { left: dx, right: 1 - dx, top: dy, bottom: 1 - dy }
+  const edge = (Object.keys(distances) as DockEdge[]).reduce((best, candidate) => distances[candidate] < distances[best] ? candidate : best)
+  // Measure penetration into the new zone in pixels, including diagonal boundaries.
+  // This holds through small hand movements without delaying deliberate movement.
+  if (held?.edge && held.edge !== edge) {
+    const horizontal = (side: DockEdge): boolean => side === 'left' || side === 'right'
+    const sameAxis = horizontal(held.edge) === horizontal(edge)
+    const gradient = sameAxis
+      ? 2 / (horizontal(edge) ? tile.rect.width : tile.rect.height)
+      : Math.hypot(1 / tile.rect.width, 1 / tile.rect.height)
+    const margin = Math.min(32, Math.min(tile.rect.width, tile.rect.height) * 0.1)
+    if (distances[held.edge] - distances[edge] <= margin * gradient) return held
+  }
+  return { target: tile.id, edge }
 }
 
 /** Keep existing DOM shells in place, adding any shell created by splitting a tab. */

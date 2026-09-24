@@ -383,7 +383,9 @@ the layout that would result on release; chats and the browser page stay visible
 new bounds. Splitting either the active or an inactive conversation tab out of a group
 shows both the dragged conversation and the remaining group in their proposed shells before release.
 Hit targets for chat and browser drags stay fixed on the pre-drag layout so the destination
-does not flicker. The 32-pixel workspace edge targets start below the tab strip and carry
+does not flicker. Chat split choices hold through a 32-pixel boundary buffer (scaled down
+for small tiles); the tab strip has a 12-pixel entry/exit buffer. Deliberate movement switches
+immediately, and release uses the same held target rules as the preview. The 32-pixel workspace edge targets start below the tab strip and carry
 full-height column labels. Escape cancels; dropping over the browser, a divider, or outside the
 workspace leaves the layout unchanged.
 

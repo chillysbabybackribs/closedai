@@ -210,7 +210,7 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
         const bounds = event.currentTarget.getBoundingClientRect()
         const next = dragging.id === BROWSER_PANE_ID
           ? resolveBrowserDrop(event.currentTarget, event.clientX, event.clientY)
-          : chatDropAt(geometry.panes, event.clientX - bounds.left, event.clientY - bounds.top)
+          : chatDropAt(geometry.panes, event.clientX - bounds.left, event.clientY - bounds.top, dropTarget.current)
         event.dataTransfer.dropEffect = next ? 'move' : 'none'
         if (next?.target === dropTarget.current?.target && next?.edge === dropTarget.current?.edge) return
         queueDrop(next)
@@ -230,7 +230,7 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
         const bounds = event.currentTarget.getBoundingClientRect()
         const target = source === BROWSER_PANE_ID
           ? resolveBrowserDrop(event.currentTarget, event.clientX, event.clientY)
-          : chatDropAt(geometry.panes, event.clientX - bounds.left, event.clientY - bounds.top)
+          : chatDropAt(geometry.panes, event.clientX - bounds.left, event.clientY - bounds.top, dropTarget.current)
         if (!busy && target) onDock(source, target.target, target.edge, event.dataTransfer.types.includes(CHAT_TAB_DRAG_TYPE))
         finishDrag()
       }}>
