@@ -18,6 +18,7 @@ import { Composer } from './composer.js'
 import { CredentialApprovalCards } from './credential-approval-card.js'
 import { AgentRunStrip } from './agent-runs/agent-run-strip.js'
 import { useAgentRun } from './agent-runs/agent-runs-store.js'
+import { composerAnchoredBottom, paneHasTranscript } from './chat-composer-layout.js'
 import { errorMessage } from './error-message.js'
 import type { ComposerSetupHandle } from './composer-setup-menu.js'
 import { securityRequests } from './security-requests.js'
@@ -57,7 +58,9 @@ export const ChatPane = memo(function ChatPane({
   const ready = state.connection.state === 'ready'
   const running = chatRunning(state)
   const agentRun = useAgentRun(chat.selectedPaneId)
+  const peerRow = chat.chats.find((row) => row.paneId === chat.selectedPaneId)
   const hasMessages = state.items.length > 0
+  const showTranscript = hasMessages || paneHasTranscript(state, peerRow)
   // 'starting' is the step on the way to ready, not a failure. Treating it as one made every new
   // chat flash the connection guidance and drop the composer to the bottom for the frames before
   // the pane's provider came up, so only a settled failure replaces the centered empty layout.
@@ -69,7 +72,7 @@ export const ChatPane = memo(function ChatPane({
   // process was ready made every launch and every provider switch a pause the user could feel.
   const usable = ready || connecting
   // A continuation stays visually empty until its first message delivers the handoff to the model.
-  const centerComposer = !blocked && !hasMessages
+  const centerComposer = !blocked && !composerAnchoredBottom(chat.selectedPaneId, state, peerRow)
   const modelMenuRef = useRef<ComposerSetupHandle>(null)
   const openModelMenu = (): void => modelMenuRef.current?.open()
   // What the pane itself could not do, shown above the composer until the next attempt.
@@ -118,10 +121,10 @@ export const ChatPane = memo(function ChatPane({
       >
         <TranscriptScroller paneId={chat.selectedPaneId} panelVisible={panelVisible}
           preservePositionOnNewPrompts={Boolean(agentRun)}>
-            {!hasMessages && blocked ? (
+            {!showTranscript && blocked ? (
               <EmptyState provider={state.provider} state={state.connection.state} message={state.connection.message} availability={availability}
                 onLogin={chat.loginWithChatGPT} onChooseModel={openModelMenu} />
-            ) : hasMessages ? (
+            ) : showTranscript && hasMessages ? (
               <ChatTranscript items={state.items} activeTurnId={state.activeTurnId} cwd={project.cwd}
                 hasEarlier={state.history?.hasEarlier} loadEarlier={chat.loadEarlier}
                 onTrimMountedHistory={chat.trimMountedHistory} actions={{
@@ -136,7 +139,7 @@ export const ChatPane = memo(function ChatPane({
               <div aria-hidden="true" />
             )}
         </TranscriptScroller>
-        {hasMessages && blocked && (
+        {showTranscript && blocked && (
           <ConnectionBanner provider={state.provider} state={state.connection.state} message={state.connection.message}
             onLogin={chat.loginWithChatGPT} onChooseModel={openModelMenu} />
         )}

@@ -3,6 +3,7 @@ import { ChatPane } from '../chat-pane.js'
 import { usePaneChatController } from '../chat-controller.js'
 import { initialChatState, type ChatWorkspaceAction } from '../chat-state.js'
 import type { AppearanceSettings } from '../settings/appearance-settings.js'
+import { stabilizePaneSnapshot } from '../chat-composer-layout.js'
 import { getWorkspaceSnapshot } from './workspace-snapshot-store.js'
 import { useWorkspacePaneSlice } from './workspace-pane-subscription.js'
 
@@ -21,7 +22,7 @@ export const WorkspaceChat = memo(function WorkspaceChat({ paneId, dispatch, app
     retainedPane.current = paneId
     retained.current = initialChatState()
   }
-  const state = slice.state ?? retained.current
+  const state = stabilizePaneSnapshot(slice.state, retained.current)
   retained.current = state
   const controller = usePaneChatController(getWorkspaceSnapshot(), paneId, state, dispatch)
   const isSelected = slice.selectedPaneId === paneId

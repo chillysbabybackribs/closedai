@@ -65,6 +65,12 @@ export function useChatController(enabled = true) {
       frame = null
       const batch = coalesceChatWorkspaceEvents(queue)
       queue = []
+      const structural = batch.some((event) =>
+        event.type === 'workspace' || (event.type === 'pane' && event.event.type === 'replace'))
+      if (structural) {
+        for (const event of batch) dispatch(event)
+        return
+      }
       // Streaming token batches are non-urgent UI work; keep composer input and scrolling smooth.
       startTransition(() => {
         for (const event of batch) dispatch(event)
