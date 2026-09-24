@@ -17,7 +17,6 @@ import { AppStartup } from './app-startup.js'
 import { errorMessage } from './error-message.js'
 import { TitlebarMenu, type MenuAction } from './titlebar-menu.js'
 import { DesktopWorkspace, type ChatLayoutHandle } from './chat-layout/desktop-workspace.js'
-import type { ChatPaneDialog } from './chat-pane.js'
 import { ChatRenameDialog } from './chat-rename-dialog.js'
 import { SettingsDialog, type SettingsTab } from './settings/settings-dialog.js'
 import { useToolsPreset } from './tools/use-tools-preset.js'
@@ -47,20 +46,14 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
   const [settingsOpen, setSettingsOpen] = useState(initialSettingsOpen)
   const [settingsTab, setSettingsTab] = useState<SettingsTab>('appearance')
   const [renamingChat, setRenamingChat] = useState<{ id: string; title: string } | null>(null)
-  const [paneDialog, setPaneDialog] = useState<ChatPaneDialog | null>(null)
-  const dialogsRef = useRef({ settingsOpen, renamingChat, paneDialog })
-  dialogsRef.current = { settingsOpen, renamingChat, paneDialog }
+  const dialogsRef = useRef({ settingsOpen, renamingChat })
+  dialogsRef.current = { settingsOpen, renamingChat }
   const toolsPreset = useToolsPreset()
   const [browserVisible, setBrowserVisible] = useState(false)
   const savedSites = useBrowserSavedSitesController()
   // A shortcut or menu action main refused; shown under the title bar until dismissed.
   const [shellError, setShellError] = useState<string | null>(null)
   const report = useCallback((fallback: string) => (error: unknown) => setShellError(errorMessage(error, fallback)), [])
-  // The File menu retains the history management panel; Ctrl+H focuses header search.
-  const [historyOpen, setHistoryOpen] = useState(false)
-  const historyOpenRef = useRef(historyOpen)
-  historyOpenRef.current = historyOpen
-  const toggleHistory = useCallback(() => setHistoryOpen((open) => !open), [])
   const updateAppearance = useCallback((patch: Partial<AppearanceSettings>): void => {
     setAppearance((current) => {
       const next = normalizeAppearanceSettings({ ...current, ...patch })
@@ -90,7 +83,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
         setSettingsOpen(true)
       } else if (shortcut === 'tools' || shortcut === 'trace') {
         event.preventDefault()
-        if (chatRef.current.selectedPaneId) setPaneDialog(shortcut)
+        workspaceRef.current?.openView(shortcut)
       } else if (shortcut === 'reload') {
         event.preventDefault()
         window.location.reload()
@@ -114,8 +107,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
         window.closedai.window.toggleFullscreen().catch(report('Could not toggle fullscreen'))
       } else if (shortcut === 'pause-task') {
         const dialogs = dialogsRef.current
-        const hasOpenModal = dialogs.settingsOpen ||
-          Boolean(dialogs.renamingChat) || Boolean(dialogs.paneDialog)
+        const hasOpenModal = dialogs.settingsOpen || Boolean(dialogs.renamingChat)
         const pauses = escapePausesTask({
           overlayOpen: hasOpenModal || Boolean(document.querySelector(
             '[role="dialog"], [role="menu"], [data-radix-menu-content], [data-radix-popper-content-wrapper], .radix-dropdown-menu-content'
@@ -125,12 +117,6 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
           layoutBusy: document.body.hasAttribute('data-layout-resize') || Boolean(document.querySelector('[data-layout-drag]'))
         })
         if (!pauses) return
-
-        if (historyOpenRef.current) {
-          event.preventDefault()
-          setHistoryOpen(false)
-          return
-        }
 
         const currentChat = chatRef.current
         const runningPaneId = targetRunningPaneId(
@@ -176,27 +162,27 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
     switch (action) {
       case 'new-chat': history.newChat(); break
       case 'settings': setSettingsTab('appearance'); setSettingsOpen(true); break
-      case 'history': toggleHistory(); break
+      // Trace, Agents, History and Tools are view tabs in the selected chat's tile, not dialogs.
+      case 'history': workspaceRef.current?.toggleView('history').catch(report('Could not open chat history')); break
       case 'toggle-browser': workspaceRef.current?.toggleBrowser(); break
       case 'saved-sites': savedSites.toggle(); break
       case 'layout': workspaceRef.current?.openLayoutPresets(); break
       case 'toggle-fullscreen': window.closedai.window.toggleFullscreen().catch(report('Could not toggle fullscreen')); break
       case 'close-tab': workspaceRef.current?.closeFocused().catch(report('Could not close the chat')); break
       case 'close-window': window.closedai.window.close().catch(report('Could not close the window')); break
-      case 'agents': case 'tools': case 'trace': setPaneDialog(action); break
+      case 'agents': case 'tools': case 'trace': workspaceRef.current?.openView(action); break
       case 'compact': chatRef.current.compactConversation().catch(report('Could not compact the conversation')); break
       case 'stop-turn': chatRef.current.interrupt().catch(report('Could not pause the task')); break
       case 'reload': window.location.reload(); break
       case 'devtools': window.closedai.window.toggleDevTools().catch(report('Could not open developer tools')); break
     }
-  }, [history.newChat, toggleHistory, savedSites.toggle, report])
+  }, [history.newChat, savedSites.toggle, report])
 
   return (
     <div className="shell" data-ui-surface="shell">
       <header className="shell-titlebar" aria-label="Window title bar">
         <TitlebarMenu
           chatZoom={appearance.chatZoom}
-          historyOpen={historyOpen}
           selectedChatTitle={selectedRow?.title ?? null}
           compactEnabled={compactEnabled}
           stopEnabled={running}
@@ -207,8 +193,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
           onApplyLayoutPreset={(preset) => workspaceRef.current?.applyPreset(preset)}
         />
         <div className="titlebar-search-tools">
-          <HeaderChatSearch chats={chat.chats} controller={history} inputRef={searchRef}
-            onOpened={() => setHistoryOpen(false)} />
+          <HeaderChatSearch chats={chat.chats} controller={history} inputRef={searchRef} />
           <button type="button" className={`titlebar-icon-button titlebar-browser-toggle${browserVisible ? ' is-selected' : ''}`}
             data-ui="layout.browser-toggle" disabled={!chat.selectedPaneId}
             aria-pressed={browserVisible} aria-label={browserVisible ? 'Hide browser' : 'Show browser'}
@@ -236,10 +221,6 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
           savedSites={savedSites}
           reviewQueue={history.reviewQueue}
           appearance={appearance}
-          historyOpen={historyOpen}
-          onHistoryOpenChange={setHistoryOpen}
-          dialog={paneDialog}
-          onDialogChange={setPaneDialog}
           toolsPreset={toolsPreset}
           onRenameChat={(id, title) => setRenamingChat({ id, title })}
           archiveChat={history.deleteRow}

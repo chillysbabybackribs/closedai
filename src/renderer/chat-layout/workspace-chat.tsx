@@ -8,7 +8,7 @@ import type { ViewKind } from './layout-views.js'
 import { getWorkspaceSnapshot } from './workspace-snapshot-store.js'
 import { useWorkspacePaneSlice } from './workspace-pane-subscription.js'
 
-export const WorkspaceChat = memo(function WorkspaceChat({ paneId, dispatch, appearance, onNewChat, onOpenView, onStartAgent, onContinueInNewChat, archiveChat }: {
+export const WorkspaceChat = memo(function WorkspaceChat({ paneId, dispatch, appearance, onNewChat, onOpenView, onStartAgent, onContinueInNewChat }: {
   paneId: string
   dispatch: Dispatch<ChatWorkspaceAction>
   appearance: AppearanceSettings
@@ -17,7 +17,6 @@ export const WorkspaceChat = memo(function WorkspaceChat({ paneId, dispatch, app
   onOpenView?: (kind: ViewKind) => void
   onStartAgent?: (options: AgentRunStartOptions) => Promise<void>
   onContinueInNewChat?: () => Promise<void>
-  archiveChat?: (chatId: string) => Promise<void>
 }) {
   const slice = useWorkspacePaneSlice(paneId)
   const retained = useRef(initialChatState())
@@ -32,5 +31,5 @@ export const WorkspaceChat = memo(function WorkspaceChat({ paneId, dispatch, app
   const isSelected = slice.selectedPaneId === paneId
   return <ChatPane controller={controller} zoom={appearance.chatZoom} fontSize={appearance.chatFontSize}
     composerFontSize={appearance.composerFontSize} selected={isSelected} onNewChat={onNewChat} onOpenView={onOpenView}
-    onStartAgent={onStartAgent} onContinueInNewChat={onContinueInNewChat} archiveChat={archiveChat} />
+    onStartAgent={onStartAgent} onContinueInNewChat={onContinueInNewChat} />
 })

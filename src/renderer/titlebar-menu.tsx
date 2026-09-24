@@ -109,7 +109,6 @@ const MENUS: Menu[] = [
 
 export type TitlebarMenuProps = {
   chatZoom: number
-  historyOpen: boolean
   /** Title of the selected chat, shown in the Agent menu's section heading. */
   selectedChatTitle: string | null
   /** Rows under "Selected chat" that are not applicable right now are disabled, not hidden. */
@@ -125,7 +124,6 @@ export type TitlebarMenuProps = {
 /** The shell's File / View / Agent / Developer bar, sitting in the title bar's drag region. */
 export const TitlebarMenu = memo(function TitlebarMenu({
   chatZoom,
-  historyOpen,
   selectedChatTitle,
   compactEnabled,
   stopEnabled,
@@ -188,7 +186,7 @@ export const TitlebarMenu = memo(function TitlebarMenu({
                   }
                   const itemLabel = (
                     <>
-                      <span>{row.action === 'history' && historyOpen ? 'Close chat history' : row.label}</span>
+                      <span>{row.label}</span>
                       {row.shortcut && (
                         <span className="titlebar-menu-shortcut">
                           {row.command === 'reset' ? `${chatZoom}%  ` : ''}{row.shortcut}

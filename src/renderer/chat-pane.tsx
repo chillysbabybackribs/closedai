@@ -34,8 +34,7 @@ export const ChatPane = memo(function ChatPane({
   onNewChat: _onNewChat,
   onOpenView,
   onStartAgent,
-  onContinueInNewChat,
-  archiveChat: _archiveChat
+  onContinueInNewChat
 }: {
   controller?: ChatController
   zoom?: number
@@ -48,7 +47,6 @@ export const ChatPane = memo(function ChatPane({
   onStartAgent?: (options: AgentRunStartOptions) => Promise<void>
   /** Opens a sibling tab with a digest-seeded chat (layout placement); message actions use this for full continue. */
   onContinueInNewChat?: () => Promise<void>
-  archiveChat?: (chatId: string) => Promise<void>
 }): JSX.Element {
   const internalChat = useChatController(!controller)
   const chat = controller ?? internalChat

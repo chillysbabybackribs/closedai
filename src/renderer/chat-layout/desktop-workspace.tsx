@@ -72,7 +72,7 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
   renderPaneRef.current = (id: string) => {
     const view = parseViewTab(id)
     if (view) return <WorkspaceViewHost viewId={view.id} kind={view.kind} />
-    return <WorkspaceChat paneId={id} dispatch={dispatch} appearance={appearance} archiveChat={archiveChat}
+    return <WorkspaceChat paneId={id} dispatch={dispatch} appearance={appearance}
       onStartAgent={(options) => startAgentRef.current(id, options)}
       onContinueInNewChat={() => continueChatRef.current(id)}
       onNewChat={() => { void layout.newChat(id) }}
