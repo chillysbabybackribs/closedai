@@ -1,4 +1,4 @@
-import { memo, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import type { ChatReviewQueue } from '../chat-history/review-queue.js'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import { BROWSER_PANE_ID, CHAT_DRAG_TYPE, WORKSPACE_DOCK_ID, isViewTabId, layoutGeometry, minimumSize, paneIds, removePane, type ChatLayout, type DockEdge, type Rect, type SplitResizePhase } from './layout-tree.js'
@@ -10,6 +10,7 @@ import { CHAT_TAB_DRAG_TYPE } from './layout-tabs.js'
 import type { TabActivity } from './tab-activity.js'
 import { browserDropAt, sameBrowserDrop, type BrowserDrop } from './browser-drop.js'
 import { dragSplitPreview } from './layout-drag-preview.js'
+import { applyLayoutGeometryDom } from './layout-geometry-dom.js'
 import { ChatLayoutPaneHeader } from './chat-layout-pane-header.js'
 
 const position = (rect: Rect): CSSProperties => ({ left: rect.x, top: rect.y, width: rect.width, height: rect.height })
@@ -143,11 +144,14 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
   useEffect(() => { setSoloPaneId(null) }, [browserRevealVersion])
   const visibleTree = browserVisible ? tree : removePane(tree, BROWSER_PANE_ID)!
   const geometry = layoutGeometry(visibleTree, size.width, size.height)
-  const splitPreview = dragging && drop?.edge
+  const splitPreview = useMemo(() => (dragging && drop?.edge
     ? dragSplitPreview(tree, dragging.id, drop, dragging.singleTab, size.width, size.height)
-    : null
-  const display = splitPreview ?? geometry
+    : null), [dragging, drop, tree, size.width, size.height])
   const minimum = splitPreview?.minimum ?? minimumSize(visibleTree)
+  useLayoutEffect(() => {
+    if (!splitPreview || !canvasRef.current) return
+    applyLayoutGeometryDom(canvasRef.current, splitPreview)
+  }, [splitPreview])
   // Keep the browser host mounted while hidden, just as inactive conversation tabs are.
   const tiles = browserVisible ? geometry.panes : [...geometry.panes,
     { id: BROWSER_PANE_ID, tabs: [BROWSER_PANE_ID], rect: { x: 0, y: 0, width: 0, height: 0 } }]
@@ -228,8 +232,7 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
       }}>
       {tiles.map(({ id: activeId, tabs, rect }) => {
         const isThisTileSolo = soloTile ? (soloTile.id === activeId || soloTile.tabs.includes(activeId)) : false
-        const liveRect = display.panes.find((pane) => pane.id === activeId)?.rect ?? rect
-        const tileRect = isThisTileSolo ? soloRect : liveRect
+        const tileRect = isThisTileSolo ? soloRect : rect
         const tileKey = activeId === BROWSER_PANE_ID ? BROWSER_PANE_ID : (tabs[0] ?? activeId)
         const row = chatRow?.(activeId)
         return <section key={tileKey}
@@ -280,9 +283,6 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
           {activeId === selectedId && <div className="chat-layout-notice" role="status" aria-atomic="true">{notice}</div>}
           {activeId === BROWSER_PANE_ID ? <div className="chat-layout-browser-frame" data-ui="layout.browser-dock">
             {renderBrowser}
-            {dragging && <div className="chat-layout-browser-shield">{dragging.id === BROWSER_PANE_ID
-              ? 'Drop above or below a chat to stack; use the workspace edges for a full-height column'
-              : 'Drop on either side to place a chat beside the browser'}</div>}
           </div> : tabs.map((tabId) => <div key={tabId} className="chat-layout-content" role="tabpanel" id={`chat-panel-${tabId}`}
             aria-label={title(tabId)} hidden={tabId !== activeId}>{renderPane(tabId, tabId === activeId)}</div>)}
         </section>
@@ -292,7 +292,7 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
         data-active={browserDrop?.target === WORKSPACE_DOCK_ID && browserDrop.edge === edge}
         aria-label={`Move browser to full-height ${edge} column`}
       ><span>Full-height column</span></div>)}
-      {!soloTile && display.dividers.map((divider) => <LayoutDivider key={divider.id}
+      {!soloTile && geometry.dividers.map((divider) => <LayoutDivider key={divider.id}
         divider={divider} splitResize={splitResize} onResize={onResize} />)}
     </div>
   </div>
