@@ -18,7 +18,7 @@ try {
   const env = { ...sanitizeGpuEnv().env, CLOSEDAI_SEARCH_CHECK_PROFILE: join(root, 'profile') }
   for (const key of ['ELECTRON_RUN_AS_NODE', 'ELECTRON_EXEC_PATH', 'ELECTRON_CLI_ARGS', 'NODE_OPTIONS']) delete env[key]
   const code = await new Promise((done, reject) => {
-    const child = spawn(electron, ['--no-sandbox', entry], { env, stdio: 'inherit' })
+    const child = spawn(electron, ['--no-sandbox', '--force-color-profile=srgb', entry], { env, stdio: 'inherit' })
     child.once('error', reject)
     child.once('exit', (code) => done(code ?? 1))
   })
