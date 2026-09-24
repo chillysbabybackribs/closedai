@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { createServer } from 'node:http'
-import { app, BrowserWindow, nativeImage } from 'electron'
+import { app, BrowserWindow, desktopCapturer, nativeImage } from 'electron'
 import { BrowserService } from '../src/main/browser-service.js'
 import { EPHEMERAL_BROWSER_HISTORY } from '../src/main/browser-history-store.js'
 import { UiCaptureAccess } from '../src/main/ui-capture-access.js'
@@ -83,6 +83,26 @@ async function verify(): Promise<void> {
     assert.equal(churning.coherence?.frame, 'painted', 'the visible tab paints on request')
     assert.ok((churning.coherence?.domMutations ?? 0) > 0)
     assert.ok(near(centrePixel(churning.image.dataUrl), [0, 255, 0]))
+    // Page capture can succeed while the reparented view is blank in the actual window.
+    // Exercise repeated resize previews, including release during an in-flight capture,
+    // and check the window compositor independently before any tool can re-arm the page.
+    await browser.navigate(`${base}/?color=rgb(0,0,255)`)
+    for (let cycle = 0; cycle < 3; cycle++) {
+      for (const width of [420, 760, 540]) {
+        await browser.setBounds({ x: 0, y: 0, width, height: 500, visible: true, occluded: true })
+        const preview = await browser.capture()
+        assert.ok(preview && near(centrePixel(preview.imageUrl), [0, 0, 255]))
+        assert.equal(nativeImage.createFromDataURL(preview.imageUrl).getSize().width, width)
+      }
+      const pending = browser.capture()
+      await browser.setBounds({ x: 0, y: 0, width: 780, height: 560, visible: true })
+      await pending
+      await wait(100)
+      const sources = await desktopCapturer.getSources({ types: ['window'], thumbnailSize: { width: 800, height: 600 } })
+      const surface = sources.find((source) => source.id === window.getMediaSourceId())
+      assert.ok(surface && near(centrePixel(surface.thumbnail.toDataURL()), [0, 0, 255]),
+        'native window must display the page after resize release without a tab switch')
+    }
     console.log(JSON.stringify({ ok: true, hidden: first.coherence, recolored: second.coherence, flickering: flickering.coherence, churning: churning.coherence }))
   } catch (error) {
     console.error(error)
