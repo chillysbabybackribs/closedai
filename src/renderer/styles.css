@@ -18,8 +18,6 @@
 @import "./styles/browser-saved-sites.css";
 @import "./styles/workspace.css";
 @import "./styles/chat/history-search.css";
-/* After every surface it decorates: the title-bar rule relies on source order
-   to re-set the background-image that .shell-titlebar's shorthand clears. */
 @import "./styles/texture.css";
 @import "./styles/control-tokens.css";
 @import "./styles/theme-warm.css";

@@ -1,15 +1,15 @@
 /* ---- Dot field ----------------------------------------------------------
-   Applies --dotfield to the shell chrome AROUND the transcript: the composer and the title bar. The chat reading surface is
-   deliberately excluded — the same line --grain already holds. Texture belongs
-   on chassis; the surface you read long-form output on stays flat.
+   Applies --dotfield to the composer well around the transcript. The chat reading
+   surface is deliberately excluded — the same line --grain already holds. Texture
+   belongs on chassis; the surface you read long-form output on stays flat.
 
-   These three surfaces gave up --grain to take the lattice. That is not a
-   stylistic preference: measured on the real rules, grain runs sd 0.93 over 5
-   luminance levels and the drifted lattice sd 0.24, so stacking them leaves
-   the autocorrelation flat — the lattice disappears entirely. One material per
+   The composer gave up --grain to take the lattice. That is not a stylistic
+   preference: measured on the real rules, grain runs sd 0.93 over 5 luminance
+   levels and the drifted lattice sd 0.24, so stacking them leaves the
+   autocorrelation flat — the lattice disappears entirely. One material per
    surface. The browser gutter and editor pane keep grain, so the shell still
    carries both materials, split along a meaningful line: wells are grained,
-   the chat surround is latticed.
+   the composer surround is latticed.
 
    Painted by a pseudo-element rather than another background layer because the
    lattice has to be masked by --dotfield-drift, and background layers cannot be
@@ -38,21 +38,5 @@
   pointer-events: none;
 }
 
-/* The title bar takes the lattice as a plain background layer instead. At 28px
-   it fits ~3 rows of dots, so drift has no room to read, and skipping the
-   pseudo-element means the title bar never gains a stacking context — it is the
-   first row of the shell grid, so trapping a descendant there would push it
-   behind the workspace rather than merely reordering it. */
-.shell-titlebar {
-  /* Brighter than the shared lattice: the bar is a thin strip on a mid-dark grey, so the
-     ambient 3.7% dots fall under the perceptual floor there. */
-  --dotfield:
-    radial-gradient(
-      circle 2px at 50% 50%,
-      rgb(255 255 255 / 7%) 0%,
-      rgb(255 255 255 / 2.7%) 45%,
-      rgb(255 255 255 / 0%) 100%
-    );
-  background-image: var(--dotfield);
-  background-size: var(--dotfield-pitch) var(--dotfield-pitch);
-}
+/* Title bar stays flat so File/View/Tools, search, and window controls read as floating
+   over the chassis; lattice is reserved for the composer well. */
