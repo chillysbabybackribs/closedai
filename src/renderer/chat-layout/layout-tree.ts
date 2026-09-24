@@ -103,7 +103,7 @@ export function minimumSize(tree: ChatLayout): { width: number; height: number }
 }
 
 export type SplitRatioOverrides = Readonly<Record<string, number>>
-export type SplitResizePhase = 'preview' | 'commit' | 'cancel'
+export type SplitResizePhase = 'commit' | 'cancel'
 
 /** Flat geometry keeps React pane keys and composer state stable across tree rearrangements. */
 export function layoutGeometry(tree: ChatLayout, width: number, height: number, splitRatios?: SplitRatioOverrides) {

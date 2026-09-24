@@ -335,6 +335,10 @@
 .chat-layout-divider[data-resizing='true']::before,
 .chat-layout-divider:focus-visible::after,
 .chat-layout-divider[data-resizing='true']::after { background: var(--focus-ink); }
+body[data-layout-resize] .chat-layout-tile,
+body[data-layout-resize] .chat-layout-divider {
+  will-change: left, top, width, height;
+}
 body[data-layout-resize] * { user-select: none !important; }
 body[data-layout-resize='horizontal'],
 body[data-layout-resize='horizontal'] * { cursor: col-resize !important; }

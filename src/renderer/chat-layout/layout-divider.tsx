@@ -4,14 +4,23 @@ import type { SplitResizePhase } from './layout-tree.js'
 
 type Divider = ReturnType<typeof layoutGeometry>['dividers'][number]
 
-export function LayoutDivider({ divider, onResize }: {
+export type SplitResizeControls = {
+  begin: () => void
+  move: (splitId: string, ratio: number) => void
+  end: () => void
+}
+
+export function LayoutDivider({ divider, splitResize, onResize }: {
   divider: Divider
+  splitResize: SplitResizeControls
   onResize: (id: string, ratio: number, phase?: SplitResizePhase) => void
 }) {
   const [active, setActive] = useState(false)
   const release = useRef<(() => void) | null>(null)
   const resize = useRef(onResize)
   resize.current = onResize
+  const live = useRef(splitResize)
+  live.current = splitResize
   useEffect(() => () => release.current?.(), [])
   const horizontal = divider.axis === 'horizontal'
   const clamp = (ratio: number): number => Math.max(divider.min, Math.min(divider.max, ratio))
@@ -39,6 +48,7 @@ export function LayoutDivider({ divider, onResize }: {
       target.setPointerCapture(pointerId)
       target.focus({ preventScroll: true })
       setActive(true)
+      live.current.begin()
       const body = target.ownerDocument.body
       const previous = body.getAttribute('data-layout-resize')
       body.setAttribute('data-layout-resize', divider.axis)
@@ -51,7 +61,7 @@ export function LayoutDivider({ divider, onResize }: {
         if (!next) return
         const delta = (horizontal ? next.clientX : next.clientY) - start
         lastRatio = clamp(divider.ratio + delta / length)
-        resize.current(divider.id, lastRatio, 'preview')
+        live.current.move(divider.id, lastRatio)
       }
       const move = (next: PointerEvent): void => {
         if (next.pointerId !== pointerId) return
@@ -64,6 +74,7 @@ export function LayoutDivider({ divider, onResize }: {
           moveRaf = 0
           applyMove()
         }
+        live.current.end()
         if (commit) resize.current(divider.id, lastRatio, 'commit')
         else resize.current(divider.id, divider.ratio, 'cancel')
         release.current = null
