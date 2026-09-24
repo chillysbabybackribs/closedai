@@ -23,7 +23,7 @@ function LocalFileLink({ href, cwd, children }: { href: string; cwd?: string; ch
     } finally { setOpening(false) }
   }
   return <>
-    <button type="button" className="aui-md-local-file prompt-source-trigger" data-ui="chat.local-file" data-ui-key={href}
+    <button type="button" className="aui-md-local-file" data-ui="chat.local-file" data-ui-key={href}
       disabled={opening} onClick={() => void open()}>{children}</button>
     {error && <span className="aui-md-file-error" role="alert">{error}</span>}
   </>

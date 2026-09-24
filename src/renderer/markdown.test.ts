@@ -12,6 +12,8 @@ test('chat file links are actionable, preserve labels, and keep unsafe links ine
     children: '[**View mockups**](/tmp/my%20image.png) [Source](file:///tmp/code.ts#L12) [doc](docs/readme.md) [unsafe](javascript:alert(1))'
   }))
   assert.equal((html.match(/data-ui="chat.local-file"/g) ?? []).length, 3)
+  assert.equal((html.match(/class="aui-md-local-file"/g) ?? []).length, 3)
+  assert.doesNotMatch(html, /prompt-source-trigger/)
   assert.match(html, /<strong[^>]*>View mockups<\/strong>/)
   assert.match(html, /data-ui-key="file:\/\/\/tmp\/code.ts#L12"/)
   assert.doesNotMatch(html, /javascript:/)

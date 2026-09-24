@@ -1,15 +1,18 @@
-/* Inline sources read as links through their link ink and hover colour. */
+/* Inline sources read as links through their link ink and hover colour. The chip aligns
+   by baseline, not a fixed offset: the label span defines the flex container's baseline
+   (align-items: baseline) so its glyphs sit exactly on the surrounding text's baseline at any
+   font size or line-height, and the favicon centres itself against that label. No overflow
+   clipping on the container: an inline box with clipped overflow would lose its text baseline. */
 .prompt-markdown .prompt-source-trigger {
   display: inline-flex;
-  align-items: center;
+  align-items: baseline;
   max-width: 240px;
   gap: 5px;
-  overflow: hidden;
   color: var(--link-ink);
   font-size: inherit;
-  line-height: 1;
+  line-height: inherit;
   text-decoration: none;
-  vertical-align: -3px;
+  vertical-align: baseline;
   transition: color 120ms var(--ease-chrome);
 }
 
@@ -17,6 +20,7 @@
 .prompt-source-trigger svg,
 .prompt-source-domain svg {
   flex: 0 0 auto;
+  align-self: center;
   opacity: 0.7;
 }
 
@@ -26,6 +30,7 @@
 .prompt-source-trigger img,
 .prompt-source-domain img {
   flex: 0 0 auto;
+  align-self: center;
   margin: 0;
   border-radius: 50%;
 }
