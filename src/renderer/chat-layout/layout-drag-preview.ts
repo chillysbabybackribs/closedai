@@ -56,3 +56,13 @@ export function chatDropAt(panes: Array<{ id: string; rect: Rect }>, x: number, 
   const edges: Array<[DockEdge, number]> = [['left', dx], ['right', 1 - dx], ['top', dy], ['bottom', 1 - dy]]
   return { target: tile.id, edge: edges.sort((a, b) => a[1] - b[1])[0]![0] }
 }
+
+/** Keep existing DOM shells in place, adding any shell created by splitting a tab. */
+export function dragPreviewPanes(
+  committed: ReturnType<typeof layoutGeometry>['panes'],
+  preview: ReturnType<typeof layoutGeometry> | null
+): ReturnType<typeof layoutGeometry>['panes'] {
+  if (!preview) return committed
+  return [...committed.map((pane) => preview.panes.find((next) => next.id === pane.id) ?? pane),
+    ...preview.panes.filter((pane) => !committed.some((previous) => previous.id === pane.id))]
+}

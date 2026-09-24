@@ -9,7 +9,7 @@ import { createSplitResizeSession, paintSplitResize, type SplitResizeFrame } fro
 import { CHAT_TAB_DRAG_TYPE } from './layout-tabs.js'
 import type { TabActivity } from './tab-activity.js'
 import { browserDropAt, type BrowserDrop } from './browser-drop.js'
-import { chatDropAt, dragSplitPreview } from './layout-drag-preview.js'
+import { chatDropAt, dragPreviewPanes, dragSplitPreview } from './layout-drag-preview.js'
 import { ChatLayoutPaneHeader } from './chat-layout-pane-header.js'
 
 const position = (rect: Rect): CSSProperties => ({ left: rect.x, top: rect.y, width: rect.width, height: rect.height })
@@ -150,11 +150,8 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
   const minimum = splitPreview?.minimum ?? minimumSize(visibleTree)
   // Render the complete proposed layout: splitting the active tab also creates a
   // tile for its remaining siblings. Geometry alone cannot make that tile visible.
-  const displayedTiles = splitPreview
-    ? [...geometry.panes.map((pane) => splitPreview.panes.find((next) => next.id === pane.id) ?? pane),
-        ...splitPreview.panes.filter((pane) => !geometry.panes.some((previous) => previous.id === pane.id))]
-    : geometry.panes
-  const committedTiles = browserVisible || displayedTiles.some((pane) => pane.id === BROWSER_PANE_ID)
+  const displayedTiles = dragPreviewPanes(geometry.panes, splitPreview)
+  const renderedTiles = browserVisible || displayedTiles.some((pane) => pane.id === BROWSER_PANE_ID)
     ? displayedTiles
     : [...displayedTiles, { id: BROWSER_PANE_ID, tabs: [BROWSER_PANE_ID], rect: { x: 0, y: 0, width: 0, height: 0 } }]
   const layoutDividers = splitPreview?.dividers ?? geometry.dividers
@@ -237,7 +234,7 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
         if (!busy && target) onDock(source, target.target, target.edge, event.dataTransfer.types.includes(CHAT_TAB_DRAG_TYPE))
         finishDrag()
       }}>
-      {committedTiles.map(({ id: activeId, tabs, rect }) => {
+      {renderedTiles.map(({ id: activeId, tabs, rect }) => {
         const isThisTileSolo = soloTile ? (soloTile.id === activeId || soloTile.tabs.includes(activeId)) : false
         const tileRect = isThisTileSolo ? soloRect : rect
         const tileTabs = tabs
@@ -250,8 +247,7 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
           hidden={soloTile ? !isThisTileSolo : (activeId === BROWSER_PANE_ID && !browserVisible)}
           data-selected={activeId === selectedId || tabs.includes(selectedId)} aria-label={activeId === BROWSER_PANE_ID ? 'Browser' : title(activeId)}
           onFocusCapture={(event) => { if (activeId !== BROWSER_PANE_ID && activeId !== selectedId && !(event.target as HTMLElement).closest('[role="tablist"]')) onSelect(activeId) }}
-          onPointerDownCapture={(event) => { if (activeId !== BROWSER_PANE_ID && activeId !== selectedId && !(event.target as HTMLElement).closest('[role="tablist"]')) onSelect(activeId) }}
->
+          onPointerDownCapture={(event) => { if (activeId !== BROWSER_PANE_ID && activeId !== selectedId && !(event.target as HTMLElement).closest('[role="tablist"]')) onSelect(activeId) }}>
           {activeId !== BROWSER_PANE_ID && <ChatLayoutPaneHeader activeId={tileActiveId} tabs={tileTabs} chatCount={chatCount}
             busy={busy} toolsPreset={toolsPreset ?? null} title={title} activity={activity} reviewQueue={reviewQueue}
             row={row} soloTile={soloTile ?? null} setSoloPaneId={setSoloPaneId} tabFocus={tabFocus} onSelect={onSelect}
