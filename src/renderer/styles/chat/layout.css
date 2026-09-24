@@ -228,6 +228,17 @@
   }
 }
 .chat-layout-tabs::-webkit-scrollbar { display: none; }
+/* Tab strip ends before + / hide; line stays on the viewport edge, not scrolled tab content. */
+.chat-layout-header > .chat-layout-tabs::after {
+  content: '';
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  right: 0;
+  width: 1px;
+  background: var(--hairline);
+  pointer-events: none;
+}
 .chat-layout-tab:not([data-active='true']) { color: var(--chrome-fg); }
 .chat-layout-tab:not([data-active='true']):hover { background: color-mix(in srgb, var(--tab-active-surface), var(--chrome-fg) 6%); }
 .chat-layout-tab[data-active='true'] {
