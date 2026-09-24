@@ -68,7 +68,7 @@ export function AgentRunCard({ tile, onOpenChat, onPause, onResume, onStop }: Ag
       <td colSpan={4}>
         {tile.brief.map((line) => (
           <p key={line.kind} className="agent-run-brief-line" data-kind={line.kind}
-            title={line.kind === 'reply' ? undefined : line.text}>{line.text}</p>
+            title={line.kind === 'reply' ? line.text : undefined}>{line.text}</p>
         ))}
       </td>
     </tr>

@@ -22,8 +22,8 @@ test('a running tile shows its name, cycle, activity, Pause, Stop, and Open as a
   assert.match(html, /data-ui="agents\.open-chat" data-ui-key="c1"/)
   assert.doesNotMatch(html, /data-ui="agents\.resume"/)
   assert.match(html, /agent-run-table-brief/)
-  assert.match(html, /data-kind="progress"[^>]*>Cycle 2 of 4 has been working 40s\./)
-  assert.match(html, /data-kind="error">1 error across 3 steps\./)
+  assert.match(html, /data-kind="progress">Cycle 2 of 4 has been working 40s\./)
+  assert.match(html, /data-kind="error"[^>]*>1 error across 3 steps\./)
 })
 
 test('paused tiles resume, finished tiles dismiss, approvals send the user to review', () => {
