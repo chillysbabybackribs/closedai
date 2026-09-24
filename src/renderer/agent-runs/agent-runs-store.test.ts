@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { emptyAgentRunStats, type AgentRun, AgentRunsEvent } from '../../shared/agent-runs.js'
+import { emptyAgentRunStats, type AgentRun, type AgentRunsEvent } from '../../shared/agent-runs.js'
 import { createAgentRunsStore } from './agent-runs-store.ts'
 
 function run(chatId: string, cycle: number): AgentRun {
