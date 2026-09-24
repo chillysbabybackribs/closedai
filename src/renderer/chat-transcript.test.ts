@@ -94,6 +94,22 @@ test('a compacted activity headline does not dump a file path', () => {
   assert.doesNotMatch(html, /src\/renderer\/titlebar-menu|home\/dp\/Desktop/)
 })
 
+test('an activity row with edits shows its line counts at the right end, and one without shows none', () => {
+  const items: ChatTranscriptItem[] = [
+    { type: 'user', id: 'u', turnId: 't', text: 'Go' },
+    {
+      type: 'fileChange', id: 'f1', turnId: 't', status: 'completed',
+      changes: [{ path: 'src/a.ts', kind: 'update', diff: '--- a/src/a.ts\n+++ b/src/a.ts\n+a\n+b\n-c' }]
+    },
+    { type: 'command', id: 'c1', turnId: 't', command: 'npm test', cwd: '/', status: 'completed', output: '', exitCode: 0 }
+  ]
+  const html = renderTranscript({ items })
+  assert.match(html, /class="prompt-tool-activity-lines"[^>]*>.*\+<span[^>]*>2<\/span>.*−<span[^>]*>1<\/span>/)
+  assert.match(html, /aria-label="Edited 1 file, Ran tests, 2 lines added, 1 removed, completed"/)
+  const plain = renderTranscript({ items: [items[0]!, items[2]!] })
+  assert.doesNotMatch(plain, /prompt-tool-activity-lines/)
+})
+
 test('identically named tool calls collapse to a counted label', () => {
   const items: ChatTranscriptItem[] = [
     { type: 'user', id: 'u', turnId: 't', text: 'Go' },
