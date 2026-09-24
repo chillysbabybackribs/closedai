@@ -1,7 +1,7 @@
 import { useState, type JSX } from 'react'
 
 import { Button } from '../../components/ui/button.js'
-import { Collapsible, CollapsibleContent } from '../../components/ui/collapsible.js'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../../components/ui/collapsible.js'
 import { Switch } from '../../components/ui/switch.js'
 import { cn } from '../../lib/utils.js'
 import type { ToolInfo } from '../../shared/tools.js'
@@ -28,40 +28,34 @@ export function ToolRow({ row, effect, open, now, since, onOpenChange, onToggle,
   const { tool } = row
   return (
     <Collapsible open={open} onOpenChange={onOpenChange} className="tools-tool-row">
-      <div
-        role="button"
-        tabIndex={0}
-        data-enabled={tool.enabled}
-        data-tool={tool.id}
-        data-state={open ? 'open' : 'closed'}
-        data-ui="tools.row"
-        data-ui-key={tool.id}
-        className={cn('tools-row', open && 'tools-row-open', !tool.enabled && 'tools-row-off')}
-        onClick={() => onOpenChange(!open)}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault()
-            onOpenChange(!open)
-          }
-        }}
-      >
-        <Switch
-          checked={tool.enabled}
-          onCheckedChange={onToggle}
-          aria-label={`${tool.enabled ? 'Turn off' : 'Turn on'} ${tool.label}`}
-          data-ui="tools.toggle"
+      <CollapsibleTrigger asChild>
+        <div
+          data-enabled={tool.enabled}
+          data-tool={tool.id}
+          data-state={open ? 'open' : 'closed'}
+          data-ui="tools.row"
           data-ui-key={tool.id}
-          onClick={(event) => event.stopPropagation()}
-        />
-        <span className="tools-row-name">{tool.label}</span>
-        <span className="tools-row-summary">{tool.summary || tool.offEffect}</span>
-        <span className="tools-row-cost">{tool.enabled ? formatTokens(tool.costTokens) : '—'}</span>
-        <span
-          aria-hidden={!row.flag}
-          className={cn('tools-row-dot', row.flag === 'bad' && 'tools-row-dot-bad', row.flag === 'warn' && 'tools-row-dot-warn')}
-          title={row.note || undefined}
-        />
-      </div>
+          className={cn('tools-row', open && 'tools-row-open', !tool.enabled && 'tools-row-off')}
+        >
+          <Switch
+            checked={tool.enabled}
+            onCheckedChange={onToggle}
+            aria-label={`${tool.enabled ? 'Turn off' : 'Turn on'} ${tool.label}`}
+            data-ui="tools.toggle"
+            data-ui-key={tool.id}
+            onClick={(event) => event.stopPropagation()}
+            onPointerDown={(event) => event.stopPropagation()}
+          />
+          <span className="tools-row-name">{tool.label}</span>
+          <span className="tools-row-summary">{tool.summary || tool.offEffect}</span>
+          <span className="tools-row-cost">{tool.enabled ? formatTokens(tool.costTokens) : '—'}</span>
+          <span
+            aria-hidden={!row.flag}
+            className={cn('tools-row-dot', row.flag === 'bad' && 'tools-row-dot-bad', row.flag === 'warn' && 'tools-row-dot-warn')}
+            title={row.note || undefined}
+          />
+        </div>
+      </CollapsibleTrigger>
       <CollapsibleContent className="tools-row-detail">
         <ToolDetails row={row} effect={effect} now={now} since={since} onToggle={onToggle} onRepair={onRepair} />
       </CollapsibleContent>
