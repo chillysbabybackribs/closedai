@@ -172,7 +172,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
     switch (action) {
       case 'new-chat': history.newChat(); break
       case 'settings': setSettingsTab('appearance'); setSettingsOpen(true); break
-      // Trace, Agents, History and Tools are view tabs in the selected chat's tile, not dialogs.
+      // Trace, Agents, History, Tools and Saved sites are view tabs, not dialogs.
       case 'history': workspaceRef.current?.toggleView('history').catch(report('Could not open chat history')); break
       case 'toggle-browser': workspaceRef.current?.toggleBrowser(); break
       case 'layout': workspaceRef.current?.openLayoutPresets(); break

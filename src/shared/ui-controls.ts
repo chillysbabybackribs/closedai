@@ -143,7 +143,7 @@ export const UI_CONTROLS = {
   'view.agents': 'Agents view tab body: a Library of saved-agent cards with pushed Build and Runs screens, no scope chip (runs dock beside the tab\u2019s own tile), opened from the header icon, tile + menu or Agent → Agents…; item is the view tab id',
   'view.history': 'History view tab body listing chats across directories a page at a time (the same rows, order, and matcher as header search; chat.history-more pages older chats), opened through the tile + menu or File → Manage chat history; item is the view tab id',
   'view.saved-sites': 'Saved sites view tab: kept pages with notes and brief check log (lastCheckedAt and lastSummary), opened through the tile + menu or Developer → Saved sites; item is the view tab id',
-  'view.scope': 'Scope chip in a view toolbar (Trace, Tools, History; the Agents view has none): Following (the tile\u2019s own chat, dashed) or Pinned (one chat, solid); opens the scope menu; item is the view tab id',
+  'view.scope': 'Scope chip in a view toolbar (Trace, Tools, History; Agents and Saved sites have none): Following (the tile\u2019s own chat, dashed) or Pinned (one chat, solid); opens the scope menu; item is the view tab id',
   'view.scope-follow': 'Scope menu: return the view to following its tile; item is the view tab id',
   'view.scope-pin': 'Scope menu: pin the view to one open chat so moving it never retargets; item is the chat id',
   'dialog.settings': 'Settings dialog root with Appearance, Credentials, and Security tabs, opened through File → Settings (present only while open)',

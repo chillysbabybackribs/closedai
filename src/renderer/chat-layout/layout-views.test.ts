@@ -30,11 +30,14 @@ test('the Agents view is one tab for the whole workspace', () => {
   let tree: ChatLayout = addTab({ kind: 'pane', id: 'a' }, 'a', agents)
   tree = dockPane(tree, 'b', agents, 'right', 'split')
   assert.equal(workspaceView(tree, 'agents'), agents)
-  const savedSites = viewTabId('saved-sites', 'v4')
-  tree = addTab(tree, 'a', savedSites)
-  assert.equal(workspaceView(tree, 'saved-sites'), savedSites)
   assert.equal(tileView(tree, 'b', 'trace'), null)
   assert.equal(tileView(tree, 'b', 'agents'), null, 'Agents in the other tile is found by workspaceView, not tileView')
+})
+
+test('the Saved sites view is one tab for the whole workspace', () => {
+  const savedSites = viewTabId('saved-sites', 'v4')
+  const tree: ChatLayout = addTab({ kind: 'pane', id: 'a' }, 'a', savedSites)
+  assert.equal(workspaceView(tree, 'saved-sites'), savedSites)
 })
 
 test('a view follows its own tile, then the workspace selection, unless pinned', () => {

@@ -45,8 +45,8 @@ export type WorkspaceViewProps = {
 /**
  * A view tab's body: a quiet toolbar whose only control is the scope chip, then the panel that
  * used to live in a dialog. Following a tile means the panel retargets as the tile's chat changes;
- * pinned means it does not. Agents shows no toolbar: it is workspace-wide, and scope only picks
- * the tile a new run docks beside, which is always this one.
+ * pinned means it does not. Agents and Saved sites show no toolbar: both are workspace-wide.
+ * Agents scope only picks the tile a new run docks beside, which is always this one.
  */
 export const WorkspaceView = memo(function WorkspaceView({ viewId, kind, active, scope, pinOptions, onPin, onClose, onSendToChat, onStartAgent, startEnabled, history, savedSites, onSavedSitesError }: WorkspaceViewProps): ReactNode {
   const chatTitle = pinOptions.find((option) => option.id === scope.chatId)?.title ?? 'this chat'
