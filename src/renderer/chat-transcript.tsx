@@ -9,6 +9,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../componen
 import { LocalFileMarkdown as Markdown } from './local-file-markdown.js'
 import { Marker, MarkerContent } from '../components/ui/marker.js'
 import { Message, MessageContent } from '../components/ui/message.js'
+import { NumberTicker } from '../components/ui/number-ticker.js'
 import {
   MessageScrollerItem,
   useMessageScroller,
@@ -19,6 +20,7 @@ import { usePacedText } from '../components/ui/paced-text.js'
 import type { ChatTranscriptItem } from '../shared/chat.js'
 import { displayUserMessageText } from '../shared/chat-display.js'
 import { ActivitySteps } from './activity-step-list.js'
+import { diffCounts } from './activity-steps.js'
 import { errorMessage } from './error-message.js'
 import { MessageActions, type MessageActionContext } from './message-actions.js'
 import { ChatScreenshot } from './chat-screenshot.js'
@@ -265,27 +267,43 @@ const ToolActivity = memo(function ToolActivity({
   const state = useMemo(() => activityState(items), [items])
   const running = isRunning ?? (state === 'running')
   const headline = useMemo(() => activityHeadline(items, running), [items, running])
+  const lines = useMemo(() => {
+    const counts = diffCounts(items.flatMap((item) => item.type === 'fileChange' ? item.changes : []))
+    return counts.added || counts.removed ? counts : null
+  }, [items])
+  // A group that mounts mid-turn rolls its counts up from zero as edits land; a settled one
+  // (history, a reopened chat) paints its totals at once.
+  const [rollFromZero] = useState(running)
   const failed = state === 'failed'
   const status = running ? 'running' : failed ? 'failed' : 'completed'
+  const linesLabel = lines ? `, ${lines.added} lines added, ${lines.removed} removed` : ''
   return (
     <div className="prompt-tool-activity" data-state={state}>
       <Collapsible open={open} onOpenChange={(next) => { if (next) setOpened(true); setOpen(next) }}>
-        <CollapsibleTrigger asChild>
-          <button
-            type="button"
-            className="prompt-tool-activity-trigger"
-            data-running={running || undefined}
-            aria-label={`${headline}, ${status}`}
-          >
-            {failed && open ? (
-              <XCircle className="prompt-process-failed" aria-hidden="true" />
-            ) : null}
-            <span style={running ? { '--shimmer-spread': `${headline.length * 2}px` } as CSSProperties : undefined}>
-              {headline}
+        <div className="prompt-tool-activity-head">
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="prompt-tool-activity-trigger"
+              data-running={running || undefined}
+              aria-label={`${headline}${linesLabel}, ${status}`}
+            >
+              {failed && open ? (
+                <XCircle className="prompt-process-failed" aria-hidden="true" />
+              ) : null}
+              <span style={running ? { '--shimmer-spread': `${headline.length * 2}px` } as CSSProperties : undefined}>
+                {headline}
+              </span>
+              <ChevronRight className={`size-3 prompt-process-chevron transition-transform duration-150 ${open ? 'rotate-90' : ''}`} aria-hidden="true" />
+            </button>
+          </CollapsibleTrigger>
+          {lines ? (
+            <span className="prompt-tool-activity-lines" aria-hidden="true">
+              <span className="diff-stat-add">+<NumberTicker value={lines.added} startValue={rollFromZero ? 0 : undefined} /></span>
+              <span className="diff-stat-del">−<NumberTicker value={lines.removed} startValue={rollFromZero ? 0 : undefined} /></span>
             </span>
-            <ChevronRight className={`size-3 prompt-process-chevron transition-transform duration-150 ${open ? 'rotate-90' : ''}`} aria-hidden="true" />
-          </button>
-        </CollapsibleTrigger>
+          ) : null}
+        </div>
         {opened ? (
           <CollapsibleContent className="prompt-tool-activity-content">
             <div className="prompt-tool-activity-card">

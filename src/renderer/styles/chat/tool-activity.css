@@ -32,6 +32,30 @@
   transition: all 110ms ease;
 }
 
+/* The trigger keeps its fit-content hover box; the edit line counts sit at the row's right end.
+   Colours come from the diff headers (activity-steps.css); the digits roll via NumberTicker. */
+.prompt-tool-activity-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.prompt-tool-activity-lines {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  padding-right: 6px;
+}
+
+.prompt-tool-activity-lines .diff-stat-add,
+.prompt-tool-activity-lines .diff-stat-del {
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+
 .prompt-tool-activity-trigger:hover,
 .prompt-tool-activity-trigger[aria-expanded='true'] {
   color: var(--transcript-activity-hover, #d4d4d8);

@@ -46,8 +46,6 @@ export type ComposerProps = {
   paneId?: string | null
   /** Lets the pane's connection guidance open the setup panel on its model list. */
   setupMenuRef?: Ref<ComposerSetupHandle>
-  /** Lines the latest turn added and removed, shown above the card's top-left corner; null hides it. */
-  changes?: { added: number; removed: number; files: number } | null
 }
 
 /**
@@ -74,7 +72,7 @@ export function Composer({
   onResume,
   cwd, projectPath, projectPending, recentProjects,
   onChooseProject, onSelectProject, onClearProject,
-  onCompactConversation, compactConversationEnabled = false, paneId, setupMenuRef, changes
+  onCompactConversation, compactConversationEnabled = false, paneId, setupMenuRef
 }: ComposerProps): JSX.Element {
   const { input, setInput, attachments, setAttachments, clearDraft } = useComposerDraft(paneId)
   // One alert row for whatever the composer's own controls could not do: attach, pause, pick.
@@ -211,17 +209,6 @@ export function Composer({
       onDragOver={(event) => event.preventDefault()}
       onDrop={dropFiles}
     >
-      {changes && (
-        <div className="composer-diffstat">
-          <span
-            className="composer-diffstat-counts"
-            title={`Latest turn changed ${changes.files} ${changes.files === 1 ? 'file' : 'files'}`}
-          >
-            <span className="diff-stat-add">+{changes.added}</span>
-            <span className="diff-stat-del">−{changes.removed}</span>
-          </span>
-        </div>
-      )}
       <div className="composer-stack">
         <PromptInput
           value={input}

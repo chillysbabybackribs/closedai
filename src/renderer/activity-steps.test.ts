@@ -4,7 +4,7 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 
 import type { ChatTranscriptItem } from '../shared/chat.ts'
-import { activitySteps, activitySummary, diffCounts, formatDuration, latestTurnDiffStat, summaryLabel } from './activity-steps.ts'
+import { activitySteps, activitySummary, diffCounts, formatDuration, summaryLabel } from './activity-steps.ts'
 import { ActivitySteps } from './activity-step-list.tsx'
 import type { ActivityItem } from './transcript-rows.ts'
 
@@ -60,19 +60,6 @@ test('a file change reports its line delta and exposes the diff', () => {
   assert.equal(step?.body?.invocation, null)
   assert.deepEqual(step?.body?.diffs.map((entry) => entry.path), ['src/x.ts'])
   assert.deepEqual(diffCounts([{ diff }]), { added: 2, removed: 1 })
-})
-
-test('the composer stat counts only edits since the latest user message', () => {
-  const edit = (id: string, path: string, diff: string): ChatTranscriptItem => ({
-    type: 'fileChange', id, turnId: 't', status: 'completed', changes: [{ path, kind: 'update', diff }]
-  })
-  const user = (id: string): ChatTranscriptItem => ({ type: 'user', id, turnId: 't', text: 'go' })
-  const items = [
-    user('u1'), edit('f1', 'a.ts', '+old\n+old'),
-    user('u2'), edit('f2', 'a.ts', '+x\n-y'), edit('f3', 'b.ts', '--- a/b.ts\n+++ b/b.ts\n+z')
-  ]
-  assert.deepEqual(latestTurnDiffStat(items), { added: 2, removed: 1, files: 2 })
-  assert.equal(latestTurnDiffStat([...items, user('u3')]), null)
 })
 
 test('a file-bearing tool step names the file, not the path', () => {
