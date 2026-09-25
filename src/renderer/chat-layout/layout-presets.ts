@@ -1,6 +1,6 @@
 import { BROWSER_PANE_ID, DIVIDER_SIZE, type ChatLayout } from './layout-tree.js'
 
-export type LayoutPreset = { kind: 'browser-centre' } | { kind: 'grid'; count: number } | { kind: 'browser-side' }
+export type LayoutPreset = { kind: 'browser-centre' } | { kind: 'grid'; count: number } | { kind: 'browser-side' } | { kind: 'browser-between' }
 export type CanvasSize = { width: number; height: number }
 export type Grid = { cols: number; rows: number; tileWidth: number; tileHeight: number }
 /** One tile's conversations in strip order, with its active tab. */
@@ -13,6 +13,7 @@ export const COMFORTABLE_TILE = { width: 440, height: 480 }
 export const GRID_CHAT_CAP = 12
 export const BROWSER_CENTRE_SLOTS = 4
 export const BROWSER_SIDE_SLOTS = 1
+export const BROWSER_BETWEEN_SLOTS = 2
 const BROWSER_CENTRE_RATIO = 0.42
 // Same split the browser toggle opens on a single chat, so the preset feels like the toggle's own arrangement.
 const BROWSER_SIDE_RATIO = 0.6
@@ -109,20 +110,38 @@ export function browserSideLayout(groups: TileGroup[], newId: () => string): Cha
     first: a, second: { kind: 'pane', id: BROWSER_PANE_ID } }
 }
 
+/** A chat on each side of the browser, the browser as wide as in the centre preset; expects exactly two groups. */
+export function browserBetweenLayout(groups: TileGroup[], size: CanvasSize, newId: () => string): ChatLayout {
+  const [a, b] = groups.map(pane) as [ChatLayout, ChatLayout]
+  const browserWidth = Math.round(size.width * BROWSER_CENTRE_RATIO)
+  const sideWidth = (size.width - browserWidth - 2 * DIVIDER_SIZE) / 2
+  const right: ChatLayout = { kind: 'split', id: newId(), axis: 'horizontal',
+    ratio: clampRatio(browserWidth / (size.width - sideWidth - 2 * DIVIDER_SIZE)),
+    first: { kind: 'pane', id: BROWSER_PANE_ID }, second: b }
+  return { kind: 'split', id: newId(), axis: 'horizontal', ratio: clampRatio(sideWidth / (size.width - DIVIDER_SIZE)),
+    first: a, second: right }
+}
+
 /** The tree a preset produces for the given groups, before any chats are created. */
 export function presetLayout(preset: LayoutPreset, groups: TileGroup[], size: CanvasSize, newId: () => string): ChatLayout {
   if (preset.kind === 'grid') return gridLayout(groups, size, newId)
   if (preset.kind === 'browser-side') return browserSideLayout(groups, newId)
+  if (preset.kind === 'browser-between') return browserBetweenLayout(groups, size, newId)
   return browserCentreLayout(groups, size, newId)
 }
 
 export const presetSlots = (preset: LayoutPreset): number =>
-  preset.kind === 'grid' ? preset.count : preset.kind === 'browser-side' ? BROWSER_SIDE_SLOTS : BROWSER_CENTRE_SLOTS
+  preset.kind === 'grid' ? preset.count : preset.kind === 'browser-side' ? BROWSER_SIDE_SLOTS
+    : preset.kind === 'browser-between' ? BROWSER_BETWEEN_SLOTS : BROWSER_CENTRE_SLOTS
 
-/** One-click starting layouts exposed in View and formerly the title-bar grid menu. */
+/**
+ * One-click starting layouts exposed in View. Every open window and tab lands in one of the
+ * preset's windows (the extra ones join the last), floating and minimized ones included.
+ */
 export const QUICK_LAYOUT_PRESETS: Array<{ key: string; label: string; preset: LayoutPreset }> = [
+  { key: 'browser-side', label: 'Chats left, browser right', preset: { kind: 'browser-side' } },
+  { key: 'browser-between', label: 'Chat, browser, chat', preset: { kind: 'browser-between' } },
   { key: 'browser-centre', label: 'Browser centre', preset: { kind: 'browser-centre' } },
   { key: 'six', label: '6 chats', preset: { kind: 'grid', count: 6 } },
-  { key: 'four', label: '4 chats', preset: { kind: 'grid', count: 4 } },
-  { key: 'browser-side', label: 'Chat + browser', preset: { kind: 'browser-side' } }
+  { key: 'four', label: '4 chats', preset: { kind: 'grid', count: 4 } }
 ]

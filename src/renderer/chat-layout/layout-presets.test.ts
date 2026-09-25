@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { BROWSER_PANE_ID, layoutGeometry, paneIds, readLayout, withBrowser, type ChatLayout } from './layout-tree.ts'
 import { addTab, tabIds } from './layout-tabs.ts'
-import { GRID_CHAT_CAP, assignGroups, browserCentreLayout, browserSideLayout, chooseGrid, clampGridCount, gridCapacity, gridLayout, singleGroup } from './layout-presets.ts'
+import { GRID_CHAT_CAP, assignGroups, browserBetweenLayout, browserCentreLayout, browserSideLayout, presetLayout, chooseGrid, clampGridCount, gridCapacity, gridLayout, singleGroup } from './layout-presets.ts'
 
 const HD = { width: 1920, height: 1014 }
 const QHD = { width: 2560, height: 1400 }
@@ -79,6 +79,26 @@ test('browser side puts one chat beside the full-height browser', () => {
   assert.equal(rect(BROWSER_PANE_ID).height, HD.height)
   assert.ok(rect('c0').x + rect('c0').width < rect(BROWSER_PANE_ID).x)
   assert.deepEqual(readLayout({ getItem: () => JSON.stringify({ tree, browserVisible: true }) }, '/a').tree, tree)
+})
+
+test('chat, browser, chat puts the browser between two equal full-height chats', () => {
+  const tree = browserBetweenLayout(groups(2), HD, ids())
+  const geometry = layoutGeometry(tree, HD.width, HD.height)
+  const rect = (id: string) => geometry.panes.find((pane) => pane.id === id)!.rect
+  assert.deepEqual(geometry.panes.map((pane) => pane.id), ['c0', BROWSER_PANE_ID, 'c1'])
+  assert.deepEqual(withBrowser(tree), tree)
+  assert.ok([rect('c0'), rect('c1'), rect(BROWSER_PANE_ID)].every((box) => box.height === HD.height))
+  assert.ok(Math.abs(rect('c0').width - rect('c1').width) <= 1)
+  assert.ok(Math.abs(rect(BROWSER_PANE_ID).width - HD.width * 0.42) <= 1)
+})
+
+test('chats left, browser right gathers every window, floating and minimized too, into one tiled window', () => {
+  const tree: ChatLayout = withBrowser({ kind: 'split', id: 's', axis: 'horizontal', ratio: 0.5,
+    first: { kind: 'pane', id: 'a', float: { x: 0, y: 0, width: 400, height: 400, z: 1 }, onTop: true },
+    second: { kind: 'pane', id: 'b', tabs: ['b', 'b2'], docked: true, dockNumber: 1 } })
+  const merged = presetLayout({ kind: 'browser-side' }, assignGroups(tree, 1).groups, HD, ids())
+  assert.deepEqual(merged, { kind: 'split', id: 'split-0', axis: 'horizontal', ratio: 0.6,
+    first: { kind: 'pane', id: 'a', tabs: ['a', 'b', 'b2'] }, second: { kind: 'pane', id: BROWSER_PANE_ID } })
 })
 
 test('groups keep their tabs in tile order, overflow merges into the last slot, shortfall is counted', () => {
