@@ -93,7 +93,9 @@ export function agentRunExcerpt(text: string, max = AGENT_RUN_EXCERPT_CHARS): st
   const flat = text
     .replace(/```[\s\S]*?```/g, ' ')
     .replace(/^\s{0,3}(?:#{1,6}\s+|[-*+]\s+|\d+\.\s+|>\s?)/gm, '')
-    .replace(/[*_`]+/g, '')
+    .replace(/[*`]+/g, '')
+    // Emphasis underscores only: keep the ones inside identifiers such as closedai_app.ui.
+    .replace(/(?<![\p{L}\p{N}])_+|_+(?![\p{L}\p{N}])/gu, '')
     .replace(/\s+/g, ' ')
     .trim()
   if (!flat) return null
