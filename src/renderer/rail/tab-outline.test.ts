@@ -25,4 +25,11 @@ describe('tabOutlinePath', () => {
   it('closes a dropping tab round the window top edge for the clip', () => {
     assert.match(tabOutlinePath(box, down, 0, true), / H 1000 V 0 H 0 Z$/)
   })
+
+  it('never draws NaN for a box measured before it reaches its full height', () => {
+    for (const height of [0, 10, 31]) {
+      assert.doesNotMatch(tabOutlinePath({ ...box, height }, down, 0.5, true), /NaN/)
+      assert.doesNotMatch(tabOutlinePath({ ...box, height }, { strip: 44, radius: 16, fillet: 10, opens: 'up' }), /NaN/)
+    }
+  })
 })

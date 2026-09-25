@@ -41,7 +41,8 @@ export function tabOutlinePath(box: TabOutlineBox, shape: TabShape, inset = 0, c
   const cornerX = box.tabLeft + inset + r
   const cornerY = top + r
   const dy = (edge - f) - cornerY
-  const dx = dy >= 0 ? r + f : Math.sqrt((r + f) ** 2 - dy ** 2)
+  // A box measured before layout can be shorter than the rail; the joins then meet flat, never NaN.
+  const dx = dy >= 0 ? r + f : Math.sqrt(Math.max(0, (r + f) ** 2 - dy ** 2))
   const filletX = cornerX - dx
   const side = dy >= 0
     ? { from: [cornerX - r, edge - f], to: [cornerX - r, cornerY] }

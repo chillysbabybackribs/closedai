@@ -80,7 +80,8 @@
 }
 .chat-layout-snap-preview[data-kind='group'] {
   border-width: 2px;
-  background: color-mix(in srgb, var(--focus-ink) 6%, transparent);
+  background: color-mix(in srgb, var(--focus-ink) 10%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-ink) 28%, transparent);
 }
 @media (prefers-reduced-motion: reduce) {
   .chat-layout-snap-preview { transition: none; }
