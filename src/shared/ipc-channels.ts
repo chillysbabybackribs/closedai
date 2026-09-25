@@ -12,7 +12,7 @@ import type { ModelManifest, ModelSwitch, ModelsEvent } from './model-settings.j
 import type { ToolManifest, ToolSwitch, ToolTelemetrySnapshot, ToolsEvent } from './tools.js'
 import type { TraceEvent, TraceSnapshot, TraceSnapshotOptions } from './trace.js'
 import type { ProviderAvailability } from './provider-availability.js'
-import type { AppWindowContext, AppWindowId, AppWindowInfo, AppWindowsEvent } from './app-windows.js'
+import type { AppWindowContext, AppWindowId, AppWindowInfo, AppWindowRegion, AppWindowsEvent } from './app-windows.js'
 import type {
   BrowserCookieImportResult, CredentialApprovalRequest, SecurityDecision, SecuritySettings, WebPermissionRequest
 } from './security.js'
@@ -36,6 +36,7 @@ export type IpcInvokeChannels = {
   'windows:returnTabs': { args: [string[]]; result: void }
   'windows:revealTab': { args: [string]; result: boolean }
   'windows:showBrowser': { args: []; result: void }
+  'windows:capture': { args: [AppWindowRegion]; result: string | null }
   'browser:setBounds': { args: [BrowserBounds]; result: void }
   'browser:navigate': { args: [string]; result: void }
   'browser:back': { args: []; result: void }
@@ -168,7 +169,8 @@ export const IPC = {
       detachTabs: 'windows:detachTabs',
       returnTabs: 'windows:returnTabs',
       revealTab: 'windows:revealTab',
-      showBrowser: 'windows:showBrowser'
+      showBrowser: 'windows:showBrowser',
+      capture: 'windows:capture'
     },
     browser: {
       setBounds: 'browser:setBounds',

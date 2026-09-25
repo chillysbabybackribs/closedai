@@ -8,7 +8,7 @@ import type {
   ChatContinuationSource, ChatPaneId, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot
 } from './chat-peers.js'
 import type { ProviderAvailability } from './provider-availability.js'
-import type { AppWindowContext, AppWindowId, AppWindowInfo, AppWindowsEvent } from './app-windows.js'
+import type { AppWindowContext, AppWindowId, AppWindowInfo, AppWindowRegion, AppWindowsEvent } from './app-windows.js'
 import type { CredentialDraft, CredentialSummary, CredentialVaultStatus } from './credentials.js'
 import type { ModelManifest, ModelSwitch, ModelsEvent } from './model-settings.js'
 import type { ToolManifest, ToolTelemetrySnapshot, ToolsEvent } from './tools.js'
@@ -48,6 +48,8 @@ export type ClosedaiApi = {
     revealTab: (tabId: string) => Promise<boolean>
     /** Raise the main window and show its browser. */
     showBrowser: () => Promise<void>
+    /** A still of this window's own page within `region` (JPEG data URL); null when nothing painted. */
+    capture: (region: AppWindowRegion) => Promise<string | null>
     onEvent: (listener: (event: AppWindowsEvent) => void) => Unsubscribe
   }
   browser: {

@@ -38,5 +38,8 @@ export type AppWindowsEvent =
   | { type: 'windows'; windows: AppWindowInfo[] }
   | { type: 'command'; command: AppWindowCommand }
 
+/** A box in a window's page, in CSS pixels; main converts it to the window's own coordinates. */
+export type AppWindowRegion = { x: number; y: number; width: number; height: number }
+
 /** Query parameter a detached window's renderer is loaded with. */
 export const APP_WINDOW_QUERY = 'window'

@@ -39,6 +39,7 @@ const api: ClosedaiApi = {
     returnTabs: (tabIds) => invoke(IPC.invoke.windows.returnTabs, tabIds),
     revealTab: (tabId) => invoke(IPC.invoke.windows.revealTab, tabId),
     showBrowser: () => invoke(IPC.invoke.windows.showBrowser),
+    capture: (region) => invoke(IPC.invoke.windows.capture, region),
     onEvent: (listener) => subscribe(IPC.event.windowsEvent, listener)
   },
   browser: {
