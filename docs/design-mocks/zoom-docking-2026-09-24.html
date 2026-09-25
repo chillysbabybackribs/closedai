@@ -32,7 +32,8 @@
   b.hi { color: #fff; font-weight: 600; }
 
   /* The app window. Nothing is drawn in it except the zoomable world. */
-  .viewport { position: relative; width: 1120px; height: 630px; overflow: hidden; border-radius: 10px; background: #5a5854; user-select: none; }
+  .fit { position: relative; max-width: 1120px; }
+  .viewport { position: absolute; left: 0; top: 0; transform-origin: 0 0; width: 1120px; height: 630px; overflow: hidden; border-radius: 10px; background: #5a5854; user-select: none; }
   .world { position: absolute; left: 0; top: 0; width: 1120px; height: 630px; transform-origin: 0 0; transition: transform var(--dur) var(--ease); }
   .group { position: absolute; border-radius: 12px; background: rgb(0 0 0 / 13%); }
   .chip { position: absolute; top: 0; left: 10px; transform-origin: 0 50%; transform: translateY(-50%) scale(var(--inv, 1)); transition: transform var(--dur) var(--ease), opacity 200ms; white-space: nowrap; font-size: 11px; font-weight: 600; letter-spacing: .03em; color: #eeeae4; background: #6f6c68; padding: 2px 7px; border-radius: 5px; pointer-events: none; }
@@ -85,10 +86,10 @@
 <h1>Zoom out to see every workspace — concept v2</h1>
 <p class="lede">An interactive HTML/CSS mock, not an image-generated concept. It uses the live warm-chat tokens and the direction-C tab header. <b class="hi">The window has no navigation bar.</b> A zoomed-in workspace looks the same as the app does today. When you zoom out, the whole workspace shrinks as-is and sits beside the others, so the zoomed-out view is the navigator. Workspaces nest: “Work” holds two of them, and “Archive” is nested deeply enough that its workspaces show as icons until you zoom into it.</p>
 
-<div class="viewport" id="vp">
+<div class="fit" id="fit"><div class="viewport" id="vp">
   <div class="world" id="world"></div>
   <div class="toast" id="toast"></div>
-</div>
+</div></div>
 <div class="demo">
   <span>Mock controls (not app UI):</span>
   <button id="out">Zoom out</button><button id="back">Back</button><button id="fwd">Forward</button>
@@ -253,9 +254,20 @@ function zoomIn (pt) {
   go(node.id)
 }
 
+// The mock window scales to the page width; the app would use its real window size.
+let fitScale = 1
+const fitEl = document.getElementById('fit')
+function fitWindow () {
+  fitScale = Math.min(1, fitEl.parentElement.clientWidth / VW)
+  vp.style.transform = `scale(${fitScale})`
+  fitEl.style.height = `${VH * fitScale}px`
+}
+fitWindow()
+addEventListener('resize', fitWindow)
+
 function toWorld (e) {
   const b = vp.getBoundingClientRect()
-  return { x: (e.clientX - b.left - tx) / k, y: (e.clientY - b.top - ty) / k }
+  return { x: ((e.clientX - b.left) / fitScale - tx) / k, y: ((e.clientY - b.top) / fitScale - ty) / k }
 }
 
 let lastWheel = 0
