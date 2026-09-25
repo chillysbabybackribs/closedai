@@ -110,13 +110,26 @@
 .spaces-mini-tab[data-active='true'] { background: var(--tab-active-surface, #e4e0d9); color: var(--chrome-fg-strong, #202223); font-weight: 500; }
 .spaces-mini-status { flex: none; width: 9px; height: 9px; border-radius: 50%; background: #60a5fa; }
 .spaces-mini-tab[data-status='paused'] .spaces-mini-status { background: #dba74b; }
-.spaces-mini-body { display: flex; flex: 1; flex-direction: column; gap: 10px; min-height: 0; padding: 18px 20px; }
-.spaces-mini-body > i { display: block; height: 9px; border-radius: 5px; background: rgb(32 34 35 / 10%); }
-.spaces-mini-body > i:nth-child(1) { width: 82%; }
-.spaces-mini-body > i:nth-child(2) { width: 64%; }
-.spaces-mini-body > i:nth-child(3) { width: 74%; }
-.spaces-mini-body > i:nth-child(4) { width: 40%; }
-.spaces-mini-composer { margin-top: auto; height: 52px; border: 1px solid var(--tile-edge, rgb(32 34 35 / 18%)); border-radius: 12px; }
+.spaces-mini-body { display: flex; flex: 1; flex-direction: column; min-height: 0; padding: 18px 20px; color: var(--foreground, #202223); }
+/* The chat's last message, the one thing a drawing can say about what the chat is doing. */
+.spaces-mini-preview {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  font-size: 15px;
+  line-height: 1.5;
+  opacity: 0.72;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 6;
+}
+.spaces-mini-view { margin: auto; font-size: 22px; opacity: 0.6; }
+.spaces-mini-composer {
+  flex: none;
+  height: 52px;
+  margin-top: auto;
+  border: 1px solid color-mix(in srgb, currentColor 16%, transparent);
+  border-radius: 12px;
+}
 .spaces-mini-tile[data-kind='browser'] .spaces-mini-page { flex: 1; margin: 8px; border-radius: 6px; background: linear-gradient(160deg, #2a2d32, #43474e); }
 
 @media (prefers-reduced-motion: reduce) {

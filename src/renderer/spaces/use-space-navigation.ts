@@ -13,6 +13,8 @@ import {
 export type SpacePhase = 'space' | 'arming' | 'gliding' | 'overview' | 'switching'
 
 export const GLIDE_MS = 420
+/** The strip under the overview grid that holds "Open folder as space…". */
+const ACTIONS_HEIGHT = 40
 /** Past this the zoom starts anyway; the native page then drops out a frame late instead of never. */
 const STILL_WAIT_MS = 400
 
@@ -56,7 +58,7 @@ export function useSpaceNavigation({ enabled, current, spaces, size, stageRef }:
   const ticket = useRef(0)
   // Focus inside the space (usually a composer) returns when you come back to it.
   const returnFocus = useRef<HTMLElement | null>(null)
-  const slots = useMemo(() => overviewSlots(spaces.length, size), [spaces.length, size])
+  const slots = useMemo(() => overviewSlots(spaces.length, size, ACTIONS_HEIGHT), [spaces.length, size])
   const live = useRef({ current, spaces, slots, size })
   live.current = { current, spaces, slots, size }
   const slotOf = useCallback((id: string) => {

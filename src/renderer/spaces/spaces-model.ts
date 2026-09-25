@@ -56,9 +56,10 @@ export function saveSpaceOrder(storage: Pick<Storage, 'setItem'>, order: readonl
 
 /**
  * Window-shaped slots for `count` spaces in a centred grid, each with room for its label above.
- * The column count is whichever gives the largest slots; a short last row is centred.
+ * The column count is whichever gives the largest slots; a short last row is centred. `reserveBottom`
+ * keeps a strip under the grid free for the overview's own controls.
  */
-export function overviewSlots(count: number, size: Size): Rect[] {
+export function overviewSlots(count: number, size: Size, reserveBottom = 0): Rect[] {
   const n = Math.max(1, count)
   const { width: W, height: H } = size
   if (W <= 0 || H <= 0) return Array.from({ length: n }, () => ({ x: 0, y: 0, width: 0, height: 0 }))
@@ -66,7 +67,7 @@ export function overviewSlots(count: number, size: Size): Rect[] {
   for (let cols = 1; cols <= n; cols++) {
     const rows = Math.ceil(n / cols)
     const byWidth = (W - 2 * OVERVIEW_PAD - (cols - 1) * OVERVIEW_GAP) / cols / W
-    const byHeight = (H - 2 * OVERVIEW_PAD - rows * LABEL_HEIGHT - (rows - 1) * OVERVIEW_GAP) / rows / H
+    const byHeight = (H - reserveBottom - 2 * OVERVIEW_PAD - rows * LABEL_HEIGHT - (rows - 1) * OVERVIEW_GAP) / rows / H
     const scale = Math.min(byWidth, byHeight)
     if (scale > best.scale) best = { cols, rows, scale }
   }
@@ -74,7 +75,7 @@ export function overviewSlots(count: number, size: Size): Rect[] {
   const slotW = W * scale
   const slotH = H * scale
   const gridH = best.rows * (slotH + LABEL_HEIGHT) + (best.rows - 1) * OVERVIEW_GAP
-  const top = (H - gridH) / 2
+  const top = (H - reserveBottom - gridH) / 2
   return Array.from({ length: n }, (_, index) => {
     const row = Math.floor(index / best.cols)
     const inRow = Math.min(best.cols, n - row * best.cols)

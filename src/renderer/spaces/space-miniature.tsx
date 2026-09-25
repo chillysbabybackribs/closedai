@@ -7,7 +7,7 @@ import type { Size } from './spaces-model.js'
 /** The canvas gutter around tiles (`.chat-layout-viewport` padding), so the drawing lines up with the live space. */
 const GUTTER = { top: 2, side: 8, bottom: 8 }
 
-type MiniatureTab = { id: string; title: string; state: 'idle' | 'working' | 'paused' }
+type MiniatureTab = { id: string; title: string; state: 'idle' | 'working' | 'paused'; preview: string }
 
 /**
  * A space the user is not in, drawn from its saved layout at full stage size (the slot scales it).
@@ -29,9 +29,9 @@ export const SpaceMiniature = memo(function SpaceMiniature({ cwd, size, chats }:
   }, [saved, size.width, size.height])
   const tab = (id: string): MiniatureTab => {
     const view = parseViewTab(id)
-    if (view) return { id, title: VIEW_LABELS[view.kind], state: 'idle' }
+    if (view) return { id, title: VIEW_LABELS[view.kind], state: 'idle', preview: '' }
     const row = rows.get(id)
-    return { id, title: row?.title ?? 'New chat', state: row?.running ? 'working' : row?.paused ? 'paused' : 'idle' }
+    return { id, title: row?.title ?? 'New chat', state: row?.running ? 'working' : row?.paused ? 'paused' : 'idle', preview: row?.preview ?? '' }
   }
   return <div className="spaces-mini" style={{ width: size.width, height: size.height }} aria-hidden="true">
     {!geometry && <div className="spaces-mini-empty">Opens with its last chats</div>}
@@ -44,13 +44,18 @@ export const SpaceMiniature = memo(function SpaceMiniature({ cwd, size, chats }:
         </div>
       }
       const tabs = pane.tabs.map(tab)
+      const active = tabs.find((entry) => entry.id === pane.id)
       return <div key={pane.id} className="spaces-mini-tile" data-kind={isViewTabId(pane.id) ? 'view' : 'chat'} style={style}>
         <div className="spaces-mini-header">
           {tabs.map((entry) => <span key={entry.id} className="spaces-mini-tab" data-active={entry.id === pane.id} data-status={entry.state}>
             {entry.state !== 'idle' && <i className="spaces-mini-status" />}{entry.title}
           </span>)}
         </div>
-        <div className="spaces-mini-body"><i /><i /><i /><i /><span className="spaces-mini-composer" /></div>
+        <div className="spaces-mini-body">
+          {isViewTabId(pane.id) ? <span className="spaces-mini-view">{active?.title}</span>
+            : active?.preview ? <p className="spaces-mini-preview">{active.preview}</p> : null}
+          <span className="spaces-mini-composer" />
+        </div>
       </div>
     })}
   </div>

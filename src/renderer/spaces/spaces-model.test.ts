@@ -56,6 +56,12 @@ test('overview slots keep the window shape, fit inside it and never overlap', ()
   assert.ok(Math.abs(only!.x + only!.width / 2 - size.width / 2) < 1e-9)
 })
 
+test('a reserved strip under the grid stays clear of every slot', () => {
+  for (const count of [1, 3, 6]) {
+    for (const slot of overviewSlots(count, size, 40)) assert.ok(slot.y + slot.height <= size.height - 40)
+  }
+})
+
 test('a short last row is centred', () => {
   const slots = overviewSlots(3, size)
   const last = slots[2]!
