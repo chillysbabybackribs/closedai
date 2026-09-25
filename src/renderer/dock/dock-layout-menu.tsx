@@ -67,7 +67,7 @@ export function DockLayoutMenu({ open, onOpenChange, canTile, onTileWindows, onA
       <DropdownMenuItem data-ui="dock.layout-item" data-ui-key="tile-windows" className="h-auto py-2"
         disabled={!canTile} onSelect={onTileWindows}>
         <Row cells={['restore', 'restore']} label="Tile windows"
-          detail={canTile ? 'Floating windows back where they were' : 'Nothing is floating'} />
+          detail={canTile ? 'Back where they were' : 'Nothing is floating'} />
         <DropdownMenuShortcut>Ctrl+Shift+L</DropdownMenuShortcut>
       </DropdownMenuItem>
       <DropdownMenuSeparator />
