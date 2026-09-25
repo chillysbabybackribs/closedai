@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar.
 import { Button } from '../../components/ui/button.js'
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover.js'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../../components/ui/tooltip.js'
+import { cn } from '../../lib/utils.js'
 import type { SavedSite } from '../../shared/saved-sites.js'
 import type { BrowserDownload } from '../../shared/types.js'
 import { APP_ICONS, AppIconMark } from '../app-icons.js'
@@ -28,17 +29,17 @@ export type DockTrayProps = {
 }
 
 /**
- * The app tray: Magic UI's Dock holding one rounded-square tile per ClosedAI surface. Every tile is
- * the same shape whatever it holds (a line icon today, a full-colour picture later), so a new icon
- * never changes the tray's size or spacing. The dot, tooltip and lists stay neutral.
+ * The app tray: Magic UI's Dock holding one square slot per ClosedAI surface. Every slot is the same
+ * size whatever it holds (a Fluent colour icon standing on its own, or a picture filling it), so a
+ * new icon never changes the tray's size or spacing. The dot, tooltip and lists stay neutral.
  */
 export function DockTray(props: DockTrayProps): JSX.Element {
   const { apps, magnify, openStack, onOpenStack, onLaunch } = props
-  return <Dock data-slot="app-dock-tray" direction="bottom" iconSize={TRAY_ICON} iconMagnification={TRAY_MAGNIFIED}
+  return <Dock data-slot="app-dock-tray" data-magnify={magnify ? 'on' : 'off'} direction="bottom" iconSize={TRAY_ICON} iconMagnification={TRAY_MAGNIFIED}
     disableMagnification={!magnify}
     // The tab behind it is DockSurface, so the tray itself draws nothing. It fills the tab above the
     // strip: height TRAY_ICON + TAB_PADDING, and p-2.5 is TAB_PADDING at the sides and top.
-    className="mx-0 mt-0 h-[58px] gap-2 rounded-none border-0 bg-transparent p-2.5 pb-0 backdrop-blur-none">
+    className="group/tray mx-0 mt-0 h-[58px] gap-2 rounded-none border-0 bg-transparent p-2.5 pb-0 backdrop-blur-none">
     {apps.map((app) => <DockIcon key={app.id} padding={0} className="relative rounded-[22%]">
       {app.stack
         ? <Popover open={openStack === app.id} onOpenChange={(open) => onOpenStack(open ? app.id : null)}>
@@ -54,7 +55,10 @@ export function DockTray(props: DockTrayProps): JSX.Element {
 
 /** A tray icon with its tooltip; a stack's icon is also the trigger of its list. */
 function TrayButton({ app, stackOpen = false, onLaunch }: { app: TrayApp; stackOpen?: boolean; onLaunch?: (id: TrayAppId) => void }): JSX.Element {
-  const button = <button type="button" className="relative size-full rounded-[22%] outline-none focus-visible:ring-2 focus-visible:ring-ring"
+  // Growing is the hover feedback; with it off, or while a stack's list is open, a face shows instead.
+  // aria-expanded, not data-state: the tooltip's data-state overwrites the popover's on this button.
+  const button = <button type="button" className={cn('relative grid size-full place-items-center rounded-[22%] outline-none',
+    'focus-visible:ring-2 focus-visible:ring-ring aria-expanded:bg-accent group-data-[magnify=off]/tray:hover:bg-accent')}
     data-ui="dock.app" data-ui-key={app.id} aria-label={`${app.label}: ${app.note}`}
     onClick={onLaunch ? () => onLaunch(app.id) : undefined}>
     <TrayTile id={app.id} />
@@ -69,14 +73,13 @@ function TrayButton({ app, stackOpen = false, onLaunch }: { app: TrayApp; stackO
   </Tooltip>
 }
 
-/** One tile: a picture fills it, a line icon sits in its middle on the tile's plain face. */
+/** One slot: a picture fills it as a tile; an icon stands on its own, drawn to its shape with no face behind it. */
 function TrayTile({ id }: { id: TrayAppId }): JSX.Element {
   const icon = APP_ICONS[id]
-  return <Avatar className="size-full rounded-[22%] border border-border">
-    {icon.kind === 'picture' && <AvatarImage src={icon.src} alt="" draggable={false} />}
-    <AvatarFallback className="rounded-[22%] bg-secondary text-foreground">
-      {icon.kind === 'line' && <AppIconMark id={id} size={TRAY_ICON} className="size-[50%]" />}
-    </AvatarFallback>
+  if (icon.kind !== 'picture') return <AppIconMark id={id} size={TRAY_ICON} className="size-[84%]!" />
+  return <Avatar className="size-full rounded-[22%]">
+    <AvatarImage src={icon.src} alt="" draggable={false} />
+    <AvatarFallback className="rounded-[22%] bg-secondary" />
   </Avatar>
 }
 
