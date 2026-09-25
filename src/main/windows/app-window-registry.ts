@@ -215,7 +215,8 @@ export class AppWindowRegistry {
     window.on('blur', () => this.broadcastWindows())
     window.on('closed', () => {
       if (this.entries.get(id) === entry) this.entries.delete(id)
-      this.deps.releaseChats(id)
+      // At quit the chat service has already stopped; there is nothing left to release.
+      if (!this.shuttingDown) this.deps.releaseChats(id)
       this.broadcastWindows()
     })
     this.broadcastWindows()

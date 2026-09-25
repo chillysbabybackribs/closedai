@@ -76,6 +76,25 @@
   .toast[data-on] { opacity: 1; }
   .toast .sep { opacity: .5; margin: 0 5px; }
 
+  /* Box-select in the zoomed-out view: tiles under the box light up, releasing opens a view of only those. */
+  .world { transition: transform var(--dur) var(--ease), opacity 320ms var(--ease); }
+  .world[data-away] { opacity: 0; pointer-events: none; }
+  .marquee { position: absolute; border: 1px solid rgb(238 234 228 / 85%); background: rgb(63 95 134 / 24%); border-radius: 4px; pointer-events: none; z-index: 20; }
+  .tile[data-picked] { outline: calc(3px * var(--leaf-inv, 1)) solid #8fb2dc; outline-offset: calc(-1.5px * var(--leaf-inv, 1)); }
+  .icon[data-picked] { outline: 3px solid #8fb2dc; }
+
+  /* The opened selection is an ordinary workspace: tiles reflow with animation while one is dragged. */
+  .frame { position: absolute; inset: 0; background: var(--chassis); border-radius: 10px; opacity: 0; transition: opacity 320ms var(--ease); z-index: 10; }
+  .frame[data-on] { opacity: 1; }
+  .frame .tile { position: absolute; transform-origin: 0 0; transition: left 260ms var(--ease), top 260ms var(--ease), width 260ms var(--ease), height 260ms var(--ease), transform var(--dur) var(--ease), box-shadow 200ms; }
+  .frame .tile .hdr { cursor: grab; }
+  .frame .tile[data-float] { z-index: 5; box-shadow: 0 14px 40px rgb(0 0 0 / 38%), 0 0 0 1px rgb(0 0 0 / 12%); }
+  /* Lifted: collapses to its header under the pointer; left/top follow the pointer without easing. */
+  .frame .tile[data-lifted] { z-index: 30; transition: width 200ms var(--ease), height 200ms var(--ease), box-shadow 200ms; box-shadow: 0 12px 34px rgb(0 0 0 / 40%); opacity: .96; }
+  .frame .tile[data-lifted] .hdr { cursor: grabbing; }
+  .ghost { position: absolute; border-radius: 8px; background: rgb(238 234 228 / 16%); border: 1.5px solid rgb(238 234 228 / 55%); backdrop-filter: blur(6px); opacity: 0; pointer-events: none; z-index: 2; transition: left 260ms var(--ease), top 260ms var(--ease), width 260ms var(--ease), height 260ms var(--ease), opacity 160ms; }
+  .ghost[data-on] { opacity: 1; }
+
   .demo { display: flex; align-items: center; gap: 8px; margin-top: 10px; max-width: 1120px; color: #cfcac2; font-size: 12px; }
   .demo button { font: inherit; color: #eeeae4; background: rgb(238 234 228 / 12%); border: 1px solid rgb(238 234 228 / 20%); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
   .demo .grow { flex: 1; }
@@ -83,7 +102,7 @@
 </style>
 </head>
 <body>
-<h1>Zoom out to see every workspace — concept v2</h1>
+<h1>Zoom out to see every workspace — concept v3</h1>
 <p class="lede">An interactive HTML/CSS mock, not an image-generated concept. It uses the live warm-chat tokens and the direction-C tab header. <b class="hi">The window has no navigation bar.</b> A zoomed-in workspace looks the same as the app does today. When you zoom out, the whole workspace shrinks as-is and sits beside the others, so the zoomed-out view is the navigator. Workspaces nest: “Work” holds two of them, and “Archive” is nested deeply enough that its workspaces show as icons until you zoom into it.</p>
 
 <div class="fit" id="fit"><div class="viewport" id="vp">
@@ -95,6 +114,10 @@
   <button id="out">Zoom out</button><button id="back">Back</button><button id="fwd">Forward</button>
   <span class="grow"></span>
   <span><kbd>scroll</kbd> in overview · <kbd>Ctrl</kbd>+<kbd>scroll</kbd> or pinch inside a workspace · double-click a workspace to go in · double-click the background to go out · <kbd>Alt</kbd>+<kbd>←</kbd>/<kbd>→</kbd> back/forward</span>
+</div>
+<div class="demo">
+  <span class="grow"></span>
+  <span><b class="hi">New in v3:</b> zoomed out, <kbd>drag a box</kbd> over any tiles to open a view of only those · in that view, <kbd>drag a tile header</kbd> onto another tile's edge to dock it, or into a tile's middle to float it · <kbd>Esc</kbd> or double-click a gap to go back</span>
 </div>
 
 <p class="note"><b class="hi">What each step does.</b> Each scroll step moves one named level: workspace → “Work” → everything, the same “one step of the scroll wheel” as in the video. Scrolling in zooms toward whatever is under the pointer. At the top level, double-clicking the background returns you to the last workspace you were in, which matches his double-click toggle between the desktop and the overview. Back/forward goes through your zoom history (Alt+arrows, mouse side buttons). The transcript also mentions buttons and saved frames. Here a saved frame is just a named group you can zoom to, so no strip is needed.</p>
