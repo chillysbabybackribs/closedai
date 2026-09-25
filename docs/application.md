@@ -625,10 +625,11 @@ uses adds one. Folders main merely remembers (`workspace.recentProjects`) are no
 
 **View → Workspace overview** (`titlebar.menu-item` `overview`), Ctrl+Shift+O, or Ctrl+scroll down /
 a pinch zooms out: the live workspace shrinks into its slot beside the others, each labelled with
-its name and how many of its chats are running. Clicking a slot (`spaces.slot`, item is the space
+its name and how many of its chats are running, at most two to a row. Clicking a slot (`spaces.slot`, item is the space
 id), scrolling up over it, or Enter on it zooms in; Escape, Ctrl+Shift+O or double-clicking the
-background returns to the one you came from. The last row ends with **Add workspace** (`spaces.add`), a
-dashed tile a quarter as wide as a workspace, with a +; the grid is sized with it in place. It opens no folder picker; choosing it zooms toward it. The new space uses the folder you were working
+background returns to the one you came from. **Add workspace** (`spaces.add`) is a dashed
+workspace-sized tile with a +: beside the last space when there is an odd number of spaces, centred
+on its own row below them when the number is even; the grid is sized with it in place. It opens no folder picker; choosing it zooms toward it. The new space uses the folder you were working
 in (named after it, numbered when a space already has that name), starts a fresh chat (which
 inherits the focused chat's folder and model), and zooms into it; with no saved layout yet it opens
 as that chat on the left and the browser on the right. Back and forward (Alt+←/→ outside text

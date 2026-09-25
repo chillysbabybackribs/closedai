@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  ADD_TILE_WIDTH, IDENTITY_CAMERA, LABEL_HEIGHT, OVERVIEW_GAP, anchorChat, createZoomGesture, dropMissingStops, focusCamera, liveTransform, overviewSlots,
+  IDENTITY_CAMERA, LABEL_HEIGHT, OVERVIEW_GAP, anchorChat, createZoomGesture, dropMissingStops, focusCamera, liveTransform, overviewSlots,
   newSpace, readSpaces, resolveCurrent, saveSpaces, slotAt, spaceName, stepStop, visitStop, type Space, type SpaceHistory
 } from './spaces-model.ts'
 
@@ -75,20 +75,29 @@ test('overview slots keep the window shape, fit inside it and never overlap', ()
   assert.ok(Math.abs(only!.x + only!.width / 2 - size.width / 2) < 1e-9)
 })
 
-test('the Add workspace tile is a narrow tile ending the last row', () => {
-  for (const count of [1, 2, 3, 4, 6]) {
+test('the overview holds at most two spaces per row', () => {
+  for (const count of [2, 3, 5, 7]) {
+    const slots = overviewSlots(count, size)
+    for (const slot of slots) assert.ok(slots.filter((other) => other.y === slot.y).length <= 2)
+  }
+})
+
+test('the Add workspace tile is a slot beside an odd last space, or centred below an even grid', () => {
+  for (const count of [1, 2, 3, 4, 5, 6]) {
     const slots = overviewSlots(count, size, true)
     assert.equal(slots.length, count + 1)
     const last = slots[count - 1]!
     const tile = slots[count]!
-    assert.ok(Math.abs(tile.width - last.width * ADD_TILE_WIDTH) < 1e-9)
+    assert.equal(tile.width, last.width)
     assert.equal(tile.height, last.height)
-    assert.equal(tile.y, last.y)
-    assert.ok(Math.abs(tile.x - (last.x + last.width + OVERVIEW_GAP)) < 1e-9)
-    assert.ok(tile.x + tile.width <= size.width)
-    // The last row, tile included, stays centred.
-    const rowStart = slots.filter((slot) => slot.y === last.y)[0]!.x
-    assert.ok(Math.abs(rowStart + (tile.x + tile.width) - size.width) < 1e-6)
+    assert.ok(tile.x >= 0 && tile.x + tile.width <= size.width && tile.y + tile.height <= size.height)
+    if (count % 2 === 1) {
+      assert.equal(tile.y, last.y)
+      assert.ok(Math.abs(tile.x - (last.x + last.width + OVERVIEW_GAP)) < 1e-9)
+    } else {
+      assert.ok(tile.y > last.y)
+      assert.ok(Math.abs(tile.x + tile.width / 2 - size.width / 2) < 1e-9)
+    }
   }
 })
 
