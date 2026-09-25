@@ -159,7 +159,9 @@ export function appCommandActions(
         const host = requireHost(app, 'app commands')
         const opRaw = stringArg(input, 'op')
         if (opRaw === 'preview_html') {
-          const file = await resolveHtmlPreview(stringArg(input, 'path')!, chatCwd(host, context.paneId))
+          const previewPath = stringArg(input, 'path')
+          if (!previewPath) throw new Error('path is required for preview_html')
+          const file = await resolveHtmlPreview(previewPath, chatCwd(host, context.paneId))
           const hosts = { app, ui, page }
           return jsonResult(await openWorkspacePreview(file, context.paneId, hosts, booleanArg(input, 'reveal_browser', true)))
         }

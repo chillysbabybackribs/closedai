@@ -272,6 +272,13 @@ test('preview_html leaves a visible browser pane alone', async () => {
   assert.equal(calls.some((entry) => Array.isArray(entry) && entry[0] === 'revealBrowser'), false)
 })
 
+test('preview_html without a path names the missing argument', async () => {
+  const { call } = harness()
+  const result = await call('command', { action: 'browser_tab', op: 'preview_html' })
+  assert.equal(result.isError, true)
+  assert.match(textOf(result), /path is required for preview_html/)
+})
+
 test('ui actions resolve controls by id, item, match, selector, or coordinates', async () => {
   const { calls, call } = harness()
   await call('ui', { action: 'controls', surface: 'shell', query: 'row' })
