@@ -1,5 +1,5 @@
 import { useEffect, useRef, type RefObject } from 'react'
-import { Activity, CircleAlert, History, LoaderCircle, Pause, Star, Workflow, Wrench, X, type LucideIcon } from 'lucide-react'
+import { CircleAlert, LoaderCircle, Pause, X } from 'lucide-react'
 import type { ChatReviewQueue } from '../chat-history/review-queue.js'
 import type { TabActivity } from './tab-activity.js'
 import { tabCloseHint } from './layout-copy.js'
@@ -7,6 +7,7 @@ import { CHAT_DRAG_TYPE, isViewTabId } from './layout-tree.js'
 import { CHAT_TAB_DRAG_TYPE } from './layout-tabs.js'
 import { viewKindOf, type ViewKind } from './layout-views.js'
 import { usePaneTabActivity } from './chat-pane-tab-activity.js'
+import { AppIconMark } from '../app-icons.js'
 
 export function ChatTabs({ ids, activeId, busy, canClose, title, activity, reviewQueue, onSelect, onClose, onDrag }: {
   ids: string[]
@@ -51,12 +52,9 @@ export function ChatTabs({ ids, activeId, busy, canClose, title, activity, revie
   </div>
 }
 
-const VIEW_GLYPHS: Record<ViewKind, LucideIcon> = { trace: Activity, agents: Workflow, history: History, tools: Wrench, 'saved-sites': Star }
-
 /** A view tab shows its kind where a chat tab shows status: never a spinner, never unread. */
 function ViewTabGlyph({ kind }: { kind: ViewKind }) {
-  const Glyph = VIEW_GLYPHS[kind]
-  return <span className="chat-tab-indicator" aria-hidden="true"><Glyph size={13} /></span>
+  return <span className="chat-tab-indicator" aria-hidden="true"><AppIconMark id={kind} size={13} /></span>
 }
 
 function TabStatusIndicator({ status }: { status: TabActivity | undefined }) {
