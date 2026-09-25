@@ -875,10 +875,11 @@ either kind, so a new icon never changes the tray's size or spacing.
   (defaults 14 and 15 px, range 13–22) from chat zoom. Appearance → Background is opt-in
   (default Off): Desktop wallpaper paints the OS wallpaper (GNOME `picture-uri`/`picture-uri-dark`,
   read by main via `window:desktopWallpaper` in `main/desktop-wallpaper.ts`) behind the shell,
-  dimmed by its measured brightness. Tiles, headers, tab rails, the browser tab strip and toolbar,
-  and the Overview stage become glass: a once-blurred copy of the same image (`renderer/backdrop/`)
-  under a dark tint, painted with fixed attachment so it lines up with the desktop without a live
-  blur. Web pages, the composer, and view bodies (Tools, History, Agents) stay opaque.
+  dimmed by its measured brightness; it shows in the title bar and the gaps between tiles. Only a
+  chat's transcript area and the Overview stage are glass: a once-blurred copy of the same image
+  (`renderer/backdrop/`) under a near-opaque dark tint, painted with fixed attachment so it lines up
+  with the desktop without a live blur. Chat headers and tabs, the composer, the browser tile, and
+  view tiles (Tools, History, Agents) stay solid.
 - Ctrl/Cmd+, opens settings, Ctrl/Cmd+H focuses chat search, Ctrl/Cmd+N creates a chat,
   Ctrl/Cmd+W closes the focused chat tab or hides its tile (same path as the ×; the last
   remaining chat stays), Ctrl/Cmd+Shift+W closes the window, F11 toggles fullscreen, and Escape
