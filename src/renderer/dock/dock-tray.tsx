@@ -86,11 +86,11 @@ function StackList({ title, empty, children, footer }: { title: string; empty: s
   </div>
 }
 
-function StackRow({ ui, uiKey, icon, name, detail, disabled, onSelect }: {
-  ui: string; uiKey: string; icon: ReactNode; name: string; detail: string; disabled?: boolean; onSelect: () => void
+function StackRow({ control, uiKey, icon, name, detail, disabled, onSelect }: {
+  control: string; uiKey: string; icon: ReactNode; name: string; detail: string; disabled?: boolean; onSelect: () => void
 }): JSX.Element {
   return <Button variant="ghost" size="sm" className="h-auto justify-start gap-2.5 px-2 py-1.5 text-left font-normal disabled:opacity-100"
-    data-ui={ui} data-ui-key={uiKey} disabled={disabled} onClick={onSelect}>
+    data-ui={control} data-ui-key={uiKey} disabled={disabled} onClick={onSelect}>
     <span className="grid size-5 shrink-0 place-items-center [&_img]:size-4">{icon}</span>
     <span className="flex min-w-0 flex-col">
       <span className="truncate text-sm">{name}</span>
@@ -107,7 +107,7 @@ function SavedSitesStack({ savedSites, onOpenSite, onAllSavedSites }: DockTrayPr
   return <StackList title="Saved sites" empty={savedSites.length ? null : 'Star a page in the browser to keep it here.'}
     footer={<Button variant="ghost" size="sm" className="justify-start px-2 text-muted-foreground" data-ui="dock.all-saved-sites"
       onClick={onAllSavedSites}>All saved sites</Button>}>
-    {savedSites.slice(0, STACK_ROWS).map((site) => <StackRow key={site.id} ui="dock.saved-site" uiKey={site.id}
+    {savedSites.slice(0, STACK_ROWS).map((site) => <StackRow key={site.id} control="dock.saved-site" uiKey={site.id}
       icon={<BrowserSiteIcon favicon={site.favicon ?? undefined} />} name={site.title || siteHost(site.url)}
       detail={siteHost(site.url)} onSelect={() => onOpenSite(site.url)} />)}
   </StackList>
@@ -117,7 +117,7 @@ function DownloadsStack({ downloads, onRevealDownload }: DockTrayProps): JSX.Ele
   // Main lists newest first; a finished file opens its folder, a moving one only reports progress.
   const recent = downloads.slice(0, STACK_ROWS)
   return <StackList title="Downloads" empty={recent.length ? null : 'Files you download in the browser show here.'}>
-    {recent.map((download) => <StackRow key={download.id} ui="dock.download" uiKey={download.id}
+    {recent.map((download) => <StackRow key={download.id} control="dock.download" uiKey={download.id}
       icon={<AppIconMark id="downloads" size={15} />} name={download.filename} detail={downloadDetail(download)}
       disabled={!downloadActions(download).canReveal} onSelect={() => onRevealDownload(download.id)} />)}
   </StackList>

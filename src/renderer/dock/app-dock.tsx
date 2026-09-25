@@ -79,10 +79,10 @@ export function AppDock({ nav, chats, chatTitle, browserVisible, prefs, onPrefsC
             className={cn(nav.overview && 'bg-accent text-accent-foreground')} onClick={nav.toggleOverview}>
             <LayoutGrid aria-hidden="true" />Overview
           </Button>
-          <DockIconButton ui="dock.back" label="Back (Alt+Left)" disabled={!nav.canBack || nav.moving} onClick={() => nav.step(-1)}>
+          <DockIconButton control="dock.back" label="Back (Alt+Left)" disabled={!nav.canBack || nav.moving} onClick={() => nav.step(-1)}>
             <ChevronLeft aria-hidden="true" />
           </DockIconButton>
-          <DockIconButton ui="dock.forward" label="Forward (Alt+Right)" disabled={!nav.canForward || nav.moving} onClick={() => nav.step(1)}>
+          <DockIconButton control="dock.forward" label="Forward (Alt+Right)" disabled={!nav.canForward || nav.moving} onClick={() => nav.step(1)}>
             <ChevronRight aria-hidden="true" />
           </DockIconButton>
           <span className="ml-1.5 flex min-w-0 items-center gap-1 text-xs text-muted-foreground" aria-label={`You are in ${location.join(', ')}`}>
@@ -113,10 +113,10 @@ export function AppDock({ nav, chats, chatTitle, browserVisible, prefs, onPrefsC
           </Tooltip>
           <PopoverContent side="top" align="end" sideOffset={10} className="flex w-72 flex-col gap-3 p-3">
             <div className="text-xs font-medium text-muted-foreground">Dock</div>
-            <DockSetting ui="dock.keep-visible" title="Keep visible"
+            <DockSetting control="dock.keep-visible" title="Keep visible"
               detail="Off: the dock shows when the pointer reaches the bottom edge."
               checked={prefs.keepVisible} onChange={(keepVisible) => onPrefsChange({ keepVisible })} />
-            <DockSetting ui="dock.magnify" title="Magnify icons" detail="Icons grow under the pointer."
+            <DockSetting control="dock.magnify" title="Magnify icons" detail="Icons grow under the pointer."
               checked={prefs.magnify} onChange={(magnify) => onPrefsChange({ magnify })} />
           </PopoverContent>
         </Popover>
@@ -125,25 +125,25 @@ export function AppDock({ nav, chats, chatTitle, browserVisible, prefs, onPrefsC
   </TooltipProvider>
 }
 
-function DockIconButton({ ui, label, disabled, onClick, children }: {
-  ui: string; label: string; disabled: boolean; onClick: () => void; children: JSX.Element
+function DockIconButton({ control, label, disabled, onClick, children }: {
+  control: string; label: string; disabled: boolean; onClick: () => void; children: JSX.Element
 }): JSX.Element {
   return <Tooltip>
     <TooltipTrigger asChild>
-      <Button variant="ghost" size="icon-sm" data-ui={ui} aria-label={label} disabled={disabled} onClick={onClick}>{children}</Button>
+      <Button variant="ghost" size="icon-sm" data-ui={control} aria-label={label} disabled={disabled} onClick={onClick}>{children}</Button>
     </TooltipTrigger>
     <TooltipContent side="top">{label}</TooltipContent>
   </Tooltip>
 }
 
-function DockSetting({ ui, title, detail, checked, onChange }: {
-  ui: string; title: string; detail: string; checked: boolean; onChange: (checked: boolean) => void
+function DockSetting({ control, title, detail, checked, onChange }: {
+  control: string; title: string; detail: string; checked: boolean; onChange: (checked: boolean) => void
 }): JSX.Element {
   return <label className="flex cursor-pointer items-start justify-between gap-3">
     <span className="flex flex-col gap-0.5">
       <span className="text-sm">{title}</span>
       <span className="text-xs text-muted-foreground">{detail}</span>
     </span>
-    <Switch data-ui={ui} checked={checked} onCheckedChange={onChange} />
+    <Switch data-ui={control} checked={checked} onCheckedChange={onChange} />
   </label>
 }
