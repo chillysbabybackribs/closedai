@@ -24,6 +24,7 @@ import {
   targetValueExpression,
   uiStateExpression,
   revealChatTabExpression,
+  revealBrowserExpression,
   type AppPreparedClick
 } from './app-automation-dom.js'
 import { CdpSession } from './cdp/cdp-session.js'
@@ -103,6 +104,11 @@ export class AppAutomationAccess implements AppUiHost {
   async revealChatTab(paneId: string): Promise<void> {
     const { contents } = this.resolve()
     await contents.executeJavaScript(revealChatTabExpression(paneId), true)
+  }
+
+  async revealBrowser(): Promise<void> {
+    const { contents } = this.resolve()
+    await contents.executeJavaScript(revealBrowserExpression(), true)
   }
 
   async waitFor(options: AppWaitOptions, signal: AbortSignal): Promise<AppWaitResult> {

@@ -33,6 +33,7 @@ function harness(overrides: { ui?: Partial<AppUiHost>; app?: Partial<AppCommandH
       return { ...options, reached: true, elapsedMs: 75, targetVisible: 1, targetEnabled: 1, textMatched: null }
     },
     revealChatTab: async (paneId) => { calls.push(['revealChatTab', paneId]) },
+    revealBrowser: async () => { calls.push(['revealBrowser']) },
     ...overrides.ui
   }
   const app: AppCommandHost = {
@@ -224,8 +225,9 @@ test('preview_html resolves workspace html and reveals the browser when hidden',
   assert.equal(result.isError, undefined)
   assert.match(textOf(result), /mock\.html/)
   assert.match(textOf(result), /tab-preview/)
-  const toggle = calls.find((entry) => Array.isArray(entry) && entry[0] === 'click') as ['click', { control: string }]
-  assert.equal(toggle[1].control, 'composer.browser')
+  // The pane is shown through the ui host, not by clicking a control a layout may not render.
+  assert.ok(calls.some((entry) => Array.isArray(entry) && entry[0] === 'revealBrowser'))
+  assert.ok(!calls.some((entry) => Array.isArray(entry) && entry[0] === 'click'))
   assert.match(textOf(result), /"browserRevealed": true/)
 })
 
@@ -249,7 +251,7 @@ test('preview_html reports browserRevealed when opening the tab already showed t
   const result = await call('command', { action: 'browser_tab', op: 'preview_html', path: 'mock.html' })
   assert.equal(result.isError, undefined)
   assert.match(textOf(result), /"browserRevealed": true/)
-  assert.equal(calls.some((entry) => Array.isArray(entry) && entry[0] === 'click'), false)
+  assert.equal(calls.some((entry) => Array.isArray(entry) && entry[0] === 'revealBrowser'), false)
 })
 
 test('preview_html leaves a visible browser pane alone', async () => {
@@ -267,7 +269,7 @@ test('preview_html leaves a visible browser pane alone', async () => {
   })
   const result = await call('command', { action: 'browser_tab', op: 'preview_html', path: 'mock.html' })
   assert.match(textOf(result), /"browserRevealed": false/)
-  assert.equal(calls.some((entry) => Array.isArray(entry) && entry[0] === 'click'), false)
+  assert.equal(calls.some((entry) => Array.isArray(entry) && entry[0] === 'revealBrowser'), false)
 })
 
 test('ui actions resolve controls by id, item, match, selector, or coordinates', async () => {

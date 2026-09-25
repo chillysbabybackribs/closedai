@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type ReactElement, type Ref } from 'react'
 import type { BrowserSavedSitesController } from '../browser-saved-sites-controller.js'
 import { onAppWindowCommand } from '../app-windows/app-window-store.js'
+import { APP_REVEAL_BROWSER_EVENT } from '../../shared/app-ui-events.js'
 import { WorkspaceBrowser } from './workspace-browser.js'
 import type { AgentRunStartOptions } from '../../shared/agent-runs.js'
 import { type useChatController } from '../chat-controller.js'
@@ -126,6 +127,11 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
     setBrowserRevealVersion((value) => value + 1)
   }, [layout.detached, layout.toggleBrowser])
   useEffect(() => onAppWindowCommand((command) => { if (command.type === 'showBrowser') revealBrowser() }), [revealBrowser])
+  useEffect(() => {
+    // Workspace previews (closedai_app.command preview_html) show the pane through the ui host.
+    window.addEventListener(APP_REVEAL_BROWSER_EVENT, revealBrowser)
+    return () => window.removeEventListener(APP_REVEAL_BROWSER_EVENT, revealBrowser)
+  }, [revealBrowser])
   useEffect(() => { onBrowserVisibleChange?.(layout.browserVisible) }, [layout.browserVisible, onBrowserVisibleChange])
   useImperativeHandle(ref, () => ({
     splitChat: (chatId, edge) => layout.dock(chatId, chat.selectedPaneId, edge),

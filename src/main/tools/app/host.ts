@@ -85,6 +85,8 @@ export type AppUiHost = {
   scroll(target: AppScrollTarget): Promise<unknown>
   waitFor(options: AppWaitOptions, signal: AbortSignal): Promise<AppWaitResult>
   revealChatTab(paneId: string): Promise<void>
+  /** Show the browser pane; it keeps its saved position and tabs. */
+  revealBrowser(): Promise<void>
 }
 
 export type AppStateSection = 'workspace' | 'chat' | 'browser' | 'downloads' | 'window'

@@ -6,7 +6,7 @@ import type {
   AppUiTarget,
   AppWaitOptions
 } from './tools/app/host.js'
-import { APP_REVEAL_CHAT_TAB_EVENT } from '../shared/app-ui-events.js'
+import { APP_REVEAL_BROWSER_EVENT, APP_REVEAL_CHAT_TAB_EVENT } from '../shared/app-ui-events.js'
 
 // Renderer-side expressions for the ui host. Every function below that runs in the page is
 // stringified into the expression, so each takes its helpers as parameters instead of closing
@@ -387,6 +387,11 @@ function describeControl(element: Element, nameOf: NameOf, surfaceOf: SurfaceOf)
 /** Ask the renderer to bring a chat tab to the front when a view tab is covering it. */
 export function revealChatTabExpression(paneId: string): string {
   return `window.dispatchEvent(new CustomEvent(${JSON.stringify(APP_REVEAL_CHAT_TAB_EVENT)}, { detail: { paneId: ${JSON.stringify(paneId)} } }))`
+}
+
+/** Ask the renderer to show the browser pane in its saved position, the way the dock's Browser icon does. */
+export function revealBrowserExpression(): string {
+  return `window.dispatchEvent(new CustomEvent(${JSON.stringify(APP_REVEAL_BROWSER_EVENT)}))`
 }
 
 export type { AppUiState, AppConditionProbe }
