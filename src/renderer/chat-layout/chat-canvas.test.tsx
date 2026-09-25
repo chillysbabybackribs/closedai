@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { ChatCanvas } from './chat-canvas.tsx'
 import type { ChatLayout } from './layout-tree.ts'
 
-const windows = { float: () => {}, snap: () => {}, group: () => {}, raise: () => {}, minimize: () => {} }
+const windows = { change: () => {}, group: () => {}, raise: () => {}, minimize: () => {}, keepOnTop: () => {} }
 
 const multiPaneTree: ChatLayout = {
   kind: 'split',

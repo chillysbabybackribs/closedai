@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type JSX } from 'react'
-import { ChevronLeft, ChevronRight, LayoutGrid, SlidersHorizontal } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Columns2, LayoutGrid, SlidersHorizontal } from 'lucide-react'
 import { Button } from '../../components/ui/button.js'
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover.js'
 import { Switch } from '../../components/ui/switch.js'
@@ -31,6 +31,9 @@ export type AppDockProps = {
   onAllSavedSites: () => void
   minimized: readonly MinimizedWindow[]
   onRestoreWindow: (id: string) => void
+  /** Some window floats: Tile windows puts every window back into the last tiled layout. */
+  canTile: boolean
+  onTileWindows: () => void
 }
 
 /**
@@ -38,7 +41,7 @@ export type AppDockProps = {
  * have zoomed, and where you are. Centre: the app tray. Right: dock settings. It hides until the
  * pointer reaches the bottom edge unless Keep visible is on.
  */
-export function AppDock({ nav, chats, chatTitle, browserVisible, prefs, onPrefsChange, onLaunch, onOpenSite, onAllSavedSites, minimized, onRestoreWindow }: AppDockProps): JSX.Element {
+export function AppDock({ nav, chats, chatTitle, browserVisible, prefs, onPrefsChange, onLaunch, onOpenSite, onAllSavedSites, minimized, onRestoreWindow, canTile, onTileWindows }: AppDockProps): JSX.Element {
   const [openList, setOpenList] = useState<TrayAppId | 'settings' | null>(null)
   const [keyboard, setKeyboard] = useState(false)
   const { shown, show } = useDockReveal({ pinned: prefs.keepVisible, held: openList !== null || keyboard })
@@ -111,26 +114,36 @@ export function AppDock({ nav, chats, chatTitle, browserVisible, prefs, onPrefsC
             onRevealDownload={(id) => { void window.closedai.browserDownloads.reveal(id) }}
             minimized={minimized} onRestoreWindow={onRestoreWindow} />
         </div>
-        {/* Dock lists do not hand focus back on close: the button's tooltip would reopen over the page. */}
-        <Popover open={openList === 'settings'} onOpenChange={(open) => setOpenList(open ? 'settings' : null)}>
+        <div className="flex items-center gap-0.5">
           <Tooltip>
             <TooltipTrigger asChild>
-              <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon-sm" data-ui="dock.settings" aria-label="Dock settings"><SlidersHorizontal aria-hidden="true" /></Button>
-              </PopoverTrigger>
+              <Button variant="ghost" size="sm" data-ui="dock.tile-windows" disabled={!canTile} onClick={onTileWindows}>
+                <Columns2 aria-hidden="true" />Tile windows
+              </Button>
             </TooltipTrigger>
-            {openList !== 'settings' && <TooltipContent side="top">Dock settings</TooltipContent>}
+            <TooltipContent side="top">Put every window back into the last tiled layout (Ctrl+Shift+L)</TooltipContent>
           </Tooltip>
-          <PopoverContent side="top" align="end" sideOffset={10} className="flex w-72 flex-col gap-3 p-3"
-            onCloseAutoFocus={(event) => event.preventDefault()}>
-            <div className="text-xs font-medium text-muted-foreground">Dock</div>
-            <DockSetting control="dock.keep-visible" title="Keep visible"
-              detail="Off: the dock shows when the pointer reaches the bottom edge."
-              checked={prefs.keepVisible} onChange={(keepVisible) => onPrefsChange({ keepVisible })} />
-            <DockSetting control="dock.magnify" title="Magnify icons" detail="Icons grow under the pointer."
-              checked={prefs.magnify} onChange={(magnify) => onPrefsChange({ magnify })} />
-          </PopoverContent>
-        </Popover>
+          {/* Dock lists do not hand focus back on close: the button's tooltip would reopen over the page. */}
+          <Popover open={openList === 'settings'} onOpenChange={(open) => setOpenList(open ? 'settings' : null)}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="icon-sm" data-ui="dock.settings" aria-label="Dock settings"><SlidersHorizontal aria-hidden="true" /></Button>
+                </PopoverTrigger>
+              </TooltipTrigger>
+              {openList !== 'settings' && <TooltipContent side="top">Dock settings</TooltipContent>}
+            </Tooltip>
+            <PopoverContent side="top" align="end" sideOffset={10} className="flex w-72 flex-col gap-3 p-3"
+              onCloseAutoFocus={(event) => event.preventDefault()}>
+              <div className="text-xs font-medium text-muted-foreground">Dock</div>
+              <DockSetting control="dock.keep-visible" title="Keep visible"
+                detail="Off: the dock shows when the pointer reaches the bottom edge."
+                checked={prefs.keepVisible} onChange={(keepVisible) => onPrefsChange({ keepVisible })} />
+              <DockSetting control="dock.magnify" title="Magnify icons" detail="Icons grow under the pointer."
+                checked={prefs.magnify} onChange={(magnify) => onPrefsChange({ magnify })} />
+            </PopoverContent>
+          </Popover>
+        </div>
       </div>
     </div>
   </TooltipProvider>

@@ -83,6 +83,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
   }, [])
   const [browserVisible, setBrowserVisible] = useState(false)
   const [minimizedWindows, setMinimizedWindows] = useState<MinimizedWindow[]>([])
+  const [windowsFloating, setWindowsFloating] = useState(false)
   const savedSites = useBrowserSavedSitesController()
   // A shortcut or menu action main refused; shown under the title bar until dismissed.
   const [shellError, setShellError] = useState<string | null>(null)
@@ -117,6 +118,9 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
       } else if (shortcut === 'overview') {
         event.preventDefault()
         spacesRef.current?.toggleOverview()
+      } else if (shortcut === 'tile-windows') {
+        event.preventDefault()
+        workspaceRef.current?.tileWindows()
       } else if (shortcut === 'tools' || shortcut === 'trace') {
         event.preventDefault()
         workspaceRef.current?.openView(shortcut)
@@ -207,6 +211,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
       case 'history': workspaceRef.current?.toggleView('history').catch(report('Could not open chat history')); break
       case 'toggle-browser': workspaceRef.current?.toggleBrowser(); break
       case 'overview': spacesRef.current?.toggleOverview(); break
+      case 'tile-windows': workspaceRef.current?.tileWindows(); break
       case 'layout': workspaceRef.current?.openLayoutPresets(); break
       case 'toggle-fullscreen': window.closedai.window.toggleFullscreen().catch(report('Could not toggle fullscreen')); break
       case 'close-tab': workspaceRef.current?.closeFocused().catch(report('Could not close the chat')); break
@@ -232,6 +237,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
           onAction={menuAction}
           onSearchChats={focusSearch}
           layoutEnabled={Boolean(chat.selectedPaneId)}
+          tileEnabled={windowsFloating}
           onApplyLayoutPreset={(preset) => workspaceRef.current?.applyPreset(preset)}
         />
         <div ref={setSearchTools} className="titlebar-search-tools">
@@ -260,7 +266,8 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
             }}
             onOpenSite={(url) => { workspaceRef.current?.openSite(url).catch(report('Could not open the saved site')) }}
             onAllSavedSites={() => workspaceRef.current?.openView('saved-sites')}
-            minimized={minimizedWindows} onRestoreWindow={(id) => workspaceRef.current?.restoreWindow(id)} />}>
+            minimized={minimizedWindows} onRestoreWindow={(id) => workspaceRef.current?.restoreWindow(id)}
+            canTile={windowsFloating} onTileWindows={() => workspaceRef.current?.tileWindows()} />}>
           {({ browserHeld, spaceId }) => <DesktopWorkspace
             key={spaceId ?? chat.workspace?.cwd ?? chat.state.cwd}
             spaceId={spaceId}
@@ -275,6 +282,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
             onSavedSitesError={report('Could not update saved sites')}
             onBrowserVisibleChange={setBrowserVisible}
             onMinimizedChange={setMinimizedWindows}
+            onFloatingChange={setWindowsFloating}
             archiveChat={history.deleteRow}
           />}
         </SpacesStage>}
