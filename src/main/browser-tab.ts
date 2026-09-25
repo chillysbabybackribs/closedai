@@ -282,11 +282,26 @@ export class BrowserTab extends EventEmitter {
     } catch (error) {
       // Superseded and closing loads abort normally; classify everything else for callers.
       if (isAbortedNavigation(error)) return
+      if (await this.showsMediaDocument(url)) {
+        this.refreshVisibleSurface()
+        return
+      }
       const classified = classifyBrowserError(error, 'navigation-failed')
       this.state = this.navigationFailures.failMessage(this.state, this.liveContents?.getURL(), classified.message, url)
       this.emitState()
       throw classified
     }
+  }
+
+  // A top-level audio or video file plays in Chromium's media document, whose load stops
+  // without finishing; Electron rejects that as ERR_FAILED (-2) while the player is showing.
+  private async showsMediaDocument(url: string): Promise<boolean> {
+    const contents = this.liveContents
+    if (!contents || contents.getURL() !== url) return false
+    return contents.executeJavaScript(
+      'document.body?.childElementCount === 1 && document.body.firstElementChild.matches(\'video[name="media"]\')',
+      true
+    ).then((shown) => shown === true, () => false)
   }
 
   private framePainted(): Promise<void> {

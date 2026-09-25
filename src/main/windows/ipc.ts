@@ -12,6 +12,7 @@ export function registerAppWindowsIpc(ipcMain: Pick<IpcMain, 'handle'>, registry
   registerInvoke(ipcMain, IPC.invoke.windows.context, (event) => require().context(event.sender))
   registerInvoke(ipcMain, IPC.invoke.windows.list, () => require().list())
   registerInvoke(ipcMain, IPC.invoke.windows.detachTabs, (event, cwd, tabIds) => require().detach(event.sender, cwd, tabIds))
+  registerInvoke(ipcMain, IPC.invoke.windows.returnTabs, (event, tabIds) => require().returnTabs(event.sender, tabIds))
   registerInvoke(ipcMain, IPC.invoke.windows.revealTab, (event, tabId) => require().revealTab(event.sender, tabId))
   registerInvoke(ipcMain, IPC.invoke.windows.showBrowser, () => require().showBrowser())
 }

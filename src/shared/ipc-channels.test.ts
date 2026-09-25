@@ -22,6 +22,7 @@ test('IPC invoke constants cover the typed invoke registry', () => {
     'windows:context',
     'windows:list',
     'windows:detachTabs',
+    'windows:returnTabs',
     'windows:revealTab',
     'windows:showBrowser',
     'tools:setEnabledMany',

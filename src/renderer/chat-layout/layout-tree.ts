@@ -1,4 +1,5 @@
 import { DOCK_HEIGHT, dockRowRails, dockedGroups, expandedTree, hasBrowser, layoutGroups, type DockGroup } from './layout-docking.js'
+import { MAIN_WINDOW_ID } from '../../shared/app-windows.js'
 export type DockEdge = 'left' | 'right' | 'top' | 'bottom'
 export type ChatLayout = { kind: 'pane'; id: string; tabs?: string[]; docked?: boolean; dockNumber?: number } | {
   kind: 'split'; id: string; axis: 'horizontal' | 'vertical'; ratio: number
@@ -203,7 +204,9 @@ export function layoutGeometry(tree: ChatLayout, width: number, height: number, 
 /** A view pinned to one chat; unpinned views follow their tile and are absent here. */
 export type ViewScopes = Record<string, { pinnedChatId: string }>
 export type SavedChatLayout = { tree: ChatLayout | null; browserVisible: boolean; views?: ViewScopes }
-const storageKey = (cwd: string): string => `closedai.chat-layout.v1:${cwd}`
+// A detached window keeps its own layout for the project beside the main window's.
+const storageKey = (cwd: string, windowId?: string): string =>
+  `closedai.chat-layout.v1:${cwd}${windowId && windowId !== MAIN_WINDOW_ID ? `#window:${windowId}` : ''}`
 
 function validViewScopes(raw: unknown, tabs: Set<string>): ViewScopes {
   const views: ViewScopes = {}
@@ -217,10 +220,10 @@ function validViewScopes(raw: unknown, tabs: Set<string>): ViewScopes {
   return views
 }
 
-export function readLayout(storage: Pick<Storage, 'getItem'>, cwd: string): SavedChatLayout {
+export function readLayout(storage: Pick<Storage, 'getItem'>, cwd: string, windowId?: string): SavedChatLayout {
   const fallback = { tree: null, browserVisible: true }
   try {
-    const raw = JSON.parse(storage.getItem(storageKey(cwd)) ?? 'null') as SavedChatLayout | null
+    const raw = JSON.parse(storage.getItem(storageKey(cwd, windowId)) ?? 'null') as SavedChatLayout | null
     const seen = new Set<string>()
     const chats = new Set<string>()
     const validate = (node: ChatLayout | null, depth = 0): boolean => {
@@ -250,6 +253,6 @@ export function readLayout(storage: Pick<Storage, 'getItem'>, cwd: string): Save
   } catch { return fallback }
 }
 
-export function saveLayout(storage: Pick<Storage, 'setItem'>, cwd: string, layout: SavedChatLayout): void {
-  try { storage.setItem(storageKey(cwd), JSON.stringify(layout)) } catch { /* Best-effort preference. */ }
+export function saveLayout(storage: Pick<Storage, 'setItem'>, cwd: string, layout: SavedChatLayout, windowId?: string): void {
+  try { storage.setItem(storageKey(cwd, windowId), JSON.stringify(layout)) } catch { /* Best-effort preference. */ }
 }

@@ -3,7 +3,9 @@ import { execFileSync } from 'node:child_process'
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { app } from 'electron'
+import { app, BrowserWindow } from 'electron'
+import { BrowserService } from '../src/main/browser-service.js'
+import { EPHEMERAL_BROWSER_HISTORY } from '../src/main/browser-history-store.js'
 import { recordPageVideo } from '../src/main/video-render/page-recorder.js'
 
 const root = process.env.CLOSEDAI_VIDEO_CHECK_ROOT
@@ -74,6 +76,19 @@ app.whenReady().then(async () => {
     assert.ok(near(pixels.timer, timer), `frame ${frame} timer ${pixels.timer} expected ${timer}`)
     assert.ok(near(pixels.raf, raf), `frame ${frame} raf ${pixels.raf} expected ${raf}`)
   }
+
+  // The embedded browser opens the result as a playing media document, not a failed load.
+  const window = new BrowserWindow({ show: false, width: 800, height: 600 })
+  const browser = new BrowserService(window, EPHEMERAL_BROWSER_HISTORY, { initialUrl: 'about:blank' })
+  browser.setBounds({ x: 0, y: 0, width: 800, height: 600, visible: true })
+  const videoTab = await browser.navigateTab(pathToFileURL(output).href, true)
+  const player = await browser.contentsOf(videoTab)!.executeJavaScript(
+    `new Promise((r) => { const v = document.querySelector('video'); const done = () => r({ duration: v.duration, error: !!v.error }); v.readyState >= 1 ? done() : v.addEventListener('loadedmetadata', done) })`
+  )
+  assert.equal(player.error, false)
+  assert.ok(Math.abs(player.duration - 2) < 0.2, `player duration ${player.duration}`)
+  assert.equal(browser.snapshot().navigationError ?? null, null)
+  window.destroy()
 
   // Cancelling mid-render leaves no file behind.
   const controller = new AbortController()

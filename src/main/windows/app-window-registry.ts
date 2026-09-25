@@ -147,6 +147,20 @@ export class AppWindowRegistry {
     return id
   }
 
+  /** Hand tabs from the sender's detached window back to the main window. */
+  returnTabs(source: Pick<WebContents, 'id'>, tabIds: string[]): void {
+    const from = this.require(source)
+    const main = this.entries.get(MAIN_WINDOW_ID)
+    if (from.main || !main) return
+    const tabs = tabIds.filter((id) => typeof id === 'string' && id)
+    from.tabIds = from.tabIds.filter((id) => !tabs.includes(id))
+    for (const id of tabs) from.visible.delete(id)
+    if (from.cwd) this.deps.store.put({ id: from.id, cwd: from.cwd, tabIds: from.tabIds })
+    this.command(main, { type: 'adoptTabs', tabIds: tabs })
+    this.raise(main)
+    this.broadcastWindows()
+  }
+
   /** Bring the other window holding this tab forward; false when no other window holds it. */
   revealTab(source: Pick<WebContents, 'id'>, tabId: string): boolean {
     const from = this.idOf(source)
@@ -196,6 +210,9 @@ export class AppWindowRegistry {
   private track(id: AppWindowId, main: boolean, cwd: string | null, window: RegistryWindow, tabs: string[]): Entry {
     const entry: Entry = { id, main, cwd, window, visible: new Set(), tabIds: [...tabs], initialTabs: [...tabs], keep: false }
     this.entries.set(id, entry)
+    // Renderers read focus from the list: a window only adopts selections made while it is in front.
+    window.on('focus', () => this.broadcastWindows())
+    window.on('blur', () => this.broadcastWindows())
     window.on('closed', () => {
       if (this.entries.get(id) === entry) this.entries.delete(id)
       this.deps.releaseChats(id)

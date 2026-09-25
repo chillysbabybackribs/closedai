@@ -42,6 +42,8 @@ export type ClosedaiApi = {
     list: () => Promise<AppWindowInfo[]>
     /** Open a new window for this project holding these tabs; resolves once main has recorded it. */
     detachTabs: (cwd: string, tabIds: string[]) => Promise<AppWindowId>
+    /** Move tabs from this detached window back into the main window. */
+    returnTabs: (tabIds: string[]) => Promise<void>
     /** Focus the other window holding this tab; false when no other window holds it. */
     revealTab: (tabId: string) => Promise<boolean>
     /** Raise the main window and show its browser. */
