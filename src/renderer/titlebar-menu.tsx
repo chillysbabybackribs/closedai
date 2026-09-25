@@ -13,7 +13,7 @@ export type MenuAction =
   | 'new-chat' | 'history' | 'settings' | 'close-tab' | 'close-window' | 'search-chats'
   | 'toggle-browser' | 'saved-sites' | 'layout' | 'toggle-fullscreen'
   | 'agents' | 'tools' | 'compact' | 'stop-turn'
-  | 'trace' | 'reload' | 'devtools' | 'overview'
+  | 'trace' | 'reload' | 'devtools' | 'overview' | 'tile-windows'
 
 type MenuControlUi = { control: 'layout.dock-preset' | 'layout.preset-menu-custom'; item?: string }
 
@@ -73,6 +73,7 @@ const MENUS: Menu[] = [
     rows: [
       { key: 'toggle-browser-pane', label: 'Toggle browser pane', action: 'toggle-browser' },
       { key: 'overview', label: 'Workspace overview', shortcut: 'Ctrl+Shift+O', action: 'overview' },
+      { key: 'tile-windows', label: 'Tile windows', shortcut: 'Ctrl+Shift+L', action: 'tile-windows' },
       SEP,
       ...VIEW_LAYOUT_ROWS,
       SEP,
@@ -119,6 +120,8 @@ export type TitlebarMenuProps = {
   onAction: (action: Exclude<MenuAction, 'search-chats'>) => void
   onSearchChats: () => void
   layoutEnabled: boolean
+  /** Some window floats, so Tile windows has something to put back. */
+  tileEnabled: boolean
   onApplyLayoutPreset: (preset: LayoutPreset) => void
 }
 
@@ -132,11 +135,13 @@ export const TitlebarMenu = memo(function TitlebarMenu({
   onAction,
   onSearchChats,
   layoutEnabled,
+  tileEnabled,
   onApplyLayoutPreset
 }: TitlebarMenuProps): JSX.Element {
   const searchOnClose = useRef(false)
   const disabled = (row: Extract<MenuRow, { key: string }>): boolean => {
     if (row.command) return zoomCommandIsDisabled(row.command, chatZoom)
+    if (row.action === 'tile-windows') return !tileEnabled
     if (row.layoutPreset || row.action === 'toggle-browser' || row.action === 'layout' || row.action === 'overview') return !layoutEnabled
     if (row.action === 'compact') return !compactEnabled
     if (row.action === 'stop-turn') return !stopEnabled
