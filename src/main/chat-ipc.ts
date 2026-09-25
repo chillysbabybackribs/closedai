@@ -1,5 +1,6 @@
 import { dialog, shell, type IpcMain, type WebContents } from 'electron'
 import { MAIN_WINDOW_ID } from '../shared/app-windows.js'
+import { stat } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import type { ChatAttachment } from '../shared/chat.js'
 import { CHAT_TURN_PAGE_SIZE } from '../shared/chat.js'
@@ -71,6 +72,22 @@ export function registerChatIpc(ipcMain: IpcMain, getService: () => ChatWorkspac
     return requireService().selectChatProject(paneId, resolve(projectPath))
   })
   ipcMain.handle(IPC.invoke.chat.clearProject, (_event, paneId: string) => requireService().selectChatProject(paneId, null))
+  // A space is a project the workspace can show; switching keeps every chat's own folder and runtime.
+  ipcMain.handle(IPC.invoke.chat.selectSpace, async (_event, projectPath: string | null) => {
+    if (projectPath === null) return requireService().selectProject(null)
+    const path = resolve(projectPath)
+    if (!(await stat(path).then((entry) => entry.isDirectory(), () => false))) throw new Error(`${path} is no longer a folder`)
+    return requireService().selectProject(path)
+  })
+  ipcMain.handle(IPC.invoke.chat.openSpace, async () => {
+    const result = await dialog.showOpenDialog({
+      title: 'Open a project folder as a space',
+      properties: ['openDirectory', 'createDirectory']
+    })
+    if (result.canceled || !result.filePaths[0]) return false
+    await requireService().selectProject(resolve(result.filePaths[0]))
+    return true
+  })
   // Needs no service: a first-run screen asks this before any chat has started a provider.
   ipcMain.handle(IPC.invoke.chat.providerAvailability, () => detectProviderAvailability())
   ipcMain.handle(IPC.invoke.chat.login, async () => {

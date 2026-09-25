@@ -91,6 +91,8 @@ export type IpcInvokeChannels = {
   'chat:chooseProject': { args: [ChatPaneId]; result: void }
   'chat:selectProject': { args: [ChatPaneId, string]; result: void }
   'chat:clearProject': { args: [ChatPaneId]; result: void }
+  'chat:selectSpace': { args: [string | null]; result: void }
+  'chat:openSpace': { args: []; result: boolean }
   'chat:providerAvailability': { args: []; result: ProviderAvailability[] }
   'agentRuns:list': { args: []; result: AgentRun[] }
   'agentRuns:start': { args: [string, AgentRunStartOptions]; result: AgentRun }
@@ -231,6 +233,8 @@ export const IPC = {
       chooseProject: 'chat:chooseProject',
       selectProject: 'chat:selectProject',
       clearProject: 'chat:clearProject',
+      selectSpace: 'chat:selectSpace',
+      openSpace: 'chat:openSpace',
       providerAvailability: 'chat:providerAvailability'
     },
     agentRuns: {

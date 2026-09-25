@@ -96,6 +96,8 @@ test('IPC invoke constants cover the typed invoke registry', () => {
     'chat:chooseProject',
     'chat:selectProject',
     'chat:clearProject',
+    'chat:selectSpace',
+    'chat:openSpace',
     'chat:providerAvailability',
     'credentials:status',
     'credentials:list',

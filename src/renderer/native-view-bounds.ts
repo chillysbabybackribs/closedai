@@ -18,6 +18,8 @@ import type { BrowserBounds } from '../shared/types.js'
 //    reads wait for the glide to land, then re-measure the settled box.
 //  - a drag placeholder shows its tile as a scaled miniature that keeps the pre-drag size, so
 //    the page keeps its bounds until the release glide fills the tile.
+//  - a zoomed-out space (`data-native-bounds-hold`) is the whole workspace scaled down; its page
+//    keeps its full-size bounds behind the still, and the hold lifts with the occlusion.
 //
 // `visible` is authoritative rather than inferred from the rect: main hides the view outright
 // when another surface is showing, so no sliver survives a collapsed host.
@@ -119,7 +121,7 @@ export function useNativeViewBounds(
     }
 
     const sync = (): void => {
-      if (host.closest('[data-drag-placeholder]')) return
+      if (host.closest('[data-drag-placeholder], [data-native-bounds-hold]')) return
       const glides = transformGlides(host)
       if (glides.length) {
         if (awaitingLanding) return
