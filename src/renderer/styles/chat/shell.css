@@ -89,10 +89,6 @@
   pointer-events: none;
 }
 
-.chat-pane > .composer {
-  grid-row: 3;
-}
-
 .chat-scroll {
   grid-row: 2;
   --chat-inline: 14px;
@@ -100,14 +96,23 @@
   --transcript-answer-gap: 14px;
   min-width: 0;
   min-height: 0;
-  padding: 0 0 16px;
+  padding: 0;
   overflow-y: auto;
   /* The message scroller owns every scroll correction (follow, prompt anchoring, prepend
      preservation); Chromium's native anchoring double-corrects against it and jitters. */
   overflow-anchor: none;
   overscroll-behavior: contain;
   scrollbar-width: none;
-  scroll-padding-bottom: 16px;
+  scroll-padding-bottom: calc(var(--composer-dock-height, 0px) + 16px);
+  /* The composer floats over the foot of the scroller (composer.css): text fades as it slides
+     under the capsule, so nothing sharp shows in the gap beneath it. */
+  mask-image: linear-gradient(to bottom, #000 calc(100% - var(--composer-dock-height, 0px) + 22px), transparent calc(100% - 8px));
+}
+
+.prompt-chat-composer-centered .chat-scroll { mask-image: none; }
+
+.chat-scroll-root [data-slot="message-scroller-button"][data-direction="end"] {
+  bottom: calc(var(--composer-dock-height, 0px) + 6px);
 }
 
 .chat-scroll-content {
@@ -116,9 +121,9 @@
   justify-content: flex-start;
   min-height: 100%;
   gap: 0;
-  /* Bottom padding is the breathing room between the last line of a response and the composer's
-     top edge. It sits inside the scroll content so it survives being scrolled to the bottom. */
-  padding: 12px 0 18px;
+  /* Bottom padding clears the floating composer dock plus breathing room above the capsule. It
+     sits inside the scroll content so it survives being scrolled to the bottom. */
+  padding: 12px 0 calc(var(--composer-dock-height, 0px) + 18px);
 }
 
 .chat-scroll-content > [data-slot="message-scroller-item"] {

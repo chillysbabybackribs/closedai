@@ -1,26 +1,52 @@
-/* The composer (composer.tsx): one stack — draft card plus a footer bar. The setup panel
-   (composer-setup-menu.tsx) opens from the footer and holds model, effort, folder, and context.
-   Every colour is a chat theme token so the stack and its portal-rendered panel share one surface. */
+/* The composer (composer.tsx): one glass capsule floating over the foot of the transcript.
+   Tools, the draft, the setup chip and Send share a single row; the draft grows upward. The
+   capsule is the chat's one see-through surface: a live blur of the transcript scrolling under
+   it. Setup panels (composer-setup-menu.tsx) open from the chip. */
 
 @import "./composer-setup.css";
 
-.composer {
-  container: composer / inline-size;
-  grid-row: 3;
-  min-width: 0;
-  padding: 6px var(--chat-column-gutter, 16px) 10px;
-  background: transparent;
+/* Capsule material, shared with the agent strip and the sent user message so the draft and its
+   bubble read as one object before and after sending. Theme tokens keep it right on warm paper. */
+.chat-pane {
+  --capsule-fill: color-mix(in srgb, var(--antigravity-card-bg, #262626) 74%, transparent);
+  --capsule-edge: color-mix(in srgb, var(--foreground) 11%, transparent);
+  --capsule-sheen: color-mix(in srgb, var(--foreground) 7%, transparent);
+  --capsule-shadow: 0 1px 2px rgb(0 0 0 / 28%), 0 14px 34px rgb(0 0 0 / 32%);
+  --capsule-radius: 20px;
+  --composer-accent: var(--tab-accent, #8ab4f8);
 }
 
-/* Before the first message, center the composer. Absolute positioning also lets the empty
-   scroller fill the pane; normal flow takes over as soon as a transcript item appears. */
-.prompt-chat-composer-centered .composer {
+/* The dock layer: absolutely placed over the scroller, which pads its end by the dock's height
+   (chat-pane.tsx publishes --composer-dock-height). Only its visible pieces take the pointer, so
+   the transcript beside the capsule stays selectable. */
+.chat-composer-dock {
   position: absolute;
-  z-index: 2;
-  top: 50%;
+  z-index: 3;
   right: 0;
+  bottom: 0;
   left: 0;
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+}
+
+.chat-composer-dock > *:not(.composer),
+.composer > * {
+  pointer-events: auto;
+}
+
+/* Before the first message the capsule sits in the middle of the empty pane. */
+.prompt-chat-composer-centered .chat-composer-dock {
+  top: 50%;
+  bottom: auto;
   transform: translateY(-50%);
+}
+
+.composer {
+  container: composer / inline-size;
+  min-width: 0;
+  padding: 6px var(--chat-column-gutter, 16px) 12px;
+  background: transparent;
 }
 
 .composer-stack {
@@ -28,64 +54,66 @@
   flex-direction: column;
   max-width: calc(var(--chat-column-width) + 64px);
   margin-inline: auto;
+  padding: 0;
   overflow: hidden;
-  border: 1px solid var(--hairline-strong);
-  border-radius: 14px;
-  background: var(--antigravity-card-bg, #252526);
-  box-shadow: inset 0 1px 0 var(--surface-highlight), 0 4px 14px rgb(0 0 0 / 14%);
+  border: 1px solid var(--capsule-edge);
+  border-radius: var(--capsule-radius);
+  background: var(--capsule-fill);
+  box-shadow: inset 0 1px 0 var(--capsule-sheen), var(--capsule-shadow);
+  backdrop-filter: blur(22px) saturate(1.5);
   transition: border-color 140ms ease, box-shadow 140ms ease;
 }
 
 .composer-stack:focus-within {
-  border-color: var(--focus-ink);
-  box-shadow: inset 0 1px 0 var(--surface-highlight), 0 0 0 2px color-mix(in srgb, var(--focus-ink) 12%, transparent);
-}
-
-.composer-card {
-  display: flex;
-  flex-direction: column;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
+  border-color: color-mix(in srgb, var(--composer-accent) 55%, transparent);
+  box-shadow:
+    inset 0 1px 0 var(--capsule-sheen),
+    0 0 0 3px color-mix(in srgb, var(--composer-accent) 16%, transparent),
+    var(--capsule-shadow);
 }
 
 .composer-card .prompt-attachments {
-  padding: 8px 8px 0;
+  padding: 8px 10px 0;
 }
 
 /* The line. Controls sit on the bottom edge so a draft grows upward above them. */
 .composer-row {
   display: flex;
   align-items: flex-end;
-  gap: 8px;
-  min-height: 52px;
-  padding: 8px 10px 8px 14px;
+  gap: 6px;
+  min-height: 48px;
+  padding: 7px 7px 7px 8px;
 }
 
-.composer-textarea {
+.composer-tools {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 1px;
+  height: 34px;
+}
+
+.composer-input-wrap {
+  position: relative;
   flex: 1 1 auto;
   align-self: center;
   min-width: 0;
-  min-height: 36px;
+}
+
+.composer-textarea {
+  min-width: 0;
+  min-height: 34px;
   max-height: var(--composer-max-height, min(36vh, 240px));
-  padding: 4px 0;
+  padding: 6px 2px;
   color: var(--foreground);
   font-size: var(--composer-font-size, 15px);
   font-weight: 400;
   line-height: 22px;
 }
 
-.composer-input-wrap {
-  position: relative;
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
 .composer-suggestion {
   position: absolute;
-  inset: 8px 0 auto;
+  inset: 6px 0 auto 2px;
   display: flex;
   align-items: flex-start;
   gap: 8px;
@@ -126,72 +154,111 @@
   opacity: 0.85;
 }
 
-/* Footer attach and other quiet icon controls. */
+/* Quiet round icon controls on the capsule's left: attach, agents, fresh context. */
 .composer-tool {
+  position: relative;
+  display: inline-grid;
   flex: none;
-  height: 30px;
+  place-items: center;
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  padding: 0;
   border: 0;
-  border-radius: 8px;
+  border-radius: 999px;
   background: transparent;
-  color: color-mix(in srgb, var(--foreground) 62%, transparent);
+  box-shadow: none;
+  color: color-mix(in srgb, var(--foreground) 58%, transparent);
+  cursor: pointer;
   transition: background-color 120ms ease, color 120ms ease;
 }
 
-.composer-tool {
-  width: 30px;
-  min-width: 30px;
-  padding: 0;
-  box-shadow: none;
-}
-
-.composer-tool:not(:disabled):hover {
-  background: color-mix(in srgb, var(--foreground) 7%, transparent);
+.composer-tool:not(:disabled):hover,
+.composer-tool[data-state='open'] {
+  background: color-mix(in srgb, var(--foreground) 8%, transparent);
   color: var(--foreground);
 }
 
-/* Footer: attach, model setup trigger, and folder trigger. */
-.composer-footer {
+.composer-tool:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.composer-tool:focus-visible {
+  outline: 2px solid var(--composer-accent);
+  outline-offset: -2px;
+}
+
+.composer-tool-attention:not(:disabled) {
+  color: var(--foreground);
+}
+
+.composer-tool-count {
+  position: absolute;
+  top: 3px;
+  right: 2px;
+  min-width: 13px;
+  height: 13px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: var(--composer-accent);
+  color: #111;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 13px;
+  text-align: center;
+}
+
+/* Fresh context names itself once the window is half full: an icon grows into a chip. */
+.composer-chip {
+  display: inline-flex;
+  width: auto;
+  gap: 6px;
+  padding: 0 11px 0 9px;
+}
+
+.composer-chip-continue:not(:disabled) {
+  background: color-mix(in srgb, var(--composer-accent) 14%, transparent);
+  color: color-mix(in srgb, var(--composer-accent) 70%, var(--foreground));
+}
+
+.composer-chip-continue:not(:disabled):hover {
+  background: color-mix(in srgb, var(--composer-accent) 22%, transparent);
+  color: var(--foreground);
+}
+
+.composer-chip-label {
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* The setup chip: model and folder as one rounded chip with two halves, each opening its own
+   panel. It reads as the capsule's metadata, quieter than the draft. */
+.composer-setup-chip {
   display: flex;
+  flex: 0 1 auto;
+  margin-bottom: 1px;
   align-items: stretch;
-  min-height: 38px;
-  padding: 3px 4px;
-  border-top: 1px solid color-mix(in srgb, var(--foreground) 6%, transparent);
-  background: color-mix(in srgb, var(--foreground) 2%, var(--antigravity-card-bg, #252526));
-}
-
-.composer-footer-attach {
-  display: flex;
-  flex: none;
-  align-items: center;
-  padding: 0 2px;
-}
-
-.composer-footer-attach .composer-tool {
-  width: 30px;
-  min-width: 30px;
-  height: 30px;
-  border-radius: 7px;
-}
-
-.composer-footer-setup {
-  display: flex;
-  flex: 1 1 auto;
-  align-items: stretch;
-  gap: 0;
   min-width: 0;
+  max-width: 48%;
+  height: 32px;
+  border: 1px solid color-mix(in srgb, var(--foreground) 9%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--foreground) 4%, transparent);
 }
 
-.composer-footer-model-trigger,
-.composer-footer-folder-trigger {
+.composer-chip-model-trigger,
+.composer-chip-folder-trigger {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   min-width: 0;
-  padding: 5px 8px;
-  border-radius: 7px;
-  color: color-mix(in srgb, var(--foreground) 82%, transparent);
+  padding: 0 10px;
   border: 0;
+  border-radius: 999px;
   background: transparent;
+  color: color-mix(in srgb, var(--foreground) 80%, transparent);
   font: inherit;
   font-size: 11.5px;
   font-weight: 500;
@@ -201,92 +268,104 @@
   transition: background-color 120ms ease, color 120ms ease;
 }
 
-.composer-footer-model-trigger {
+.composer-chip-model-trigger {
   flex: 0 1 auto;
-  justify-content: flex-start;
+  padding-right: 8px;
 }
 
-.composer-footer-folder-trigger {
-  flex: 0 1 auto;
-  max-width: 46%;
-  margin-left: auto;
+/* A hairline between the halves, drawn on the folder so it sits inside the chip's border. */
+.composer-chip-folder-trigger {
+  position: relative;
+  flex: 0 2 auto;
+  padding-left: 9px;
+  color: color-mix(in srgb, var(--foreground) 62%, transparent);
 }
 
-.composer-footer-model-trigger:not(:disabled):hover,
-.composer-footer-model-trigger[data-state='open'],
-.composer-footer-folder-trigger:not(:disabled):hover,
-.composer-footer-folder-trigger[data-state='open'] {
-  background: color-mix(in srgb, var(--foreground) 6%, transparent);
+.composer-chip-folder-trigger::before {
+  content: '';
+  position: absolute;
+  top: 9px;
+  bottom: 9px;
+  left: 0;
+  width: 1px;
+  background: color-mix(in srgb, var(--foreground) 12%, transparent);
+}
+
+.composer-chip-model-trigger:not(:disabled):hover,
+.composer-chip-model-trigger[data-state='open'],
+.composer-chip-folder-trigger:not(:disabled):hover,
+.composer-chip-folder-trigger[data-state='open'] {
+  background: color-mix(in srgb, var(--foreground) 8%, transparent);
   color: var(--foreground);
 }
 
-.composer-footer-model-trigger:focus-visible,
-.composer-footer-folder-trigger:focus-visible {
-  outline: 2px solid var(--ring);
+.composer-chip-model-trigger:focus-visible,
+.composer-chip-folder-trigger:focus-visible {
+  outline: 2px solid var(--composer-accent);
   outline-offset: -2px;
 }
 
-.composer-footer-model-name {
+.composer-chip-model-name,
+.composer-chip-folder-name {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.composer-footer-chevron {
+.composer-chip-chevron {
   flex: none;
   opacity: 0.55;
 }
 
-.composer-footer-model-trigger:not(:disabled):hover .composer-footer-chevron,
-.composer-footer-model-trigger[data-state='open'] .composer-footer-chevron {
+.composer-chip-model-trigger:not(:disabled):hover .composer-chip-chevron,
+.composer-chip-model-trigger[data-state='open'] .composer-chip-chevron {
   opacity: 0.85;
 }
 
-.composer-footer-folder-icon {
+.composer-chip-folder-icon {
   flex: none;
-  opacity: 0.88;
+  opacity: 0.8;
 }
 
-.composer-footer-folder-name {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+/* Narrow tiles keep the draft wide: the folder folds to its icon, then the chip shrinks. */
+@container composer (max-width: 540px) {
+  .composer-chip-folder-name { display: none; }
+  .composer-chip-folder-trigger { padding-inline: 9px 10px; }
 }
 
-@container composer (max-width: 460px) {
-  .composer-footer-folder-trigger { max-width: 42%; }
+@container composer (max-width: 380px) {
+  .composer-setup-chip { max-width: 40%; }
+  .composer-chip-model-trigger { padding-inline: 9px 6px; }
 }
 
-@container composer (max-width: 330px) {
-  .composer-footer-model-trigger { max-width: 58%; }
-}
-
-/* The one action. Send fills with the accent as soon as there is something to send; Pause is an
-   outlined square in the same slot while a turn runs; Resume the same outline in the pause amber. */
+/* The one coloured control. Send fills with the accent (the wallpaper's hue under a backdrop) as
+   soon as there is something to send; Pause is an outlined circle in the same slot while a turn
+   runs; Resume the same outline in the pause amber. */
 .composer-row .composer-action {
   flex: none;
-  width: 32px;
-  height: 32px;
-  margin-bottom: 2px;
-  border: 1px solid transparent;
-  border-radius: 9px;
   display: grid;
   place-items: center;
-  transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+  width: 34px;
+  height: 34px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
 }
 
 .composer-send {
-  background: var(--tab-accent, #8ab4f8);
-  color: #0c0f16;
+  background: var(--composer-accent);
+  color: #111;
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--composer-accent) 35%, transparent);
 }
 
 .composer-send:not(:disabled):hover {
-  background: color-mix(in srgb, var(--tab-accent, #8ab4f8) 86%, white);
+  background: color-mix(in srgb, var(--composer-accent) 86%, white);
 }
 
 .composer-send:disabled {
-  background: color-mix(in srgb, var(--foreground) 8%, transparent);
-  color: color-mix(in srgb, var(--foreground) 34%, transparent);
+  background: color-mix(in srgb, var(--foreground) 9%, transparent);
+  color: color-mix(in srgb, var(--foreground) 36%, transparent);
+  box-shadow: none;
   opacity: 1;
 }
 
@@ -309,66 +388,6 @@
 .composer-resume:not(:disabled):hover {
   background: rgb(219 167 75 / 12%);
   color: #e8bc6a;
-}
-
-/* Pills under the card: new chat, agents menu, browser toggle (composer-access-pills.tsx). */
-.composer-pills {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px;
-  max-width: calc(var(--chat-column-width) + 64px);
-  margin: 10px auto 0;
-}
-
-.composer-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  height: 32px;
-  padding: 0 4px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: color-mix(in srgb, var(--foreground) 62%, transparent);
-  font: inherit;
-  font-size: 12.5px;
-  font-weight: 500;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: background-color 120ms ease, color 120ms ease;
-}
-
-.composer-pill:not(:disabled):hover,
-.composer-pill[data-state='open'] {
-  background: color-mix(in srgb, var(--foreground) 6%, transparent);
-  color: var(--foreground);
-}
-
-.composer-pill:disabled {
-  cursor: default;
-  opacity: 0.55;
-}
-
-.composer-pill-attention:not(:disabled) {
-  color: var(--foreground);
-}
-
-.composer-pill-continue:not(:disabled) {
-  color: color-mix(in srgb, var(--foreground) 88%, transparent);
-}
-
-.composer-pill-continue:not(:disabled):hover {
-  color: var(--foreground);
-}
-
-.composer-pill-label {
-  min-width: 0;
-}
-
-.composer-pill-chevron {
-  flex: none;
-  opacity: 0.65;
 }
 
 .composer-agents-panel {
@@ -461,18 +480,10 @@
   text-decoration: underline;
 }
 
-@container composer (max-width: 420px) {
-  .composer-pill-label {
-    max-width: 7rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .composer-stack,
   .composer-action,
-  .composer-pill {
+  .composer-tool {
     transition: none;
   }
 }
