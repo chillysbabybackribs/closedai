@@ -78,6 +78,7 @@ export function AppDock({ nav, chats, chatTitle, browserVisible, prefs, onPrefsC
       <div style={{ height: DOCK_HEIGHT }} className={cn('pointer-events-auto absolute inset-x-0 bottom-0 flex items-center justify-between gap-2',
         'px-3 transition-transform duration-200 ease-out motion-reduce:transition-none',
         shown ? 'translate-y-0' : 'translate-y-[calc(100%+32px)]')}>
+        {/* Behind the strip's controls: the strip's transform keeps -z-10 inside the dock. */}
         <DockSurface tray={tray} />
         <div className="flex max-w-[calc(50%-190px)] min-w-0 items-center gap-0.5">
           <Button variant="ghost" size="sm" data-ui="dock.overview" aria-pressed={nav.overview} disabled={nav.moving}
