@@ -8,6 +8,7 @@ import type {
   ChatContinuationSource, ChatPaneId, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot
 } from './chat-peers.js'
 import type { ProviderAvailability } from './provider-availability.js'
+import type { AppWindowContext, AppWindowId, AppWindowInfo, AppWindowsEvent } from './app-windows.js'
 import type { CredentialDraft, CredentialSummary, CredentialVaultStatus } from './credentials.js'
 import type { ModelManifest, ModelSwitch, ModelsEvent } from './model-settings.js'
 import type { ToolManifest, ToolTelemetrySnapshot, ToolsEvent } from './tools.js'
@@ -34,6 +35,18 @@ export type ClosedaiApi = {
     close: () => Promise<void>
     /** Developer menu: open or close DevTools for the app window itself, not a browser tab. */
     toggleDevTools: () => Promise<void>
+  }
+  /** The app's windows: which one this renderer is, and moving chat tabs between them. */
+  windows: {
+    context: () => Promise<AppWindowContext>
+    list: () => Promise<AppWindowInfo[]>
+    /** Open a new window for this project holding these tabs; resolves once main has recorded it. */
+    detachTabs: (cwd: string, tabIds: string[]) => Promise<AppWindowId>
+    /** Focus the other window holding this tab; false when no other window holds it. */
+    revealTab: (tabId: string) => Promise<boolean>
+    /** Raise the main window and show its browser. */
+    showBrowser: () => Promise<void>
+    onEvent: (listener: (event: AppWindowsEvent) => void) => Unsubscribe
   }
   browser: {
     setBounds: (bounds: BrowserBounds) => Promise<void>

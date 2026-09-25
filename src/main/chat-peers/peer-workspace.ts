@@ -21,7 +21,8 @@ export interface ChatWorkspaceSurface {
   send(paneId: ChatPaneId, text: string, attachments: ChatAttachment[]): Promise<void>
   interrupt(paneId: ChatPaneId): Promise<void>
   selectPane(paneId: ChatPaneId): Promise<void>
-  setVisiblePanes(cwd: string, paneIds: ChatPaneId[], retainedTabIds?: ChatPaneId[]): Promise<void>
+  setVisiblePanes(cwd: string, paneIds: ChatPaneId[], retainedTabIds?: ChatPaneId[], windowId?: string): Promise<void>
+  releaseWindow(windowId: string): void
   selectModel(paneId: ChatPaneId, modelId: string): Promise<void>
   selectReasoningEffort(paneId: ChatPaneId, effort: string): Promise<void>
   refreshPlanUsage(paneId: ChatPaneId): Promise<void>

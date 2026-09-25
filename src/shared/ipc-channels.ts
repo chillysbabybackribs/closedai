@@ -12,6 +12,7 @@ import type { ModelManifest, ModelSwitch, ModelsEvent } from './model-settings.j
 import type { ToolManifest, ToolSwitch, ToolTelemetrySnapshot, ToolsEvent } from './tools.js'
 import type { TraceEvent, TraceSnapshot, TraceSnapshotOptions } from './trace.js'
 import type { ProviderAvailability } from './provider-availability.js'
+import type { AppWindowContext, AppWindowId, AppWindowInfo, AppWindowsEvent } from './app-windows.js'
 import type {
   BrowserCookieImportResult, CredentialApprovalRequest, SecurityDecision, SecuritySettings, WebPermissionRequest
 } from './security.js'
@@ -29,6 +30,11 @@ export type IpcInvokeChannels = {
   'window:toggleFullscreen': { args: []; result: void }
   'window:close': { args: []; result: void }
   'window:toggleDevTools': { args: []; result: void }
+  'windows:context': { args: []; result: AppWindowContext }
+  'windows:list': { args: []; result: AppWindowInfo[] }
+  'windows:detachTabs': { args: [string, string[]]; result: AppWindowId }
+  'windows:revealTab': { args: [string]; result: boolean }
+  'windows:showBrowser': { args: []; result: void }
   'browser:setBounds': { args: [BrowserBounds]; result: void }
   'browser:navigate': { args: [string]; result: void }
   'browser:back': { args: []; result: void }
@@ -134,6 +140,7 @@ export type IpcEventChannels = {
   'tools:event': ToolsEvent
   'models:event': ModelsEvent
   'trace:event': TraceEvent
+  'windows:event': AppWindowsEvent
 }
 
 export type IpcEventChannel = keyof IpcEventChannels
@@ -152,6 +159,13 @@ export const IPC = {
       toggleFullscreen: 'window:toggleFullscreen',
       close: 'window:close',
       toggleDevTools: 'window:toggleDevTools'
+    },
+    windows: {
+      context: 'windows:context',
+      list: 'windows:list',
+      detachTabs: 'windows:detachTabs',
+      revealTab: 'windows:revealTab',
+      showBrowser: 'windows:showBrowser'
     },
     browser: {
       setBounds: 'browser:setBounds',
@@ -275,7 +289,8 @@ export const IPC = {
     securityCredentialApprovals: 'security:credentialApprovals',
     toolsEvent: 'tools:event',
     modelsEvent: 'models:event',
-    traceEvent: 'trace:event'
+    traceEvent: 'trace:event',
+    windowsEvent: 'windows:event'
   }
 } as const satisfies {
   invoke: Record<string, Record<string, IpcInvokeChannel>>

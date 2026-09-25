@@ -32,6 +32,14 @@ const api: ClosedaiApi = {
     close: () => invoke(IPC.invoke.window.close),
     toggleDevTools: () => invoke(IPC.invoke.window.toggleDevTools)
   },
+  windows: {
+    context: () => invoke(IPC.invoke.windows.context),
+    list: () => invoke(IPC.invoke.windows.list),
+    detachTabs: (cwd, tabIds) => invoke(IPC.invoke.windows.detachTabs, cwd, tabIds),
+    revealTab: (tabId) => invoke(IPC.invoke.windows.revealTab, tabId),
+    showBrowser: () => invoke(IPC.invoke.windows.showBrowser),
+    onEvent: (listener) => subscribe(IPC.event.windowsEvent, listener)
+  },
   browser: {
     setBounds: (bounds: BrowserBounds) => invoke(IPC.invoke.browser.setBounds, bounds),
     navigate: (input: string) => invoke(IPC.invoke.browser.navigate, input),

@@ -1,10 +1,9 @@
 import type { ToolAction } from '../action-tool.js'
 import { jsonResult, objectSchema } from '../json-result.js'
 import { booleanArg, numberArg, stringArg, type JsonObject, type ToolContext } from '../tool.js'
-import { DEFAULT_WAIT_MS } from '../browser/fields.js'
-import { requireBrowser, type BrowserHostProvider } from '../browser/host.js'
+import type { BrowserHostProvider } from '../browser/host.js'
 import { requireHost, type AppBrowserTabRequest, type AppCommandHost, type AppUiHost } from './host.js'
-import { resolveHtmlPreview } from './preview-html.js'
+import { chatCwd, openWorkspacePreview, resolveHtmlPreview } from './preview-html.js'
 
 const paneField: JsonObject = {
   type: 'string', minLength: 1,
@@ -160,29 +159,9 @@ export function appCommandActions(
         const host = requireHost(app, 'app commands')
         const opRaw = stringArg(input, 'op')
         if (opRaw === 'preview_html') {
-          const paneId = context.paneId ?? host.selectedPaneId()
-          const chat = host.state(['chat'], paneId, context.paneId ?? null).chat as { cwd?: string } | null
-          const cwd = chat?.cwd
-          if (!cwd) throw new Error('Could not read the chat working directory for preview_html')
-          const resolved = await resolveHtmlPreview(stringArg(input, 'path')!, cwd)
-          // Opening a tab can show the pane on its own, so read visibility before navigating.
-          const revealWanted = booleanArg(input, 'reveal_browser', true)
-          const hiddenBefore = revealWanted && (await browserPaneVisible(ui)) === false
-          const outcome = await requireBrowser(page).navigate(resolved.fileUrl, {
-            newTab: true,
-            ready: { until: 'load', timeoutMs: DEFAULT_WAIT_MS }
-          })
-          if (!outcome.ok) throw new Error(`Could not open ${resolved.path}: ${outcome.error}`)
-          const browser = await host.browserTab({ op: 'claim', tabId: outcome.tabId }, context.paneId)
-          const browserRevealed = hiddenBefore ? await revealBrowserPane(ui) : false
-          return jsonResult({
-            ...resolved,
-            tabId: outcome.tabId,
-            title: outcome.ready.title,
-            url: outcome.ready.url,
-            browser,
-            browserRevealed
-          })
+          const file = await resolveHtmlPreview(stringArg(input, 'path')!, chatCwd(host, context.paneId))
+          const hosts = { app, ui, page }
+          return jsonResult(await openWorkspacePreview(file, context.paneId, hosts, booleanArg(input, 'reveal_browser', true)))
         }
         return jsonResult(await host.browserTab({
           op: opRaw as AppBrowserTabRequest['op'],
@@ -193,22 +172,6 @@ export function appCommandActions(
       }
     }
   ]
-}
-
-/** null when the renderer automation host is unavailable. */
-async function browserPaneVisible(uiProvider: () => AppUiHost | null): Promise<boolean | null> {
-  const automation = uiProvider()
-  if (!automation) return null
-  return (await automation.uiState()).layout?.browserVisible === true
-}
-
-/** Call only when the pane was hidden before the preview tab opened; true means it is shown now. */
-async function revealBrowserPane(uiProvider: () => AppUiHost | null): Promise<boolean> {
-  const automation = uiProvider()
-  if (!automation) return false
-  if (await browserPaneVisible(uiProvider)) return true
-  await automation.click({ control: 'composer.browser' })
-  return true
 }
 
 function otherPane(host: AppCommandHost, input: JsonObject, context: ToolContext, verb: string): string {

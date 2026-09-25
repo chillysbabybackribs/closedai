@@ -19,6 +19,11 @@ test('IPC invoke constants cover the typed invoke registry', () => {
     'window:close',
     'window:toggleFullscreen',
     'window:toggleDevTools',
+    'windows:context',
+    'windows:list',
+    'windows:detachTabs',
+    'windows:revealTab',
+    'windows:showBrowser',
     'tools:setEnabledMany',
     'browser:setBounds',
     'browser:navigate',
@@ -115,7 +120,8 @@ test('IPC event constants cover the typed event registry', () => {
     'security:credentialApprovals',
     'tools:event',
     'trace:event',
-    'models:event'
+    'models:event',
+    'windows:event'
   ]
   assert.equal(channels.size, typed.length)
   for (const channel of typed) assert.ok(channels.has(channel), channel)

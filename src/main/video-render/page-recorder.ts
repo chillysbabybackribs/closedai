@@ -59,6 +59,7 @@ export async function recordPageVideo(
     await contents.debugger.sendCommand('Emulation.setDeviceMetricsOverride', {
       width: request.width, height: request.height, deviceScaleFactor: 1, mobile: false
     })
+    await contents.debugger.sendCommand('Emulation.setScrollbarsHidden', { hidden: true })
     await withTimeout(contents.loadURL(request.url), LOAD_TIMEOUT_MS, 'The page did not finish loading')
     await withTimeout(contents.executeJavaScript(`window.${VIDEO_CLOCK_GLOBAL}.prepare()`), STEP_TIMEOUT_MS, 'The page did not settle after load')
     encoder = startEncoder({ output: partial, width: request.width, height: request.height, fps: request.fps, audio: request.audio })

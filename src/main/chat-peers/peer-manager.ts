@@ -44,6 +44,8 @@ import {
   type PeerManagerSupportHost
 } from './peer-manager-support.js'
 import { PeerChatRowsCache } from './peer-chat-rows-cache.js'
+import { PeerWindowVisibility } from './peer-window-visibility.js'
+import { MAIN_WINDOW_ID } from '../../shared/app-windows.js'
 import { PeerIdleParking } from './peer-idle-parking.js'
 import { PeerLifecycle, type ChatPeerFactory, type PeerEntry } from './peer-lifecycle.js'
 import { PeerProjectChanges, projectConversationPatch, rememberChatProjects } from './peer-project.js'
@@ -61,6 +63,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   private selectedPaneId: ChatPaneId
   private visiblePaneIds = new Set<ChatPaneId>()
   private retainedTabIds = new Set<ChatPaneId>()
+  private readonly windowVisibility = new PeerWindowVisibility()
   private visibilityRevision = 0
   private selectingProject = false
   private readonly lifecycle: PeerLifecycle
@@ -283,8 +286,8 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     this.wakeLater(paneId, 'wake pane')
   }
 
-  /** Register the renderer's tiles without changing focus or stopping hidden turns. */
-  async setVisiblePanes(cwd: string, paneIds: ChatPaneId[], retainedTabIds: ChatPaneId[] = []): Promise<void> {
+  /** Register one window's tiles without changing focus or stopping hidden turns. */
+  async setVisiblePanes(cwd: string, paneIds: ChatPaneId[], retainedTabIds: ChatPaneId[] = [], windowId = MAIN_WINDOW_ID): Promise<void> {
     if (cwd !== this.workspace().cwd) return
     if (!Array.isArray(paneIds) || paneIds.length > 32 || paneIds.some((id) => typeof id !== 'string')) {
       throw new Error('Choose up to 32 visible chats')
@@ -298,9 +301,10 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       return !record || record.archived
     })) throw new Error('A chat tab is no longer available')
     const revision = ++this.visibilityRevision
-    this.visiblePaneIds = new Set(paneIds)
     // Retain empty tabs without waking them or subscribing to their token stream.
-    this.retainedTabIds = new Set(retainedTabIds)
+    this.windowVisibility.set(windowId, paneIds, retainedTabIds)
+    this.visiblePaneIds = this.windowVisibility.visible()
+    this.retainedTabIds = this.windowVisibility.retained()
     for (const record of records) if (record) this.lifecycle.attach(record)
     this.chatRowsCache.invalidateDetached()
     await Promise.all(paneIds.map((id) => this.transcripts.load(id)))
@@ -309,6 +313,15 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     await this.persistOpenChats()
     if (revision !== this.visibilityRevision || cwd !== this.workspace().cwd) return
     for (const id of paneIds) this.wakeLater(id, 'show chat')
+  }
+
+  /** A closed window's chats stay open but are no longer visible through it. */
+  releaseWindow(windowId: string): void {
+    if (!this.windowVisibility.release(windowId)) return
+    this.visibilityRevision += 1
+    this.visiblePaneIds = this.windowVisibility.visible()
+    this.retainedTabIds = this.windowVisibility.retained()
+    this.emitWorkspace()
   }
 
   /** Read the pane's provider plan usage now; the hover card asks each time it opens. */
@@ -529,6 +542,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       })
 
       this.visibilityRevision += 1
+      this.windowVisibility.clear()
       this.visiblePaneIds.clear()
       this.retainedTabIds.clear()
       this.catalog.invalidate()
