@@ -676,11 +676,9 @@ and forward (`dock.back`, `dock.forward`) step through the same zoom history as 
 disabled at either end and while a zoom is moving. Next to them is where you are: the workspace
 and the selected chat, or "All workspaces". Right: Dock settings (`dock.settings`). Centre: the
 **app tray**, Magic UI's `Dock` (`src/components/ui/dock.tsx`, `@magicui/dock`), with one
-one 48 px square slot per ClosedAI surface (`dock.app`, item is the surface), growing to 64 px under the
-pointer. Each slot holds the surface's icon from the shared list in `src/renderer/app-icons.tsx`:
-Microsoft's Fluent colour icons (`@fluentui/react-icons`), which the view tabs use too, standing on
-their own with no tile behind them. A face shows behind an icon while its list is open, and on hover
-when Magnify icons is off. The strip is 44 px tall and a step lighter than the workspace
+rounded-square tile per ClosedAI surface (`dock.app`, item is the surface), 48 px and growing to 64 px
+under the pointer. Each tile holds the surface's icon from the shared list in
+`src/renderer/app-icons.tsx`, which the view tabs use too. The strip is 44 px tall and a step lighter than the workspace
 (`--surface-raised`); the tray sits in a tab that rises out of its centre, drawn with the strip as
 one shape and one outline (`dock-surface.tsx`). The dock's box reaches as high as a magnified tile, so a browser under any of it is covered. **Chats** opens chat history. **Browser** shows or hides the
 browser. **Agent runs** opens the Agents view; its tooltip carries the runs summary. **Saved
