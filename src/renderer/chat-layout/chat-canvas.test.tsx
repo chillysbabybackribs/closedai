@@ -44,10 +44,11 @@ test('ChatCanvas renders multi-pane split with context menu trigger and dividers
   // Both panes rendered as tiles
   assert.match(html, /data-pane-id="pane-a"/)
   assert.match(html, /data-pane-id="pane-b"/)
-  assert.match(html, /class="chat-layout-drag"[^>]*data-ui="layout\.pane-drag" data-ui-key="pane-a"[^>]*draggable="true"/)
-  assert.match(html, /class="chat-layout-drag"[^>]*data-ui="layout\.pane-drag" data-ui-key="pane-b"[^>]*draggable="true"/)
+  assert.match(html, /class="chat-layout-drag"[^>]*data-ui="layout\.pane-drag" data-ui-key="pane-a"[^>]*data-window-grip=""/)
+  assert.match(html, /class="chat-layout-drag"[^>]*data-ui="layout\.pane-drag" data-ui-key="pane-b"[^>]*data-window-grip=""/)
   assert.match(html, /right-click for layout options/)
-  assert.doesNotMatch(html, /class="chat-layout-header"[^>]*draggable="true"/)
+  assert.doesNotMatch(html, /class="chat-layout-(header|drag)"[^>]*draggable="true"/, 'windows move with the pointer, not native drag')
+  assert.match(html, /data-pane-id="pane-a" data-window="tiled"/)
   // Context menu trigger wrapped around header
   assert.match(html, /class="chat-layout-header"[^>]*data-state="closed"/)
   // Divider rendered in split mode
@@ -121,8 +122,8 @@ test('ChatCanvas renders tabbed pane with single tile, persistent header, and hi
   // Both tab buttons rendered in the header
   assert.match(html, /data-ui="layout\.tab" data-ui-key="tab-1"/)
   assert.match(html, /data-ui="layout\.tab" data-ui-key="tab-2"/)
-  assert.match(html, /class="chat-layout-drag"[^>]*data-ui="layout\.pane-drag" data-ui-key="tab-1"[^>]*draggable="true"/)
-  assert.match(html, /Drag to move whole pane/)
+  assert.match(html, /class="chat-layout-drag"[^>]*data-ui="layout\.pane-drag" data-ui-key="tab-1"[^>]*data-window-grip=""/)
+  assert.match(html, /Drag to move the window/)
   // Tab 1 is active, Tab 2 is inactive
   assert.match(html, /id="chat-tab-tab-1"[^>]*aria-selected="true"/)
   assert.match(html, /id="chat-tab-tab-2"[^>]*aria-selected="false"/)
@@ -166,7 +167,7 @@ test('ChatCanvas names running close/hide actions and overlays a pane status not
   assert.match(html, /title="Close tab · Task keeps running"/)
   assert.match(html, /aria-label="Close tab: Chat tab-2 · Task keeps running"/)
   assert.match(html, /title="Close tab · Does not stop tasks"/)
-  assert.match(html, /title="Hide pane · Tasks keep running"/)
+  assert.match(html, /data-ui="layout\.pane-hide"[^>]*title="Close window · Tasks keep running"/)
   assert.match(html, /class="chat-layout-notice"[^>]*>Pane hidden · Tasks continue in the background/)
 })
 
@@ -204,4 +205,25 @@ test('ChatCanvas renders a view tab with its kind glyph, no chat status, and a n
   assert.match(html, /data-ui="layout\.new-chat" data-ui-key="closedai:view:trace:v1"/)
   assert.match(html, /id="chat-panel-chat-1"[^>]*hidden/)
   assert.doesNotMatch(html, /id="chat-panel-closedai:view:trace:v1"[^>]*hidden/)
+})
+
+test('ChatCanvas lifts a floating window above the tiles, with resize grips, and minimizes to hidden', () => {
+  const tree: ChatLayout = { ...multiPaneTree, second: { kind: 'pane', id: 'pane-b', float: { x: 40, y: 30, width: 320, height: 300, z: 2 } } }
+  const props = {
+    selectedId: 'pane-a', busy: false, browserVisible: false,
+    renderBrowser: createElement('div', { id: 'browser-content' }, 'Browser'),
+    onDragActive: () => {}, title: (id: string) => `Chat ${id}`,
+    renderPane: (id: string) => createElement('div', { id: `content-${id}` }, `Content ${id}`),
+    onSelect: () => {}, onSelectTab: () => {}, onCloseTab: () => {}, onNewChat: () => {},
+    onDock: () => {}, onHide: () => {}, onResize: () => {}, windows
+  }
+  const html = renderToStaticMarkup(createElement(ChatCanvas, { ...props, tree }))
+  assert.match(html, /style="left:40px;top:30px;width:320px;height:300px;z-index:12" data-pane-id="pane-b" data-window="floating"/)
+  assert.equal(html.match(/data-ui="layout\.window-resize"/g)?.length, 8)
+  assert.doesNotMatch(html, /data-ui="layout\.divider"/, 'a floating window leaves no split')
+  assert.match(html, /data-ui="layout\.window-minimize" data-ui-key="pane-b" title/, 'another chat stays, so it can minimize')
+  const minimized: ChatLayout = { ...multiPaneTree, second: { kind: 'pane', id: 'pane-b', docked: true, dockNumber: 1 } }
+  const hidden = renderToStaticMarkup(createElement(ChatCanvas, { ...props, tree: minimized }))
+  assert.match(hidden, /data-pane-id="pane-b" data-window="hidden"[^>]*hidden=""/)
+  assert.match(hidden, /data-ui="layout\.window-minimize" data-ui-key="pane-a" disabled/, 'the last visible chat stays')
 })
