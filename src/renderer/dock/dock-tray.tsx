@@ -8,7 +8,7 @@ import type { SavedSite } from '../../shared/saved-sites.js'
 import type { BrowserDownload } from '../../shared/types.js'
 import { APP_ICONS, AppIconMark } from '../app-icons.js'
 import { BrowserSiteIcon } from '../browser-site-icon.js'
-import { downloadDetail } from '../browser-downloads-model.js'
+import { downloadActions, downloadDetail } from '../browser-downloads-model.js'
 import { TRAY_ICON, TRAY_MAGNIFIED, type TrayApp, type TrayAppId } from './dock-model.js'
 
 const STACK_ROWS = 8
@@ -84,11 +84,11 @@ function StackList({ title, empty, children, footer }: { title: string; empty: s
   </div>
 }
 
-function StackRow({ ui, uiKey, icon, name, detail, onSelect }: {
-  ui: string; uiKey: string; icon: ReactNode; name: string; detail: string; onSelect: () => void
+function StackRow({ ui, uiKey, icon, name, detail, disabled, onSelect }: {
+  ui: string; uiKey: string; icon: ReactNode; name: string; detail: string; disabled?: boolean; onSelect: () => void
 }): JSX.Element {
-  return <Button variant="ghost" size="sm" className="h-auto justify-start gap-2.5 px-2 py-1.5 text-left font-normal"
-    data-ui={ui} data-ui-key={uiKey} onClick={onSelect}>
+  return <Button variant="ghost" size="sm" className="h-auto justify-start gap-2.5 px-2 py-1.5 text-left font-normal disabled:opacity-100"
+    data-ui={ui} data-ui-key={uiKey} disabled={disabled} onClick={onSelect}>
     <span className="grid size-5 shrink-0 place-items-center [&_img]:size-4">{icon}</span>
     <span className="flex min-w-0 flex-col">
       <span className="truncate text-sm">{name}</span>
@@ -112,10 +112,11 @@ function SavedSitesStack({ savedSites, onOpenSite, onAllSavedSites }: DockTrayPr
 }
 
 function DownloadsStack({ downloads, onRevealDownload }: DockTrayProps): JSX.Element {
-  const recent = [...downloads].reverse().slice(0, STACK_ROWS)
+  // Main lists newest first; a finished file opens its folder, a moving one only reports progress.
+  const recent = downloads.slice(0, STACK_ROWS)
   return <StackList title="Downloads" empty={recent.length ? null : 'Files you download in the browser show here.'}>
     {recent.map((download) => <StackRow key={download.id} ui="dock.download" uiKey={download.id}
       icon={<AppIconMark id="downloads" size={15} />} name={download.filename} detail={downloadDetail(download)}
-      onSelect={() => onRevealDownload(download.id)} />)}
+      disabled={!downloadActions(download).canReveal} onSelect={() => onRevealDownload(download.id)} />)}
   </StackList>
 }

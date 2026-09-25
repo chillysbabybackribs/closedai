@@ -16,6 +16,19 @@ export type SpacesHandle = {
   toggleOverview: () => void
 }
 
+/** What the dock shows of the spaces and the moves it offers. */
+export type SpacesDockNav = {
+  /** The overview is showing; false inside a space and while zooming. */
+  overview: boolean
+  /** A zoom is under way, so moves are ignored until it lands. */
+  moving: boolean
+  spaceName: string
+  canBack: boolean
+  canForward: boolean
+  toggleOverview: () => void
+  step: (delta: -1 | 1) => void
+}
+
 const EASE = 'cubic-bezier(0.2, 0.7, 0.2, 1)'
 
 const editable = (target: EventTarget | null): boolean => target instanceof HTMLElement
@@ -37,7 +50,7 @@ async function until(done: () => boolean, timeoutMs = 5000): Promise<boolean> {
  * here transforms the workspace while you are in a space, so tiles, menus and the native browser
  * lay out exactly as they do without spaces.
  */
-export function SpacesStage({ enabled, workspace, chats, selectedPaneId, children, ref }: {
+export function SpacesStage({ enabled, workspace, chats, selectedPaneId, children, dock, ref }: {
   /** Main window only: a detached window holds tabs of one project and has no browser. */
   enabled: boolean
   workspace: Workspace
@@ -48,6 +61,8 @@ export function SpacesStage({ enabled, workspace, chats, selectedPaneId, childre
    * its browser as a still.
    */
   children: (shown: { browserHeld: boolean; spaceId?: string }) => ReactNode
+  /** The dock, drawn over the stage in the main window. */
+  dock?: (nav: SpacesDockNav) => ReactNode
   ref?: Ref<SpacesHandle>
 }): ReactElement {
   const stageRef = useRef<HTMLDivElement>(null)
@@ -92,7 +107,7 @@ export function SpacesStage({ enabled, workspace, chats, selectedPaneId, childre
 
   const { still, capture } = useSpaceStills(stageRef)
   const nav = useSpaceNavigation({ enabled, current: current.id, spaces, size, stageRef, capture, prepare, create, commit })
-  const { phase, camera, animate, slots, step, toggle, enter, zoomOut } = nav
+  const { phase, camera, animate, slots, edges, step, toggle, enter, zoomOut } = nav
   useImperativeHandle(ref, () => ({ toggleOverview: toggle }), [toggle])
 
   useEffect(() => {
@@ -175,7 +190,16 @@ export function SpacesStage({ enabled, workspace, chats, selectedPaneId, childre
   const liveStyle: CSSProperties | undefined = zoomed && currentSlot
     ? { transform: liveTransform(camera, currentSlot, size), transition }
     : undefined
-  return <div ref={stageRef} className="spaces-stage" data-spaces-overview={phase === 'space' ? undefined : phase}>
+  const dockNav: SpacesDockNav = {
+    overview: phase === 'overview',
+    moving: phase !== 'space' && phase !== 'overview',
+    spaceName: current.name,
+    canBack: edges.back,
+    canForward: edges.forward,
+    toggleOverview: toggle,
+    step: (delta) => { void step(delta) }
+  }
+  return <>{dock?.(dockNav)}<div ref={stageRef} className="spaces-stage" data-spaces-overview={phase === 'space' ? undefined : phase}>
     <div className="spaces-live" style={liveStyle} inert={phase !== 'space'}
       data-native-bounds-hold={zoomed ? '' : undefined}>
       {phase !== 'switching' && children({ browserHeld: phase !== 'space', spaceId: current.id })}
@@ -212,5 +236,5 @@ export function SpacesStage({ enabled, workspace, chats, selectedPaneId, childre
       </button>}
     </div>}
     {nav.error && zoomed && <div className="spaces-error" role="alert">{nav.error}</div>}
-  </div>
+  </div></>
 }

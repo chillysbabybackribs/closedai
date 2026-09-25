@@ -62,6 +62,14 @@ export function useSpaceNavigation({ enabled, current, spaces, size, stageRef, c
   const phaseRef = useRef<SpacePhase>('space')
   const setPhase = useCallback((next: SpacePhase) => { phaseRef.current = next; setPhaseState(next) }, [])
   const history = useRef<SpaceHistory>({ stops: [{ kind: 'space', id: current }], index: 0 })
+  // Whether back and forward have somewhere to go, for controls that show it (the dock).
+  const [edges, setEdges] = useState({ back: false, forward: false })
+  const setHistory = useCallback((next: SpaceHistory): void => {
+    history.current = next
+    const back = next.index > 0
+    const forward = next.index < next.stops.length - 1
+    setEdges((value) => value.back === back && value.forward === forward ? value : { back, forward })
+  }, [])
   // Every sequence takes a ticket; a newer gesture makes an older sequence's remaining steps no-ops.
   const ticket = useRef(0)
   // Focus inside the space (usually a composer) returns when you come back to it.
@@ -110,7 +118,7 @@ export function useSpaceNavigation({ enabled, current, spaces, size, stageRef, c
     await frames(2)
     if (token !== ticket.current || !await glide(IDENTITY_CAMERA, token)) return
     setPhase('overview')
-    if (record) history.current = visitStop(history.current, { kind: 'overview' })
+    if (record) setHistory(visitStop(history.current, { kind: 'overview' }))
   }, [enabled, capture, glide, setPhase, slotOf, stageRef])
 
   /**
@@ -126,13 +134,13 @@ export function useSpaceNavigation({ enabled, current, spaces, size, stageRef, c
     try {
       const id = await prepared()
       if (token !== ticket.current) return
-      history.current = visitStop(history.current, { kind: 'space', id })
+      setHistory(visitStop(history.current, { kind: 'space', id }))
       commit(id)
       land()
     } catch (reason) {
       if (token !== ticket.current) return
       setError(errorMessage(reason, fallback))
-      history.current = visitStop(history.current, { kind: 'overview' })
+      setHistory(visitStop(history.current, { kind: 'overview' }))
       setPhase('gliding')
       if (await glide(IDENTITY_CAMERA, token)) setPhase('overview')
     }
@@ -150,7 +158,7 @@ export function useSpaceNavigation({ enabled, current, spaces, size, stageRef, c
     setError(null)
     setPhase('gliding')
     if (!await glide(focusCamera(slot, live.current.size), token)) return
-    if (record) history.current = visitStop(history.current, { kind: 'space', id })
+    if (record) setHistory(visitStop(history.current, { kind: 'space', id }))
     land()
   }, [glide, land, prepare, setPhase, slotOf, switchTo])
 
@@ -170,7 +178,7 @@ export function useSpaceNavigation({ enabled, current, spaces, size, stageRef, c
     // Mid-switch, main's new folder briefly resolves to that folder's first space; the switch
     // records its own destination when it commits.
     if (phaseRef.current === 'switching') return
-    history.current = dropMissingStops(visitStop(history.current, { kind: 'space', id: current }), new Set(spaces.map((space) => space.id)))
+    setHistory(dropMissingStops(visitStop(history.current, { kind: 'space', id: current }), new Set(spaces.map((space) => space.id))))
     if (phaseRef.current !== 'overview' && phaseRef.current !== 'gliding') return
     const slot = slotOf(current)
     const token = ++ticket.current
@@ -189,7 +197,7 @@ export function useSpaceNavigation({ enabled, current, spaces, size, stageRef, c
     const next = stepStop(history.current, delta)
     if (!next) return
     const stop = next.stops[next.index]!
-    history.current = next
+    setHistory(next)
     if (stop.kind === 'overview') { await zoomOut(false); return }
     if (phaseRef.current === 'space') {
       if (stop.id === live.current.current) return
@@ -198,5 +206,5 @@ export function useSpaceNavigation({ enabled, current, spaces, size, stageRef, c
     await enter(stop.id, false)
   }, [zoomOut, enter])
 
-  return { phase, camera, animate, slots, error, zoomOut, enter, add, toggle, step }
+  return { phase, camera, animate, slots, error, edges, zoomOut, enter, add, toggle, step }
 }
