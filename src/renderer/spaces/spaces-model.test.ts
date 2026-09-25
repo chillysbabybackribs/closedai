@@ -1,23 +1,21 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  IDENTITY_CAMERA, LABEL_HEIGHT, createZoomGesture, dropMissingStops, focusCamera, liveTransform, orderedSpaces,
-  overviewSlots, readSpaceOrder, saveSpaceOrder, slotAt, spaceName, stepStop, visitStop, type SpaceHistory
+  IDENTITY_CAMERA, LABEL_HEIGHT, createZoomGesture, dropMissingStops, focusCamera, liveTransform, overviewSlots,
+  readSpaces, saveSpaces, slotAt, spaceList, spaceName, stepStop, visitStop, type SpaceHistory
 } from './spaces-model.ts'
 
 const size = { width: 1200, height: 800 }
 
-test('spaces keep the order they were first seen in, whichever project is current', () => {
-  const recent = [{ cwd: '/p/b', projectPath: '/p/b' }, { cwd: '/p/c', projectPath: '/p/c' }]
-  const first = orderedSpaces({ cwd: '/p/a', projectPath: '/p/a' }, recent, [])
-  assert.deepEqual(first.map((space) => space.id), ['/p/a', '/p/b', '/p/c'])
-  // Main lists recent projects newest first and without the current one; the saved order wins.
-  const after = orderedSpaces({ cwd: '/p/c', projectPath: '/p/c' }, [{ cwd: '/p/a', projectPath: '/p/a' }, { cwd: '/p/b', projectPath: '/p/b' }],
-    first.map((space) => space.id))
-  assert.deepEqual(after.map((space) => space.id), ['/p/a', '/p/b', '/p/c'])
-  // A project main forgot drops out; a new one joins at the end.
-  const next = orderedSpaces({ cwd: '/p/d', projectPath: '/p/d' }, [{ cwd: '/p/a', projectPath: '/p/a' }], ['/p/a', '/p/b', '/p/c'])
-  assert.deepEqual(next.map((space) => space.id), ['/p/a', '/p/d'])
+test('the spaces are the saved ones plus the current workspace, in the order they were added', () => {
+  const a = { cwd: '/p/a', projectPath: '/p/a' }
+  const b = { cwd: '/p/b', projectPath: '/p/b' }
+  // A first launch has just the workspace it opened in.
+  assert.deepEqual(spaceList([], a).map((space) => space.id), ['/p/a'])
+  // Being in a saved space keeps its place; entering a new one appends it.
+  assert.deepEqual(spaceList([a, b], b).map((space) => space.id), ['/p/a', '/p/b'])
+  assert.deepEqual(spaceList([a], { cwd: '/p/c', projectPath: '/p/c' }).map((space) => space.id), ['/p/a', '/p/c'])
+  assert.deepEqual(spaceList([a, a], a).map((space) => space.id), ['/p/a'])
 })
 
 test('space names use the folder name, and the home workspace is Home', () => {
@@ -25,15 +23,15 @@ test('space names use the folder name, and the home workspace is Home', () => {
   assert.equal(spaceName('/home/dp', null), 'Home')
 })
 
-test('the saved order survives a round trip and ignores junk', () => {
+test('saved spaces survive a round trip and ignore junk', () => {
   const store = new Map<string, string>()
   const storage = { getItem: (key: string) => store.get(key) ?? null, setItem: (key: string, value: string) => { store.set(key, value) } }
-  saveSpaceOrder(storage, ['/p/a', '/p/b'])
-  assert.deepEqual(readSpaceOrder(storage), ['/p/a', '/p/b'])
-  store.set('closedai.spaces.v1', '{"order":[1,"/p/x",""]}')
-  assert.deepEqual(readSpaceOrder(storage), ['/p/x'])
-  store.set('closedai.spaces.v1', 'not json')
-  assert.deepEqual(readSpaceOrder(storage), [])
+  saveSpaces(storage, spaceList([{ cwd: '/p/a', projectPath: '/p/a' }], { cwd: '/home', projectPath: null }))
+  assert.deepEqual(readSpaces(storage), [{ cwd: '/p/a', projectPath: '/p/a' }, { cwd: '/home', projectPath: null }])
+  store.set('closedai.spaces.v2', '{"spaces":[1,{"cwd":"/p/x"},{"cwd":""},null]}')
+  assert.deepEqual(readSpaces(storage), [{ cwd: '/p/x', projectPath: null }])
+  store.set('closedai.spaces.v2', 'not json')
+  assert.deepEqual(readSpaces(storage), [])
 })
 
 test('overview slots keep the window shape, fit inside it and never overlap', () => {
@@ -54,12 +52,6 @@ test('overview slots keep the window shape, fit inside it and never overlap', ()
   const [only] = overviewSlots(1, size)
   assert.ok(only!.width <= size.width * 0.6 + 1e-9)
   assert.ok(Math.abs(only!.x + only!.width / 2 - size.width / 2) < 1e-9)
-})
-
-test('a reserved strip under the grid stays clear of every slot', () => {
-  for (const count of [1, 3, 6]) {
-    for (const slot of overviewSlots(count, size, 40)) assert.ok(slot.y + slot.height <= size.height - 40)
-  }
 })
 
 test('a short last row is centred', () => {

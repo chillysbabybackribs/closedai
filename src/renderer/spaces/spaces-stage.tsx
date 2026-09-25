@@ -1,9 +1,10 @@
 import { useEffect, useImperativeHandle, useMemo, useRef, useState, type CSSProperties, type ReactElement, type ReactNode, type Ref } from 'react'
+import { Plus } from 'lucide-react'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import { SpaceMiniature } from './space-miniature.js'
 import {
-  LABEL_HEIGHT, cameraTransform, createZoomGesture, liveTransform, orderedSpaces, readSpaceOrder, saveSpaceOrder, slotAt,
-  type Size
+  LABEL_HEIGHT, cameraTransform, createZoomGesture, liveTransform, readSpaces, saveSpaces, slotAt, spaceList,
+  type Size, type SpaceEntry
 } from './spaces-model.js'
 import { GLIDE_MS, useSpaceNavigation } from './use-space-navigation.js'
 
@@ -26,7 +27,7 @@ const editable = (target: EventTarget | null): boolean => target instanceof HTML
 export function SpacesStage({ enabled, workspace, chats, children, ref }: {
   /** Main window only: a detached window holds tabs of one project and has no browser. */
   enabled: boolean
-  workspace: { cwd: string; projectPath: string | null; recentProjects?: Array<{ cwd: string; projectPath: string }> }
+  workspace: SpaceEntry
   chats: readonly ChatRowSummary[]
   /** The live workspace; `browserHeld` asks it to show its browser as a still. */
   children: (browserHeld: boolean) => ReactNode
@@ -34,19 +35,19 @@ export function SpacesStage({ enabled, workspace, chats, children, ref }: {
 }): ReactElement {
   const stageRef = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState<Size>({ width: 0, height: 0 })
-  const [order, setOrder] = useState(() => readSpaceOrder(window.localStorage))
-  const spaces = useMemo(() => orderedSpaces(workspace, workspace.recentProjects ?? [], order),
-    [workspace.cwd, workspace.projectPath, workspace.recentProjects, order])
+  const [saved, setSaved] = useState(() => readSpaces(window.localStorage))
+  const spaces = useMemo(() => spaceList(saved, { cwd: workspace.cwd, projectPath: workspace.projectPath }),
+    [saved, workspace.cwd, workspace.projectPath])
   const nav = useSpaceNavigation({ enabled, current: workspace.cwd, spaces, size, stageRef })
   const { phase, camera, animate, slots, step, toggle, enter, zoomOut } = nav
   useImperativeHandle(ref, () => ({ toggleOverview: toggle }), [toggle])
 
+  // The workspace you are in is always one of your spaces; being in a new one adds it.
   useEffect(() => {
-    const ids = spaces.map((space) => space.id)
-    if (ids.join('\0') === order.join('\0')) return
-    saveSpaceOrder(window.localStorage, ids)
-    setOrder(ids)
-  }, [spaces, order])
+    if (spaces.length === saved.length) return
+    saveSpaces(window.localStorage, spaces)
+    setSaved(spaces)
+  }, [spaces, saved.length])
 
   useEffect(() => {
     const host = stageRef.current
@@ -118,6 +119,7 @@ export function SpacesStage({ enabled, workspace, chats, children, ref }: {
   const zoomed = phase !== 'space' && phase !== 'arming'
   const currentIndex = spaces.findIndex((space) => space.id === workspace.cwd)
   const currentSlot = slots[currentIndex]
+  const addSlot = slots[spaces.length]
   const transition = animate ? `transform ${GLIDE_MS}ms ${EASE}` : 'none'
   const liveStyle: CSSProperties | undefined = zoomed && currentSlot
     ? { transform: liveTransform(camera, currentSlot, size), transition }
@@ -141,7 +143,7 @@ export function SpacesStage({ enabled, workspace, chats, children, ref }: {
           </div>
           <button type="button" className="spaces-slot" data-ui="spaces.slot" data-ui-key={space.id} data-current={here}
             style={{ left: slot.x, top: slot.y, width: slot.width, height: slot.height }}
-            aria-label={`${here ? 'Return to' : 'Open'} space ${space.name}${count ? `, ${count} running` : ''}`}
+            aria-label={`${here ? 'Return to' : 'Open'} workspace ${space.name}${count ? `, ${count} running` : ''}`}
             title={space.cwd} disabled={phase !== 'overview'} onClick={() => { void enter(space.id) }}>
             {!here && <div className="spaces-slot-scale" style={{ transform: `scale(${size.width ? slot.width / size.width : 1})` }}>
               <SpaceMiniature cwd={space.cwd} size={size} chats={chats} />
@@ -149,11 +151,12 @@ export function SpacesStage({ enabled, workspace, chats, children, ref }: {
           </button>
         </div>
       })}
-    </div>}
-    {phase === 'overview' && <div className="spaces-actions">
-      <button type="button" className="spaces-action" data-ui="spaces.open-folder" onClick={() => { void nav.openFolder() }}>
-        Open folder as space…
-      </button>
+      {addSlot && <button type="button" className="spaces-add" data-ui="spaces.add" disabled={phase !== 'overview'}
+        style={{ left: addSlot.x, top: addSlot.y, width: addSlot.width, height: addSlot.height }}
+        onClick={() => { void nav.openFolder() }}>
+        <Plus size={28} strokeWidth={1.6} aria-hidden="true" />
+        <span>Add workspace</span>
+      </button>}
     </div>}
     {nav.error && zoomed && <div className="spaces-error" role="alert">{nav.error}</div>}
   </div>

@@ -72,7 +72,7 @@ const MENUS: Menu[] = [
     label: 'View',
     rows: [
       { key: 'toggle-browser-pane', label: 'Toggle browser pane', action: 'toggle-browser' },
-      { key: 'overview', label: 'Overview of spaces', shortcut: 'Ctrl+Shift+O', action: 'overview' },
+      { key: 'overview', label: 'Workspace overview', shortcut: 'Ctrl+Shift+O', action: 'overview' },
       SEP,
       ...VIEW_LAYOUT_ROWS,
       SEP,

@@ -5,6 +5,8 @@ import type { Rect } from '../chat-layout/layout-tree.js'
 // whole overview. Zooming is geometry only — which project main shows is changed separately.
 
 export type Space = { id: string; cwd: string; projectPath: string | null; name: string }
+/** What is saved per space: the project main selects to show it. */
+export type SpaceEntry = { cwd: string; projectPath: string | null }
 export type SpaceStop = { kind: 'overview' } | { kind: 'space'; id: string }
 export type SpaceHistory = { stops: SpaceStop[]; index: number }
 /** Screen = translate(x, y) · scale(k) · world. */
@@ -12,7 +14,8 @@ export type Camera = { x: number; y: number; k: number }
 export type Size = { width: number; height: number }
 
 export const IDENTITY_CAMERA: Camera = { x: 0, y: 0, k: 1 }
-const ORDER_KEY = 'closedai.spaces.v1'
+// v1 listed every recent project main remembered; v2 is only the spaces the user has.
+const SPACES_KEY = 'closedai.spaces.v2'
 const HISTORY_LIMIT = 50
 export const OVERVIEW_PAD = 32
 export const OVERVIEW_GAP = 28
@@ -26,40 +29,42 @@ export function spaceName(cwd: string, projectPath: string | null): string {
 }
 
 /**
- * The current workspace and main's recent projects, in the order the user first saw them. A
- * stable order keeps each space where it was, so the overview can be navigated from memory.
+ * The spaces the user has, in the order they were added, plus the workspace they are in when it is
+ * not one of them yet (the first launch, a folder just added, or a model's project switch). Folders
+ * main merely remembers are not spaces. A stable order keeps each space where it was, so the
+ * overview can be navigated from memory.
  */
-export function orderedSpaces(
-  current: { cwd: string; projectPath: string | null },
-  recent: ReadonlyArray<{ cwd: string; projectPath: string | null }>,
-  savedOrder: readonly string[]
-): Space[] {
-  const known = new Map<string, Space>()
-  for (const entry of [current, ...recent]) {
-    if (!known.has(entry.cwd)) known.set(entry.cwd, { id: entry.cwd, cwd: entry.cwd, projectPath: entry.projectPath, name: spaceName(entry.cwd, entry.projectPath) })
+export function spaceList(saved: readonly SpaceEntry[], current: SpaceEntry): Space[] {
+  const spaces: Space[] = []
+  for (const entry of [...saved, current]) {
+    if (spaces.some((space) => space.id === entry.cwd)) continue
+    spaces.push({ id: entry.cwd, cwd: entry.cwd, projectPath: entry.projectPath, name: spaceName(entry.cwd, entry.projectPath) })
   }
-  const ordered = savedOrder.filter((id) => known.has(id)).map((id) => known.get(id)!)
-  for (const space of known.values()) if (!ordered.includes(space)) ordered.push(space)
-  return ordered
+  return spaces
 }
 
-export function readSpaceOrder(storage: Pick<Storage, 'getItem'>): string[] {
+export function readSpaces(storage: Pick<Storage, 'getItem'>): SpaceEntry[] {
   try {
-    const raw = JSON.parse(storage.getItem(ORDER_KEY) ?? 'null') as { order?: unknown } | null
-    return Array.isArray(raw?.order) ? raw.order.filter((id): id is string => typeof id === 'string' && id.length > 0) : []
+    const raw = JSON.parse(storage.getItem(SPACES_KEY) ?? 'null') as { spaces?: unknown } | null
+    if (!Array.isArray(raw?.spaces)) return []
+    return raw.spaces.flatMap((entry): SpaceEntry[] => {
+      const { cwd, projectPath } = (entry ?? {}) as { cwd?: unknown; projectPath?: unknown }
+      if (typeof cwd !== 'string' || !cwd) return []
+      return [{ cwd, projectPath: typeof projectPath === 'string' && projectPath ? projectPath : null }]
+    })
   } catch { return [] }
 }
 
-export function saveSpaceOrder(storage: Pick<Storage, 'setItem'>, order: readonly string[]): void {
-  try { storage.setItem(ORDER_KEY, JSON.stringify({ order })) } catch { /* Best-effort preference. */ }
+export function saveSpaces(storage: Pick<Storage, 'setItem'>, spaces: readonly SpaceEntry[]): void {
+  const entries = spaces.map(({ cwd, projectPath }) => ({ cwd, projectPath }))
+  try { storage.setItem(SPACES_KEY, JSON.stringify({ spaces: entries })) } catch { /* Best-effort preference. */ }
 }
 
 /**
  * Window-shaped slots for `count` spaces in a centred grid, each with room for its label above.
- * The column count is whichever gives the largest slots; a short last row is centred. `reserveBottom`
- * keeps a strip under the grid free for the overview's own controls.
+ * The column count is whichever gives the largest slots; a short last row is centred.
  */
-export function overviewSlots(count: number, size: Size, reserveBottom = 0): Rect[] {
+export function overviewSlots(count: number, size: Size): Rect[] {
   const n = Math.max(1, count)
   const { width: W, height: H } = size
   if (W <= 0 || H <= 0) return Array.from({ length: n }, () => ({ x: 0, y: 0, width: 0, height: 0 }))
@@ -67,7 +72,7 @@ export function overviewSlots(count: number, size: Size, reserveBottom = 0): Rec
   for (let cols = 1; cols <= n; cols++) {
     const rows = Math.ceil(n / cols)
     const byWidth = (W - 2 * OVERVIEW_PAD - (cols - 1) * OVERVIEW_GAP) / cols / W
-    const byHeight = (H - reserveBottom - 2 * OVERVIEW_PAD - rows * LABEL_HEIGHT - (rows - 1) * OVERVIEW_GAP) / rows / H
+    const byHeight = (H - 2 * OVERVIEW_PAD - rows * LABEL_HEIGHT - (rows - 1) * OVERVIEW_GAP) / rows / H
     const scale = Math.min(byWidth, byHeight)
     if (scale > best.scale) best = { cols, rows, scale }
   }
@@ -75,7 +80,7 @@ export function overviewSlots(count: number, size: Size, reserveBottom = 0): Rec
   const slotW = W * scale
   const slotH = H * scale
   const gridH = best.rows * (slotH + LABEL_HEIGHT) + (best.rows - 1) * OVERVIEW_GAP
-  const top = (H - reserveBottom - gridH) / 2
+  const top = (H - gridH) / 2
   return Array.from({ length: n }, (_, index) => {
     const row = Math.floor(index / best.cols)
     const inRow = Math.min(best.cols, n - row * best.cols)

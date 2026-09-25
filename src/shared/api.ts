@@ -141,7 +141,7 @@ export type ClosedaiApi = {
     clearProject: (paneId: ChatPaneId) => Promise<void>
     /** Make a project the workspace (a space in the overview); null is the home directory. Chats keep their own folders. */
     selectSpace: (projectPath: string | null) => Promise<void>
-    /** Pick a folder and make it the workspace; false when the picker was cancelled. */
+    /** Pick a folder and make it the workspace (Add workspace in the overview); false when the picker was cancelled. */
     openSpace: () => Promise<boolean>
     /** Which providers can start on this machine (binary present), with an install or sign-in sentence each; for onboarding. */
     providerAvailability: () => Promise<ProviderAvailability[]>

@@ -44,21 +44,31 @@
 .spaces-slot-running { flex: none; color: #cfe6d7; font-weight: 500; }
 .spaces-slot-group[data-current='true'] .spaces-slot-name::after { content: ' · here'; font-weight: 400; color: #cfcac2; }
 
-.spaces-actions { position: absolute; left: 0; right: 0; bottom: 10px; display: flex; justify-content: center; pointer-events: none; }
-.spaces-action {
-  pointer-events: auto;
-  height: 28px;
-  padding: 0 12px;
-  border: 1px solid rgb(238 234 228 / 22%);
-  border-radius: 7px;
-  background: rgb(32 34 35 / 45%);
-  color: #eeeae4;
+/* The last slot in the grid: an empty workspace-shaped outline that adds a folder. */
+.spaces-add {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0;
+  border: 1.5px dashed rgb(238 234 228 / 26%);
+  border-radius: 10px;
+  background: transparent;
+  color: rgb(238 234 228 / 62%);
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
   cursor: pointer;
+  transition: background 120ms, border-color 120ms, color 120ms;
 }
-.spaces-action:hover { background: rgb(32 34 35 / 62%); }
-.spaces-action:focus-visible { outline: 2px solid var(--tab-accent, #3f5f86); outline-offset: 2px; }
+.spaces-add:hover:not(:disabled), .spaces-add:focus-visible {
+  border-color: rgb(238 234 228 / 55%);
+  background: rgb(238 234 228 / 6%);
+  color: #eeeae4;
+}
+.spaces-add:focus-visible { outline: 2px solid var(--tab-accent, #3f5f86); outline-offset: 3px; }
+.spaces-add:disabled { cursor: default; }
 .spaces-error {
   position: absolute;
   top: 10px;

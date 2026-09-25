@@ -612,19 +612,22 @@ chats back, and it reopens when its project is selected again or at the next lau
 `closedai_app.state` lists detached windows and their chat ids under `window.detached`; UI
 automation, controls and capture still act on the main window only.
 
-### Spaces and the overview
+### Workspace overview (spaces)
 
-A **space** is one project's workspace: its saved split tree, tabs, divider sizes and browser
-position (`src/renderer/spaces/`). The spaces are the active project plus main's recent projects
-(`workspace.recentProjects`), in the order they were first seen (`closedai.spaces.v1` in renderer
-localStorage), so each keeps its place. **View → Overview of spaces** (`titlebar.menu-item`
-`overview`), Ctrl+Shift+O, or Ctrl+scroll down / a pinch zooms out: the live workspace shrinks into
-its slot beside the others, each labelled with its folder name and how many of its chats are
-running. Clicking a slot (`spaces.slot`, item is the folder), scrolling up over it, or Enter on it
-zooms in; Escape, Ctrl+Shift+O or double-clicking the background returns to the space you came from.
-**Open folder as space…** (`spaces.open-folder`) picks a folder and zooms into it as a new space.
-Back and forward (Alt+←/→ outside text fields, or the mouse's side buttons) walk the zoom history
-of this session: overview and space stops, stepping through the overview between spaces.
+A **space** (shown to users as a *workspace*) is one project's layout: its saved split tree, tabs,
+divider sizes and browser position (`src/renderer/spaces/`). The overview shows only the user's
+spaces, in the order they were added (`closedai.spaces.v2` in renderer localStorage, entries of
+`cwd` and `projectPath`): a first launch has the one it opened in, and a workspace joins the list
+when you add it or are switched into it (by a model's `project_switch`, for example). Folders main
+merely remembers (`workspace.recentProjects`) are not listed. **View → Workspace overview**
+(`titlebar.menu-item` `overview`), Ctrl+Shift+O, or Ctrl+scroll down / a pinch zooms out: the live
+workspace shrinks into its slot beside the others, each labelled with its folder name and how many
+of its chats are running. Clicking a slot (`spaces.slot`, item is the folder), scrolling up over it,
+or Enter on it zooms in; Escape, Ctrl+Shift+O or double-clicking the background returns to the one
+you came from. The last slot is **Add workspace** (`spaces.add`): a dashed outline with a + that
+picks a folder, adds it and zooms into it. Back and forward (Alt+←/→ outside text fields, or the
+mouse's side buttons) walk the zoom history of this session: overview and space stops, stepping
+through the overview between spaces.
 
 Zooming is a camera over one drawing: the space you came from is its live DOM scaled into its slot
 (chats keep streaming), and every other space is drawn from its saved layout with its tabs' titles

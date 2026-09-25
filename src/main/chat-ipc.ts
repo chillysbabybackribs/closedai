@@ -81,7 +81,7 @@ export function registerChatIpc(ipcMain: IpcMain, getService: () => ChatWorkspac
   })
   ipcMain.handle(IPC.invoke.chat.openSpace, async () => {
     const result = await dialog.showOpenDialog({
-      title: 'Open a project folder as a space',
+      title: 'Add a workspace',
       properties: ['openDirectory', 'createDirectory']
     })
     if (result.canceled || !result.filePaths[0]) return false
