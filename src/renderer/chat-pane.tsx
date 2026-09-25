@@ -1,5 +1,5 @@
 import type { JSX } from 'react'
-import { memo, useRef, useState } from 'react'
+import { memo, useLayoutEffect, useRef, useState, type RefObject } from 'react'
 
 import {
   MessageScroller,
@@ -76,6 +76,8 @@ export const ChatPane = memo(function ChatPane({
   // A continuation stays visually empty until its first message delivers the handoff to the model.
   const centerComposer = !blocked && !composerAnchoredBottom(chat.selectedPaneId, state, peerRow)
   const modelMenuRef = useRef<ComposerSetupHandle>(null)
+  const dockRef = useRef<HTMLDivElement>(null)
+  useDockInset(dockRef)
   const openModelMenu = (): void => modelMenuRef.current?.open()
   // What the pane itself could not do, shown above the composer until the next attempt.
   const [notice, setNotice] = useState('')
@@ -143,55 +145,59 @@ export const ChatPane = memo(function ChatPane({
               <div aria-hidden="true" />
             )}
         </TranscriptScroller>
-        {showTranscript && blocked && (
-          <ConnectionBanner provider={state.provider} state={state.connection.state} message={state.connection.message}
-            onLogin={chat.loginWithChatGPT} onChooseModel={openModelMenu} />
-        )}
-        <CredentialApprovalCards requests={approvals} onDecide={decideCredential} />
-        {agentRun && (
-          <AgentRunStrip run={agentRun}
-            onPause={() => window.closedai.agentRuns.pause(agentRun.chatId)}
-            onResume={() => window.closedai.agentRuns.resume(agentRun.chatId)}
-            onStop={() => window.closedai.agentRuns.stop(agentRun.chatId)} />
-        )}
-        {notice && (
-          <div className="chat-pane-notice" role="alert">
-            <span>{notice}</span>
-            <button type="button" className="chat-connection-link" data-ui="chat.notice-dismiss" onClick={() => setNotice('')}>Dismiss</button>
-          </div>
-        )}
-        <Composer
-          paneId={chat.selectedPaneId}
-          setupMenuRef={modelMenuRef}
-          enabled={usable}
-          running={running}
-          placeholder={connecting ? state.connection.message : undefined}
-          models={state.models}
-          selectedModel={state.selectedModel}
-          selectedReasoningEffort={state.selectedReasoningEffort}
-          contextUsage={state.contextUsage}
-          promptSuggestion={state.promptSuggestion ?? null}
-          provider={state.provider}
-          planUsage={state.planUsage}
-          onRefreshPlanUsage={chat.refreshPlanUsage}
-          onModelChange={chat.selectModel}
-          onReasoningEffortChange={chat.selectReasoningEffort}
-          onSend={sendMessage}
-          onStop={chat.interrupt}
-          paused={state.pausedTurnId !== null}
-          onResume={() => sendMessage(CHAT_RESUME_PROMPT, [])}
-          cwd={project.cwd}
-          projectPath={project.projectPath}
-          projectPending={Boolean(record?.pendingProject)}
-          recentProjects={recentProjects}
-          onChooseProject={() => window.closedai.chat.chooseProject(chat.selectedPaneId)}
-          onSelectProject={(projectPath) => window.closedai.chat.selectProject(chat.selectedPaneId, projectPath)}
-          onClearProject={() => window.closedai.chat.clearProject(chat.selectedPaneId)}
-          onCompactConversation={manualCompact ? compactConversation : undefined}
-          compactConversationEnabled={canCompact}
-          continueMessageId={continueMessageId}
-          onContinueInNewChat={onContinueInNewChat}
-        />
+        {/* The composer floats over the foot of the transcript with everything that stacks on it;
+            the scroller pads its end by this layer's height (--composer-dock-height). */}
+        <div ref={dockRef} className="chat-composer-dock">
+          {showTranscript && blocked && (
+            <ConnectionBanner provider={state.provider} state={state.connection.state} message={state.connection.message}
+              onLogin={chat.loginWithChatGPT} onChooseModel={openModelMenu} />
+          )}
+          <CredentialApprovalCards requests={approvals} onDecide={decideCredential} />
+          {agentRun && (
+            <AgentRunStrip run={agentRun}
+              onPause={() => window.closedai.agentRuns.pause(agentRun.chatId)}
+              onResume={() => window.closedai.agentRuns.resume(agentRun.chatId)}
+              onStop={() => window.closedai.agentRuns.stop(agentRun.chatId)} />
+          )}
+          {notice && (
+            <div className="chat-pane-notice" role="alert">
+              <span>{notice}</span>
+              <button type="button" className="chat-connection-link" data-ui="chat.notice-dismiss" onClick={() => setNotice('')}>Dismiss</button>
+            </div>
+          )}
+          <Composer
+            paneId={chat.selectedPaneId}
+            setupMenuRef={modelMenuRef}
+            enabled={usable}
+            running={running}
+            placeholder={connecting ? state.connection.message : undefined}
+            models={state.models}
+            selectedModel={state.selectedModel}
+            selectedReasoningEffort={state.selectedReasoningEffort}
+            contextUsage={state.contextUsage}
+            promptSuggestion={state.promptSuggestion ?? null}
+            provider={state.provider}
+            planUsage={state.planUsage}
+            onRefreshPlanUsage={chat.refreshPlanUsage}
+            onModelChange={chat.selectModel}
+            onReasoningEffortChange={chat.selectReasoningEffort}
+            onSend={sendMessage}
+            onStop={chat.interrupt}
+            paused={state.pausedTurnId !== null}
+            onResume={() => sendMessage(CHAT_RESUME_PROMPT, [])}
+            cwd={project.cwd}
+            projectPath={project.projectPath}
+            projectPending={Boolean(record?.pendingProject)}
+            recentProjects={recentProjects}
+            onChooseProject={() => window.closedai.chat.chooseProject(chat.selectedPaneId)}
+            onSelectProject={(projectPath) => window.closedai.chat.selectProject(chat.selectedPaneId, projectPath)}
+            onClearProject={() => window.closedai.chat.clearProject(chat.selectedPaneId)}
+            onCompactConversation={manualCompact ? compactConversation : undefined}
+            compactConversationEnabled={canCompact}
+            continueMessageId={continueMessageId}
+            onContinueInNewChat={onContinueInNewChat}
+          />
+        </div>
       </div>
     </aside>
   )
@@ -234,4 +240,19 @@ function TranscriptScroller({
       </MessageScroller>
     </MessageScrollerProvider>
   )
+}
+
+/** Publishes the floating dock's height on the zoom surface, where the transcript pads its end by it. */
+function useDockInset(dockRef: RefObject<HTMLDivElement | null>): void {
+  useLayoutEffect(() => {
+    const dock = dockRef.current
+    const surface = dock?.parentElement
+    if (!dock || !surface) return
+    // Layout size, not the zoom-scaled box: the padding lives inside the same scaled surface.
+    const publish = (): void => surface.style.setProperty('--composer-dock-height', `${dock.offsetHeight}px`)
+    publish()
+    const observer = new ResizeObserver(publish)
+    observer.observe(dock)
+    return () => observer.disconnect()
+  }, [dockRef])
 }
