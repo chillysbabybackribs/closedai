@@ -20,8 +20,6 @@
     var(--backdrop-blur) center / cover no-repeat fixed;
   --glass-edge: rgb(255 255 255 / 11%);
   --glass-sheen: rgb(255 255 255 / 9%);
-  /* The wallpaper's vivid hue: Send and the composer's focus ring, the one colour in the chat. */
-  --composer-accent: var(--backdrop-accent, var(--tab-accent, #8ab4f8));
 }
 
 /* ---- Rails ---------------------------------------------------------------
@@ -76,9 +74,10 @@
 }
 
 /* Only a chat's reading surface is glass, and only faintly (--backdrop-glass stays near
-   opaque). Its header and tabs keep their solid fill, like a window's title bar, and the
-   composer stays raised and solid. The browser and view tiles stay solid cards: a web page
-   is always opaque, so glass chrome around it would read as a second material. */
+   opaque). Its header and tabs keep their solid fill, like a window's title bar; the composer
+   capsule is its own live-blur glass (composer.css) and takes the wallpaper's hue for Send
+   (--backdrop-accent). The browser and view tiles stay solid cards: a web page is always
+   opaque, so glass chrome around it would read as a second material. */
 :root[data-backdrop] .chat-layout-tile[data-pane-id]:not([data-drag-placeholder]) { background: var(--glass-fill); }
 :root[data-backdrop] .chat-layout-tile[data-pane-id] .chat-pane,
 :root[data-backdrop] .chat-layout-tile[data-pane-id] .chat-turn-user { background: transparent; }

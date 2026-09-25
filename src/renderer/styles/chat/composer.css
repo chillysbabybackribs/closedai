@@ -13,7 +13,8 @@
   --capsule-sheen: color-mix(in srgb, var(--foreground) 7%, transparent);
   --capsule-shadow: 0 1px 2px rgb(0 0 0 / 28%), 0 14px 34px rgb(0 0 0 / 32%);
   --capsule-radius: 20px;
-  --composer-accent: var(--tab-accent, #8ab4f8);
+  /* The one colour in the chat (Send, focus): the wallpaper's hue while a backdrop is on. */
+  --composer-accent: var(--backdrop-accent, var(--tab-accent, #8ab4f8));
 }
 
 /* The dock layer: absolutely placed over the scroller, which pads its end by the dock's height

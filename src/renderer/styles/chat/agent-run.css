@@ -1,5 +1,6 @@
-/* Agent run strip (agent-runs/agent-run-strip.tsx): one borderless line above the composer,
-   aligned to the same column width as .composer-stack. */
+/* Agent run strip (agent-runs/agent-run-strip.tsx): one line above the composer, aligned to the
+   same column width as .composer-stack. It floats over the transcript with the capsule, so it
+   wears the capsule's material rather than sitting bare on scrolling text. */
 .agent-run-strip {
   box-sizing: border-box;
   display: flex;
@@ -7,7 +8,12 @@
   gap: 8px;
   width: min(calc(var(--chat-column-width) + 64px), calc(100% - var(--chat-column-gutter, 16px) * 2));
   margin: 0 auto 6px;
-  padding: 2px 2px 4px;
+  padding: 5px 12px;
+  border: 1px solid var(--capsule-edge, var(--hairline));
+  border-radius: 999px;
+  background: var(--capsule-fill, var(--surface-raised));
+  box-shadow: var(--capsule-shadow, none);
+  backdrop-filter: blur(22px) saturate(1.5);
   color: var(--muted-foreground, #8c8c8e);
   font-size: 12.5px;
   line-height: 1.45;

@@ -13,9 +13,11 @@
   gap: 0;
 }
 
-/* User turns: a muted band spanning the pane's text column, left-aligned with
-   the answer below it. Inline inset comes from the scroller item, so the band
-   stops at the same margin as assistant prose. */
+/* User turns: a card spanning the pane's text column, left-aligned with the
+   answer below it, cut from the composer capsule's material (composer.css) so a
+   sent draft reads as the capsule's content landing in the transcript. Inline
+   inset comes from the scroller item, so the card stops at the same margin as
+   assistant prose. */
 .message-user {
   width: 100%;
   max-width: 100%;
@@ -25,11 +27,11 @@
 .user-message {
   width: 100%;
   box-sizing: border-box;
-  padding: 12px var(--chat-inline);
-  border: solid var(--hairline);
-  border-width: 1px 0;
-  border-radius: 0;
-  background: var(--surface-raised);
+  padding: 11px 16px;
+  border: 1px solid var(--capsule-edge, var(--hairline));
+  border-radius: 16px;
+  background: var(--capsule-fill, var(--surface-raised));
+  box-shadow: inset 0 1px 0 var(--capsule-sheen, transparent), 0 1px 2px rgb(0 0 0 / 18%);
   color: var(--foreground);
   font-size: var(--chat-fs-body, 14px);
   line-height: 1.6;
