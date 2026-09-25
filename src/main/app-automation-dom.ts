@@ -39,6 +39,8 @@ export function controlsExpression(filter: AppControlFilter): string {
     for (const element of Array.from(document.querySelectorAll('[data-ui]'))) {
       if (!visible(element)) continue;
       const item = describe(element, nameOf, surfaceOf);
+      // Dialogs and menus portal outside every tagged surface, so overlay is only known from its controls.
+      if (!surfaces.includes(item.surface)) surfaces.push(item.surface);
       if (filter.surface && item.surface !== filter.surface) continue;
       if (query) {
         const haystack = [item.id, item.item, item.name, item.value].filter(Boolean).join(' ').toLowerCase();

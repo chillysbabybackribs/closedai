@@ -174,9 +174,13 @@ test('control listing names switches and inputs from their native labels', () =>
       document: { querySelector: () => null, querySelectorAll: (selector: string) => (selector === '[data-ui]' ? [toggle] : []) }
     })
     try {
-      const listing = new Function(`return ${controlsExpression({ maxControls: 5 })}`)() as { controls: Array<{ name: string; checked?: boolean }> }
+      const listing = new Function(`return ${controlsExpression({ maxControls: 5 })}`)() as {
+        surfaces: string[]; controls: Array<{ name: string; checked?: boolean }>
+      }
       assert.deepEqual(listing.controls.map((control) => [control.name, control.checked]),
         [['Only save secrets when the OS keychain is available', false]])
+      // A portalled dialog control sits outside every tagged surface; the listing still names overlay.
+      assert.deepEqual(listing.surfaces, ['overlay'])
     } finally {
       Object.assign(globalThis, { document: originalDocument })
     }
