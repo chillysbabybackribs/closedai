@@ -29,8 +29,8 @@ export function saveDockPrefs(storage: Pick<Storage, 'setItem'>, prefs: DockPref
   try { storage.setItem(PREFS_KEY, JSON.stringify(prefs)) } catch { /* private mode or full: the defaults return */ }
 }
 
-/** Height of the strip along the bottom of the window. */
-export const DOCK_HEIGHT = 56
+/** Height of the strip along the bottom of the window; the tab over the tray keeps its own height. */
+export const DOCK_HEIGHT = 44
 /** Tray tile size at rest and under the pointer (1.33x). */
 export const TRAY_ICON = 48
 export const TRAY_MAGNIFIED = 64

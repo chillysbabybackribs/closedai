@@ -676,8 +676,8 @@ and forward (`dock.back`, `dock.forward`) step through the same zoom history as 
 disabled at either end and while a zoom is moving. Next to them is where you are: the workspace
 and the selected chat, or "All workspaces". Right: Dock settings (`dock.settings`). Centre: the
 **app tray**, Magic UI's `Dock` (`src/components/ui/dock.tsx`, `@magicui/dock`), with one
-rounded-square tile per ClosedAI surface (`dock.app`, item is the surface). The strip is 56 px tall;
-the tray floats over its centre and rises above it, with 48 px tiles that grow to 64 px under the
+rounded-square tile per ClosedAI surface (`dock.app`, item is the surface). The strip is 44 px tall;
+the tray sits in a tab that rises out of its centre to the tiles' height, with 48 px tiles that grow to 64 px under the
 pointer. The dock's box reaches as high as a magnified tile, so a browser under any of it is covered. **Chats** opens chat history. **Browser** shows or hides the
 browser. **Agent runs** opens the Agents view; its tooltip carries the runs summary. **Saved
 sites** and **Downloads** open a list above the icon. In Saved sites, a row (`dock.saved-site`)

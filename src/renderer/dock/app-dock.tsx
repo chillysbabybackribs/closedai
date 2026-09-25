@@ -75,9 +75,8 @@ export function AppDock({ nav, chats, chatTitle, browserVisible, prefs, onPrefsC
       onFocus={(event) => { if (event.target.matches(':focus-visible')) { setKeyboard(true); show() } }}
       onBlur={(event) => { if (!root.current?.contains(event.relatedTarget as Node | null)) setKeyboard(false) }}>
       {/* The strip; the tray's tab rises out of its centre, so hiding moves both past the edge. */}
-      <div style={{ height: DOCK_HEIGHT }} className={cn('pointer-events-auto absolute inset-x-0 bottom-0 flex items-center justify-between gap-2',
-        'px-3 transition-transform duration-200 ease-out motion-reduce:transition-none',
-        shown ? 'translate-y-0' : 'translate-y-[calc(100%+32px)]')}>
+      <div style={{ height: DOCK_HEIGHT, transform: shown ? undefined : `translateY(${DOCK_REACH + 8}px)` }}
+        className="pointer-events-auto absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 px-3 transition-transform duration-200 ease-out motion-reduce:transition-none">
         {/* Behind the strip's controls: the strip's transform keeps -z-10 inside the dock. */}
         <DockSurface tray={tray} />
         <div className="flex max-w-[calc(50%-190px)] min-w-0 items-center gap-0.5">

@@ -51,7 +51,7 @@ describe('dockOutlinePath', () => {
 
   it('runs along the strip edge, over the tab, and back, symmetric about the tab centre', () => {
     const path = dockOutlinePath(box)
-    assert.match(path, /^M 0 14 H [\d.]+ A /)
+    assert.match(path, new RegExp(`^M 0 ${TAB_RISE} H [\\d.]+ A `))
     assert.match(path, / H 1000$/)
     const points = path.split(/ (?=[A-Z])/)
     const top = points.find((part) => part.startsWith('H') && Number(part.slice(2)) > box.tabLeft)!
@@ -63,8 +63,8 @@ describe('dockOutlinePath', () => {
   })
 
   it('closes round the strip bottom for the clip and insets the stroke inside the fill', () => {
-    assert.match(dockOutlinePath(box, 0, true), / H 1000 V 70 H 0 Z$/)
-    assert.match(dockOutlinePath(box, 0.5), /^M 0 14.5 /)
+    assert.match(dockOutlinePath(box, 0, true), new RegExp(` H 1000 V ${DOCK_HEIGHT + TAB_RISE} H 0 Z$`))
+    assert.ok(dockOutlinePath(box, 0.5).startsWith(`M 0 ${TAB_RISE + 0.5} `))
     assert.match(dockOutlinePath(box, 0.5), / H [\d.]+ 0.5 | 0.5 H /)
   })
 
