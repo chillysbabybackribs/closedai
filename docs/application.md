@@ -389,8 +389,13 @@ it. During a browser drag, the workspace's far left and right edges place the
 browser in a full-height column beside all chats; only the targeted edge shows its hint. Moving the browser preserves its tabs and
 the selected chat; its position uses the same saved layout and resizable dividers.
 While a pane or the browser is dragged toward a split target, tiles and dividers live-resize to
-the layout that would result on release; chats and a captured browser page stay visible and track their
-new bounds. Tiles and dividers glide to each new preview, to the accepted layout on drop, and back on a
+the layout that would result on release (the target tile halves to make room); the other chats and a captured
+browser page stay visible and track their new bounds. The dragged tile's destination shows as a
+semi-transparent placeholder of its size and place. Holding the pointer inside the placeholder for about
+a quarter second after it lands shrinks the dragged chat or browser into it: a centred miniature of its
+current form, laid out at its pre-drag size so nothing reflows (a dragged browser keeps its native bounds and
+pre-drag still). Moving to another target empties the placeholder again. On release the miniature (or the
+empty placeholder) glides out to fill the spot; on cancel it grows back in its original tile. Tiles and dividers glide to each new preview, to the accepted layout on drop, and back on a
 cancelled drag (about 190ms, transform-only, so transcripts lay out once per preview; off under reduced
 motion). A preview that changes mid-glide bends from where each tile currently appears. The native
 browser stays occluded until the release glide lands, and native bounds are measured only once a
