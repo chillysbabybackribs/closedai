@@ -12,6 +12,7 @@ import { useBrowserDownloadsController } from '../browser-downloads-controller.j
 import { useSavedSitesList } from '../browser-saved-sites-controller.js'
 import type { SpacesDockNav } from '../spaces/spaces-stage.js'
 import { DOCK_HEIGHT, DOCK_REACH, TRAY_LIFT, dockLocation, trayApps, type DockPrefs, type TrayAppId } from './dock-model.js'
+import { DockSurface } from './dock-surface.js'
 import { DockTray } from './dock-tray.js'
 import { useDockReveal } from './use-dock-reveal.js'
 
@@ -47,6 +48,7 @@ export function AppDock({ nav, chats, chatTitle, browserVisible, prefs, onPrefsC
   }, [shown])
   useEffect(() => { if (!shown) setOpenList(null) }, [shown])
   const root = useRef<HTMLDivElement>(null)
+  const tray = useRef<HTMLDivElement>(null)
 
   const runs = useAgentRuns()
   const downloads = useBrowserDownloadsController().downloads
@@ -71,10 +73,11 @@ export function AppDock({ nav, chats, chatTitle, browserVisible, prefs, onPrefsC
       className="pointer-events-none fixed inset-x-0 bottom-0 z-40" style={{ height: DOCK_REACH }}
       onFocus={(event) => { if (event.target.matches(':focus-visible')) { setKeyboard(true); show() } }}
       onBlur={(event) => { if (!root.current?.contains(event.relatedTarget as Node | null)) setKeyboard(false) }}>
-      {/* The strip; the tray floats over its centre and rises above it, so hiding moves both past the edge. */}
+      {/* The strip; the tray's tab rises out of its centre, so hiding moves both past the edge. */}
       <div style={{ height: DOCK_HEIGHT }} className={cn('pointer-events-auto absolute inset-x-0 bottom-0 flex items-center justify-between gap-2',
-        'border-t border-border bg-background/80 px-3 backdrop-blur-md transition-transform duration-200 ease-out motion-reduce:transition-none',
+        'px-3 transition-transform duration-200 ease-out motion-reduce:transition-none',
         shown ? 'translate-y-0' : 'translate-y-[calc(100%+32px)]')}>
+        <DockSurface tray={tray} />
         <div className="flex max-w-[calc(50%-190px)] min-w-0 items-center gap-0.5">
           <Button variant="ghost" size="sm" data-ui="dock.overview" aria-pressed={nav.overview} disabled={nav.moving}
             className={cn(nav.overview && 'bg-accent text-accent-foreground')} onClick={nav.toggleOverview}>
@@ -93,7 +96,7 @@ export function AppDock({ nav, chats, chatTitle, browserVisible, prefs, onPrefsC
             </span>)}
           </span>
         </div>
-        <div className="absolute left-1/2 -translate-x-1/2" style={{ bottom: TRAY_LIFT }}>
+        <div ref={tray} className="absolute left-1/2 -translate-x-1/2" style={{ bottom: TRAY_LIFT }}>
           <DockTray apps={apps} magnify={prefs.magnify}
             openStack={openList === 'saved-sites' || openList === 'downloads' ? openList : null}
             onOpenStack={setOpenList}

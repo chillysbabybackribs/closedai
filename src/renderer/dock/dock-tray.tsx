@@ -36,8 +36,9 @@ export function DockTray(props: DockTrayProps): JSX.Element {
   const { apps, magnify, openStack, onOpenStack, onLaunch } = props
   return <Dock data-slot="app-dock-tray" direction="bottom" iconSize={TRAY_ICON} iconMagnification={TRAY_MAGNIFIED}
     disableMagnification={!magnify}
-    // Height is TRAY_ICON + 2 * TRAY_PADDING + its 1px border; p-1.5 is TRAY_PADDING.
-    className="mx-0 mt-0 h-[62px] gap-2 rounded-[20px] border-border bg-popover/90 p-1.5 shadow-xl">
+    // The tab behind it is DockSurface, so the tray itself draws nothing. It fills the tab above the
+    // strip: height TRAY_ICON + TAB_PADDING, and p-2.5 is TAB_PADDING at the sides and top.
+    className="mx-0 mt-0 h-[58px] gap-2 rounded-none border-0 bg-transparent p-2.5 pb-0 backdrop-blur-none">
     {apps.map((app) => <DockIcon key={app.id} padding={0} className="relative rounded-[22%]">
       {app.stack
         ? <Popover open={openStack === app.id} onOpenChange={(open) => onOpenStack(open ? app.id : null)}>
