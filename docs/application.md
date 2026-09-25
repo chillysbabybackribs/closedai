@@ -390,7 +390,11 @@ browser in a full-height column beside all chats; only the targeted edge shows i
 the selected chat; its position uses the same saved layout and resizable dividers.
 While a pane or the browser is dragged toward a split target, tiles and dividers live-resize to
 the layout that would result on release; chats and a captured browser page stay visible and track their
-new bounds. Layout drags temporarily occlude the native browser after the still is ready, so
+new bounds. Tiles and dividers glide to each new preview, to the accepted layout on drop, and back on a
+cancelled drag (about 190ms, transform-only, so transcripts lay out once per preview; off under reduced
+motion). A preview that changes mid-glide bends from where each tile currently appears. The native
+browser stays occluded until the release glide lands, and native bounds are measured only once a
+transform glide on the host or an ancestor has landed, never at a transitional size. Layout drags temporarily occlude the native browser after the still is ready, so
 the moving native surface cannot intercept drag events. After each bounds update the preview
 refreshes from the resized page, so responsive content reflows before release. The page never
 leaves the main window for this: it is parked with one corner pixel inside the window, where
