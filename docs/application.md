@@ -886,7 +886,10 @@ either kind, so a new icon never changes the tray's size or spacing.
   are full-width rails of one glass, each tinted from the wallpaper band behind it
   (`--backdrop-rail-top`/`--backdrop-rail-bottom`, `railTint`) so both land at the same darkness over a bright sky or a dark
   foreground, with a hairline facing the
-  workspace; menus sit directly on the bar and search is a recessed field. A chat's transcript area
+  workspace. Each rail carries a tab round its centre group, drawn with the rail as one outline
+  (`renderer/rail/`): the dock's rises over the tray, and the title bar's drops round chat search.
+  The title bar's strip is 32 px, so its menus and window controls sit in the strip while the tab
+  reaches the full 44 px row and the desktop shows beside it; search is a recessed field in the tab. A chat's transcript area
   and the Overview stage are glass too: a once-blurred copy of the same image (`renderer/backdrop/`)
   under a near-opaque dark tint, painted with fixed attachment so it lines up with the desktop
   without a live blur. The composer capsule is the one live blur, and Send takes the wallpaper's
