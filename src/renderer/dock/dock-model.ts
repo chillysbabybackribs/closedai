@@ -34,14 +34,19 @@ export const DOCK_HEIGHT = 56
 /** Tray tile size at rest and under the pointer (1.33x). */
 export const TRAY_ICON = 48
 export const TRAY_MAGNIFIED = 64
-/** The tray floats over the strip's centre: its padding, and its gap above the window edge. */
-export const TRAY_PADDING = 6
-export const TRAY_LIFT = 4
+/** The resting tiles' bottom edge, above the window's bottom edge. */
+export const TRAY_LIFT = 12
+/** Room around the tiles inside the tab: at the sides and above them. */
+export const TAB_PADDING = 10
+/** The tab over the tray: how far it rises above the strip, its top corners, and the concave joins. */
+export const TAB_RISE = TRAY_LIFT + TRAY_ICON + TAB_PADDING - DOCK_HEIGHT
+export const TAB_RADIUS = 16
+export const TAB_FILLET = 10
 /**
- * How far above the window's bottom edge the dock can draw: a magnified tile at the top of the
- * tray. The dock's box is this tall, so a browser under any part of it counts as covered.
+ * How far above the window's bottom edge the dock can draw: a magnified tile, or the tab when it is
+ * taller. The dock's box is this tall, so a browser under any part of it counts as covered.
  */
-export const DOCK_REACH = TRAY_LIFT + 1 + TRAY_PADDING + TRAY_MAGNIFIED + 3
+export const DOCK_REACH = Math.max(DOCK_HEIGHT + TAB_RISE, TRAY_LIFT + TRAY_MAGNIFIED) + 3
 /**
  * With Keep visible on, the workspace ends this far above the window's bottom edge. The gap past
  * the dock's reach keeps the browser's edge margin (titlebar-browser-freeze.ts) clear of it, so a
@@ -111,4 +116,46 @@ export function trayApps(input: TrayInput): TrayApp[] {
 export function dockLocation(input: { overview: boolean; space: string; chat: string | null }): string[] {
   if (input.overview) return ['All workspaces']
   return input.chat ? [input.space, input.chat] : [input.space]
+}
+
+export type DockOutline = {
+  /** The surface's box: the window's width, the strip plus the tab's rise. */
+  width: number
+  height: number
+  /** The tab's left edge and width, measured from the tray. */
+  tabLeft: number
+  tabWidth: number
+}
+
+/**
+ * SVG path of the strip and its tab as one shape: along the strip's top edge, a concave join up into
+ * the tab, over its rounded top, and back down. `inset` pulls the line in (0.5 centres a 1px stroke
+ * on the edge); `closed` runs on round the strip's bottom so the path can clip the fill. When the
+ * rise is shorter than the two curves, they meet directly as an S with no straight side between.
+ */
+export function dockOutlinePath(box: DockOutline, inset = 0, closed = false): string {
+  const top = inset
+  const edge = box.height - DOCK_HEIGHT + inset
+  const r = Math.max(TAB_RADIUS - inset, 0)
+  const f = TAB_FILLET + inset
+  const n = (value: number): string => String(Math.round(value * 100) / 100)
+  // Left join, from the corner's centre: the fillet's centre sits `f` above the edge, `r + f` away.
+  const cornerX = box.tabLeft + inset + r
+  const cornerY = top + r
+  const dy = (edge - f) - cornerY
+  const dx = dy >= 0 ? r + f : Math.sqrt((r + f) ** 2 - dy ** 2)
+  const filletX = cornerX - dx
+  const side = dy >= 0
+    ? { from: [cornerX - r, edge - f], to: [cornerX - r, cornerY] }
+    : (() => { const t = f / (r + f); const p = [filletX + dx * t, edge - f - dy * t]; return { from: p, to: p } })()
+  const mirror = (x: number): number => 2 * (box.tabLeft + box.tabWidth / 2) - x
+  const path = [
+    `M ${n(0)} ${n(edge)}`, `H ${n(filletX)}`,
+    `A ${n(f)} ${n(f)} 0 0 0 ${n(side.from[0])} ${n(side.from[1])}`, `L ${n(side.to[0])} ${n(side.to[1])}`,
+    `A ${n(r)} ${n(r)} 0 0 1 ${n(cornerX)} ${n(top)}`, `H ${n(mirror(cornerX))}`,
+    `A ${n(r)} ${n(r)} 0 0 1 ${n(mirror(side.to[0]))} ${n(side.to[1])}`, `L ${n(mirror(side.from[0]))} ${n(side.from[1])}`,
+    `A ${n(f)} ${n(f)} 0 0 0 ${n(mirror(filletX))} ${n(edge)}`, `H ${n(box.width)}`
+  ]
+  if (closed) path.push(`V ${n(box.height)}`, 'H 0', 'Z')
+  return path.join(' ')
 }
