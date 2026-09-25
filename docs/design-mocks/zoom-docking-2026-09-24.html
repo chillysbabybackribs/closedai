@@ -34,10 +34,10 @@
   /* The app window. Nothing is drawn in it except the zoomable world. */
   .fit { position: relative; max-width: 1120px; }
   .viewport { position: absolute; left: 0; top: 0; transform-origin: 0 0; width: 1120px; height: 630px; overflow: hidden; border-radius: 10px; background: radial-gradient(120% 100% at 28% 8%, #6f6c66, #45433f 72%); user-select: none; }
-  .world { position: absolute; left: 0; top: 0; width: 1120px; height: 590px; transform-origin: 0 0; transition: transform var(--dur) var(--ease); }
+  .world { position: absolute; left: 0; top: 0; width: 1120px; height: 630px; transform-origin: 0 0; transition: transform var(--dur) var(--ease); }
   .group { position: absolute; border-radius: 12px; background: rgb(0 0 0 / 13%); }
   .chip { position: absolute; top: 5px; left: 9px; transform-origin: 0 0; transform: scale(var(--inv, 1)); transition: transform var(--dur) var(--ease), opacity 200ms; white-space: nowrap; font-size: 11px; font-weight: 600; letter-spacing: .03em; color: #eeeae4; background: #6f6c68; padding: 2px 7px; border-radius: 5px; pointer-events: none; }
-  .slot { position: absolute; left: 0; top: 0; width: 1120px; height: 590px; transform-origin: 0 0; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 10px rgb(0 0 0 / 28%); }
+  .slot { position: absolute; left: 0; top: 0; width: 1120px; height: 630px; transform-origin: 0 0; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 10px rgb(0 0 0 / 28%); }
   .slot > .chip { top: auto; bottom: 10px; left: 10px; transform-origin: 0 100%; transform: scale(var(--leaf-inv, 1)); background: rgb(32 34 35 / 78%); }
   .slot[data-focused] > .chip { opacity: 0; }
   .slot[data-focused] { box-shadow: none; }
@@ -71,9 +71,11 @@
   .icon .s { display: flex; align-items: center; gap: 4px; color: var(--muted-foreground); font-size: 8px; }
   .icon .s .dot { width: 5px; height: 5px; }
 
-  /* The dock: a translucent full-width strip of controls with the app tray floating over its centre. */
-  .canvas { position: absolute; left: 0; top: 0; width: 1120px; height: 590px; overflow: hidden; border-radius: 10px 10px 0 0; }
-  .dock { position: absolute; left: 0; right: 0; bottom: 0; height: 40px; z-index: 40; }
+  /* The dock: a translucent full-width strip of controls with the app tray floating over its centre.
+     Hidden by default; it slides up over the canvas when the pointer touches the bottom edge. */
+  .canvas { position: absolute; inset: 0; overflow: hidden; border-radius: 10px; }
+  .dock { position: absolute; left: 0; right: 0; bottom: 0; height: 40px; z-index: 40; transform: translateY(56px); transition: transform 240ms var(--ease) 60ms; }
+  .dock[data-shown] { transform: none; transition-delay: 0ms; }
   .strip { position: absolute; inset: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 8px; background: rgb(32 34 35 / 40%); backdrop-filter: blur(16px) saturate(1.2); box-shadow: inset 0 1px 0 rgb(255 255 255 / 10%); }
   .side { display: flex; align-items: center; gap: 2px; }
   .dk { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 9px; border: 0; border-radius: 7px; background: transparent; color: #e4e0d9; font: inherit; font-size: 12px; cursor: pointer; }
@@ -159,7 +161,7 @@
 <p class="note"><b class="hi">Box-select and smooth docking (new in v3, from your screenshots).</b> In the video, dragging a box over three windows in the zoomed-out view opens a view of only those, and the other windows reflow smoothly while one is being dragged. Here the box picks individual tiles (chats and browsers), not whole workspaces, because a view of three chats at full size is something you can work in. The tiles keep their left-to-right and top-to-bottom order. The opened view is an ordinary layout: in the app it would be a temporary <code>ChatLayout</code> built from the existing pane ids, so the chats move rather than being copied, and Back returns them. When you drag a header, the tile collapses to its tab and the others close the gap. Hovering near another tile's edge opens a frosted slot where it will land, and dropping in a tile's middle leaves it floating. The app already computes this live preview (<code>layout-drag-preview.ts</code>). Tiles are positioned with plain left/top/width/height and no transition, though (<code>chat-canvas.tsx:14</code>), so today the preview snaps instead of gliding.</p>
 
 <script>
-const VW = 1120, VH = 590, DOCK = 40, GAP = 10, PAD = 9, LABEL = 18, ROOT_PAD = 14, ICON_BELOW = 190
+const VW = 1120, VH = 630, DOCK = 40, GAP = 10, PAD = 9, LABEL = 18, ROOT_PAD = 14, ICON_BELOW = 190
 
 const chat = (title, state, user, reply, selected) => `
   <div class="tile"${selected ? ' data-selected' : ''}>
@@ -317,7 +319,7 @@ const fitEl = document.getElementById('fit')
 function fitWindow () {
   fitScale = Math.min(1, fitEl.parentElement.clientWidth / VW)
   vp.style.transform = `scale(${fitScale})`
-  fitEl.style.height = `${(VH + DOCK) * fitScale}px`
+  fitEl.style.height = `${VH * fitScale}px`
 }
 fitWindow()
 addEventListener('resize', fitWindow)
@@ -535,7 +537,8 @@ function dragMove (e) {
     lift(p)
   }
   Object.assign(drag.t.el.style, { left: `${p.x - drag.grab.x}px`, top: `${p.y - drag.grab.y}px` })
-  const overDock = p.y > VH - 12
+  if (p.y >= VH - EDGE * 2) showDock(true)
+  const overDock = dockShown && p.y > VH - DOCK - 14
   tray.toggleAttribute('data-target', overDock)
   const drop = overDock ? 'dock' : dropAt(p)
   if (drag.drop !== undefined && drop?.target === drag.drop?.target && drop?.edge === drag.drop?.edge) return
@@ -682,7 +685,7 @@ vpDock.addEventListener('click', e => {
   if (b.dataset.act === 'back') return step(-1)
   if (b.dataset.act === 'fwd') return step(1)
   if (b.dataset.act === 'map') { openPop(b, ''); if (popFor) renderMap(); return }
-  if (b.dataset.act === 'settings') return openPop(b, rowsHtml(['Dock', ['Position', 'Bottom'], ['Hide when a chat is maximized', 'On'], ['Show location', 'On']]))
+  if (b.dataset.act === 'settings') return openPop(b, rowsHtml(['Dock', ['Show', 'Pointer at the bottom edge'], ['Keep visible', 'Off'], ['Position', 'Bottom'], ['Show location', 'On']]))
   if (b.dataset.min) return restore(b.dataset.min)
   const app = APPS[b.dataset.app]
   if (app.rows) return openPop(b, rowsHtml(app.rows))
@@ -691,6 +694,27 @@ vpDock.addEventListener('click', e => {
 })
 pop.addEventListener('click', e => { const l = e.target.closest('[data-go]'); if (l) { go(l.dataset.go); renderMap() } })
 vp.addEventListener('mousedown', e => { if (popFor && !e.target.closest('.dock, .pop')) closePop() }, true)
+
+// Auto-hide: nothing sits at the bottom until the pointer touches the edge, as with macOS's hidden Dock.
+// Leaving the dock's band hides it after a short grace period; an open list or map keeps it up.
+const EDGE = 6, BAND = 64
+let dockShown = false, hideTimer = 0
+function showDock (on) {
+  clearTimeout(hideTimer)
+  hideTimer = 0
+  if (on === dockShown) return
+  dockShown = on
+  vpDock.toggleAttribute('data-shown', on)
+  if (!on) { closePop(); tray.removeAttribute('data-target') }
+}
+function hideSoon () { if (dockShown && !popFor && !hideTimer) hideTimer = setTimeout(() => showDock(false), 380) }
+vp.addEventListener('mousemove', e => {
+  const y = local(e).y
+  if (y >= VH - EDGE) return showDock(true)
+  if (y > VH - BAND || popFor) { clearTimeout(hideTimer); hideTimer = 0; return }
+  hideSoon()
+})
+vp.addEventListener('mouseleave', hideSoon)
 
 // Drag a tile onto the dock to minimize it; click its card to bring it back.
 const minimized = {}
