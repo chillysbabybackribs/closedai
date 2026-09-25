@@ -4,6 +4,7 @@ import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import { chatTabIds } from '../chat-layout/layout-tabs.js'
 import { readLayout } from '../chat-layout/layout-tree.js'
 import { SpaceMiniature } from './space-miniature.js'
+import { useSpaceStills } from './space-stills.js'
 import {
   LABEL_HEIGHT, anchorChat, cameraTransform, createZoomGesture, liveTransform, newSpace, readSpaces, resolveCurrent,
   saveSpaces, slotAt, type SavedSpaces, type Size, type Space, type Workspace
@@ -89,7 +90,8 @@ export function SpacesStage({ enabled, workspace, chats, selectedPaneId, childre
   }, [setSaved])
   const commit = useCallback((id: string) => setSaved((value) => ({ ...value, current: id })), [setSaved])
 
-  const nav = useSpaceNavigation({ enabled, current: current.id, spaces, size, stageRef, prepare, create, commit })
+  const { still, capture } = useSpaceStills(stageRef)
+  const nav = useSpaceNavigation({ enabled, current: current.id, spaces, size, stageRef, capture, prepare, create, commit })
   const { phase, camera, animate, slots, step, toggle, enter, zoomOut } = nav
   useImperativeHandle(ref, () => ({ toggleOverview: toggle }), [toggle])
 
@@ -185,6 +187,7 @@ export function SpacesStage({ enabled, workspace, chats, selectedPaneId, childre
         if (!slot) return null
         const count = running.get(space.id) ?? 0
         const here = index === currentIndex
+        const picture = here ? null : still(space.id)
         return <div key={space.id} className="spaces-slot-group" data-current={here}>
           <div className="spaces-slot-label" style={{ left: slot.x, top: slot.y - LABEL_HEIGHT, width: slot.width, height: LABEL_HEIGHT }}>
             <span className="spaces-slot-name">{space.name}</span>
@@ -194,7 +197,8 @@ export function SpacesStage({ enabled, workspace, chats, selectedPaneId, childre
             style={{ left: slot.x, top: slot.y, width: slot.width, height: slot.height }}
             aria-label={`${here ? 'Return to' : 'Open'} workspace ${space.name}${count ? `, ${count} running` : ''}`}
             title={space.cwd} disabled={phase !== 'overview'} onClick={() => { void enter(space.id) }}>
-            {!here && <div className="spaces-slot-scale" style={{ transform: `scale(${size.width ? slot.width / size.width : 1})` }}>
+            {picture && <img className="spaces-slot-still" src={picture} alt="" draggable={false} />}
+            {!here && !picture && <div className="spaces-slot-scale" style={{ transform: `scale(${size.width ? slot.width / size.width : 1})` }}>
               <SpaceMiniature spaceId={space.id} size={size} chats={chats} />
             </div>}
           </button>

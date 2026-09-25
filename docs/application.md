@@ -636,9 +636,14 @@ fields, or the mouse's side buttons) walk the zoom history of this session: over
 stops, stepping through the overview between spaces.
 
 Zooming is a camera over one drawing: the space you came from is its live DOM scaled into its slot
-(chats keep streaming), and every other space is drawn from its saved layout with its tabs' titles,
-their last message, and live running or paused marks from the workspace-wide chat rows. In a space
-nothing is transformed, so layout, menus and the native browser behave exactly as without spaces.
+(chats keep streaming), and every other space shows a still of how it looked when you last zoomed
+out of it. Zooming out captures that still of the stage (`windows.capture`: the window's own page,
+so it is taken once the browser's still is on screen and before anything moves; a capture slower
+than 250 ms is dropped) and keeps it in localStorage (`closedai.spaces.still:<id>`, JPEG at most
+1600 px wide) so it survives a relaunch. A space with no still yet (never zoomed out of, or one a
+model's `project_switch` left) is drawn from its saved layout with its tabs' titles, their last
+message, and live running or paused marks from the workspace-wide chat rows. In a space nothing is
+transformed, so layout, menus and the native browser behave exactly as without spaces.
 Before zooming out the browser is occluded and shows its captured still; the page keeps its
 full-size bounds while zoomed out (`data-native-bounds-hold` stops bounds reports) and goes live
 again when you land back in a space. The live workspace is `inert` while zoomed out.

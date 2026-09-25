@@ -27,6 +27,8 @@
 .spaces-slot:disabled { cursor: default; }
 .spaces-slot:hover:not(:disabled), .spaces-slot:focus-visible { outline: 2px solid var(--tab-accent, #3f5f86); outline-offset: 3px; }
 .spaces-slot[data-current='true'] { outline: 2px solid color-mix(in srgb, var(--tab-accent, #3f5f86) 70%, transparent); outline-offset: 3px; }
+/* What a space looked like when you last left it; spaces never left are drawn from their layout. */
+.spaces-slot-still { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: left top; pointer-events: none; }
 .spaces-slot-scale { position: absolute; left: 0; top: 0; transform-origin: 0 0; pointer-events: none; }
 .spaces-slot-label {
   position: absolute;

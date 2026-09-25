@@ -40,12 +40,14 @@ async function browserStillReady(root: HTMLElement | null): Promise<void> {
   }
 }
 
-export function useSpaceNavigation({ enabled, current, spaces, size, stageRef, prepare, create, commit }: {
+export function useSpaceNavigation({ enabled, current, spaces, size, stageRef, capture, prepare, create, commit }: {
   enabled: boolean
   current: string
   spaces: readonly Space[]
   size: Size
   stageRef: RefObject<HTMLDivElement | null>
+  /** Keep a still of the space being left, taken with its browser still on screen and before it moves. */
+  capture: (id: string) => Promise<void>
   /** Make main show what `space` needs (its project, one of its chats) before it mounts. */
   prepare: (space: Space) => Promise<void>
   /** Add a space, prepared to be shown. */
@@ -99,6 +101,8 @@ export function useSpaceNavigation({ enabled, current, spaces, size, stageRef, p
     setPhase('arming')
     await browserStillReady(stageRef.current)
     if (token !== ticket.current) return
+    await capture(id)
+    if (token !== ticket.current) return
     // Start from the camera that shows the current space full-size, then let it pull back.
     setAnimate(false)
     setCamera(focusCamera(slot, stage))
@@ -107,7 +111,7 @@ export function useSpaceNavigation({ enabled, current, spaces, size, stageRef, p
     if (token !== ticket.current || !await glide(IDENTITY_CAMERA, token)) return
     setPhase('overview')
     if (record) history.current = visitStop(history.current, { kind: 'overview' })
-  }, [enabled, glide, setPhase, slotOf, stageRef])
+  }, [enabled, capture, glide, setPhase, slotOf, stageRef])
 
   /**
    * Glide into `slot`, prepare what it shows with no live workspace mounted, then show it and land
