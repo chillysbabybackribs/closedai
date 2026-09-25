@@ -14,6 +14,7 @@ import {
   modelTriggerLabel,
   recentModels
 } from './model-menu-state.js'
+import { CAPSULE_PANEL_OFFSET } from './composer-layout.js'
 
 /** Opens the panel from outside its trigger, e.g. the empty pane's "Choose model" hint. */
 export type ComposerSetupHandle = { open: () => void }
@@ -111,7 +112,7 @@ export function ComposerSetupMenu({
         className="composer-setup"
         side="top"
         align="start"
-        sideOffset={6}
+        sideOffset={CAPSULE_PANEL_OFFSET}
         collisionPadding={12}
         collisionBoundary={boundary ?? undefined}
         avoidCollisions

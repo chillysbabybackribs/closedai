@@ -3,6 +3,7 @@ import { FolderOpen } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover.js'
 
 import { FolderSection, folderName } from './composer-setup-sections.js'
+import { CAPSULE_PANEL_OFFSET } from './composer-layout.js'
 
 export type ComposerFolderMenuProps = {
   busy: boolean
@@ -58,7 +59,7 @@ export function ComposerFolderMenu({
         className="composer-setup composer-folder-popover"
         side="top"
         align="end"
-        sideOffset={6}
+        sideOffset={CAPSULE_PANEL_OFFSET}
         collisionPadding={12}
         collisionBoundary={boundary ?? undefined}
         avoidCollisions

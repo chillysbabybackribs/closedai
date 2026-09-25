@@ -12,6 +12,7 @@ import { useAgentRuns } from './agent-runs/agent-runs-store.js'
 import { dockTiles, DOCK_STATE_LABEL, type DockTileState } from './agent-runs/agent-run-overview-model.js'
 import { queueAgentsViewIntent } from './agent-library/agents-view-intent.js'
 import { useAgentRunAction } from './agent-runs/use-agent-run-action.js'
+import { CAPSULE_PANEL_OFFSET } from './composer-layout.js'
 
 export type ComposerAgentsMenuProps = {
   paneId: string
@@ -92,7 +93,7 @@ export function ComposerAgentsMenu({ paneId, startEnabled, runningTurn, onStart,
         container={paneRef.current}
         align="start"
         side="top"
-        sideOffset={8}
+        sideOffset={CAPSULE_PANEL_OFFSET}
         collisionPadding={12}
         collisionBoundary={paneRef.current ?? undefined}
         avoidCollisions
