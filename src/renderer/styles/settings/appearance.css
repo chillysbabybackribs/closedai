@@ -108,3 +108,9 @@
   padding-inline: 8px;
   font-size: 11.5px;
 }
+
+/* Sizes sit on the container: the app's unlayered `button { font: inherit }` outranks utilities on buttons. */
+.appearance-backdrop-options {
+  width: 100%;
+  font-size: 12px;
+}

@@ -12,11 +12,12 @@ import { CredentialVaultPanel } from './credential-vault-panel.js'
 import { SecurityPanel } from './security-panel.js'
 import { ModelsPanel } from './models-panel.js'
 import type { AppearanceSettings } from './appearance-settings.js'
+import type { BackdropStatus } from '../backdrop/use-workspace-backdrop.js'
 
 export type SettingsTab = 'appearance' | 'models' | 'credentials' | 'security'
 
 const TABS: Array<{ id: SettingsTab; label: string; description: string; icon: JSX.Element }> = [
-  { id: 'appearance', label: 'Appearance', description: 'Adjust chat readability without changing the browser pane.', icon: <Type size={18} /> },
+  { id: 'appearance', label: 'Appearance', description: 'Adjust chat readability and what shows behind the workspace.', icon: <Type size={18} /> },
   { id: 'models', label: 'Models', description: 'Choose which models from each connected provider appear in the composer menu.', icon: <Cpu size={18} /> },
   { id: 'credentials', label: 'Credentials', description: 'API keys and logins the app and its agents can use, encrypted by your OS keychain.', icon: <KeyRound size={18} /> },
   { id: 'security', label: 'Security', description: 'Manual choices about credentials and the browser. Defaults keep the app unrestricted.', icon: <ShieldCheck size={18} /> }
@@ -29,6 +30,7 @@ export type SettingsDialogProps = {
   onOpenChange: (open: boolean) => void
   appearance: AppearanceSettings
   onAppearanceChange: (patch: Partial<AppearanceSettings>) => void
+  backdropStatus: BackdropStatus
 }
 
 /** File → Settings: one fixed-size dialog whose tabs are the app's configuration surfaces. */
@@ -38,7 +40,8 @@ export function SettingsDialog({
   onTabChange,
   onOpenChange,
   appearance,
-  onAppearanceChange
+  onAppearanceChange,
+  backdropStatus
 }: SettingsDialogProps): JSX.Element {
   const current = TABS.find((entry) => entry.id === tab) ?? TABS[0]!
   return (
@@ -60,7 +63,7 @@ export function SettingsDialog({
             </Tabs.List>
           </div>
           <Tabs.Content value="appearance" className="settings-tab-content">
-            <AppearancePanel {...appearance} onChange={onAppearanceChange} />
+            <AppearancePanel {...appearance} backdropStatus={backdropStatus} onChange={onAppearanceChange} />
           </Tabs.Content>
           <Tabs.Content value="models" className="settings-tab-content">
             <ModelsPanel active={open && tab === 'models'} />

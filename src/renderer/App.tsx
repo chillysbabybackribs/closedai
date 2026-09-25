@@ -38,6 +38,7 @@ import {
   readAppearanceSettings,
   type AppearanceSettings
 } from './settings/appearance-settings.js'
+import { useWorkspaceBackdrop } from './backdrop/use-workspace-backdrop.js'
 import './styles.css'
 
 export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boolean }): JSX.Element {
@@ -62,6 +63,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
   const searchRef = useRef<HTMLInputElement>(null)
   const focusSearch = useCallback(() => { searchRef.current?.focus(); searchRef.current?.select() }, [])
   const [appearance, setAppearance] = useState(() => readAppearanceSettings(window.localStorage))
+  const backdropStatus = useWorkspaceBackdrop(appearance.backdrop)
   const [settingsOpen, setSettingsOpen] = useState(initialSettingsOpen)
   const [settingsTab, setSettingsTab] = useState<SettingsTab>('appearance')
   const [renamingChat, setRenamingChat] = useState<{ id: string; title: string } | null>(null)
@@ -287,6 +289,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
           onOpenChange={setSettingsOpen}
           appearance={appearance}
           onAppearanceChange={updateAppearance}
+          backdropStatus={backdropStatus}
         />
       </Suspense>}
     </div>

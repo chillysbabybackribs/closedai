@@ -1,6 +1,8 @@
 import type { JSX } from 'react'
 import { Minus, Plus, RotateCcw } from 'lucide-react'
 import { Button } from '../../components/ui/button.js'
+import { ToggleGroup, ToggleGroupItem } from '../../components/ui/toggle-group.js'
+import type { BackdropStatus } from '../backdrop/use-workspace-backdrop.js'
 import {
   CHAT_FONT_SIZE_DEFAULT,
   CHAT_FONT_SIZE_MAX,
@@ -9,7 +11,9 @@ import {
   COMPOSER_FONT_SIZE_MAX,
   COMPOSER_FONT_SIZE_MIN,
   DEFAULT_APPEARANCE_SETTINGS,
-  type AppearanceSettings
+  WORKSPACE_BACKDROP_DEFAULT,
+  type AppearanceSettings,
+  type WorkspaceBackdrop
 } from './appearance-settings.js'
 import {
   CHAT_ZOOM_DEFAULT,
@@ -19,23 +23,59 @@ import {
 } from '../chat-zoom.js'
 
 export type AppearancePanelProps = AppearanceSettings & {
+  backdropStatus: BackdropStatus
   onChange: (patch: Partial<AppearanceSettings>) => void
 }
 
-/** The Appearance tab of Settings: three sliders and a reset. Persistence belongs to the caller. */
+const BACKDROP_OPTIONS: Array<{ value: WorkspaceBackdrop; label: string }> = [
+  { value: 'off', label: 'Off' },
+  { value: 'desktop', label: 'Desktop wallpaper' }
+]
+
+/** The Appearance tab of Settings: the workspace background, three sliders and a reset. Persistence belongs to the caller. */
 export function AppearancePanel({
   chatFontSize,
   composerFontSize,
   chatZoom,
+  backdrop,
+  backdropStatus,
   onChange
 }: AppearancePanelProps): JSX.Element {
   const isDefault = chatFontSize === CHAT_FONT_SIZE_DEFAULT
     && composerFontSize === COMPOSER_FONT_SIZE_DEFAULT
     && chatZoom === CHAT_ZOOM_DEFAULT
+    && backdrop === WORKSPACE_BACKDROP_DEFAULT
 
   return (
     <div className="settings-panel appearance-panel">
         <div className="appearance-controls">
+          <div className="appearance-control">
+            <div className="appearance-control-copy">
+              <label id="workspace-backdrop">Background</label>
+              <span>{backdropHint(backdropStatus)}</span>
+            </div>
+            <ToggleGroup
+              type="single"
+              variant="outline"
+              size="sm"
+              value={backdrop}
+              onValueChange={(next) => { if (next) onChange({ backdrop: next as WorkspaceBackdrop }) }}
+              aria-labelledby="workspace-backdrop"
+              className="appearance-backdrop-options"
+            >
+              {BACKDROP_OPTIONS.map((option) => (
+                <ToggleGroupItem
+                  key={option.value}
+                  value={option.value}
+                  data-ui="settings.backdrop"
+                  data-ui-key={option.value}
+                  className="h-7 flex-1"
+                >
+                  {option.label}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+          </div>
           <AppearanceControl
             id="chat-font-size"
             label="Chat text"
@@ -87,6 +127,15 @@ export function AppearancePanel({
         </div>
     </div>
   )
+}
+
+function backdropHint(status: BackdropStatus): string {
+  switch (status.state) {
+    case 'off': return 'Flat, behind every tile'
+    case 'loading': return 'Reading your desktop wallpaper'
+    case 'ready': return status.name
+    case 'unavailable': return 'No desktop wallpaper found'
+  }
 }
 
 function AppearanceControl({
