@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
 import { layoutTileElement } from '../layout-geometry-dom.js'
-import type { ChatLayout, DockEdge, Rect } from '../layout-tree.js'
+import type { ChatLayout, Rect } from '../layout-tree.js'
 import { clampWindow, resizeRect, tearOffRect, windowMinimum, type ResizeEdge, type WindowSize } from './window-layout.js'
 import { sameTarget, targetPreview, windowTargetAt, type WindowTarget, type WindowTile } from './window-targets.js'
 
@@ -30,8 +30,9 @@ export function useWindowDrag({ canvas, frame, onActive, onPainted, onFloat, onS
   onActive: () => void
   /** A box was painted outside React; the glide records it as laid out. */
   onPainted: (element: HTMLElement) => void
-  onFloat: (id: string, rect: Rect) => void
-  onSnap: (id: string, target: string, edge: DockEdge) => void
+  /** `tornOff`: the window left the tiled layer, so the windows it leaves keep their places too. */
+  onFloat: (id: string, rect: Rect, tornOff: boolean) => void
+  onSnap: (id: string, target: WindowTarget & { kind: 'split' }) => void
   onGroup: (id: string, target: string) => void
   onMaximize: (id: string) => void
 }) {
@@ -124,16 +125,16 @@ export function useWindowDrag({ canvas, frame, onActive, onPainted, onFloat, onS
       const next = windowTargetAt(id, pointer.x, pointer.y, now.size, now.tiled, now.floating)
       if (sameTarget(next, target)) return
       target = next
-      const preview = targetPreview(now.tree, id, next, now.size, now.browserVisible, [...now.tiled, ...now.floating])
+      const preview = targetPreview(now.tree, id, next, now.size, now.browserVisible, now.tiled, now.floating)
       setGesture({ id, kind: 'move', target: next, preview })
     }, () => {
-      if (target.kind === 'split') onSnap(id, target.target, target.edge)
+      if (target.kind === 'split') onSnap(id, target)
       else if (target.kind === 'group') onGroup(id, target.target)
       else if (target.kind === 'maximize') {
         // Restoring puts the window back where it was before the drag: its float, or its slot.
         paint(id, start)
         onMaximize(id)
-      } else onFloat(id, rect)
+      } else onFloat(id, rect, !floating)
     })
   }, [frame, onFloat, onSnap, onGroup, onMaximize])
 
@@ -147,7 +148,7 @@ export function useWindowDrag({ canvas, frame, onActive, onPainted, onFloat, onS
     track(event, id, edge, start, (dx, dy) => {
       rect = resizeRect(start, edge, dx, dy, minimum)
       paint(id, rect)
-    }, () => onFloat(id, rect))
+    }, () => onFloat(id, rect, false))
   }, [frame, onFloat])
 
   return { gesture, startMove, startResize }

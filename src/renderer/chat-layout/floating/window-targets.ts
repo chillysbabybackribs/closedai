@@ -1,8 +1,9 @@
 import { BROWSER_PANE_ID, WORKSPACE_DOCK_ID, layoutGeometry, removePane, type ChatLayout, type DockEdge, type Rect } from '../layout-tree.js'
-import { WINDOW_HEADER, snapWindow } from './window-layout.js'
+import { snapToSide } from './window-arrange.js'
+import { WINDOW_HEADER, findWindow, snapWindow } from './window-layout.js'
 
 // Where a window being moved would land. The workspace edges snap it into the tiled layout (a
-// full-height column, or the whole workspace at the top edge); a tiled window's outer band splits
+// full-height column, or half the workspace when nothing else is tiled; the top edge maximizes); a tiled window's outer band splits
 // beside it; any window's tab strip joins its tabs. Everywhere else the window floats where it is
 // dropped, so a floating window can sit over tiled ones without every pass turning into a split.
 
@@ -56,13 +57,24 @@ export function sameTarget(a: WindowTarget, b: WindowTarget): boolean {
   return true
 }
 
+/** Where a split target puts `source`: a workspace side snaps as snapToSide decides, anything else beside its target. */
+export function snapTarget(tree: ChatLayout, source: string, target: Extract<WindowTarget, { kind: 'split' }>,
+  canvas: { width: number; height: number }, tiled: readonly WindowTile[], floating: readonly WindowTile[], splitId: string): ChatLayout {
+  const side = target.edge === 'left' || target.edge === 'right' ? target.edge : null
+  return target.target === WORKSPACE_DOCK_ID && side
+    ? snapToSide(tree, source, side, canvas, tiled, floating, splitId)
+    : snapWindow(tree, source, target.target, target.edge, splitId)
+}
+
 /** The outline shown for a target: where the window would land, or the window it would join. */
 export function targetPreview(tree: ChatLayout, source: string, target: WindowTarget, canvas: { width: number; height: number },
-  browserVisible: boolean, windows: readonly WindowTile[]): Rect | null {
+  browserVisible: boolean, tiled: readonly WindowTile[], floating: readonly WindowTile[]): Rect | null {
   if (target.kind === 'free') return null
   if (target.kind === 'maximize') return { x: 0, y: 0, width: canvas.width, height: canvas.height }
-  if (target.kind === 'group') return windows.find((tile) => tile.id === target.target)?.rect ?? null
-  const snapped = snapWindow(tree, source, target.target, target.edge, 'snap-preview')
+  if (target.kind === 'group') return [...tiled, ...floating].find((tile) => tile.id === target.target)?.rect ?? null
+  const snapped = snapTarget(tree, source, target, canvas, tiled, floating, 'snap-preview')
+  const float = findWindow(snapped, source)?.float
+  if (float) return { x: float.x, y: float.y, width: float.width, height: float.height }
   const visible = browserVisible || source === BROWSER_PANE_ID ? snapped : removePane(snapped, BROWSER_PANE_ID)
   if (!visible) return null
   return layoutGeometry(visible, canvas.width, canvas.height).panes.find((pane) => pane.id === source)?.rect ?? null
