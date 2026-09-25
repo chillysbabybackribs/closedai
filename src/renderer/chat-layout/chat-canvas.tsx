@@ -1,16 +1,20 @@
 import { expandedPaneIds } from './layout-docking.js'
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent as ReactDragEvent, type ReactNode } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent as ReactDragEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import type { ChatReviewQueue } from '../chat-history/review-queue.js'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
-import { BROWSER_PANE_ID, CHAT_DRAG_TYPE, WORKSPACE_DOCK_ID, isViewTabId, layoutGeometry, minimumSize, removePane, type ChatLayout, type DockEdge, type Rect, type SplitResizePhase } from './layout-tree.js'
+import { BROWSER_PANE_ID, CHAT_DRAG_TYPE, isViewTabId, layoutGeometry, removePane, type ChatLayout, type DockEdge, type Rect, type SplitResizePhase } from './layout-tree.js'
 import { LayoutDivider } from './layout-divider.js'
 import { createSplitResizeSession, paintSplitResize, type SplitResizeFrame } from './layout-split-resize.js'
 import { CHAT_TAB_DRAG_TYPE } from './layout-tabs.js'
 import type { TabActivity } from './tab-activity.js'
-import { browserDropAt, type BrowserDrop } from './browser-drop.js'
 import { chatDropAt, dragPreviewPanes, dragSplitPreview } from './layout-drag-preview.js'
 import { ChatLayoutPaneHeader } from './chat-layout-pane-header.js'
 import { GLIDE_MS, miniature, useLayoutGlide } from './layout-motion.js'
+import { minimizeWindow } from './floating/window-layout.js'
+import { browserCovered, canvasTiles, floatingFront } from './floating/window-tiles.js'
+import { useWindowDrag, type WindowFrame } from './floating/use-window-drag.js'
+import { useMaximizedWindow } from './floating/use-maximized-window.js'
+import { BrowserWindowContext, WindowResizeHandles } from './floating/window-controls.js'
 
 const position = (rect: Rect): CSSProperties => ({ left: rect.x, top: rect.y, width: rect.width, height: rect.height })
 const contains = (rect: Rect, x: number, y: number): boolean =>
@@ -19,6 +23,22 @@ const contains = (rect: Rect, x: number, y: number): boolean =>
 const HOLD_MS = GLIDE_MS + 90
 /** The tile border; a tile body is its inner box. */
 const TILE_BORDER = 1
+
+/** Window operations the canvas asks of the layout; none of them crosses IPC. */
+export type WindowActions = {
+  float: (id: string, rect: Rect) => void
+  snap: (id: string, target: string, edge: DockEdge) => void
+  group: (source: string, target: string) => void
+  raise: (id: string) => void
+  minimize: (id: string) => void
+}
+
+/** Where a pointer press starts moving a window: its grip or its header's empty space. */
+const MOVE_HANDLE = '[data-window-grip], .chat-layout-header, .browser-tabstrip'
+const pressesMoveHandle = (event: ReactPointerEvent): boolean => {
+  const target = event.target as HTMLElement
+  return target.matches(MOVE_HANDLE) || Boolean(target.closest('[data-window-grip]'))
+}
 
 /** React keys follow the first tab in a tile so adding a tab does not remount the header strip. */
 function tileReactKey(activeId: string, tabs: string[]): string {
@@ -57,9 +77,12 @@ type ChatCanvasProps = {
   onDock: (id: string | null, target: string, edge: DockEdge | null, singleTab?: boolean) => void | Promise<void>
   onHide: (id: string) => void
   onResize: (id: string, ratio: number, phase?: SplitResizePhase) => void
+  windows: WindowActions
+  /** A floating window above the browser overlaps it, so the page shows its still. */
+  onBrowserCovered?: (covered: boolean) => void
 }
 
-function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, browserVisible, browserRevealVersion, renderBrowser, onDragActive, title, activity, reviewQueue, chatRow, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onTogglePin, onContinueChat: _onContinueChat, onPauseTab, onResumeTab, onOpenPresets, onSizeChange, onDock, onHide, onResize }: ChatCanvasProps) {
+function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, browserVisible, browserRevealVersion, renderBrowser, onDragActive, title, activity, reviewQueue, chatRow, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onTogglePin, onContinueChat: _onContinueChat, onPauseTab, onResumeTab, onOpenPresets, onSizeChange, onDock, onHide, onResize, windows, onBrowserCovered }: ChatCanvasProps) {
   const viewport = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLDivElement>(null)
   const layoutFrame = useRef<SplitResizeFrame>({ tree, browserVisible, width: 0, height: 0 })
@@ -91,7 +114,7 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
   // Armed from dragstart until the release glide lands, so the preview, the drop and a
   // cancelled drag's return all glide while the native browser view stays occluded.
   const glideArmed = useRef(false)
-  const whenGlideIdle = useLayoutGlide(canvasRef, () => glideArmed.current)
+  const { whenIdle: whenGlideIdle, settle } = useLayoutGlide(canvasRef, () => glideArmed.current)
   // The dragged tile waits as an empty placeholder until the pointer holds inside it.
   const [held, setHeld] = useState(false)
   const holdTimer = useRef(0)
@@ -168,31 +191,19 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
       dragActiveListener.current(false)
     }
   }, [finishDrag])
-  useEffect(() => {
-    if (dragging || settling || !glideArmed.current) return
-    let cancelled = false
-    void whenGlideIdle().then(() => {
-      if (cancelled) return
-      glideArmed.current = false
-      dragActiveListener.current(false)
-    })
-    return () => { cancelled = true }
-  }, [dragging, settling, whenGlideIdle])
-  const [soloPaneId, setSoloPaneId] = useState<string | null>(null)
-  useEffect(() => { setSoloPaneId(null) }, [browserRevealVersion])
   const visibleTree = browserVisible ? tree : removePane(tree, BROWSER_PANE_ID)!
   const geometry = layoutGeometry(visibleTree, size.width, size.height)
   const splitPreview = useMemo(() => (dragging && drop?.edge
     ? dragSplitPreview(tree, dragging.id, drop, dragging.singleTab, size.width, size.height, browserVisible)
     : null), [dragging, drop, tree, size.width, size.height, browserVisible])
   const preview = settling ?? splitPreview
-  const minimum = preview?.minimum ?? minimumSize(visibleTree)
+  const minimum = preview?.minimum ?? geometry.minimum
   // Render the complete proposed layout: splitting the active tab also creates a
   // tile for its remaining siblings. Geometry alone cannot make that tile visible.
   const displayedTiles = dragPreviewPanes(geometry.panes, preview)
-  const renderedTiles = browserVisible || displayedTiles.some((pane) => pane.id === BROWSER_PANE_ID)
-    ? displayedTiles
-    : [...displayedTiles, { id: BROWSER_PANE_ID, tabs: [BROWSER_PANE_ID], rect: { x: 0, y: 0, width: 0, height: 0 } }]
+  const tiles = canvasTiles(tree, displayedTiles, size, browserVisible)
+  const floating = floatingFront(tiles)
+  const floatingIds = new Set(floating.map((tile) => tile.id))
   const layoutDividers = preview?.dividers ?? geometry.dividers
   // A live split preview turns the dragged tile into a placeholder at its destination.
   const holds = (tabs: string[]): boolean => Boolean(dragging && tabs.includes(dragging.id))
@@ -202,45 +213,49 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
   const mini = placeholder && source ? miniature(inner(placeholder.rect), inner(source)) : null
   const chatCount = expandedPaneIds(tree).length
   const canMaximize = chatCount > 1 || (browserVisible && chatCount >= 1)
-  const soloTile = soloPaneId
-    ? geometry.panes.find((p) => p.id === soloPaneId || p.tabs.includes(soloPaneId))
-    : null
+  const shown = tiles.filter((tile) => tile.kind !== 'hidden')
+  const [soloPaneId, setSoloPaneId] = useMaximizedWindow(shown, canMaximize || floating.length > 0, browserRevealVersion)
+  const soloTile = soloPaneId ? shown.find((p) => p.id === soloPaneId || p.tabs.includes(soloPaneId)) ?? null : null
+  const soloRect: Rect = { x: 0, y: 0, width: Math.max(size.width, minimum.width), height: Math.max(size.height, minimum.height) }
+  const covered = !soloTile && browserCovered(tiles)
+  const coveredListener = useRef(onBrowserCovered)
+  coveredListener.current = onBrowserCovered
+  useEffect(() => { coveredListener.current?.(covered) }, [covered])
 
+  const frame = useRef<() => WindowFrame>(() => ({ tree, size, browserVisible, tiled: [], floating: [] }))
+  frame.current = () => ({ tree, size, browserVisible, tiled: geometry.panes, floating })
+  const windowFrame = useCallback(() => frame.current(), [])
+  const { gesture, startMove, startResize } = useWindowDrag({
+    canvas: canvasRef, frame: windowFrame, onPainted: settle,
+    onActive: useCallback(() => {
+      glideArmed.current = true
+      dragActiveListener.current(true)
+    }, []),
+    onFloat: windows.float, onSnap: windows.snap, onGroup: windows.group,
+    onMaximize: useCallback((id: string) => setSoloPaneId(id), [setSoloPaneId])
+  })
   useEffect(() => {
-    if (!soloPaneId) return
-    const exists = geometry.panes.some((p) => p.id === soloPaneId || p.tabs.includes(soloPaneId))
-    if (!exists || (chatCount <= 1 && !browserVisible)) {
-      setSoloPaneId(null)
-    }
-  }, [soloPaneId, geometry.panes, chatCount, browserVisible])
+    if (dragging || settling || gesture || !glideArmed.current) return
+    let cancelled = false
+    void whenGlideIdle().then(() => {
+      if (cancelled) return
+      glideArmed.current = false
+      dragActiveListener.current(false)
+    })
+    return () => { cancelled = true }
+  }, [dragging, settling, gesture, whenGlideIdle])
 
-  useEffect(() => {
-    if (!soloPaneId) return
-    const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key !== 'Escape') return
-      const target = event.target as HTMLElement | null
-      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
-        return
-      }
-      event.preventDefault()
-      setSoloPaneId(null)
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [soloPaneId])
-
-  const soloRect: Rect = {
-    x: 0,
-    y: 0,
-    width: Math.max(size.width, minimum.width),
-    height: Math.max(size.height, minimum.height)
+  // Tab drops meet floating windows first; a floating window only takes tabs into its strip.
+  const dropAt = (x: number, y: number) => {
+    const hit = chatDropAt([...floating, ...geometry.panes], x, y, dropTarget.current)
+    if (!hit || !floatingIds.has(hit.target)) return hit
+    return hit.target === BROWSER_PANE_ID ? null : { target: hit.target, edge: null }
   }
-  const browserDrop = drop?.edge && dragging?.id === BROWSER_PANE_ID ? drop as BrowserDrop : null
-  const resolveBrowserDrop = (element: HTMLElement, x: number, y: number): BrowserDrop | null => {
-    const bounds = element.getBoundingClientRect()
-    return browserDropAt(geometry.panes, bounds.width, bounds.height, x - bounds.left, y - bounds.top,
-      dropTarget.current?.edge ? dropTarget.current as BrowserDrop : null)
-  }
+  const browserWindow = useMemo(() => ({
+    maximized: soloTile?.id === BROWSER_PANE_ID,
+    canMaximize: chatCount >= 1 || floatingIds.has(BROWSER_PANE_ID),
+    toggleMaximize: () => setSoloPaneId((current) => current ? null : BROWSER_PANE_ID)
+  }), [soloTile?.id, chatCount, floatingIds.has(BROWSER_PANE_ID), setSoloPaneId])
 
   // Preview movement can put a different DOM element under a stationary pointer.
   // Accept dragenter too, so release works before Chromium emits another dragover.
@@ -251,9 +266,7 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
     event.preventDefault()
     if (soloTile) setSoloPaneId(null)
     const bounds = event.currentTarget.getBoundingClientRect()
-    const next = dragging.id === BROWSER_PANE_ID
-      ? resolveBrowserDrop(event.currentTarget, event.clientX, event.clientY)
-      : chatDropAt(geometry.panes, event.clientX - bounds.left, event.clientY - bounds.top, dropTarget.current)
+    const next = dropAt(event.clientX - bounds.left, event.clientY - bounds.top)
     event.dataTransfer.dropEffect = next ? 'move' : 'none'
     if (next?.target !== dropTarget.current?.target || next?.edge !== dropTarget.current?.edge) {
       queueDrop(next)
@@ -287,9 +300,7 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
         event.preventDefault()
         event.stopPropagation()
         const bounds = event.currentTarget.getBoundingClientRect()
-        const target = source === BROWSER_PANE_ID
-          ? resolveBrowserDrop(event.currentTarget, event.clientX, event.clientY)
-          : chatDropAt(geometry.panes, event.clientX - bounds.left, event.clientY - bounds.top, dropTarget.current)
+        const target = dropAt(event.clientX - bounds.left, event.clientY - bounds.top)
         if (busy || !target) { finishDrag(); return }
         const singleTab = event.dataTransfer.types.includes(CHAT_TAB_DRAG_TYPE)
         const accepted = dragSplitPreview(tree, source, target, singleTab, size.width, size.height, browserVisible)
