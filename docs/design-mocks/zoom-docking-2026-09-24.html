@@ -337,7 +337,225 @@ document.getElementById('out').onclick = () => frame ? exitFrame() : zoomOut()
 document.getElementById('back').onclick = () => step(-1)
 document.getElementById('fwd').onclick = () => step(1)
 
-@@FRAME@@
+// Box-select → a view of only the picked tiles. In the app: a transient ChatLayout of existing pane ids.
+const frameEl = document.getElementById('frame'), FGAP = 8, INNER = { x: 8, y: 8, w: VW - 16, h: VH - 16 }
+const frames = []
+let frame = null, press = null, drag = null
+
+const local = e => { const b = vp.getBoundingClientRect(); return { x: (e.clientX - b.left) / fitScale, y: (e.clientY - b.top) / fitScale } }
+const boxOf = el => { const b = el.getBoundingClientRect(), v = vp.getBoundingClientRect(); return { x: (b.left - v.left) / fitScale, y: (b.top - v.top) / fitScale, w: b.width / fitScale, h: b.height / fitScale } }
+const overlaps = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
+const leafOf = key => nodes[key.split('.')[0]]
+const tileEl = key => leafOf(key).slot.querySelector(`[data-tile="${key}"]`)
+const sourceRect = key => leafOf(key).slot.hidden ? boxOf(leafOf(key).icon) : boxOf(tileEl(key))
+const rectOf = el => ({ x: parseFloat(el.style.left), y: parseFloat(el.style.top), w: parseFloat(el.style.width), h: parseFloat(el.style.height) })
+const place = (el, r) => Object.assign(el.style, { left: `${r.x}px`, top: `${r.y}px`, width: `${r.w}px`, height: `${r.h}px` })
+const flip = (from, to) => `translate(${from.x - to.x}px, ${from.y - to.y}px) scale(${from.w / to.w}, ${from.h / to.h})`
+
+function pickedBy (box) {
+  const keys = []
+  for (const leaf of leaves) {
+    const tiles = [...leaf.slot.querySelectorAll('[data-tile]')]
+    if (leaf.slot.hidden) {
+      const hit = overlaps(box, boxOf(leaf.icon))
+      leaf.icon.toggleAttribute('data-picked', hit)
+      if (hit) keys.push(...tiles.map(t => t.dataset.tile))
+      continue
+    }
+    for (const t of tiles) {
+      const hit = overlaps(box, boxOf(t))
+      t.toggleAttribute('data-picked', hit)
+      if (hit) keys.push(t.dataset.tile)
+    }
+  }
+  return keys
+}
+const clearPicks = () => world.querySelectorAll('[data-picked]').forEach(el => el.removeAttribute('data-picked'))
+
+// Columns keep the picked tiles' left-to-right order; each column keeps top-to-bottom order.
+function arrange (keys) {
+  const cols = []
+  for (const it of keys.map(key => ({ key, r: sourceRect(key) })).sort((a, b) => a.r.x - b.r.x)) {
+    const c = cols.at(-1), shared = c && Math.min(c.x2, it.r.x + it.r.w) - Math.max(c.x1, it.r.x)
+    if (c && shared > Math.min(c.x2 - c.x1, it.r.w) * 0.5) { c.items.push(it); c.x2 = Math.max(c.x2, it.r.x + it.r.w) }
+    else cols.push({ x1: it.r.x, x2: it.r.x + it.r.w, items: [it] })
+  }
+  const kids = cols.map(c => {
+    c.items.sort((a, b) => a.r.y - b.r.y)
+    return c.items.length === 1 ? { tile: c.items[0].key, f: 1 } : { dir: 'col', f: 1, kids: c.items.map(it => ({ tile: it.key, f: 1 })) }
+  })
+  return kids.length === 1 ? kids[0] : { dir: 'row', f: 1, kids }
+}
+
+// A miniature of layout-tree.ts: weighted splits, remove-and-collapse, dock at an edge.
+function tileRects (node, r, out = {}) {
+  if (!node) return out
+  if (node.tile) { out[node.tile] = r; return out }
+  const row = node.dir === 'row', total = node.kids.reduce((s, k) => s + k.f, 0)
+  const span = (row ? r.w : r.h) - FGAP * (node.kids.length - 1)
+  let at = row ? r.x : r.y
+  for (const kid of node.kids) {
+    const len = span * kid.f / total
+    tileRects(kid, row ? { x: at, y: r.y, w: len, h: r.h } : { x: r.x, y: at, w: r.w, h: len }, out)
+    at += len + FGAP
+  }
+  return out
+}
+function without (node, key) {
+  if (!node || node.tile) return node?.tile === key ? null : node
+  const kids = node.kids.map(k => without(k, key)).filter(Boolean)
+  return kids.length === 0 ? null : kids.length === 1 ? { ...kids[0], f: node.f } : { ...node, kids }
+}
+function dockAt (node, key, target, edge) {
+  if (!node) return { tile: key, f: 1 }
+  if (node.tile === target) {
+    const pair = [{ tile: key, f: 1 }, { tile: target, f: 1 }]
+    if (edge === 'right' || edge === 'bottom') pair.reverse()
+    return { dir: edge === 'left' || edge === 'right' ? 'row' : 'col', f: node.f, kids: pair }
+  }
+  return node.tile ? node : { ...node, kids: node.kids.map(k => dockAt(k, key, target, edge)) }
+}
+function relayout (tree, skip) {
+  const rects = tileRects(tree, INNER)
+  for (const t of frame.tiles) if (t.key !== skip && rects[t.key]) place(t.el, rects[t.key])
+  return rects
+}
+
+function openFrame (keys, record = true) {
+  const rects = tileRects(arrange(keys), INNER)
+  frameEl.innerHTML = '<div class="ghost"></div>'
+  frame = { keys, tree: arrange(keys), floats: {}, tiles: [] }
+  for (const key of keys) {
+    const el = tileEl(key).cloneNode(true), dst = rects[key]
+    el.removeAttribute('data-picked'); el.removeAttribute('data-selected')
+    el.style.transition = 'none'
+    place(el, dst)
+    el.style.transform = flip(sourceRect(key), dst)
+    frameEl.appendChild(el)
+    frame.tiles.push({ key, el })
+  }
+  frameEl.hidden = false
+  void frameEl.offsetWidth
+  frameEl.toggleAttribute('data-on', true)
+  world.toggleAttribute('data-away', true)
+  for (const t of frame.tiles) { t.el.style.transition = ''; t.el.style.transform = '' }
+  if (record) { hist.splice(hIndex + 1); hist.push(`frame:${frames.push(keys) - 1}`); hIndex = hist.length - 1 }
+  showPath(nodes[cur], `Selection · ${keys.length} tile${keys.length === 1 ? '' : 's'}`)
+}
+
+function closeFrame () {
+  if (!frame) return
+  const closing = frame
+  frame = null
+  world.removeAttribute('data-away')
+  frameEl.removeAttribute('data-on')
+  for (const t of closing.tiles) {
+    t.el.style.transition = `transform var(--dur) var(--ease), opacity 160ms 260ms`
+    t.el.style.transform = flip(sourceRect(t.key), rectOf(t.el))
+    t.el.style.opacity = '0'
+  }
+  setTimeout(() => { if (!frame) { frameEl.hidden = true; frameEl.innerHTML = '' } }, 440)
+}
+
+function exitFrame () {
+  closeFrame()
+  hist.splice(hIndex + 1); hist.push(cur); hIndex = hist.length - 1
+  showPath(nodes[cur])
+}
+
+vp.addEventListener('mousedown', e => {
+  if (e.button !== 0 || frame || nodes[cur].ws) return
+  e.preventDefault()
+  press = { at: local(e), el: null, keys: [] }
+})
+
+frameEl.addEventListener('mousedown', e => {
+  const hdr = e.target.closest('.hdr')
+  if (!hdr || e.button !== 0 || !frame) return
+  e.preventDefault()
+  drag = { t: frame.tiles.find(t => t.el === hdr.parentElement), start: local(e), lifted: false, drop: undefined }
+})
+
+function lift (p) {
+  const { t } = drag, r = rectOf(t.el)
+  drag.grab = { x: Math.min(p.x - r.x, 200), y: p.y - r.y }
+  drag.base = frame.floats[t.key] ? frame.tree : without(frame.tree, t.key)
+  delete frame.floats[t.key]
+  t.el.removeAttribute('data-float')
+  t.el.toggleAttribute('data-lifted', true)
+  Object.assign(t.el.style, { width: '240px', height: '34px' })
+  // Drop targets stay anchored to the layout without the lifted tile, as chatDropAt does today.
+  drag.baseRects = relayout(drag.base, t.key)
+  drag.lifted = true
+}
+
+function dropAt (p) {
+  if (!drag.base) return { target: null, edge: 'fill' }
+  for (const [key, r] of Object.entries(drag.baseRects)) {
+    if (p.x < r.x || p.x > r.x + r.w || p.y < r.y || p.y > r.y + r.h) continue
+    const d = { left: (p.x - r.x) / r.w, right: (r.x + r.w - p.x) / r.w, top: (p.y - r.y) / r.h, bottom: (r.y + r.h - p.y) / r.h }
+    const [edge, dist] = Object.entries(d).sort((a, b) => a[1] - b[1])[0]
+    return { target: key, edge: dist < 0.3 ? edge : null }
+  }
+  return null
+}
+
+function dragMove (e) {
+  const p = local(e)
+  if (!drag.lifted) {
+    if (Math.hypot(p.x - drag.start.x, p.y - drag.start.y) < 4) return
+    lift(p)
+  }
+  Object.assign(drag.t.el.style, { left: `${p.x - drag.grab.x}px`, top: `${p.y - drag.grab.y}px` })
+  const drop = dropAt(p)
+  if (drag.drop !== undefined && drop?.target === drag.drop?.target && drop?.edge === drag.drop?.edge) return
+  drag.drop = drop
+  const ghost = frameEl.querySelector('.ghost')
+  drag.preview = drop?.edge ? dockAt(drag.base, drag.t.key, drop.target, drop.edge) : null
+  const rects = relayout(drag.preview ?? drag.base, drag.t.key)
+  if (!drag.preview) return ghost.removeAttribute('data-on')
+  if (!ghost.hasAttribute('data-on')) { ghost.style.transition = 'opacity 160ms'; place(ghost, rects[drag.t.key]); void ghost.offsetWidth; ghost.style.transition = '' }
+  place(ghost, rects[drag.t.key])
+  ghost.toggleAttribute('data-on', true)
+}
+
+function dragEnd (e) {
+  const d = drag
+  drag = null
+  if (!d.lifted) return
+  frameEl.querySelector('.ghost').removeAttribute('data-on')
+  d.t.el.removeAttribute('data-lifted')
+  frame.tree = d.preview ?? d.base
+  relayout(frame.tree)
+  if (d.preview) return
+  const p = local(e), w = 460, h = 320
+  const r = { x: clamp(p.x - d.grab.x, 8, VW - w - 8), y: clamp(p.y - d.grab.y, 8, VH - h - 8), w, h }
+  frame.floats[d.t.key] = r
+  d.t.el.toggleAttribute('data-float', true)
+  place(d.t.el, r)
+}
+
+addEventListener('mousemove', e => {
+  if (drag) return dragMove(e)
+  if (!press) return
+  const p = local(e), a = press.at
+  if (!press.el && Math.hypot(p.x - a.x, p.y - a.y) < 5) return
+  if (!press.el) { press.el = document.createElement('div'); press.el.className = 'marquee'; vp.appendChild(press.el) }
+  const box = { x: Math.min(a.x, p.x), y: Math.min(a.y, p.y), w: Math.abs(p.x - a.x), h: Math.abs(p.y - a.y) }
+  place(press.el, box)
+  press.keys = pickedBy(box)
+})
+addEventListener('mouseup', e => {
+  if (drag) return dragEnd(e)
+  if (!press) return
+  const done = press
+  press = null
+  if (!done.el) return
+  done.el.remove()
+  clearPicks()
+  if (done.keys.length) openFrame(done.keys)
+})
 world.style.transition = 'none'
 go('root', 'init')
 requestAnimationFrame(() => requestAnimationFrame(() => { world.style.transition = '' }))
