@@ -445,10 +445,11 @@ and quadrants, up to 32 visible chats. A tile has a 300 × 280 px minimum; the c
 when a small window cannot fit the chosen arrangement. Every layout uses the same one-line
 composer (a 48 px capsule row with a 34 px send/pause control). Once a draft wraps, holds a line break, or carries an
 attachment, the capsule expands: the draft spans its full width and the tools, setup chip and Send drop to a row beneath it
-until the draft is sent or cleared. Drafts grow upward within a tile-relative height limit and then scroll, leaving room for
+until the draft is sent or cleared. A composer 460 px wide or less keeps that two-row shape even while empty,
+since one row would leave the draft a sliver. Drafts grow upward within a tile-relative height limit and then scroll, leaving room for
 the transcript.
 Tiles at most 680 px wide or 640 px tall also tighten transcript spacing; under 540 px the setup
-chip folds the folder to its icon, and under 380 px the chip narrows and the model name truncates. Single-tab headers use the
+chip folds the folder to its icon, and the model name truncates only when the chip would pass half the row. Single-tab headers use the
 available width for the title; the focused tile has the accent tab indicator.
 The composer is one glass capsule floating over the foot of the transcript (`.chat-composer-dock`
 in `chat-pane.tsx`, which also carries the connection banner, credential approvals, the agent run
