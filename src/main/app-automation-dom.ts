@@ -79,7 +79,8 @@ export function uiStateExpression(): string {
     return {
       chatSearchOpen: byId('titlebar.chat-search')?.getAttribute('aria-expanded') === 'true',
       layout: {
-        visiblePaneIds: Array.from(document.querySelectorAll('[data-pane-id]')).map((element) => element.getAttribute('data-pane-id')),
+        // Tiles stay mounted while a view tab or another tile covers them; only shown ones count.
+        visiblePaneIds: Array.from(document.querySelectorAll('[data-pane-id]')).filter(visible).map((element) => element.getAttribute('data-pane-id')),
         browserVisible: document.querySelector('.workspace-right[data-mode="browser"]')?.getAttribute('data-with-browser') === 'yes'
       },
       historyOpen: Boolean(byId('chat.history')),

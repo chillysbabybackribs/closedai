@@ -134,6 +134,28 @@ test('ui state reads browser visibility from the workspace, not the titlebar tog
   })
 })
 
+test('ui state lists only tiles that are shown, not ones a view tab or hidden layout covers', () => {
+  const tile = (paneId: string, shown: boolean) => fakeElement({
+    tagName: 'SECTION', attributes: { 'data-pane-id': paneId }, closest: () => null,
+    getClientRects: () => (shown ? [{ width: 400, height: 300, left: 0, top: 0, right: 400, bottom: 300 }] : [])
+  })
+  withDom([], () => {
+    const originalDocument = globalThis.document
+    Object.assign(globalThis, {
+      document: {
+        querySelector: () => null,
+        querySelectorAll: (selector: string) => (selector === '[data-pane-id]' ? [tile('pane-a', true), tile('pane-b', false)] : [])
+      }
+    })
+    try {
+      const state = new Function(`return ${uiStateExpression()}`)() as { layout: { visiblePaneIds: string[] } }
+      assert.deepEqual(state.layout.visiblePaneIds, ['pane-a'])
+    } finally {
+      Object.assign(globalThis, { document: originalDocument })
+    }
+  })
+})
+
 test('control listing reports the owning pane and lists each surface once', () => {
   const inPane = (paneId: string) => fakeElement({
     tagName: 'TEXTAREA', attributes: { 'data-ui': 'composer.input' }, value: '',
