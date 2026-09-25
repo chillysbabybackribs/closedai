@@ -24,7 +24,7 @@ export function backdropTone(luminance: number): BackdropTone {
   const light = Math.min(1, Math.max(0, luminance))
   return {
     dim: round(clamp(0.18 + 0.7 * light, 0.18, 0.62)),
-    glass: round(clamp(0.6 + 0.5 * light, 0.6, 0.86))
+    glass: round(clamp(0.56 + 0.5 * light, 0.56, 0.86))
   }
 }
 

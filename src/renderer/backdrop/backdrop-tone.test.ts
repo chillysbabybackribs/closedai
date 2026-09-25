@@ -18,6 +18,6 @@ test('brighter wallpapers get a heavier dim and a denser glass tint', () => {
 })
 
 test('the tone stays inside its legibility bounds for any input', () => {
-  assert.deepEqual(backdropTone(-1), { dim: 0.18, glass: 0.6 })
+  assert.deepEqual(backdropTone(-1), { dim: 0.18, glass: 0.56 })
   assert.deepEqual(backdropTone(5), { dim: 0.62, glass: 0.86 })
 })

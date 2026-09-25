@@ -42,7 +42,8 @@ async function encode(bitmap: ImageBitmap, width: number, blur: number, quality:
   context.imageSmoothingQuality = 'high'
   if (blur > 0) {
     // Overdraw past every edge so the blur never pulls in the canvas's transparent border.
-    context.filter = `blur(${blur}px)`
+    // Saturation keeps the frosted colour clean under the dark tint instead of greying to mud.
+    context.filter = `blur(${blur}px) saturate(1.6)`
     context.drawImage(bitmap, -blur * 2, -blur * 2, width + blur * 4, height + blur * 4)
   } else {
     context.drawImage(bitmap, 0, 0, width, height)
