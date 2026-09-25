@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type JSX, type RefObject } from 'react'
+import { useLayoutEffect, useRef, useState, type JSX } from 'react'
 import { DOCK_HEIGHT, TAB_RISE, dockOutlinePath, type DockOutline } from './dock-model.js'
 
 /**
@@ -6,12 +6,12 @@ import { DOCK_HEIGHT, TAB_RISE, dockOutlinePath, type DockOutline } from './dock
  * part of the bar rather than a panel on it. The fill (blur included) is clipped to the outline and
  * one 1px line traces its top. The tab follows the tray's measured box, which widens as icons grow.
  */
-export function DockSurface({ tray }: { tray: RefObject<HTMLElement | null> }): JSX.Element {
+export function DockSurface({ tray }: { tray: HTMLElement | null }): JSX.Element {
   const root = useRef<HTMLDivElement>(null)
   const [box, setBox] = useState<DockOutline | null>(null)
   useLayoutEffect(() => {
     const surface = root.current
-    const target = tray.current
+    const target = tray
     if (!surface || !target) return
     const measure = (): void => {
       const outer = surface.getBoundingClientRect()

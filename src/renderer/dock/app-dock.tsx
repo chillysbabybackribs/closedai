@@ -48,7 +48,8 @@ export function AppDock({ nav, chats, chatTitle, browserVisible, prefs, onPrefsC
   }, [shown])
   useEffect(() => { if (!shown) setOpenList(null) }, [shown])
   const root = useRef<HTMLDivElement>(null)
-  const tray = useRef<HTMLDivElement>(null)
+  // State, not a ref: the surface renders first and has to measure the tray once it exists.
+  const [tray, setTray] = useState<HTMLDivElement | null>(null)
 
   const runs = useAgentRuns()
   const downloads = useBrowserDownloadsController().downloads
@@ -96,7 +97,7 @@ export function AppDock({ nav, chats, chatTitle, browserVisible, prefs, onPrefsC
             </span>)}
           </span>
         </div>
-        <div ref={tray} className="absolute left-1/2 -translate-x-1/2" style={{ bottom: TRAY_LIFT }}>
+        <div ref={setTray} className="absolute left-1/2 -translate-x-1/2" style={{ bottom: TRAY_LIFT }}>
           <DockTray apps={apps} magnify={prefs.magnify}
             openStack={openList === 'saved-sites' || openList === 'downloads' ? openList : null}
             onOpenStack={setOpenList}
