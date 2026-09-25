@@ -49,6 +49,17 @@ export const UI_CONTROLS = {
   'layout.tab-return': 'Tab context menu in a detached window: move this tab back into the main window; item is the tab id',
   'spaces.slot': 'Workspace overview (View → Workspace overview, Ctrl+Shift+O, or Ctrl+scroll out): zoom into this workspace, switching to its project; item is the project folder',
   'spaces.add': 'Workspace overview: the Add workspace tile; adds a workspace in the current folder with a fresh chat left of the browser and zooms into it',
+  'dock.bar': 'The dock along the bottom of the main window; hidden until the pointer reaches the bottom edge unless Keep visible is on',
+  'dock.overview': 'Dock: zoom out to the workspace overview, or back into the current workspace (same as Ctrl+Shift+O)',
+  'dock.back': 'Dock: step back through where you have zoomed this session (same as Alt+Left)',
+  'dock.forward': 'Dock: step forward through where you have zoomed this session (same as Alt+Right)',
+  'dock.app': 'Dock tray icon; item is chats (chat history), browser (show or hide), agents (Agents view), saved-sites or downloads (open a list above the icon)',
+  'dock.saved-site': 'Dock Saved sites list: show the browser and open this site; item is the saved site id',
+  'dock.all-saved-sites': 'Dock Saved sites list: open the Saved sites view',
+  'dock.download': 'Dock Downloads list: show a finished file in its folder; item is the download id',
+  'dock.settings': 'Dock settings popover',
+  'dock.keep-visible': 'Dock settings: keep the dock on screen in its own row instead of showing it at the bottom edge',
+  'dock.magnify': 'Dock settings: grow tray icons under the pointer',
 
 
   'chat.rename-dialog': 'Dialog for renaming a chat conversation',

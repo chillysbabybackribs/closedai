@@ -29,12 +29,14 @@ export type ChatLayoutHandle = {
   /** Close the selected tile's view of this kind when it is in front, else open it (View → history). */
   toggleView: (kind: ViewKind) => Promise<void>
   toggleBrowser: () => void
+  /** Show the browser and load `url` in it (the dock's saved sites). */
+  openSite: (url: string) => Promise<void>
   closeFocused: () => Promise<void>
   openLayoutPresets: () => void
   applyPreset: (preset: LayoutPreset) => void
 }
 
-export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, toolsPreset = null, browserHeld = false, spaceId, onRenameChat, onSavedSitesError, archiveChat, ref }: {
+export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, toolsPreset = null, browserHeld = false, spaceId, onRenameChat, onSavedSitesError, onBrowserVisibleChange, archiveChat, ref }: {
   chat: ReturnType<typeof useChatController>
   savedSites: BrowserSavedSitesController
   reviewQueue: ChatReviewQueue
@@ -46,6 +48,8 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
   spaceId?: string
   onRenameChat?: (id: string, title: string) => void
   onSavedSitesError?: (reason: unknown) => void
+  /** Whether this workspace shows its browser, for controls outside it (the dock). */
+  onBrowserVisibleChange?: (visible: boolean) => void
   archiveChat?: (chatId: string) => Promise<void>
   ref?: Ref<ChatLayoutHandle>
 }) {
@@ -122,19 +126,24 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
     setBrowserRevealVersion((value) => value + 1)
   }, [layout.detached, layout.toggleBrowser])
   useEffect(() => onAppWindowCommand((command) => { if (command.type === 'showBrowser') revealBrowser() }), [revealBrowser])
+  useEffect(() => { onBrowserVisibleChange?.(layout.browserVisible) }, [layout.browserVisible, onBrowserVisibleChange])
   useImperativeHandle(ref, () => ({
     splitChat: (chatId, edge) => layout.dock(chatId, chat.selectedPaneId, edge),
     activateChat: (chatId) => layout.activateTab(chatId),
     openView: (kind) => layout.openView(kind, chat.selectedPaneId),
     toggleView: (kind) => layout.toggleView(kind),
     toggleBrowser: toggleBrowserHere,
+    openSite: async (url) => {
+      revealBrowser()
+      await savedSites.open(url)
+    },
     closeFocused: () => layout.closeFocused(),
     openLayoutPresets: () => setPresetsOpen(true),
     applyPreset: (preset) => {
       setBrowserRevealVersion((value) => value + 1)
       void layout.arrange(preset, canvasSize.current)
     }
-  }), [layout.dock, layout.activateTab, layout.openView, layout.toggleView, toggleBrowserHere, layout.closeFocused, layout.arrange, chat.selectedPaneId])
+  }), [layout.dock, layout.activateTab, layout.openView, layout.toggleView, toggleBrowserHere, revealBrowser, savedSites, layout.closeFocused, layout.arrange, chat.selectedPaneId])
   const select = useCallback((id: string): void => { void layout.focusPane(id) }, [layout.focusPane])
   const onDock = useCallback((id: string | null, target: string, edge: import('./layout-tree.js').DockEdge | null, singleTab?: boolean) => {
     return layout.dock(id, target, edge, singleTab)

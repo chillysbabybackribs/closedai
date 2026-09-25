@@ -22,6 +22,8 @@ import { TitlebarMenu, type MenuAction } from './titlebar-menu.js'
 import { DesktopWorkspace, type ChatLayoutHandle } from './chat-layout/desktop-workspace.js'
 import { ChatRenameDialog } from './chat-rename-dialog.js'
 import { SpacesStage, type SpacesHandle } from './spaces/spaces-stage.js'
+import { AppDock } from './dock/app-dock.js'
+import { DOCK_RESERVE, readDockPrefs, saveDockPrefs, type DockPrefs } from './dock/dock-model.js'
 import type { SettingsTab } from './settings/settings-dialog.js'
 
 const SettingsDialog = lazy(async () => {
@@ -66,6 +68,15 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
   const dialogsRef = useRef({ settingsOpen, renamingChat })
   dialogsRef.current = { settingsOpen, renamingChat }
   const toolsPreset = useToolsPreset()
+  const [dockPrefs, setDockPrefs] = useState(() => readDockPrefs(window.localStorage))
+  const updateDockPrefs = useCallback((patch: Partial<DockPrefs>): void => {
+    setDockPrefs((current) => {
+      const next = { ...current, ...patch }
+      saveDockPrefs(window.localStorage, next)
+      return next
+    })
+  }, [])
+  const [browserVisible, setBrowserVisible] = useState(false)
   const savedSites = useBrowserSavedSitesController()
   // A shortcut or menu action main refused; shown under the title bar until dismissed.
   const [shellError, setShellError] = useState<string | null>(null)
@@ -173,6 +184,8 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
   const selectedRow = chat.chats.find((row) => row.paneId === chat.selectedPaneId)
   // A detached window belongs to one project; main closes it when another project is selected.
   const windowCwd = appWindow().cwd
+  // The dock belongs to the main window, beside the spaces it navigates; Keep visible gives it a row.
+  const dockPinned = appWindow().main && dockPrefs.keepVisible && Boolean(chat.selectedPaneId)
   const projectElsewhere = windowCwd !== null && (chat.workspace?.cwd ?? chat.state.cwd) !== windowCwd
   const ready = chat.state.connection.state === 'ready'
   const running = chat.state.activeTurnId !== null
@@ -226,11 +239,20 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
           <button type="button" className="shell-alert-dismiss" data-ui="shell.alert-dismiss" onClick={() => setShellError(null)}>Dismiss</button>
         </div>
       )}
-      <div className="workspace" data-mode="chat">
+      <div className="workspace" data-mode="chat" style={dockPinned ? { paddingBottom: DOCK_RESERVE } : undefined}>
         {!chat.selectedPaneId && <AppStartup connection={chat.state.connection} onRetry={chat.retryStartup} />}
         {chat.selectedPaneId && !projectElsewhere && <SpacesStage ref={spacesRef} enabled={appWindow().main}
           workspace={chat.workspace ?? { cwd: chat.state.cwd, projectPath: null }} chats={chat.chats}
-          selectedPaneId={chat.selectedPaneId}>
+          selectedPaneId={chat.selectedPaneId}
+          dock={(nav) => <AppDock nav={nav} chats={chat.chats} chatTitle={selectedRow?.title ?? null}
+            browserVisible={browserVisible} prefs={dockPrefs} onPrefsChange={updateDockPrefs}
+            onLaunch={(id) => {
+              if (id === 'chats') workspaceRef.current?.toggleView('history').catch(report('Could not open chat history'))
+              else if (id === 'browser') workspaceRef.current?.toggleBrowser()
+              else workspaceRef.current?.openView('agents')
+            }}
+            onOpenSite={(url) => { workspaceRef.current?.openSite(url).catch(report('Could not open the saved site')) }}
+            onAllSavedSites={() => workspaceRef.current?.openView('saved-sites')} />}>
           {({ browserHeld, spaceId }) => <DesktopWorkspace
             key={spaceId ?? chat.workspace?.cwd ?? chat.state.cwd}
             spaceId={spaceId}
@@ -243,6 +265,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
             browserHeld={browserHeld}
             onRenameChat={(id, title) => setRenamingChat({ id, title })}
             onSavedSitesError={report('Could not update saved sites')}
+            onBrowserVisibleChange={setBrowserVisible}
             archiveChat={history.deleteRow}
           />}
         </SpacesStage>}

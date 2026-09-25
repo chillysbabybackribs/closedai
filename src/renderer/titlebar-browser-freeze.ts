@@ -6,7 +6,9 @@ import type { BrowserBounds, BrowserShot } from '../shared/types.js'
 // given the dialog its final size. Native views must also stay behind that backdrop.
 // Omnibox suggestions are handled separately: their list mutates on every keystroke and must
 // not drive the generic overlay scanner or the native page occludes/restores in a loop.
-const OVERLAY_SELECTOR = '.header-chat-search-popup, .header-chat-search-error, .browser-downloads, [data-slot="dialog-overlay"], [role="dialog"], [role="menu"], [data-slot="tooltip-content"]'
+// The dock (dock/app-dock.tsx) reports `data-state` from an untransformed box, because its
+// sliding panel's rect is still off-screen at the moment it starts to rise.
+const OVERLAY_SELECTOR = '.header-chat-search-popup, .header-chat-search-error, .browser-downloads, [data-slot="dialog-overlay"], [role="dialog"], [role="menu"], [data-slot="tooltip-content"], [data-slot="app-dock"]'
 const BROWSER_HOST_SELECTOR = '#browser-page'
 const EAGER_CAPTURE_TRIGGER = '[data-ui="titlebar.chat-search"], [data-ui="titlebar.menu"][data-ui-key="view"], [data-ui="browser.address"], [data-ui="browser.saved-sites"], [aria-label="Downloads"], [aria-label="Tools"], [data-ui="layout.browser-drag"], [data-ui="layout.pane-drag"], [data-ui="layout.tab"]'
 // Right-clicking browser chrome opens a menu over the page, and unlike the triggers above it
