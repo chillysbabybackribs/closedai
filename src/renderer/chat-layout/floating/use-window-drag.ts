@@ -40,14 +40,18 @@ export function useWindowDrag({ canvas, frame, onActive, onPainted, onFloat, onS
   const stop = useRef<(() => void) | null>(null)
   useEffect(() => () => stop.current?.(), [])
 
-  const paint = (id: string, rect: Rect): void => {
+  const write = (id: string, rect: Rect): HTMLElement | null => {
     const element = canvas.current ? layoutTileElement(canvas.current, id) : null
-    if (!element) return
+    if (!element) return null
     element.style.left = `${rect.x}px`
     element.style.top = `${rect.y}px`
     element.style.width = `${rect.width}px`
     element.style.height = `${rect.height}px`
-    onPainted(element)
+    return element
+  }
+  const paint = (id: string, rect: Rect): void => {
+    const element = write(id, rect)
+    if (element) onPainted(element)
   }
 
   const track = (event: ReactPointerEvent, id: string, kind: WindowGesture['kind'], start: Rect,
@@ -84,7 +88,13 @@ export function useWindowDrag({ canvas, frame, onActive, onPainted, onFloat, onS
     const up = (e: PointerEvent): void => {
       if (e.pointerId !== pointerId) return
       finish()
-      if (started) release()
+      if (!started) return
+      // Hand the box back to React as it last rendered it, before the change commits: React
+      // writes only the values that differ from that render, so a coordinate the drop shares
+      // with it (x 0 before and after) would otherwise keep the painted one. The glide still
+      // starts from the drop, which the last paint recorded.
+      write(id, start)
+      release()
     }
     const cancel = (): void => {
       finish()

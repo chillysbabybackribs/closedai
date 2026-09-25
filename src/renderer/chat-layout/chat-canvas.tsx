@@ -226,7 +226,7 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
   useEffect(() => { coveredListener.current?.(covered) }, [covered])
 
   const frame = useRef<() => WindowFrame>(() => ({ tree, size, browserVisible, tiled: [], floating: [] }))
-  frame.current = () => ({ tree, size, browserVisible, tiled: geometry.panes, floating })
+  frame.current = () => ({ tree, size, browserVisible, tiled: tiles.filter((tile) => tile.kind === 'tiled'), floating })
   const windowFrame = useCallback(() => frame.current(), [])
   // A window torn out of the tiled layer leaves the others where they are on screen, floating.
   const floatAt = useCallback((id: string, rect: Rect, tornOff: boolean) => {
