@@ -40,6 +40,7 @@ import {
   type AppearanceSettings
 } from './settings/appearance-settings.js'
 import { useWorkspaceBackdrop } from './backdrop/use-workspace-backdrop.js'
+import type { MinimizedWindow } from './chat-layout/floating/minimized-windows.js'
 import './styles.css'
 
 export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boolean }): JSX.Element {
@@ -81,6 +82,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
     })
   }, [])
   const [browserVisible, setBrowserVisible] = useState(false)
+  const [minimizedWindows, setMinimizedWindows] = useState<MinimizedWindow[]>([])
   const savedSites = useBrowserSavedSitesController()
   // A shortcut or menu action main refused; shown under the title bar until dismissed.
   const [shellError, setShellError] = useState<string | null>(null)

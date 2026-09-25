@@ -2,6 +2,7 @@ import { memo, useMemo, type CSSProperties, type ReactElement } from 'react'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import { BROWSER_PANE_ID, isViewTabId, layoutGeometry, readLayout, removePane } from '../chat-layout/layout-tree.js'
 import { VIEW_LABELS, parseViewTab } from '../chat-layout/layout-views.js'
+import { canvasTiles } from '../chat-layout/floating/window-tiles.js'
 import type { Size } from './spaces-model.js'
 
 /** The canvas gutter around tiles (`.chat-layout-viewport` padding), so the drawing lines up with the live space. */
@@ -25,7 +26,10 @@ export const SpaceMiniature = memo(function SpaceMiniature({ spaceId, size, chat
     const tree = saved.tree && !saved.browserVisible ? removePane(saved.tree, BROWSER_PANE_ID) : saved.tree
     const width = size.width - 2 * GUTTER.side
     const height = size.height - GUTTER.top - GUTTER.bottom
-    return tree && width > 0 && height > 0 ? layoutGeometry(tree, width, height) : null
+    if (!saved.tree || !tree || width <= 0 || height <= 0) return null
+    // Floating windows draw over the tiles at their own rects, in their stacking order.
+    const tiles = canvasTiles(saved.tree, layoutGeometry(tree, width, height).panes, { width, height }, saved.browserVisible)
+    return { panes: tiles.filter((tile) => tile.kind !== 'hidden') }
   }, [saved, size.width, size.height])
   const tab = (id: string): MiniatureTab => {
     const view = parseViewTab(id)
@@ -36,7 +40,8 @@ export const SpaceMiniature = memo(function SpaceMiniature({ spaceId, size, chat
   return <div className="spaces-mini" style={{ width: size.width, height: size.height }} aria-hidden="true">
     {!geometry && <div className="spaces-mini-empty">Opens with its last chats</div>}
     {geometry?.panes.map((pane) => {
-      const style: CSSProperties = { left: pane.rect.x + GUTTER.side, top: pane.rect.y + GUTTER.top, width: pane.rect.width, height: pane.rect.height }
+      const style: CSSProperties = { left: pane.rect.x + GUTTER.side, top: pane.rect.y + GUTTER.top, width: pane.rect.width, height: pane.rect.height,
+        zIndex: pane.kind === 'floating' ? 1 + pane.z : undefined }
       if (pane.id === BROWSER_PANE_ID) {
         return <div key={pane.id} className="spaces-mini-tile" data-kind="browser" style={style}>
           <div className="spaces-mini-header"><span className="spaces-mini-tab" data-active="true">Browser</span></div>
