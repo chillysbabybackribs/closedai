@@ -15,6 +15,7 @@
 @import "./styles/chat/dock.css";
 @import "./styles/chat/layout-views.css";
 @import "./styles/chat/layout-presets.css";
+@import "./styles/spaces/overview.css";
 @import "./styles/browser.css";
 @import "./styles/browser-downloads.css";
 @import "./styles/saved-sites/panel.css";

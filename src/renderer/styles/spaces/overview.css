@@ -1,0 +1,124 @@
+/* Spaces: the workspace as one space among others. In a space the stage adds no transform and
+   no layer, so everything below it lays out as it always has. */
+.spaces-stage { position: relative; display: flex; flex: 1; min-width: 0; min-height: 0; }
+.spaces-live { display: flex; flex: 1; min-width: 0; min-height: 0; transform-origin: 0 0; }
+.spaces-stage[data-spaces-overview] { overflow: hidden; background: color-mix(in srgb, #000 22%, var(--chassis, #85827d)); }
+.spaces-stage[data-spaces-overview] .spaces-live {
+  will-change: transform;
+  border-radius: 10px;
+  box-shadow: 0 0 0 1px var(--tile-edge, rgb(32 34 35 / 18%));
+}
+
+/* World coordinates are the overview itself: slots, labels and drawings, moved by one camera. */
+.spaces-world { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
+.spaces-slot {
+  position: absolute;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+}
+.spaces-slot:not([data-current='true']) {
+  background: var(--chassis, #85827d);
+  box-shadow: 0 0 0 1px var(--tile-edge, rgb(32 34 35 / 18%)), 0 6px 18px rgb(0 0 0 / 22%);
+}
+.spaces-slot:disabled { cursor: default; }
+.spaces-slot:hover:not(:disabled), .spaces-slot:focus-visible { outline: 2px solid var(--tab-accent, #3f5f86); outline-offset: 3px; }
+.spaces-slot[data-current='true'] { outline: 2px solid color-mix(in srgb, var(--tab-accent, #3f5f86) 70%, transparent); outline-offset: 3px; }
+.spaces-slot-scale { position: absolute; left: 0; top: 0; transform-origin: 0 0; pointer-events: none; }
+.spaces-slot-label {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 0 2px 4px;
+  color: #eeeae4;
+  font-size: 12px;
+  font-weight: 600;
+  pointer-events: none;
+}
+.spaces-slot-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.spaces-slot-running { flex: none; color: #cfe6d7; font-weight: 500; }
+.spaces-slot-group[data-current='true'] .spaces-slot-name::after { content: ' · here'; font-weight: 400; color: #cfcac2; }
+
+.spaces-actions { position: absolute; left: 0; right: 0; bottom: 10px; display: flex; justify-content: center; pointer-events: none; }
+.spaces-action {
+  pointer-events: auto;
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid rgb(238 234 228 / 22%);
+  border-radius: 7px;
+  background: rgb(32 34 35 / 45%);
+  color: #eeeae4;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.spaces-action:hover { background: rgb(32 34 35 / 62%); }
+.spaces-action:focus-visible { outline: 2px solid var(--tab-accent, #3f5f86); outline-offset: 2px; }
+.spaces-error {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 5px 12px;
+  border-radius: 7px;
+  background: rgb(120 36 36 / 88%);
+  color: #fff;
+  font-size: 12px;
+}
+
+/* A space you are not in, drawn from its saved layout at full size and scaled by its slot. */
+.spaces-mini { position: relative; background: var(--chassis, #85827d); }
+.spaces-mini-empty { position: absolute; inset: 0; display: grid; place-items: center; color: #eeeae4; font-size: 28px; }
+.spaces-mini-tile {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--tile-edge, rgb(32 34 35 / 18%));
+  border-radius: 10px;
+  background: var(--surface-card, #eeeae4);
+}
+.spaces-mini-header {
+  display: flex;
+  flex: 0 0 38px;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  overflow: hidden;
+  background: var(--chat-header-surface, var(--surface-chrome, #aaa69f));
+  color: var(--chrome-fg, #3c3c3c);
+}
+.spaces-mini-tab {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  max-width: 220px;
+  height: 28px;
+  padding: 0 10px;
+  overflow: hidden;
+  border-radius: 6px;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.spaces-mini-tab[data-active='true'] { background: var(--tab-active-surface, #e4e0d9); color: var(--chrome-fg-strong, #202223); font-weight: 500; }
+.spaces-mini-status { flex: none; width: 9px; height: 9px; border-radius: 50%; background: #60a5fa; }
+.spaces-mini-tab[data-status='paused'] .spaces-mini-status { background: #dba74b; }
+.spaces-mini-body { display: flex; flex: 1; flex-direction: column; gap: 10px; min-height: 0; padding: 18px 20px; }
+.spaces-mini-body > i { display: block; height: 9px; border-radius: 5px; background: rgb(32 34 35 / 10%); }
+.spaces-mini-body > i:nth-child(1) { width: 82%; }
+.spaces-mini-body > i:nth-child(2) { width: 64%; }
+.spaces-mini-body > i:nth-child(3) { width: 74%; }
+.spaces-mini-body > i:nth-child(4) { width: 40%; }
+.spaces-mini-composer { margin-top: auto; height: 52px; border: 1px solid var(--tile-edge, rgb(32 34 35 / 18%)); border-radius: 12px; }
+.spaces-mini-tile[data-kind='browser'] .spaces-mini-page { flex: 1; margin: 8px; border-radius: 6px; background: linear-gradient(160deg, #2a2d32, #43474e); }
+
+@media (prefers-reduced-motion: reduce) {
+  .spaces-world, .spaces-live { transition: none !important; }
+}

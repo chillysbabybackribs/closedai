@@ -34,12 +34,14 @@ export type ChatLayoutHandle = {
   applyPreset: (preset: LayoutPreset) => void
 }
 
-export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, toolsPreset = null, onRenameChat, onSavedSitesError, archiveChat, ref }: {
+export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, toolsPreset = null, browserHeld = false, onRenameChat, onSavedSitesError, archiveChat, ref }: {
   chat: ReturnType<typeof useChatController>
   savedSites: BrowserSavedSitesController
   reviewQueue: ChatReviewQueue
   appearance: AppearanceSettings
   toolsPreset?: 'full' | 'read-only' | 'custom' | null
+  /** Zoomed out to the spaces overview: the browser shows its still and the page keeps its bounds. */
+  browserHeld?: boolean
   onRenameChat?: (id: string, title: string) => void
   onSavedSitesError?: (reason: unknown) => void
   archiveChat?: (chatId: string) => Promise<void>
@@ -108,9 +110,9 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
     setBrowserRevealVersion((value) => value + 1)
   }, [layout.showBrowser])
   const renderBrowser = useMemo(() => layout.detached ? null : <WorkspaceBrowser
-    layoutKey={`${layoutRevision}\0${layout.browserVisible ? '1' : '0'}`} visible={layout.browserVisible} occluded={layoutDragging}
+    layoutKey={`${layoutRevision}\0${layout.browserVisible ? '1' : '0'}`} visible={layout.browserVisible} occluded={layoutDragging || browserHeld}
     savedSites={savedSites} dragHandle={browserDragHandle} onReveal={revealBrowser} onShow={layout.showBrowser} />,
-  [layout.detached, layoutRevision, layout.browserVisible, layoutDragging, savedSites, browserDragHandle, revealBrowser, layout.showBrowser])
+  [layout.detached, layoutRevision, layout.browserVisible, layoutDragging, browserHeld, savedSites, browserDragHandle, revealBrowser, layout.showBrowser])
   // The browser lives in the main window: a detached window's Browser control brings that forward.
   const toggleBrowserHere = useCallback(() => {
     if (layout.detached) { void window.closedai.windows.showBrowser(); return }

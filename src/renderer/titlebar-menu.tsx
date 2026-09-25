@@ -13,7 +13,7 @@ export type MenuAction =
   | 'new-chat' | 'history' | 'settings' | 'close-tab' | 'close-window' | 'search-chats'
   | 'toggle-browser' | 'saved-sites' | 'layout' | 'toggle-fullscreen'
   | 'agents' | 'tools' | 'compact' | 'stop-turn'
-  | 'trace' | 'reload' | 'devtools'
+  | 'trace' | 'reload' | 'devtools' | 'overview'
 
 type MenuControlUi = { control: 'layout.dock-preset' | 'layout.preset-menu-custom'; item?: string }
 
@@ -72,6 +72,7 @@ const MENUS: Menu[] = [
     label: 'View',
     rows: [
       { key: 'toggle-browser-pane', label: 'Toggle browser pane', action: 'toggle-browser' },
+      { key: 'overview', label: 'Overview of spaces', shortcut: 'Ctrl+Shift+O', action: 'overview' },
       SEP,
       ...VIEW_LAYOUT_ROWS,
       SEP,
@@ -136,7 +137,7 @@ export const TitlebarMenu = memo(function TitlebarMenu({
   const searchOnClose = useRef(false)
   const disabled = (row: Extract<MenuRow, { key: string }>): boolean => {
     if (row.command) return zoomCommandIsDisabled(row.command, chatZoom)
-    if (row.layoutPreset || row.action === 'toggle-browser' || row.action === 'layout') return !layoutEnabled
+    if (row.layoutPreset || row.action === 'toggle-browser' || row.action === 'layout' || row.action === 'overview') return !layoutEnabled
     if (row.action === 'compact') return !compactEnabled
     if (row.action === 'stop-turn') return !stopEnabled
     return false

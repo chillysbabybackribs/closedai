@@ -21,6 +21,7 @@ import { providerSupportsContextShrink } from './context-shrink-eligibility.js'
 import { TitlebarMenu, type MenuAction } from './titlebar-menu.js'
 import { DesktopWorkspace, type ChatLayoutHandle } from './chat-layout/desktop-workspace.js'
 import { ChatRenameDialog } from './chat-rename-dialog.js'
+import { SpacesStage, type SpacesHandle } from './spaces/spaces-stage.js'
 import type { SettingsTab } from './settings/settings-dialog.js'
 
 const SettingsDialog = lazy(async () => {
@@ -42,6 +43,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
   const chatRef = useRef(chat)
   chatRef.current = chat
   const workspaceRef = useRef<ChatLayoutHandle>(null)
+  const spacesRef = useRef<SpacesHandle>(null)
   const openHistoryChat = useCallback(async (chatId: string) => {
     await (workspaceRef.current?.activateChat(chatId) ?? chatRef.current.openChat(chatId))
   }, [])
@@ -95,6 +97,9 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
       if (shortcut === 'settings') {
         event.preventDefault()
         setSettingsOpen(true)
+      } else if (shortcut === 'overview') {
+        event.preventDefault()
+        spacesRef.current?.toggleOverview()
       } else if (shortcut === 'tools' || shortcut === 'trace') {
         event.preventDefault()
         workspaceRef.current?.openView(shortcut)
@@ -124,7 +129,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
         const hasOpenModal = dialogs.settingsOpen || Boolean(dialogs.renamingChat)
         const pauses = escapePausesTask({
           overlayOpen: hasOpenModal || Boolean(document.querySelector(
-            '[role="dialog"], [role="menu"], [data-radix-menu-content], [data-radix-popper-content-wrapper], .radix-dropdown-menu-content'
+            '[data-spaces-overview], [role="dialog"], [role="menu"], [data-radix-menu-content], [data-radix-popper-content-wrapper], .radix-dropdown-menu-content'
           )),
           activeElement: document.activeElement,
           soloActive: Boolean(document.querySelector('.chat-layout-tile[data-solo="true"]')),
@@ -182,6 +187,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
       // Trace, Agents, History, Tools and Saved sites are view tabs, not dialogs.
       case 'history': workspaceRef.current?.toggleView('history').catch(report('Could not open chat history')); break
       case 'toggle-browser': workspaceRef.current?.toggleBrowser(); break
+      case 'overview': spacesRef.current?.toggleOverview(); break
       case 'layout': workspaceRef.current?.openLayoutPresets(); break
       case 'toggle-fullscreen': window.closedai.window.toggleFullscreen().catch(report('Could not toggle fullscreen')); break
       case 'close-tab': workspaceRef.current?.closeFocused().catch(report('Could not close the chat')); break
@@ -222,18 +228,22 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
       )}
       <div className="workspace" data-mode="chat">
         {!chat.selectedPaneId && <AppStartup connection={chat.state.connection} onRetry={chat.retryStartup} />}
-        {chat.selectedPaneId && !projectElsewhere && <DesktopWorkspace
-          key={chat.workspace?.cwd ?? chat.state.cwd}
-          ref={workspaceRef}
-          chat={chat}
-          savedSites={savedSites}
-          reviewQueue={history.reviewQueue}
-          appearance={appearance}
-          toolsPreset={toolsPreset}
-          onRenameChat={(id, title) => setRenamingChat({ id, title })}
-          onSavedSitesError={report('Could not update saved sites')}
-          archiveChat={history.deleteRow}
-        />}
+        {chat.selectedPaneId && !projectElsewhere && <SpacesStage ref={spacesRef} enabled={windowCwd === null}
+          workspace={chat.workspace ?? { cwd: chat.state.cwd, projectPath: null }} chats={chat.chats}>
+          {(browserHeld) => <DesktopWorkspace
+            key={chat.workspace?.cwd ?? chat.state.cwd}
+            ref={workspaceRef}
+            chat={chat}
+            savedSites={savedSites}
+            reviewQueue={history.reviewQueue}
+            appearance={appearance}
+            toolsPreset={toolsPreset}
+            browserHeld={browserHeld}
+            onRenameChat={(id, title) => setRenamingChat({ id, title })}
+            onSavedSitesError={report('Could not update saved sites')}
+            archiveChat={history.deleteRow}
+          />}
+        </SpacesStage>}
       </div>
       <ChatRenameDialog
         open={Boolean(renamingChat)}
