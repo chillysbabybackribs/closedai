@@ -41,7 +41,7 @@ export function DockTray(props: DockTrayProps): JSX.Element {
       {app.stack
         ? <Popover open={openStack === app.id} onOpenChange={(open) => onOpenStack(open ? app.id : null)}>
             <TrayButton app={app} stackOpen={openStack === app.id} />
-            <PopoverContent side="top" sideOffset={12} className="w-72 p-1.5">
+            <PopoverContent side="top" sideOffset={12} className="w-72 p-1.5" onCloseAutoFocus={(event) => event.preventDefault()}>
               {app.id === 'saved-sites' ? <SavedSitesStack {...props} /> : <DownloadsStack {...props} />}
             </PopoverContent>
           </Popover>

@@ -102,6 +102,7 @@ export function AppDock({ nav, chats, chatTitle, browserVisible, prefs, onPrefsC
             onAllSavedSites={() => { setOpenList(null); onAllSavedSites() }}
             onRevealDownload={(id) => { void window.closedai.browserDownloads.reveal(id) }} />
         </div>
+        {/* Dock lists do not hand focus back on close: the button's tooltip would reopen over the page. */}
         <Popover open={openList === 'settings'} onOpenChange={(open) => setOpenList(open ? 'settings' : null)}>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -111,7 +112,8 @@ export function AppDock({ nav, chats, chatTitle, browserVisible, prefs, onPrefsC
             </TooltipTrigger>
             {openList !== 'settings' && <TooltipContent side="top">Dock settings</TooltipContent>}
           </Tooltip>
-          <PopoverContent side="top" align="end" sideOffset={10} className="flex w-72 flex-col gap-3 p-3">
+          <PopoverContent side="top" align="end" sideOffset={10} className="flex w-72 flex-col gap-3 p-3"
+            onCloseAutoFocus={(event) => event.preventDefault()}>
             <div className="text-xs font-medium text-muted-foreground">Dock</div>
             <DockSetting control="dock.keep-visible" title="Keep visible"
               detail="Off: the dock shows when the pointer reaches the bottom edge."
