@@ -571,6 +571,38 @@ blank-chat cleanup without waking or subscribing to inactive tabs. It ignores st
 snapshot's `panes` map contains the bounded visible views; `selected` remains the focus view for
 existing consumers. Hidden panes retain their main-process state but do not stream text over IPC.
 
+### Windows
+
+A chat or view tab can leave the main window: **Move to new window** (`layout.tab-detach`) in the
+tab context menu opens a frameless window of the same app shell holding that tab, which can be
+dragged to another monitor. It is offered while the window keeps another tab. A detached window
+has its own tab strip, splits, title-bar search and menus, but no browser: its **Browser** controls
+bring the main window forward with the browser shown. In a detached window **Move to main window**
+(`layout.tab-return`) hands a tab back; returning the last one closes the window. Closing a detached
+window returns its chats to the main window's focused tile; hiding or closing is never stopping a
+chat. Closing the main window quits the app.
+
+A chat lives in one window. Opening a chat another window holds (header search, History, a
+split) raises that window and selects the tab there instead of adding a second tab. A chat no
+window holds yet (a new chat, one a tool opened) goes to the window in front, or to the main
+window when no app window has focus; focus is main's record of the windows, not the renderer's
+`document.hasFocus()`. Bringing a window to the front selects its own chat, so keyboard shortcuts,
+menus and tools act on what that window shows.
+
+`src/main/windows/` owns the window registry. Each window reports its tiles through the same
+`setVisiblePanes` call, now recorded per window: main keeps the union visible
+(`src/main/chat-peers/peer-window-visibility.ts`), routes each chat's transcript stream only to
+the window showing it, sends browser state only to the main window, and ignores browser bounds
+reported by any other window. Workspace-wide events (chat rows, runs, tools, trace, saved sites)
+reach every window. Detached windows are saved in `app-windows.json` (id, project, chat tabs) and
+their layout in renderer localStorage beside the project's main layout (`#window:<id>`). Electron
+persists each window's bounds, monitor and maximized state under its window name and falls back to a
+connected display when that monitor is gone; on Wayland the compositor chooses placement. A
+detached window belongs to its project: selecting another project closes it without handing its
+chats back, and it reopens when its project is selected again or at the next launch.
+`closedai_app.state` lists detached windows and their chat ids under `window.detached`; UI
+automation, controls and capture still act on the main window only.
+
 ## Chat surface
 
 - Dark-theme chat and view tiles use a neutral charcoal (`#1d1d1d`) canvas, with raised
@@ -992,6 +1024,7 @@ instrumentation.
 | Security settings, credential approval cards, page permission requests | `src/main/security-settings-store.ts`, `src/main/security-ipc.ts`, `src/main/security-approvals.ts`, `src/main/browser-permission-broker.ts`, `src/main/decision-broker.ts`, `src/shared/security.ts` |
 | Default-browser cookie import (launch and on demand) | `src/main/browser-cookie-import.ts`, `src/main/import-cookies.ts` |
 | Typed IPC contract and narrow preload | `src/shared/api.ts`, `src/preload/index.ts` |
+| App windows: registry, event routing per window, detached-window persistence | `src/main/windows/`, `src/shared/app-windows.ts`, `src/renderer/app-windows/`, `src/renderer/chat-layout/layout-windows.ts` |
 | Chat/project/history orchestration | `src/renderer/chat-pane.tsx`, `src/renderer/project-menu.tsx`, `src/renderer/chat-history/` |
 | Transcript steps, background work, response actions | `src/renderer/transcript-rows.ts`, `src/renderer/activity-steps.ts`, `src/renderer/background-tasks.tsx`, `src/renderer/message-actions.tsx` |
 | Reusable presentation and scrolling | `src/components/ui/`; backend access stays outside this layer |

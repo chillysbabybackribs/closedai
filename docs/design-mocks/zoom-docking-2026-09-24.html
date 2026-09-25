@@ -72,7 +72,7 @@
   .icon .s .dot { width: 5px; height: 5px; }
 
   /* Optional orientation cue: shows the path for a moment after each zoom, then fades. Not a bar. */
-  .toast { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); padding: 5px 11px; border-radius: 999px; background: rgb(32 34 35 / 82%); color: #eeeae4; font-size: 12px; font-weight: 500; opacity: 0; transition: opacity 260ms; pointer-events: none; white-space: nowrap; }
+  .toast { position: absolute; z-index: 25; left: 50%; top: 12px; transform: translateX(-50%); padding: 5px 11px; border-radius: 999px; background: rgb(32 34 35 / 82%); color: #eeeae4; font-size: 12px; font-weight: 500; opacity: 0; transition: opacity 260ms; pointer-events: none; white-space: nowrap; }
   .toast[data-on] { opacity: 1; }
   .toast .sep { opacity: .5; margin: 0 5px; }
 
@@ -84,8 +84,9 @@
   .icon[data-picked] { outline: 3px solid #8fb2dc; }
 
   /* The opened selection is an ordinary workspace: tiles reflow with animation while one is dragged. */
-  .frame { position: absolute; inset: 0; background: var(--chassis); border-radius: 10px; opacity: 0; transition: opacity 320ms var(--ease); z-index: 10; }
-  .frame[data-on] { opacity: 1; }
+  .frame { position: absolute; inset: 0; z-index: 10; }
+  .frame::before { content: ""; position: absolute; inset: 0; background: var(--chassis); border-radius: 10px; opacity: 0; transition: opacity 320ms var(--ease); }
+  .frame[data-on]::before { opacity: 1; }
   .frame .tile { position: absolute; transform-origin: 0 0; transition: left 260ms var(--ease), top 260ms var(--ease), width 260ms var(--ease), height 260ms var(--ease), transform var(--dur) var(--ease), box-shadow 200ms; }
   .frame .tile .hdr { cursor: grab; }
   .frame .tile[data-float] { z-index: 5; box-shadow: 0 14px 40px rgb(0 0 0 / 38%), 0 0 0 1px rgb(0 0 0 / 12%); }
@@ -107,6 +108,7 @@
 
 <div class="fit" id="fit"><div class="viewport" id="vp">
   <div class="world" id="world"></div>
+  <div class="frame" id="frame" hidden></div>
   <div class="toast" id="toast"></div>
 </div></div>
 <div class="demo">
@@ -122,6 +124,8 @@
 
 <p class="note"><b class="hi">What each step does.</b> Each scroll step moves one named level: workspace → “Work” → everything, the same “one step of the scroll wheel” as in the video. Scrolling in zooms toward whatever is under the pointer. At the top level, double-clicking the background returns you to the last workspace you were in, which matches his double-click toggle between the desktop and the overview. Back/forward goes through your zoom history (Alt+arrows, mouse side buttons). The transcript also mentions buttons and saved frames. Here a saved frame is just a named group you can zoom to, so no strip is needed.</p>
 <p class="note"><b class="hi">How it maps onto ClosedAI.</b> Each workspace is today's <code>chat-layout</code> split tree, unchanged. What's new is one tree of workspaces above it, using the same split and dock code. Chats are DOM, so a CSS scale shrinks them and they keep streaming while zoomed out. The browser is a native view and can't be CSS-scaled, so zoomed out it shows a <code>capturePage</code> snapshot and goes live again when you zoom back in. Inside a workspace, plain scrolling still scrolls the chat and double-clicking a divider still balances the split, so zooming out from there uses Ctrl+scroll, pinch or a shortcut.</p>
+
+<p class="note"><b class="hi">Box-select and smooth docking (new in v3, from your screenshots).</b> In the video, dragging a box over three windows in the zoomed-out view opens a view of only those, and the other windows reflow smoothly while one is being dragged. Here the box picks individual tiles (chats and browsers), not whole workspaces, because a view of three chats at full size is something you can work in. The tiles keep their left-to-right and top-to-bottom order. The opened view is an ordinary layout: in the app it would be a temporary <code>ChatLayout</code> built from the existing pane ids, so the chats move rather than being copied, and Back returns them. When you drag a header, the tile collapses to its tab and the others close the gap. Hovering near another tile's edge opens a frosted slot where it will land, and dropping in a tile's middle leaves it floating. The app already computes this live preview (<code>layout-drag-preview.ts</code>). Tiles are positioned with plain left/top/width/height and no transition, though (<code>chat-canvas.tsx:14</code>), so today the preview snaps instead of gliding.</p>
 
 <script>
 const VW = 1120, VH = 630, GAP = 10, PAD = 9, LABEL = 18, ROOT_PAD = 14, ICON_BELOW = 190
@@ -205,6 +209,7 @@ function render () {
     slot.dataset.ws = leaf.id
     slot.style.transform = `translate(${f.x}px, ${f.y}px) scale(${f.s})`
     slot.innerHTML = `${ws.html}<span class="chip">${ws.name}</span>`
+    slot.querySelectorAll('.tile').forEach((tile, i) => { tile.dataset.tile = `${leaf.id}.${i}` })
     slot.style.setProperty('--leaf-inv', 1 / f.s)
     const icon = document.createElement('div')
     icon.className = 'icon'
@@ -248,8 +253,8 @@ function go (id, record = true) {
   showPath(node)
 }
 
-function showPath (node) {
-  const parts = []
+function showPath (node, extra) {
+  const parts = extra ? [extra] : []
   for (let n = node; n; n = n.parent) if (isStop(n)) parts.unshift(label(n))
   toast.innerHTML = parts.join('<span class="sep">›</span>')
   toast.toggleAttribute('data-on', true)
@@ -296,15 +301,17 @@ function toWorld (e) {
 let lastWheel = 0
 vp.addEventListener('wheel', e => {
   // Inside a workspace a plain scroll belongs to the chat; Ctrl+scroll (and trackpad pinch) zooms.
-  if (nodes[cur].ws && !e.ctrlKey) return
+  if ((nodes[cur].ws || frame) && !e.ctrlKey) return
   e.preventDefault()
   const now = performance.now()
   if (now - lastWheel < 360 || Math.abs(e.deltaY) < 2) return
   lastWheel = now
+  if (frame) { if (e.deltaY > 0) exitFrame(); return }
   if (e.deltaY > 0) zoomOut(); else zoomIn(toWorld(e))
 }, { passive: false })
 
 vp.addEventListener('dblclick', e => {
+  if (frame) { if (e.target === frameEl) exitFrame(); return }
   const leaf = e.target.closest('[data-ws]')
   if (leaf && leaf.dataset.ws !== cur) return go(leaf.dataset.ws)
   if (leaf) return // inside the open workspace: today's tile-header and divider double-clicks apply
@@ -315,17 +322,22 @@ function step (d) {
   const i = hIndex + d
   if (i < 0 || i >= hist.length) return
   hIndex = i
-  go(hist[i], false)
+  const entry = hist[i]
+  if (entry.startsWith('frame:')) return openFrame(frames[entry.slice(6)], false)
+  closeFrame()
+  go(entry, false)
 }
 document.addEventListener('keydown', e => {
   if (e.altKey && e.key === 'ArrowLeft') step(-1)
   if (e.altKey && e.key === 'ArrowRight') step(1)
+  if (e.key === 'Escape' && frame) exitFrame()
 })
 vp.addEventListener('mouseup', e => { if (e.button === 3) step(-1); if (e.button === 4) step(1) })
-document.getElementById('out').onclick = zoomOut
+document.getElementById('out').onclick = () => frame ? exitFrame() : zoomOut()
 document.getElementById('back').onclick = () => step(-1)
 document.getElementById('fwd').onclick = () => step(1)
 
+@@FRAME@@
 world.style.transition = 'none'
 go('root', 'init')
 requestAnimationFrame(() => requestAnimationFrame(() => { world.style.transition = '' }))
