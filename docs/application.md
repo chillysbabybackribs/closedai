@@ -657,6 +657,39 @@ spaces' chats keep running and can be reopened from search. A folder that no lon
 refused with a message in the overview. Detached windows hold one project's tabs and keep that
 project's layout, so the overview is in the main window only.
 
+### Dock
+
+The **dock** (`dock.bar`, `src/renderer/dock/`) runs along the bottom of the main window. It is
+hidden until the pointer reaches the window's bottom edge, which is the workspace's own 10 px
+padding, so no native browser view ever covers it. It slides up over the workspace and sinks
+380 ms after the pointer moves more than 24 px above it. An open list and keyboard focus keep it up.
+While it is up it counts as an overlay (`data-slot="app-dock"`, whose `data-state` stays `open`
+until the slide down ends), so a browser it covers shows its still. The Dock settings
+**Keep visible** switch (`dock.keep-visible`) keeps it up and gives it its own row: the workspace's
+bottom padding grows to clear the dock, so the page stays live. **Magnify icons** (`dock.magnify`)
+turns off the tray's magnification. Both are saved in localStorage (`closedai.dock.v1`). The dock
+reads the spaces it navigates through `SpacesStage`'s `dock` render prop, so it exists only where
+the overview does: in the main window, once a chat is selected.
+
+Left: **Overview** (`dock.overview`, pressed while zoomed out) toggles the workspace overview. Back
+and forward (`dock.back`, `dock.forward`) step through the same zoom history as Alt+←/→ and are
+disabled at either end and while a zoom is moving. Next to them is where you are: the workspace
+and the selected chat, or "All workspaces". Right: Dock settings (`dock.settings`). Centre: the
+**app tray**, Magic UI's `Dock` (`src/components/ui/dock.tsx`, `@magicui/dock`), with one
+rounded-square tile per ClosedAI surface (`dock.app`, item is the surface). The tiles are 34 px and
+grow to 46 px under the pointer. **Chats** opens chat history. **Browser** shows or hides the
+browser. **Agent runs** opens the Agents view; its tooltip carries the runs summary. **Saved
+sites** and **Downloads** open a list above the icon. In Saved sites, a row (`dock.saved-site`)
+shows the browser and opens the site, and **All saved sites** (`dock.all-saved-sites`) opens the
+view. In Downloads, a finished file's row (`dock.download`) shows it in its folder. A neutral dot
+under a tile means something in it is running or showing. Each tooltip gives the surface's name
+and what is in it now.
+
+Every feature icon is named once in `src/renderer/app-icons.tsx`: a `line` icon takes the text
+colour, and a `picture` (a future full-colour SVG) keeps its own. The tray tiles and the view-tab
+glyphs read from that list, so a new icon set replaces entries there. A tile is the same shape for
+either kind, so a new icon never changes the tray's size or spacing.
+
 ## Chat surface
 
 - Dark-theme chat and view tiles use a neutral charcoal (`#1d1d1d`) canvas, with raised
@@ -1079,6 +1112,7 @@ instrumentation.
 | Default-browser cookie import (launch and on demand) | `src/main/browser-cookie-import.ts`, `src/main/import-cookies.ts` |
 | Typed IPC contract and narrow preload | `src/shared/api.ts`, `src/preload/index.ts` |
 | App windows: registry, event routing per window, detached-window persistence | `src/main/windows/`, `src/shared/app-windows.ts`, `src/renderer/app-windows/`, `src/renderer/chat-layout/layout-windows.ts` |
+| Dock: bottom-edge reveal, zoom navigation, app tray and its lists; the shared feature icon list | `src/renderer/dock/`, `src/renderer/app-icons.tsx`, `src/components/ui/dock.tsx` |
 | Chat/project/history orchestration | `src/renderer/chat-pane.tsx`, `src/renderer/project-menu.tsx`, `src/renderer/chat-history/` |
 | Transcript steps, background work, response actions | `src/renderer/transcript-rows.ts`, `src/renderer/activity-steps.ts`, `src/renderer/background-tasks.tsx`, `src/renderer/message-actions.tsx` |
 | Reusable presentation and scrolling | `src/components/ui/`; backend access stays outside this layer |
