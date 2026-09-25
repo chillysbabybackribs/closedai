@@ -38,14 +38,14 @@ export function floatingWindows(tree: ChatLayout): Array<WindowPane & { float: F
     .sort((a, b) => a.float.z - b.float.z)
 }
 
-function mapWindow(tree: ChatLayout, id: string, change: (pane: WindowPane) => WindowPane): ChatLayout {
+export function mapWindow(tree: ChatLayout, id: string, change: (pane: WindowPane) => WindowPane): ChatLayout {
   if (tree.kind === 'pane') return tree.id === id ? change(tree) : tree
   const first = mapWindow(tree.first, id, change)
   const second = mapWindow(tree.second, id, change)
   return first === tree.first && second === tree.second ? tree : { ...tree, first, second }
 }
 
-function withoutFloat(pane: WindowPane): WindowPane {
+export function withoutFloat(pane: WindowPane): WindowPane {
   if (!pane.float) return pane
   const { float: _float, ...rest } = pane
   return rest

@@ -3,8 +3,11 @@ import { MAIN_WINDOW_ID } from '../../shared/app-windows.js'
 export type DockEdge = 'left' | 'right' | 'top' | 'bottom'
 /** A floating window's place on the canvas; `z` orders floating windows, higher in front. */
 export type FloatRect = { x: number; y: number; width: number; height: number; z: number }
-/** `docked` is a minimized window; `float` lifts a tile out of the tiled layer into its own rect. */
-export type ChatLayout = { kind: 'pane'; id: string; tabs?: string[]; docked?: boolean; dockNumber?: number; float?: FloatRect } | {
+/**
+ * `docked` is a minimized window; `float` lifts a tile out of the tiled layer into its own rect;
+ * `onTop` keeps the window above every window without it (Keep on top).
+ */
+export type ChatLayout = { kind: 'pane'; id: string; tabs?: string[]; docked?: boolean; dockNumber?: number; float?: FloatRect; onTop?: boolean } | {
   kind: 'split'; id: string; axis: 'horizontal' | 'vertical'; ratio: number
   first: ChatLayout; second: ChatLayout
 }
@@ -201,7 +204,8 @@ export function readLayout(storage: Pick<Storage, 'getItem'>, key: string, windo
       if (seen.size > 65) return false
       if (node.kind === 'pane') {
         if (node.float !== undefined && !validFloat(node.float)) return false
-        if (node.id === BROWSER_PANE_ID) return node.tabs === undefined && !node.docked
+        if (node.id === BROWSER_PANE_ID) return node.tabs === undefined && !node.docked && !node.onTop
+        if (node.onTop !== undefined && typeof node.onTop !== 'boolean') return false
         if (node.docked !== undefined && typeof node.docked !== 'boolean') return false
         if (node.dockNumber !== undefined && (!Number.isSafeInteger(node.dockNumber) || node.dockNumber < 1)) return false
         const tabs = node.tabs ?? [node.id]
