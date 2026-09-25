@@ -17,13 +17,16 @@ const MOVING = '.chat-layout-tile, [data-ui="layout.divider"]'
 
 export type Glide = { dx: number; dy: number; sx: number; sy: number }
 
+export function movedRect(a: Rect, b: Rect): boolean {
+  return Math.abs(a.x - b.x) >= EPSILON || Math.abs(a.y - b.y) >= EPSILON
+    || Math.abs(a.width - b.width) >= EPSILON || Math.abs(a.height - b.height) >= EPSILON
+}
+
 /** The transform that paints `to`'s box where `from` was; null when they already coincide. */
 export function glideFrom(from: Rect, to: Rect): Glide | null {
   if (to.width <= 0 || to.height <= 0 || from.width <= 0 || from.height <= 0) return null
-  const glide = { dx: from.x - to.x, dy: from.y - to.y, sx: from.width / to.width, sy: from.height / to.height }
-  const still = Math.abs(glide.dx) < EPSILON && Math.abs(glide.dy) < EPSILON
-    && Math.abs(from.width - to.width) < EPSILON && Math.abs(from.height - to.height) < EPSILON
-  return still ? null : glide
+  if (!movedRect(from, to)) return null
+  return { dx: from.x - to.x, dy: from.y - to.y, sx: from.width / to.width, sy: from.height / to.height }
 }
 
 /** Where a box laid out at `layout` appears under a top-left-origin 2D transform. */
@@ -65,14 +68,18 @@ export function useLayoutGlide(canvasRef: RefObject<HTMLElement | null>, armed: 
       if (!next) continue
       const previous = laidOut.current.get(element)
       laidOut.current.set(element, next)
+      // A commit that leaves this box in place (a streamed token) keeps its glide running.
+      if (!previous || !movedRect(previous, next)) continue
       const inFlight = running.current.get(element)
-      if (!animate || !previous || element.hidden || typeof element.animate !== 'function') {
-        if (inFlight && previous && glideFrom(previous, next)) inFlight.finish()
+      if (!animate || element.hidden || typeof element.animate !== 'function') {
+        inFlight?.finish()
         continue
       }
+      // The box moved, so any glide in flight inverts a stale layout: always replace it,
+      // even when the tile already appears at its new place and needs no further glide.
       const glide = glideFrom(currentRect(element, previous, inFlight), next)
-      if (!glide) continue
       inFlight?.cancel()
+      if (!glide) continue
       const animation = element.animate([
         { transformOrigin: '0 0', transform: `translate(${glide.dx}px, ${glide.dy}px) scale(${glide.sx}, ${glide.sy})` },
         { transformOrigin: '0 0', transform: 'none' }
