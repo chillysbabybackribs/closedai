@@ -114,8 +114,9 @@
 .chat-layout-workspace-dock span { writing-mode: vertical-rl; font-size: 11px; color: var(--chrome-fg-strong); }
 .chat-layout-workspace-dock[data-active='true'] { visibility: visible; }
 .chat-layout-canvas { position: relative; width: 100%; height: 100%; }
-/* Preview geometry is already frame-coalesced. Animating dimensions repeatedly reflows
-   transcripts and interrupts the final frame when the native drag ends. */
+/* Preview geometry is already frame-coalesced. Tiles glide between previews through
+   transform animations (layout-motion.ts); animating dimensions would reflow transcripts
+   every frame and interrupt the final frame when the native drag ends. */
 /* Geometry supplies both dimensions, so descendants can adapt to short rows as well as columns. */
 /* Each tile is a card lifted off the chassis: one drawn edge, a short contact shadow, and
    a soft cast. Dividers and the viewport gutter show the chassis between cards. */

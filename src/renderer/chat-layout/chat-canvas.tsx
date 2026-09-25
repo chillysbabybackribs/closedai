@@ -10,6 +10,7 @@ import type { TabActivity } from './tab-activity.js'
 import { browserDropAt, type BrowserDrop } from './browser-drop.js'
 import { chatDropAt, dragPreviewPanes, dragSplitPreview } from './layout-drag-preview.js'
 import { ChatLayoutPaneHeader } from './chat-layout-pane-header.js'
+import { useLayoutGlide } from './layout-motion.js'
 
 const position = (rect: Rect): CSSProperties => ({ left: rect.x, top: rect.y, width: rect.width, height: rect.height })
 
@@ -81,6 +82,10 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
   dragActiveListener.current = onDragActive
   const dropTarget = useRef<typeof drop>(null)
   const dropPaintRaf = useRef(0)
+  // Armed from dragstart until the release glide lands, so the preview, the drop and a
+  // cancelled drag's return all glide while the native browser view stays occluded.
+  const glideArmed = useRef(false)
+  const whenGlideIdle = useLayoutGlide(canvasRef, () => glideArmed.current)
   const finishDrag = useCallback((): void => {
     if (dropPaintRaf.current) {
       cancelAnimationFrame(dropPaintRaf.current)
@@ -89,7 +94,6 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
     dropTarget.current = null
     setDragging(null)
     setDrop(null)
-    if (!settlingRef.current) dragActiveListener.current(false)
   }, [])
   const queueDrop = (next: typeof drop): void => {
     if (next?.target === dropTarget.current?.target && next?.edge === dropTarget.current?.edge) return
@@ -127,6 +131,7 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
     const start = (event: DragEvent): void => {
       if (settlingRef.current || !event.dataTransfer?.types.includes(CHAT_DRAG_TYPE)) return
       setDragging({ id: event.dataTransfer.getData(CHAT_DRAG_TYPE), singleTab: event.dataTransfer.types.includes(CHAT_TAB_DRAG_TYPE) })
+      glideArmed.current = true
       dragActiveListener.current(true)
     }
     const clear = (): void => { finishDrag() }
@@ -146,6 +151,16 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
       dragActiveListener.current(false)
     }
   }, [finishDrag])
+  useEffect(() => {
+    if (dragging || settling || !glideArmed.current) return
+    let cancelled = false
+    void whenGlideIdle().then(() => {
+      if (cancelled) return
+      glideArmed.current = false
+      dragActiveListener.current(false)
+    })
+    return () => { cancelled = true }
+  }, [dragging, settling, whenGlideIdle])
   const [soloPaneId, setSoloPaneId] = useState<string | null>(null)
   useEffect(() => { setSoloPaneId(null) }, [browserRevealVersion])
   const visibleTree = browserVisible ? tree : removePane(tree, BROWSER_PANE_ID)!
@@ -255,7 +270,6 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
         } finally {
           settlingRef.current = false
           setSettling(null)
-          dragActiveListener.current(false)
         }
       }}>
       {renderedTiles.map(({ id: activeId, tabs, rect }) => {
