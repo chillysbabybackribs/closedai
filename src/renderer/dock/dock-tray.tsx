@@ -2,7 +2,7 @@ import type { JSX, ReactNode } from 'react'
 import { Dock, DockIcon } from '../../components/ui/dock.js'
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar.js'
 import { Button } from '../../components/ui/button.js'
-import { Popover, PopoverAnchor, PopoverContent } from '../../components/ui/popover.js'
+import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover.js'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../../components/ui/tooltip.js'
 import type { SavedSite } from '../../shared/saved-sites.js'
 import type { BrowserDownload } from '../../shared/types.js'
@@ -38,31 +38,33 @@ export function DockTray(props: DockTrayProps): JSX.Element {
     disableMagnification={!magnify}
     className="mx-0 mt-0 h-[54px] gap-1.5 border-border bg-background/70 px-2 py-[3px] shadow-lg">
     {apps.map((app) => <DockIcon key={app.id} padding={0} className="relative rounded-[22%]">
-      <Popover open={openStack === app.id} onOpenChange={(open) => onOpenStack(open ? app.id : null)}>
-        <PopoverAnchor asChild>
-          <span className="absolute inset-0" aria-hidden="true" />
-        </PopoverAnchor>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button type="button" className="relative size-full rounded-[22%] outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              data-ui="dock.app" data-ui-key={app.id} aria-label={`${app.label}: ${app.note}`}
-              aria-haspopup={app.stack ? 'dialog' : undefined} aria-expanded={app.stack ? openStack === app.id : undefined}
-              onClick={() => app.stack ? onOpenStack(openStack === app.id ? null : app.id) : onLaunch(app.id)}>
-              <TrayTile id={app.id} />
-              {app.active && <span className="absolute -bottom-[3px] left-1/2 size-1 -translate-x-1/2 rounded-full bg-foreground/70" aria-hidden="true" />}
-            </button>
-          </TooltipTrigger>
-          {openStack !== app.id && <TooltipContent side="top" sideOffset={10} className="flex flex-col gap-0.5">
-            <span className="font-medium">{app.label}</span>
-            <span className="text-muted-foreground">{app.note}</span>
-          </TooltipContent>}
-        </Tooltip>
-        {app.stack && <PopoverContent side="top" sideOffset={12} className="w-72 p-1.5">
-          {app.id === 'saved-sites' ? <SavedSitesStack {...props} /> : <DownloadsStack {...props} />}
-        </PopoverContent>}
-      </Popover>
+      {app.stack
+        ? <Popover open={openStack === app.id} onOpenChange={(open) => onOpenStack(open ? app.id : null)}>
+            <TrayButton app={app} stackOpen={openStack === app.id} />
+            <PopoverContent side="top" sideOffset={12} className="w-72 p-1.5">
+              {app.id === 'saved-sites' ? <SavedSitesStack {...props} /> : <DownloadsStack {...props} />}
+            </PopoverContent>
+          </Popover>
+        : <TrayButton app={app} onLaunch={onLaunch} />}
     </DockIcon>)}
   </Dock>
+}
+
+/** A tray icon with its tooltip; a stack's icon is also the trigger of its list. */
+function TrayButton({ app, stackOpen = false, onLaunch }: { app: TrayApp; stackOpen?: boolean; onLaunch?: (id: TrayAppId) => void }): JSX.Element {
+  const button = <button type="button" className="relative size-full rounded-[22%] outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    data-ui="dock.app" data-ui-key={app.id} aria-label={`${app.label}: ${app.note}`}
+    onClick={onLaunch ? () => onLaunch(app.id) : undefined}>
+    <TrayTile id={app.id} />
+    {app.active && <span className="absolute -bottom-[3px] left-1/2 size-1 -translate-x-1/2 rounded-full bg-foreground/70" aria-hidden="true" />}
+  </button>
+  return <Tooltip>
+    <TooltipTrigger asChild>{app.stack ? <PopoverTrigger asChild>{button}</PopoverTrigger> : button}</TooltipTrigger>
+    {!stackOpen && <TooltipContent side="top" sideOffset={10} className="flex flex-col gap-0.5">
+      <span className="font-medium">{app.label}</span>
+      <span className="text-muted-foreground">{app.note}</span>
+    </TooltipContent>}
+  </Tooltip>
 }
 
 /** One tile: a picture fills it, a line icon sits in its middle on the tile's plain face. */

@@ -199,7 +199,7 @@ export function SpacesStage({ enabled, workspace, chats, selectedPaneId, childre
     toggleOverview: toggle,
     step: (delta) => { void step(delta) }
   }
-  return <>{dock?.(dockNav)}<div ref={stageRef} className="spaces-stage" data-spaces-overview={phase === 'space' ? undefined : phase}>
+  return <><div ref={stageRef} className="spaces-stage" data-spaces-overview={phase === 'space' ? undefined : phase}>
     <div className="spaces-live" style={liveStyle} inert={phase !== 'space'}
       data-native-bounds-hold={zoomed ? '' : undefined}>
       {phase !== 'switching' && children({ browserHeld: phase !== 'space', spaceId: current.id })}
@@ -236,5 +236,5 @@ export function SpacesStage({ enabled, workspace, chats, selectedPaneId, childre
       </button>}
     </div>}
     {nav.error && zoomed && <div className="spaces-error" role="alert">{nav.error}</div>}
-  </div></>
+  </div>{dock?.(dockNav)}</>
 }
