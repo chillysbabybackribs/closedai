@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Zoomable docking workspace — 2026-09-24</title>
+<style>
+  /* Tokens copied from src/renderer/styles/themes/warm-chat.css so the mock reads as the live app. */
+  :root {
+    color-scheme: light;
+    --font-sans: "OpenAI Sans", "Inter Variable", Inter, ui-sans-serif, system-ui, sans-serif;
+    --font-mono: ui-monospace, "JetBrains Mono", Menlo, monospace;
+    --chassis: #85827d;
+    --surface-chrome: #aaa69f;
+    --surface-card: #eeeae4;
+    --surface-raised: #c1bbb3;
+    --surface-control-hover: #eeeae4;
+    --hairline: rgb(32 34 35 / 14%);
+    --hairline-strong: rgb(32 34 35 / 22%);
+    --chrome-fg: #3c3c3c;
+    --chrome-fg-strong: #202223;
+    --foreground: #202223;
+    --muted-foreground: #3c3c3c;
+    --tab-accent: #3f5f86;
+    --tab-active-surface: #e4e0d9;
+    --link-ink: #3f5f86;
+    --ok-ink: #2f7a4f;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 24px 28px 48px; background: #5f5d59; color: #eeeae4; font-family: var(--font-sans); font-size: 13px; -webkit-font-smoothing: antialiased; }
+  h1 { font-size: 15px; font-weight: 600; margin: 0 0 4px; }
+  .lede { color: #cfcac2; margin: 0 0 18px; max-width: 900px; line-height: 1.45; }
+  h2 { font-size: 11px; font-weight: 600; color: #cfcac2; text-transform: uppercase; letter-spacing: .05em; margin: 26px 0 8px; }
+  p.note { color: #cfcac2; margin: 8px 0 0; max-width: 900px; line-height: 1.45; }
+  p.note b { color: #fff; font-weight: 600; }
+  svg.i { width: 14px; height: 14px; flex: none; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* Window = frame bar + workspace chassis. */
+  .window { background: var(--chassis); border-radius: 10px; padding: 0 8px 8px; max-width: 1180px; position: relative; }
+  .framebar { display: flex; align-items: center; gap: 6px; height: 40px; color: #202223; font-size: 12px; }
+  .nav { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 6px; color: #202223; }
+  .nav[aria-disabled] { opacity: .35; }
+  .nav:not([aria-disabled]) { background: rgb(238 234 228 / 35%); }
+  .crumbs { display: flex; align-items: center; gap: 4px; padding: 0 8px; font-weight: 500; }
+  .crumbs span.sep { opacity: .5; }
+  .crumbs span.cur { color: #202223; }
+  .crumbs span.up { color: #34373a; opacity: .75; }
+  .sepv { width: 1px; height: 18px; background: rgb(32 34 35 / 22%); margin: 0 4px; }
+  .frames { display: flex; gap: 2px; align-self: stretch; }
+  .frame-tab { display: flex; align-items: center; padding: 0 11px; color: #34373a; border-bottom: 2px solid transparent; }
+  .frame-tab[data-active] { color: #202223; font-weight: 600; border-bottom-color: var(--tab-accent); }
+  .frame-tab.add { gap: 5px; opacity: .7; }
+  .grow { flex: 1; }
+  .level { font-family: var(--font-mono); font-size: 11px; color: #34373a; }
+  .minimap { display: grid; width: 74px; height: 26px; gap: 2px; padding: 2px; border-radius: 4px; background: rgb(32 34 35 / 25%); grid-template-columns: 1.1fr 1.2fr .8fr; grid-template-rows: 1fr 5px; }
+  .minimap i { background: rgb(238 234 228 / 55%); border-radius: 1px; position: relative; }
+  .minimap i.bot { grid-column: 1 / -1; }
+  .minimap i[data-here] { background: #eeeae4; outline: 1.5px solid var(--tab-accent); }
+  .minimap i[data-live]::after { content: ""; position: absolute; right: 2px; top: 2px; width: 3px; height: 3px; border-radius: 50%; background: var(--ok-ink); }
+
+  .ws { display: grid; gap: 8px; height: 500px; }
+  .col { display: grid; gap: 8px; min-height: 0; min-width: 0; }
+  .subtree { display: grid; gap: 6px; min-height: 0; min-width: 0; padding: 6px; border-radius: 9px; background: rgb(32 34 35 / 14%); position: relative; }
+  .subtree > .label { position: absolute; top: -1px; left: 10px; transform: translateY(-50%); font-size: 10px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: #eeeae4; background: #6f6c68; padding: 1px 6px; border-radius: 4px; }
+
+  /* Tiles = .chat-layout-pane with the direction-C header. */
+  .tile { display: flex; flex-direction: column; min-width: 0; min-height: 0; border-radius: 8px; overflow: hidden; background: var(--surface-card); color: var(--foreground); box-shadow: 0 1px 2px rgb(0 0 0 / 18%); }
+  .hdr { display: flex; align-items: stretch; height: 34px; flex: none; background: var(--surface-chrome); color: var(--chrome-fg); box-shadow: inset 0 -1px 0 var(--hairline); font-size: 12px; }
+  .tab { display: flex; align-items: center; gap: 7px; padding: 0 12px; max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-right: 1px solid var(--hairline); border-bottom: 2px solid transparent; }
+  .tab[data-active] { background: var(--tab-active-surface); color: var(--chrome-fg-strong); font-weight: 500; border-bottom-color: rgb(32 34 35 / 25%); }
+  .tile[data-selected] .tab[data-active] { border-bottom-color: var(--tab-accent); }
+  .tab .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok-ink); flex: none; }
+  .tab .spin { width: 10px; height: 10px; border: 1.5px solid var(--chrome-fg); border-right-color: transparent; border-radius: 50%; flex: none; }
+  .body { flex: 1; min-height: 0; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; line-height: 1.45; overflow: hidden; font-size: 12.5px; }
+  .u { align-self: flex-end; max-width: 82%; background: var(--surface-raised); border-radius: 12px; padding: 6px 10px; }
+  .a { color: #3c3c3c; }
+  .a b { color: var(--foreground); }
+  .composer { margin-top: auto; border: 1px solid var(--hairline-strong); border-radius: 11px; background: #202223; color: #aaa69f; padding: 8px 11px; height: 44px; flex: none; }
+  .lines i { display: block; height: 6px; border-radius: 3px; background: rgb(32 34 35 / 12%); margin: 0 0 7px; }
+  .browser .url { margin: 0 0 6px; height: 24px; border-radius: 7px; border: 1px solid var(--hairline); display: flex; align-items: center; padding: 0 9px; font-size: 11.5px; color: var(--muted-foreground); }
+  .browser .page { flex: 1; border-radius: 6px; background: linear-gradient(160deg, #22252a, #3b3f46); display: grid; place-items: center; color: #cfcac2; font-size: 11px; }
+  .strip .body { flex-direction: row; gap: 14px; align-items: center; font-size: 12px; padding: 0 12px; }
+  .run { display: flex; align-items: center; gap: 7px; color: var(--muted-foreground); }
+  .run b { color: var(--foreground); font-weight: 500; }
+
+  /* Tiles too small to read collapse to an icon card: title initials, status, count. */
+  .mini { display: flex; flex-direction: column; justify-content: space-between; min-width: 0; min-height: 0; padding: 7px 8px; border-radius: 7px; background: var(--surface-card); color: var(--foreground); box-shadow: 0 1px 2px rgb(0 0 0 / 18%); font-size: 11px; }
+  .mini .mono { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 6px; background: var(--surface-chrome); font-weight: 600; font-size: 11px; color: var(--chrome-fg-strong); }
+  .mini .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
+  .mini .s { display: flex; align-items: center; gap: 5px; color: var(--muted-foreground); font-size: 10px; }
+  .mini .s .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok-ink); }
+
+  /* Drag state: floating window, dock compass, workspace edge bands. */
+  .dim .tile, .dim .subtree { filter: saturate(.85); }
+  .float { position: absolute; width: 330px; height: 210px; left: 470px; top: 150px; box-shadow: 0 18px 40px rgb(0 0 0 / 38%), 0 0 0 1px rgb(32 34 35 / 20%); z-index: 3; opacity: .96; }
+  .preview { position: absolute; background: rgb(63 95 134 / 22%); border: 2px solid var(--tab-accent); border-radius: 8px; z-index: 2; }
+  .band { position: absolute; left: 8px; right: 8px; height: 22px; border: 1.5px dashed rgb(238 234 228 / 70%); border-radius: 6px; display: grid; place-items: center; font-size: 10.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: #eeeae4; background: rgb(32 34 35 / 25%); z-index: 2; }
+  .compass { position: absolute; display: grid; grid-template-columns: repeat(3, 30px); grid-template-rows: repeat(3, 30px); gap: 3px; z-index: 4; }
+  .compass b { border-radius: 6px; background: rgb(238 234 228 / 92%); box-shadow: 0 2px 6px rgb(0 0 0 / 25%); display: grid; place-items: center; color: #3c3c3c; }
+  .compass b[data-hot] { background: var(--tab-accent); color: #fff; }
+  .compass b.empty { background: none; box-shadow: none; }
+  .legend { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; max-width: 1180px; margin-top: 10px; }
+  .legend div { background: rgb(32 34 35 / 22%); border-radius: 8px; padding: 9px 11px; color: #cfcac2; line-height: 1.4; font-size: 12px; }
+  .legend div b { display: block; color: #fff; font-weight: 600; margin-bottom: 2px; }
+</style>
+</head>
+<body>
+<svg style="display:none" aria-hidden="true">
+  <symbol id="left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+  <symbol id="right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="up" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol>
+  <symbol id="down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="layers" viewBox="0 0 24 24"><path d="m12 2 10 5-10 5L2 7z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></symbol>
+</svg>
+
+<h1>Zoomable docking workspace — concept</h1>
+<p class="lede">HTML/CSS concept (not image-generated), using the live warm-chat theme tokens and the direction-C tab header. It adds one strip, the <b>frame bar</b>, above the existing split-tree canvas. Every tile below is an ordinary <code>chat-layout</code> pane; the new parts are named subtrees, zoom levels, saved frames, icon-card collapse and floating windows.</p>
+
+<!-- 1. Overview -->
+<h2>1 · Overview — the whole tree, level 0</h2>
+<div class="window">
+  <div class="framebar">
+    <span class="nav" aria-disabled="true"><svg class="i"><use href="#left"/></svg></span>
+    <span class="nav" aria-disabled="true"><svg class="i"><use href="#right"/></svg></span>
+    <span class="crumbs"><span class="cur">Workspace</span></span>
+    <span class="sepv"></span>
+    <div class="frames">
+      <span class="frame-tab" data-active>Overview</span>
+      <span class="frame-tab">Research</span>
+      <span class="frame-tab">Plan + browser</span>
+      <span class="frame-tab add"><svg class="i"><use href="#plus"/></svg>Save frame</span>
+    </div>
+    <span class="grow"></span>
+    <span class="level">level 0</span>
+    <span class="minimap"><i data-here></i><i data-here></i><i data-here data-live></i><i class="bot" data-here></i></span>
+  </div>
+  <div class="ws" style="grid-template-rows: 1fr 46px;">
+    <div class="col" style="grid-template-columns: 1.1fr 1.2fr .8fr;">
+      <div class="col" style="grid-template-rows: 1.3fr 1fr;">
+        <div class="tile" data-selected>
+          <div class="hdr"><span class="tab" data-active><span class="spin"></span>Docking plan</span><span class="tab">Tree tests</span></div>
+          <div class="body">
+            <div class="u">Map the zoom levels onto layout-tree.ts</div>
+            <div class="a">Each <b>split</b> node can carry a name. A name makes it a <b>zoom target</b>; zooming renders that subtree as the canvas root.</div>
+            <div class="composer">Ask anything</div>
+          </div>
+        </div>
+        <div class="tile">
+          <div class="hdr"><span class="tab" data-active><span class="dot"></span>Release notes</span></div>
+          <div class="body"><div class="lines"><i style="width:92%"></i><i style="width:74%"></i><i style="width:83%"></i><i style="width:40%"></i></div></div>
+        </div>
+      </div>
+      <div class="tile browser">
+        <div class="hdr"><span class="tab" data-active>tiktok.com / @danfezz</span><span class="tab">docs</span></div>
+        <div class="body"><div class="url">www.tiktok.com/@danfezz/video/7688814882380172558</div><div class="page">video</div></div>
+      </div>
+      <div class="subtree" style="grid-template-rows: 1fr 1fr;">
+        <span class="label">Research · 6</span>
+        <div class="tile">
+          <div class="hdr"><span class="tab" data-active><span class="spin"></span>Tiling WMs</span></div>
+          <div class="body"><div class="lines"><i style="width:90%"></i><i style="width:70%"></i><i style="width:80%"></i></div></div>
+        </div>
+        <div class="subtree" style="grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; background: rgb(32 34 35 / 18%);">
+          <div class="mini"><span class="mono">Zu</span><span class="t">Zoom UIs</span><span class="s"><span class="dot"></span>running</span></div>
+          <div class="mini"><span class="mono">Ni</span><span class="t">niri notes</span><span class="s">idle</span></div>
+          <div class="mini"><span class="mono">Ps</span><span class="t">PaperWM</span><span class="s">idle</span></div>
+          <div class="mini"><span class="mono">+2</span><span class="t">more</span><span class="s">zoom in</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="tile strip">
+      <div class="body">
+        <span style="font-weight:600; color: var(--foreground);">Docked across bottom</span>
+        <span class="run"><span class="tab" style="border:0;padding:0"><span class="spin"></span></span><b>Agent: docking v1</b> cycle 2 of 3</span>
+        <span class="run"><b>Terminal</b> npm run test:one</span>
+        <span class="run"><b>Downloads</b> 1 new</span>
+      </div>
+    </div>
+  </div>
+</div>
+<p class="note">The split tree is unchanged; a split can now carry a <b>name</b> (“Research”). Named subtrees show a quiet label in the gutter and are the targets for zoom. A tile too small to read, below roughly 180×120, <b>collapses to an icon card</b> (initials, status, count) instead of rendering an unreadable chat. The strip across the bottom is the full-width edge dock, which today only the browser gets (and only left/right).</p>
+
+<!-- 2. Zoomed -->
+<h2>2 · Zoomed into “Research” — level 1</h2>
+<div class="window">
+  <div class="framebar">
+    <span class="nav"><svg class="i"><use href="#left"/></svg></span>
+    <span class="nav" aria-disabled="true"><svg class="i"><use href="#right"/></svg></span>
+    <span class="crumbs"><span class="up">Workspace</span><span class="sep">›</span><span class="cur">Research</span></span>
+    <span class="sepv"></span>
+    <div class="frames">
+      <span class="frame-tab">Overview</span>
+      <span class="frame-tab" data-active>Research</span>
+      <span class="frame-tab">Plan + browser</span>
+      <span class="frame-tab add"><svg class="i"><use href="#plus"/></svg>Save frame</span>
+    </div>
+    <span class="grow"></span>
+    <span class="level">level 1</span>
+    <span class="minimap"><i data-live></i><i></i><i data-here data-live></i><i class="bot" data-live></i></span>
+  </div>
+  <div class="ws" style="grid-template-rows: 1fr 1.25fr;">
+    <div class="tile" data-selected>
+      <div class="hdr"><span class="tab" data-active><span class="spin"></span>Tiling WMs</span><span class="tab">Sources</span></div>
+      <div class="body">
+        <div class="u">Compare how tiling window managers handle nested containers</div>
+        <div class="a"><b>i3/sway</b> nest split containers with tabbed and stacked modes. <b>niri</b> scrolls an infinite strip of columns. <b>PaperWM</b> does the same on GNOME. None of them zoom into a subtree; that is the part the video adds.</div>
+        <div class="composer">Ask anything</div>
+      </div>
+    </div>
+    <div class="col" style="grid-template-columns: 1fr 1fr 1fr;">
+      <div class="tile"><div class="hdr"><span class="tab" data-active><span class="spin"></span>Zoom UIs</span></div><div class="body"><div class="a">Prezi, Muse and Raskin's ZUI all keep a <b>path back</b> visible at every depth.</div><div class="lines"><i style="width:80%"></i><i style="width:60%"></i></div></div></div>
+      <div class="tile"><div class="hdr"><span class="tab" data-active><span class="dot"></span>niri notes</span></div><div class="body"><div class="lines"><i style="width:94%"></i><i style="width:70%"></i><i style="width:85%"></i><i style="width:50%"></i></div></div></div>
+      <div class="subtree" style="grid-template-rows: 1fr 1fr;">
+        <div class="tile"><div class="hdr"><span class="tab" data-active>PaperWM</span></div><div class="body"><div class="lines"><i style="width:80%"></i><i style="width:55%"></i></div></div></div>
+        <div class="col" style="grid-template-columns: 1fr 1fr; gap: 6px;">
+          <div class="mini"><span class="mono">Ke</span><span class="t">Keybinds</span><span class="s">idle</span></div>
+          <div class="mini"><span class="mono">Ts</span><span class="t">Touch pinch</span><span class="s">idle</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<p class="note">Zooming makes the named subtree the canvas root, so its tiles get the full window and the icon cards from level 0 <b>become real tiles</b>. Nothing leaves the tree and chats outside the view keep running: the minimap marks them live, and they stream to the Background panel as hidden chats do now. The breadcrumb climbs one level; back returns to the previous view, not simply to the parent.</p>
+
+<!-- 3. Drag -->
+<h2>3 · Floating a tile out and docking it back</h2>
+<div class="window dim">
+  <div class="framebar">
+    <span class="nav"><svg class="i"><use href="#left"/></svg></span>
+    <span class="nav" aria-disabled="true"><svg class="i"><use href="#right"/></svg></span>
+    <span class="crumbs"><span class="cur">Workspace</span></span>
+    <span class="sepv"></span>
+    <div class="frames"><span class="frame-tab" data-active>Overview</span><span class="frame-tab">Research</span><span class="frame-tab">Plan + browser</span></div>
+    <span class="grow"></span>
+    <span class="level">dragging “Release notes”</span>
+  </div>
+  <div class="ws" style="grid-template-columns: 1.1fr 1.2fr .8fr; position: relative;">
+    <div class="tile" data-selected>
+      <div class="hdr"><span class="tab" data-active><span class="spin"></span>Docking plan</span></div>
+      <div class="body"><div class="u">Map the zoom levels onto layout-tree.ts</div><div class="a">Each <b>split</b> node can carry a name.</div><div class="composer">Ask anything</div></div>
+    </div>
+    <div class="tile browser">
+      <div class="hdr"><span class="tab" data-active>tiktok.com / @danfezz</span></div>
+      <div class="body"><div class="url">www.tiktok.com/@danfezz/video/7688814882380172558</div><div class="page">video</div></div>
+    </div>
+    <div class="subtree" style="grid-template-rows: 1fr 1fr;">
+      <span class="label">Research · 6</span>
+      <div class="tile"><div class="hdr"><span class="tab" data-active>Tiling WMs</span></div><div class="body"><div class="lines"><i style="width:90%"></i><i style="width:70%"></i></div></div></div>
+      <div class="subtree" style="grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; background: rgb(32 34 35 / 18%);">
+        <div class="mini"><span class="mono">Zu</span><span class="t">Zoom UIs</span><span class="s"><span class="dot"></span>running</span></div>
+        <div class="mini"><span class="mono">Ni</span><span class="t">niri notes</span><span class="s">idle</span></div>
+        <div class="mini"><span class="mono">Ps</span><span class="t">PaperWM</span><span class="s">idle</span></div>
+        <div class="mini"><span class="mono">+2</span><span class="t">more</span><span class="s">zoom in</span></div>
+      </div>
+    </div>
+    <span class="band" style="top: 4px;">Dock across top</span>
+    <span class="band" style="bottom: 4px;">Dock across bottom</span>
+    <!-- live preview: bottom half of the browser tile -->
+    <div class="preview" style="left: calc(1.1 / 3.1 * (100% - 16px) + 8px); width: calc(1.2 / 3.1 * (100% - 16px)); top: 50%; bottom: 0;"></div>
+    <div class="compass" style="left: calc(1.1 / 3.1 * (100% - 16px) + 8px + 0.6 / 3.1 * (100% - 16px) - 48px); top: calc(50% - 48px);">
+      <b class="empty"></b><b><svg class="i"><use href="#up"/></svg></b><b class="empty"></b>
+      <b><svg class="i"><use href="#left"/></svg></b><b title="Add as tab"><svg class="i"><use href="#layers"/></svg></b><b><svg class="i"><use href="#right"/></svg></b>
+      <b class="empty"></b><b data-hot><svg class="i"><use href="#down"/></svg></b><b class="empty"></b>
+    </div>
+  </div>
+  <div class="tile float" style="left: 120px; top: 250px;">
+    <div class="hdr"><span class="tab" data-active><span class="dot"></span>Release notes</span></div>
+    <div class="body"><div class="lines"><i style="width:92%"></i><i style="width:74%"></i><i style="width:83%"></i><i style="width:40%"></i></div></div>
+  </div>
+</div>
+<p class="note">Pulling a tab past the edge of its tile <b>floats</b> it: a real window above the canvas, still live. Hovering a tile shows the dock compass: edges split that tile and the centre adds the chat as a tab. The live preview uses the existing <code>layout-drag-preview</code> path. The dashed bands dock <b>across the full width</b> of the current zoom root, so docking across the bottom while zoomed into Research docks inside Research. Dropping on the gutter leaves the tile floating.</p>
+
+<div class="legend">
+  <div><b>Double-click a tile header</b>Zoom into that tile. This is today’s solo mode, now recorded in history.</div>
+  <div><b>Double-click the gutter</b>Zoom out one level; at level 0, toggle to the overview.</div>
+  <div><b>Ctrl + scroll, pinch</b>Step up or down the tree around the pointer.</div>
+  <div><b>Alt + ← / →</b>Back and forward through views; saved frames sit beside them in the frame bar.</div>
+</div>
+</body>
+</html>

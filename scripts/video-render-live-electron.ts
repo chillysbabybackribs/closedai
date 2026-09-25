@@ -88,6 +88,17 @@ app.whenReady().then(async () => {
   assert.equal(player.error, false)
   assert.ok(Math.abs(player.duration - 2) < 0.2, `player duration ${player.duration}`)
   assert.equal(browser.snapshot().navigationError ?? null, null)
+  // Paused at 1.5s the centre of the letterboxed player is the timer strip, green by then.
+  await browser.contentsOf(videoTab)!.executeJavaScript(
+    `new Promise((r) => { const v = document.querySelector('video'); v.pause(); v.addEventListener('seeked', () => requestAnimationFrame(() => requestAnimationFrame(r)), { once: true }); v.currentTime = 1.5 })`
+  )
+  const shot = await browser.contentsOf(videoTab)!.capturePage()
+  const { width: shotWidth, height: shotHeight } = shot.getSize()
+  const bitmap = shot.toBitmap()
+  const centre = ((Math.floor(shotHeight / 2) * shotWidth) + Math.floor(shotWidth / 2)) * 4
+  const shown: Rgb = [bitmap[centre + 2]!, bitmap[centre + 1]!, bitmap[centre]!]
+  // The player's YUV→RGB conversion shifts colour, so assert the dominant channel.
+  assert.ok(shown[1] > 180 && shown[0] < 100 && shown[2] < 100, `playing tab centre ${shown} should be green`)
   window.destroy()
 
   // Cancelling mid-render leaves no file behind.

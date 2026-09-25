@@ -18,19 +18,17 @@ export function useChatLayout(
 ) {
   const snapshot = getSnapshot()
   const cwd = snapshot.workspace?.cwd ?? snapshot.selected.cwd
+  // A detached window keeps its own saved layout and never hosts the browser.
+  const self = appWindow()
+  const windows = useAppWindows()
   const [layout, setLayout] = useState(() => {
-    const saved = readLayout(window.localStorage, cwd)
-    let tree = saved.tree
-    const available = new Set(snapshot.chats.map((chat) => chat.paneId))
-    tree = pruneTabs(tree, available)
-    if (!tree || !paneIds(tree).length) tree = { kind: 'pane' as const, id: snapshot.selectedPaneId }
-    else if (!tabIds(tree).includes(snapshot.selectedPaneId)) {
-      tree = selectTab(tree, paneIds(tree)[0]!, snapshot.selectedPaneId)
-    } else if (!paneIds(tree).includes(snapshot.selectedPaneId) && !isViewTabId(tabOwner(tree, snapshot.selectedPaneId)!)) {
-      // Behind a sibling chat it surfaces; behind a view it stays where the last session left it.
-      tree = selectTab(tree, paneIds(tree)[0]!, snapshot.selectedPaneId)
-    }
-    return { ...saved, tree: withBrowser(expandAllDockedGroups(ensureExpandedGroup(tree!))) }
+    const saved = readLayout(window.localStorage, cwd, self.id)
+    const tree = initialWindowTree(saved.tree, {
+      available: new Set(snapshot.chats.map((chat) => chat.paneId)), elsewhere: tabsHeldElsewhere(),
+      selectedPaneId: snapshot.selectedPaneId, detached: !self.main, initialTabs: self.initialTabs,
+      fallbackView: () => viewTabId('history', crypto.randomUUID())
+    })
+    return { ...saved, tree: withBrowser(expandAllDockedGroups(ensureExpandedGroup(tree))) }
   })
   // Objects rather than strings: repeating the same message restarts its dismissal timer.
   const [error, setError] = useState<{ text: string } | null>(null)
@@ -56,7 +54,9 @@ export function useChatLayout(
   const [busy, setBusy] = useState(false)
   const [selectionToConfirm, setSelectionToConfirm] = useState<string | null>(null)
   const pending = useRef(false)
-  const selected = useRef(snapshot.selectedPaneId)
+  // This window's own selection: a chat another window selects is never recorded here.
+  const selected = useRef(chatTabIds(layout.tree).includes(snapshot.selectedPaneId)
+    ? snapshot.selectedPaneId : chatPaneIds(layout.tree)[0] ?? snapshot.selectedPaneId)
   const current = useRef(layout)
   current.current = layout
   // Main hears about chats only: a tile showing a view has no visible chat, its chats are retained.
@@ -74,7 +74,7 @@ export function useChatLayout(
   useEffect(() => {
     const persist = (): void => {
       const value = layoutPersist.current
-      saveLayout(window.localStorage, cwd, { ...value, views: pruneViewScopes(value.views, value.tree) })
+      saveLayout(window.localStorage, cwd, { ...value, views: pruneViewScopes(value.views, value.tree) }, self.id)
     }
     const timer = window.setTimeout(persist, 250)
     return () => {
@@ -123,6 +123,9 @@ export function useChatLayout(
       release()
     } else if (pending.current) return
     const next = getSnapshot().selectedPaneId
+    // Another window's chat, or a chat opened while another window was in front, is not this
+    // window's to show; the main window adopts an unclaimed one once it is in front again.
+    if (!tabIds(current.current.tree).includes(next) && (!self.main || tabsHeldElsewhere().has(next) || otherWindowFocused())) return
     const previous = selected.current
     selected.current = next
     setLayout((value) => {
@@ -139,7 +142,7 @@ export function useChatLayout(
       }
       return tree === value.tree ? value : { ...value, tree: tree! }
     })
-  }, [layoutRevision, busy, cwd, selectionToConfirm, release])
+  }, [layoutRevision, busy, cwd, selectionToConfirm, release, windows])
 
   // A confirmation that never arrives would leave every structural control disabled. Releasing
   // re-runs the reconciliation above against the latest snapshot, which drops any tab main never opened.
@@ -180,6 +183,7 @@ export function useChatLayout(
       return
     }
     if (target === WORKSPACE_DOCK_ID || (target === BROWSER_PANE_ID && (!id || !edge))) return
+    if (id && await revealedElsewhere(current.current.tree, id)) return
     // A view moves with no IPC: main never hears of it, and the tree is the whole record.
     const view = id !== null && isViewTabId(id)
     pending.current = true
@@ -229,7 +233,7 @@ export function useChatLayout(
 
   /** Show a tab; a chat not yet open joins `anchor`'s tile (else the first). A view also focuses its tile. */
   const activateTab = useCallback(async (id: string, anchor?: string): Promise<void> => {
-    if (pending.current) return
+    if (pending.current || await revealedElsewhere(current.current.tree, id)) return
     const view = isViewTabId(id)
     if (!view) selected.current = id
     const focusTab = (): void => {
