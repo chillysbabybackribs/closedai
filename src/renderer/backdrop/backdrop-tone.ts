@@ -5,7 +5,7 @@
 export type BackdropTone = {
   /** Black overlay alpha over the sharp wallpaper (window gaps, title bar). */
   dim: number
-  /** Dark tint alpha over the blurred wallpaper inside tiles, header and composer chrome. */
+  /** Dark tint alpha over the blurred wallpaper behind a chat transcript: a hint of colour, not a see-through pane. */
   glass: number
 }
 
@@ -24,7 +24,7 @@ export function backdropTone(luminance: number): BackdropTone {
   const light = Math.min(1, Math.max(0, luminance))
   return {
     dim: round(clamp(0.18 + 0.7 * light, 0.18, 0.62)),
-    glass: round(clamp(0.56 + 0.5 * light, 0.56, 0.86))
+    glass: round(clamp(0.84 + 0.2 * light, 0.84, 0.94))
   }
 }
 

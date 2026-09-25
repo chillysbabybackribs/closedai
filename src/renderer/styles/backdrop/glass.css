@@ -13,8 +13,6 @@
   --glass-fill:
     linear-gradient(rgb(var(--glass-ink) / var(--backdrop-glass)), rgb(var(--glass-ink) / var(--backdrop-glass))),
     var(--backdrop-blur) center / cover no-repeat fixed;
-  /* Chrome that sits on glass (headers, tab rails, toolbars): a faint lift, never an opaque fill. */
-  --glass-raise: rgb(255 255 255 / 5%);
   --glass-edge: rgb(255 255 255 / 11%);
   --glass-sheen: rgb(255 255 255 / 9%);
 }
@@ -29,37 +27,23 @@
 /* Gutters and dividers are gaps between windows: the desktop shows through them. */
 :root[data-backdrop] .chat-layout-divider { background: transparent; }
 
-/* Each tile is one pane of glass: a light top edge, a thin rim, and a deeper cast so it lifts
-   off a busy photo the way it lifts off the flat chassis. */
+/* Every tile keeps a light top edge, a thin rim, and a deeper cast, so it lifts off a busy
+   photo the way it lifts off the flat chassis. */
 :root[data-backdrop] .chat-layout-tile:not([data-drag-placeholder]) {
   border-color: var(--glass-edge);
-  background: var(--glass-fill);
   box-shadow:
     inset 0 1px 0 var(--glass-sheen),
     0 1px 2px rgb(0 0 0 / 40%),
     0 16px 44px rgb(0 0 0 / 38%);
 }
 
-/* Inside a tile the glass is the only fill; surfaces that painted the old card colour step
-   aside, and the header rail and active tab become faint lifts on it. */
-:root[data-backdrop]:not([data-theme='warm']) .chat-layout-tile:is([data-pane-id], [data-view-id]),
-:root[data-backdrop]:not([data-theme='warm']) .chat-pane {
-  --chat-header-surface: transparent;
-  --tab-active-surface: var(--glass-raise);
-}
-
-:root[data-backdrop] .chat-layout-tile .chat-pane,
-:root[data-backdrop] .chat-layout-tile .chat-turn-user { background: transparent; }
-
-/* The browser tile: tab strip and toolbar sit on the glass; the page itself stays a real,
-   opaque page in its own native view below the toolbar. */
-:root[data-backdrop] .chat-layout-browser-frame .browser-pane { background: transparent; }
-:root[data-backdrop]:not([data-theme='warm']) .chat-layout-browser-frame .browser-shell {
-  --surface-chrome: var(--glass-raise);
-  --surface-raised: rgb(255 255 255 / 8%);
-  background: transparent;
-}
-:root[data-backdrop] .chat-layout-browser-frame .browser-tabstrip { background: transparent; }
+/* Only a chat's reading surface is glass, and only faintly (--backdrop-glass stays near
+   opaque). Its header and tabs keep their solid fill, like a window's title bar, and the
+   composer stays raised and solid. The browser and view tiles stay solid cards: a web page
+   is always opaque, so glass chrome around it would read as a second material. */
+:root[data-backdrop] .chat-layout-tile[data-pane-id]:not([data-drag-placeholder]) { background: var(--glass-fill); }
+:root[data-backdrop] .chat-layout-tile[data-pane-id] .chat-pane,
+:root[data-backdrop] .chat-layout-tile[data-pane-id] .chat-turn-user { background: transparent; }
 
 /* Overview frosts the whole desktop behind the space miniatures, as the OS does for its own. */
 :root[data-backdrop] .spaces-stage[data-spaces-overview] {
