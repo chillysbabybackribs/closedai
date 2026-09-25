@@ -1,7 +1,10 @@
-import { DOCK_HEIGHT, dockRowRails, dockedGroups, expandedTree, hasBrowser, layoutGroups, type DockGroup } from './layout-docking.js'
+import { layoutGroups, tiledTree } from './layout-docking.js'
 import { MAIN_WINDOW_ID } from '../../shared/app-windows.js'
 export type DockEdge = 'left' | 'right' | 'top' | 'bottom'
-export type ChatLayout = { kind: 'pane'; id: string; tabs?: string[]; docked?: boolean; dockNumber?: number } | {
+/** A floating window's place on the canvas; `z` orders floating windows, higher in front. */
+export type FloatRect = { x: number; y: number; width: number; height: number; z: number }
+/** `docked` is a minimized window; `float` lifts a tile out of the tiled layer into its own rect. */
+export type ChatLayout = { kind: 'pane'; id: string; tabs?: string[]; docked?: boolean; dockNumber?: number; float?: FloatRect } | {
   kind: 'split'; id: string; axis: 'horizontal' | 'vertical'; ratio: number
   first: ChatLayout; second: ChatLayout
 }
@@ -95,26 +98,11 @@ export function resizeSplit(tree: ChatLayout, id: string, ratio: number): ChatLa
   return { ...tree, first: resizeSplit(tree.first, id, ratio), second: resizeSplit(tree.second, id, ratio) }
 }
 
-function rowBandCount(tree: ChatLayout): number {
-  if (!dockedGroups(tree).length) return 0
-  const panes: Array<{ id: string; tabs: string[]; rect: Rect }> = []
-  visitLayout(tree, { x: 0, y: 0, width: 1200, height: 800 }, panes, [], undefined, false)
-  return dockRowRails(panes, dockedGroups(tree)).length
-}
-
-export function dockBandHeight(tree: ChatLayout): number {
-  return rowBandCount(tree) * DOCK_HEIGHT
-}
-
-export function minimumSize(tree: ChatLayout, region = true): { width: number; height: number } {
-  if (region && !hasBrowser(tree) && dockedGroups(tree).length) {
-    const expanded = expandedTree(tree)
-    const size = expanded ? minimumSize(expanded, false) : { width: 180, height: 0 }
-    return { width: size.width, height: size.height + dockBandHeight(tree) }
-  }
+/** Smallest box a tiled layer fits; a floating window's floor is its own pane's. */
+export function minimumSize(tree: ChatLayout): { width: number; height: number } {
   if (tree.kind === 'pane') return { width: tree.id === BROWSER_PANE_ID ? 384 : 300, height: 280 }
-  const a = minimumSize(tree.first, region)
-  const b = minimumSize(tree.second, region)
+  const a = minimumSize(tree.first)
+  const b = minimumSize(tree.second)
   return tree.axis === 'horizontal'
     ? { width: a.width + b.width + DIVIDER_SIZE, height: Math.max(a.height, b.height) }
     : { width: Math.max(a.width, b.width), height: a.height + b.height + DIVIDER_SIZE }
@@ -160,45 +148,18 @@ function visitLayout(
   visitLayout(node.second, second, panes, dividers, splitRatios, clampMinimums)
 }
 
-function paneOverlapsBand(pane: Rect, band: Rect): boolean {
-  return pane.x < band.x + band.width && pane.x + pane.width > band.x
-}
-
-function finalizeDockRails(panes: LayoutPane[], rails: Array<{ groups: DockGroup[]; rect: Rect; boundary: Rect }>): void {
-  const browser = panes.find((pane) => pane.id === BROWSER_PANE_ID)
-  for (const rail of rails) {
-    if (browser && browser.rect.x > rail.rect.x
-      && browser.rect.y < rail.boundary.y + rail.boundary.height) {
-      rail.rect.width = Math.min(rail.rect.width, browser.rect.x - rail.rect.x)
-      rail.boundary = { ...rail.boundary, width: rail.rect.width }
-    }
-    for (const pane of panes) {
-      if (pane.id === BROWSER_PANE_ID) continue
-      const bottom = pane.rect.y + pane.rect.height
-      const bandBottom = rail.boundary.y + rail.boundary.height
-      if (paneOverlapsBand(pane.rect, rail.boundary) && bottom >= bandBottom - 1 && pane.rect.y <= rail.boundary.y) {
-        pane.rect = { ...pane.rect, height: pane.rect.height - DOCK_HEIGHT }
-      }
-    }
-  }
-}
-
-/** Flat geometry keeps React pane keys and composer state stable across tree rearrangements. */
+/**
+ * Flat geometry of the tiled layer; minimized and floating windows take no tiled space. Keeping
+ * it flat keeps React pane keys and composer state stable across tree rearrangements.
+ */
 export function layoutGeometry(tree: ChatLayout, width: number, height: number, splitRatios?: SplitRatioOverrides) {
-  const minimum = minimumSize(tree)
+  const tiled = tiledTree(tree)
+  const minimum = tiled ? minimumSize(tiled) : { width: 0, height: 0 }
   const canvas = { x: 0, y: 0, width: Math.max(width, minimum.width), height: Math.max(height, minimum.height) }
-  const reference: LayoutPane[] = []
-  visitLayout(tree, canvas, reference, [], splitRatios, true)
-  const docked = dockedGroups(tree)
-  const rails = dockRowRails(reference, docked)
-  const placement = docked.length ? expandedTree(tree) : tree
   const panes: LayoutPane[] = []
   const dividers: LayoutDivider[] = []
-  if (placement) {
-    visitLayout(placement, canvas, panes, dividers, splitRatios, true)
-    finalizeDockRails(panes, rails)
-  }
-  return { panes, dividers, minimum, rails }
+  if (tiled) visitLayout(tiled, canvas, panes, dividers, splitRatios, true)
+  return { panes, dividers, minimum }
 }
 
 /** A view pinned to one chat; unpinned views follow their tile and are absent here. */
@@ -221,6 +182,13 @@ function validViewScopes(raw: unknown, tabs: Set<string>): ViewScopes {
   return views
 }
 
+function validFloat(float: unknown): boolean {
+  if (!float || typeof float !== 'object') return false
+  const { x, y, width, height, z } = float as Record<string, unknown>
+  return [x, y, width, height].every((value) => typeof value === 'number' && Number.isFinite(value))
+    && (width as number) > 0 && (height as number) > 0 && Number.isSafeInteger(z) && (z as number) >= 0
+}
+
 export function readLayout(storage: Pick<Storage, 'getItem'>, key: string, windowId?: string): SavedChatLayout {
   const fallback = { tree: null, browserVisible: true }
   try {
@@ -232,6 +200,7 @@ export function readLayout(storage: Pick<Storage, 'getItem'>, key: string, windo
       seen.add(node.id)
       if (seen.size > 65) return false
       if (node.kind === 'pane') {
+        if (node.float !== undefined && !validFloat(node.float)) return false
         if (node.id === BROWSER_PANE_ID) return node.tabs === undefined && !node.docked
         if (node.docked !== undefined && typeof node.docked !== 'boolean') return false
         if (node.dockNumber !== undefined && (!Number.isSafeInteger(node.dockNumber) || node.dockNumber < 1)) return false

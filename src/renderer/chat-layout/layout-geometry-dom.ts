@@ -28,12 +28,6 @@ export function applyLayoutGeometryDom(canvas: HTMLElement, geometry: Geometry):
     const tile = layoutTileElement(canvas, id)
     if (tile) applyRect(tile, rect)
   }
-  for (const rail of geometry.rails) {
-    for (const [attribute, rect] of [['data-dock-rail', rail.rect], ['data-dock-boundary', rail.boundary]] as const) {
-      const element = canvas.querySelector(`[${attribute}="${escapeSelector(rail.id)}"]`) as HTMLElement | null
-      if (element) applyRect(element, rect)
-    }
-  }
   for (const { id, rect } of geometry.dividers) {
     const divider = canvas.querySelector(
       `[data-ui="layout.divider"][data-ui-key="${escapeSelector(id)}"]`
