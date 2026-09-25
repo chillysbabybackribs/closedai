@@ -27,11 +27,40 @@
 }
 
 /* ---- Rails ---------------------------------------------------------------
-   One full-width bar top and bottom, like a desktop's menu bar and dock. A hairline faces the
-   workspace and a faint sheen catches the outer edge. Items on the bar lose their own fills. */
+   One full-width bar top and bottom, like a desktop's menu bar and dock, each with a tab round
+   its centre group: the dock's rises over the tray, the title bar's drops round chat search
+   (rail/titlebar-rail.tsx). The title bar's strip is thinner than its 44px row, so the menus and
+   window controls sit in the strip and the desktop shows beside the tab. A hairline traces the
+   edge facing the workspace and a faint sheen catches the outer edge. Items on the bar lose their
+   own fills. */
 :root[data-backdrop] .shell-titlebar {
+  background: transparent;
+  box-shadow: none;
+}
+
+.titlebar-rail { display: none; }
+:root[data-backdrop] .titlebar-rail {
+  position: absolute;
+  inset: 0;
+  display: block;
+  pointer-events: none;
+}
+:root[data-backdrop] [data-slot="titlebar-rail-fill"] {
   background: var(--glass-rail-top);
-  box-shadow: inset 0 1px 0 var(--glass-sheen), inset 0 -1px 0 var(--glass-edge), 0 1px 0 rgb(0 0 0 / 22%);
+  box-shadow: inset 0 1px 0 var(--glass-sheen);
+}
+:root[data-backdrop] .titlebar-rail-line {
+  stroke: var(--glass-edge);
+  filter: drop-shadow(0 1px 0 rgb(0 0 0 / 22%));
+}
+
+/* Keep in step with TITLEBAR_STRIP: the strip's controls, and the search field centred in the
+   tab with the same 7px margin on every side. */
+:root[data-backdrop] .titlebar-nav-menu,
+:root[data-backdrop] .shell-window-controls { height: 32px; }
+:root[data-backdrop] .titlebar-search-tools {
+  top: 7px;
+  padding-inline: 7px;
 }
 
 :root[data-backdrop] .titlebar-nav-group {

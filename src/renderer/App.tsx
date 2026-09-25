@@ -23,6 +23,7 @@ import { DesktopWorkspace, type ChatLayoutHandle } from './chat-layout/desktop-w
 import { ChatRenameDialog } from './chat-rename-dialog.js'
 import { SpacesStage, type SpacesHandle } from './spaces/spaces-stage.js'
 import { AppDock } from './dock/app-dock.js'
+import { TitlebarRail } from './rail/titlebar-rail.js'
 import { DOCK_RESERVE, readDockPrefs, saveDockPrefs, type DockPrefs } from './dock/dock-model.js'
 import type { SettingsTab } from './settings/settings-dialog.js'
 
@@ -61,6 +62,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
   }, [openHistoryChat])
   const history = useHistoryController(chat.sidebar, openHistoryChat)
   const searchRef = useRef<HTMLInputElement>(null)
+  const [searchTools, setSearchTools] = useState<HTMLDivElement | null>(null)
   const focusSearch = useCallback(() => { searchRef.current?.focus(); searchRef.current?.select() }, [])
   const [appearance, setAppearance] = useState(() => readAppearanceSettings(window.localStorage))
   const backdropStatus = useWorkspaceBackdrop(appearance.backdrop)
@@ -218,6 +220,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
   return (
     <div className="shell" data-ui-surface="shell">
       <header className="shell-titlebar" aria-label="Window title bar">
+        <TitlebarRail search={searchTools} />
         <TitlebarMenu
           chatZoom={appearance.chatZoom}
           selectedChatTitle={selectedRow?.title ?? null}
@@ -229,7 +232,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
           layoutEnabled={Boolean(chat.selectedPaneId)}
           onApplyLayoutPreset={(preset) => workspaceRef.current?.applyPreset(preset)}
         />
-        <div className="titlebar-search-tools">
+        <div ref={setSearchTools} className="titlebar-search-tools">
           <HeaderChatSearch chats={chat.chats} controller={history} inputRef={searchRef} />
         </div>
         <AppWindowControls />
