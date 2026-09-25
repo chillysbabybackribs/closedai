@@ -47,6 +47,8 @@ export const UI_CONTROLS = {
   'layout.tab-move': 'Tab context menu: move the active conversation into the next or previous tile in reading order; item is next or previous',
   'layout.tab-detach': 'Tab context menu: move this tab into a new window that can be placed on another monitor; item is the tab id',
   'layout.tab-return': 'Tab context menu in a detached window: move this tab back into the main window; item is the tab id',
+  'spaces.slot': 'Overview (View → Overview of spaces, Ctrl+Shift+O, or Ctrl+scroll out): zoom into this space, switching the workspace to its project; item is the project folder',
+  'spaces.open-folder': 'Overview: pick a folder and open it as a new space',
 
 
   'chat.rename-dialog': 'Dialog for renaming a chat conversation',
