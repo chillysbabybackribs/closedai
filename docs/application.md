@@ -614,36 +614,43 @@ automation, controls and capture still act on the main window only.
 
 ### Workspace overview (spaces)
 
-A **space** (shown to users as a *workspace*) is one project's layout: its saved split tree, tabs,
-divider sizes and browser position (`src/renderer/spaces/`). The overview shows only the user's
-spaces, in the order they were added (`closedai.spaces.v2` in renderer localStorage, entries of
-`cwd` and `projectPath`): a first launch has the one it opened in, and a workspace joins the list
-when you add it or are switched into it (by a model's `project_switch`, for example). Folders main
-merely remembers (`workspace.recentProjects`) are not listed. **View → Workspace overview**
-(`titlebar.menu-item` `overview`), Ctrl+Shift+O, or Ctrl+scroll down / a pinch zooms out: the live
-workspace shrinks into its slot beside the others, each labelled with its folder name and how many
-of its chats are running. Clicking a slot (`spaces.slot`, item is the folder), scrolling up over it,
-or Enter on it zooms in; Escape, Ctrl+Shift+O or double-clicking the background returns to the one
-you came from. The last slot is **Add workspace** (`spaces.add`): a dashed outline with a + that
-picks a folder, adds it and zooms into it. Back and forward (Alt+←/→ outside text fields, or the
-mouse's side buttons) walk the zoom history of this session: overview and space stops, stepping
-through the overview between spaces.
+A **space** (shown to users as a *workspace*) is one layout of its own — split tree, tabs, divider
+sizes and browser position — plus the project folder main selects while it is shown
+(`src/renderer/spaces/`). Several spaces can share a folder. Spaces live in renderer localStorage
+(`closedai.spaces.v2`: `id`, `cwd`, `projectPath`, `name`, and the one last shown), and each space's
+layout is saved under its id (`closedai.chat-layout.v1:<id>`); spaces made before ids existed use
+their folder as the id, so their layouts carry over. The overview lists only these spaces: a first
+launch has one for the folder it opened in, and a model's `project_switch` into a folder no space
+uses adds one. Folders main merely remembers (`workspace.recentProjects`) are not listed.
+
+**View → Workspace overview** (`titlebar.menu-item` `overview`), Ctrl+Shift+O, or Ctrl+scroll down /
+a pinch zooms out: the live workspace shrinks into its slot beside the others, each labelled with
+its name and how many of its chats are running. Clicking a slot (`spaces.slot`, item is the space
+id), scrolling up over it, or Enter on it zooms in; Escape, Ctrl+Shift+O or double-clicking the
+background returns to the one you came from. The last slot is **Add workspace** (`spaces.add`), a
+dashed outline with a +: it opens no folder picker. The new space uses the folder you were working
+in (named after it, numbered when a space already has that name), starts a fresh chat (which
+inherits the focused chat's folder and model), and zooms into it; with no saved layout yet it opens
+as that chat on the left and the browser on the right. Back and forward (Alt+←/→ outside text
+fields, or the mouse's side buttons) walk the zoom history of this session: overview and space
+stops, stepping through the overview between spaces.
 
 Zooming is a camera over one drawing: the space you came from is its live DOM scaled into its slot
-(chats keep streaming), and every other space is drawn from its saved layout with its tabs' titles
-and live running or paused marks from the workspace-wide chat rows. In a space nothing is
-transformed, so layout, menus and the native browser behave exactly as without spaces. Before
-zooming out the browser is occluded and shows its captured still; the page keeps its full-size
-bounds while zoomed out (`data-native-bounds-hold` stops bounds reports) and goes live again when
-you land back in a space. The live workspace is `inert` while zoomed out.
+(chats keep streaming), and every other space is drawn from its saved layout with its tabs' titles,
+their last message, and live running or paused marks from the workspace-wide chat rows. In a space
+nothing is transformed, so layout, menus and the native browser behave exactly as without spaces.
+Before zooming out the browser is occluded and shows its captured still; the page keeps its
+full-size bounds while zoomed out (`data-native-bounds-hold` stops bounds reports) and goes live
+again when you land back in a space. The live workspace is `inert` while zoomed out.
 
-Entering another space asks main to select that project (`chat.selectSpace`, the same selection
-a model's `project_switch` performs; `chat.openSpace` adds the folder picker). Main restores that
-project's open chats, the renderer loads its saved layout, and the one shared browser takes that
-layout's position. No chat changes folder, stops, or loses its runtime; the previous project's
-chats keep running and can be reopened from search. A folder that no longer exists is refused with
-a message in the overview. Detached windows hold one project's tabs, so the overview is in the
-main window only.
+A shown layout adopts main's selected chat, so a switch prepares the destination with no live
+workspace mounted: main selects the space's project when it differs (`chat.selectSpace`, the same
+selection a model's `project_switch` performs), then one of the space's own chats is opened and
+selected (a chat in front of one of its tiles), and only then is the space mounted, in the same
+render that lands the camera. No chat changes folder, stops, or loses its runtime; the other
+spaces' chats keep running and can be reopened from search. A folder that no longer exists is
+refused with a message in the overview. Detached windows hold one project's tabs and keep that
+project's layout, so the overview is in the main window only.
 
 ## Chat surface
 
