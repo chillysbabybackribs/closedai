@@ -130,9 +130,47 @@
   border-radius: 10px;
   background: var(--surface-card);
   box-shadow: var(--tile-shadow);
-  container: chat-tile / size;
 }
 .chat-layout-tile[hidden] { display: none; }
+/* The tile's content box. A dragged tile's body keeps its pre-drag size, so it is the container. */
+.chat-layout-tile-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  container: chat-tile / size;
+}
+/* A split preview leaves a semi-transparent placeholder where the dragged tile will land. Held
+   inside it, the tile shrinks in as a miniature of its current form (layout-motion.ts); release
+   glides that miniature out to fill the placeholder. */
+.chat-layout-canvas .chat-layout-tile[data-drag-placeholder] {
+  border: 1px solid var(--focus-ink);
+  background: color-mix(in srgb, var(--focus-ink) 12%, transparent);
+  box-shadow: none;
+}
+.chat-layout-tile[data-drag-placeholder] > .chat-layout-tile-body {
+  position: absolute;
+  flex: none;
+  overflow: hidden;
+  border-radius: calc(10px / var(--mini-scale));
+  background: var(--surface-card);
+  /* Shadows, not a border: the miniature keeps its pre-drag content box exactly. */
+  box-shadow:
+    0 0 0 calc(1px / var(--mini-scale)) var(--tile-edge),
+    0 calc(12px / var(--mini-scale)) calc(32px / var(--mini-scale)) rgb(0 0 0 / 30%);
+  pointer-events: none;
+  opacity: 0;
+  transform: scale(calc(var(--mini-scale) * 0.8));
+  transition: opacity 160ms ease-out, transform 190ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.chat-layout-tile[data-drag-placeholder='mini'] > .chat-layout-tile-body {
+  opacity: 1;
+  transform: scale(var(--mini-scale));
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat-layout-tile[data-drag-placeholder] > .chat-layout-tile-body { transition: none; }
+}
 
 .chat-layout-tile[data-dock-peek='true'] {
   z-index: 45;

@@ -116,6 +116,8 @@ export function useLayoutGlide(canvasRef: RefObject<HTMLElement | null>, armed: 
       const mode = tile.dataset.dragPlaceholder
       const layout = mode ? inlineRect(body) : null
       if (layout) {
+        // A fill glide from an earlier drop would otherwise override the miniature's transform.
+        running.current.get(body)?.cancel()
         const scale = parseFloat(body.style.getPropertyValue('--mini-scale'))
         miniatures.current.set(body, { rect: centreScaled(layout, Number.isFinite(scale) ? scale : 1), opacity: mode === 'mini' ? 1 : 0 })
         continue

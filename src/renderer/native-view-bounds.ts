@@ -16,12 +16,15 @@ import type { BrowserBounds } from '../shared/types.js'
 //  - a finite transform animation on the host or an ancestor (a layout tile gliding to its
 //    new place) makes the client rect transitional, and landing fires no ResizeObserver:
 //    reads wait for the glide to land, then re-measure the settled box.
+//  - a drag placeholder shows its tile as a scaled miniature that keeps the pre-drag size, so
+//    the page keeps its bounds until the release glide fills the tile.
 //
 // `visible` is authoritative rather than inferred from the rect: main hides the view outright
 // when another surface is showing, so no sliver survives a collapsed host.
 
 const SETTLE_FRAMES = 2
-const ANCESTOR_OBSERVE_DEPTH = 6
+// Host to tile: frame, shell, pane, browser column, dock frame, tile body, tile.
+const ANCESTOR_OBSERVE_DEPTH = 7
 
 export function boundsEqual(a: BrowserBounds, b: BrowserBounds): boolean {
   return (
@@ -116,6 +119,7 @@ export function useNativeViewBounds(
     }
 
     const sync = (): void => {
+      if (host.closest('[data-drag-placeholder]')) return
       const glides = transformGlides(host)
       if (glides.length) {
         if (awaitingLanding) return

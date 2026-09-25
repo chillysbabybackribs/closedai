@@ -10,9 +10,15 @@ import type { TabActivity } from './tab-activity.js'
 import { browserDropAt, type BrowserDrop } from './browser-drop.js'
 import { chatDropAt, dragPreviewPanes, dragSplitPreview } from './layout-drag-preview.js'
 import { ChatLayoutPaneHeader } from './chat-layout-pane-header.js'
-import { useLayoutGlide } from './layout-motion.js'
+import { GLIDE_MS, miniature, useLayoutGlide } from './layout-motion.js'
 
 const position = (rect: Rect): CSSProperties => ({ left: rect.x, top: rect.y, width: rect.width, height: rect.height })
+const contains = (rect: Rect, x: number, y: number): boolean =>
+  x >= rect.x && x <= rect.x + rect.width && y >= rect.y && y <= rect.y + rect.height
+/** Holding the pointer in a placeholder this long, after its glide lands, shrinks the dragged tile into it. */
+const HOLD_MS = GLIDE_MS + 90
+/** The tile border; a tile body is its inner box. */
+const TILE_BORDER = 1
 
 /** React keys follow the first tab in a tile so adding a tab does not remount the header strip. */
 function tileReactKey(activeId: string, tabs: string[]): string {
@@ -86,7 +92,16 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
   // cancelled drag's return all glide while the native browser view stays occluded.
   const glideArmed = useRef(false)
   const whenGlideIdle = useLayoutGlide(canvasRef, () => glideArmed.current)
+  // The dragged tile waits as an empty placeholder until the pointer holds inside it.
+  const [held, setHeld] = useState(false)
+  const holdTimer = useRef(0)
+  const releaseHold = useCallback((): void => {
+    window.clearTimeout(holdTimer.current)
+    holdTimer.current = 0
+    setHeld(false)
+  }, [])
   const finishDrag = useCallback((): void => {
+    releaseHold()
     if (dropPaintRaf.current) {
       cancelAnimationFrame(dropPaintRaf.current)
       dropPaintRaf.current = 0
@@ -94,10 +109,11 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
     dropTarget.current = null
     setDragging(null)
     setDrop(null)
-  }, [])
+  }, [releaseHold])
   const queueDrop = (next: typeof drop): void => {
     if (next?.target === dropTarget.current?.target && next?.edge === dropTarget.current?.edge) return
     dropTarget.current = next
+    releaseHold()
     if (dropPaintRaf.current) return
     dropPaintRaf.current = requestAnimationFrame(() => {
       dropPaintRaf.current = 0
@@ -148,6 +164,7 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
       window.removeEventListener('blur', clear)
       window.removeEventListener('keydown', cancel)
       if (dropPaintRaf.current) cancelAnimationFrame(dropPaintRaf.current)
+      window.clearTimeout(holdTimer.current)
       dragActiveListener.current(false)
     }
   }, [finishDrag])
@@ -177,6 +194,12 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
     ? displayedTiles
     : [...displayedTiles, { id: BROWSER_PANE_ID, tabs: [BROWSER_PANE_ID], rect: { x: 0, y: 0, width: 0, height: 0 } }]
   const layoutDividers = preview?.dividers ?? geometry.dividers
+  // A live split preview turns the dragged tile into a placeholder at its destination.
+  const holds = (tabs: string[]): boolean => Boolean(dragging && tabs.includes(dragging.id))
+  const placeholder = splitPreview && !settling ? displayedTiles.find(({ tabs }) => holds(tabs)) ?? null : null
+  const source = placeholder ? geometry.panes.find(({ id, tabs }) => holds([id, ...tabs]))?.rect ?? null : null
+  const inner = (rect: Rect) => ({ width: Math.max(1, rect.width - 2 * TILE_BORDER), height: Math.max(1, rect.height - 2 * TILE_BORDER) })
+  const mini = placeholder && source ? miniature(inner(placeholder.rect), inner(source)) : null
   const chatCount = expandedPaneIds(tree).length
   const canMaximize = chatCount > 1 || (browserVisible && chatCount >= 1)
   const soloTile = soloPaneId
@@ -232,8 +255,16 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
       ? resolveBrowserDrop(event.currentTarget, event.clientX, event.clientY)
       : chatDropAt(geometry.panes, event.clientX - bounds.left, event.clientY - bounds.top, dropTarget.current)
     event.dataTransfer.dropEffect = next ? 'move' : 'none'
-    if (next?.target === dropTarget.current?.target && next?.edge === dropTarget.current?.edge) return
-    queueDrop(next)
+    if (next?.target !== dropTarget.current?.target || next?.edge !== dropTarget.current?.edge) {
+      queueDrop(next)
+      return
+    }
+    // Chromium repeats dragover while the pointer rests, so a stationary hold still arms.
+    if (!placeholder || !contains(placeholder.rect, event.clientX - bounds.left, event.clientY - bounds.top)) {
+      if (holdTimer.current || held) releaseHold()
+    } else if (!held && !holdTimer.current) {
+      holdTimer.current = window.setTimeout(() => { holdTimer.current = 0; setHeld(true) }, HOLD_MS)
+    }
   }
 
   return <div className="chat-layout-viewport" ref={viewport}>
@@ -278,25 +309,30 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
         const tileTabs = tabs
         const tileActiveId = tileTabs.includes(activeId) ? activeId : (tileTabs[0] ?? activeId)
         const row = chatRow?.(activeId)
+        const isPlaceholder = placeholder?.id === activeId && mini !== null
         return <section key={tileReactKey(activeId, tileTabs)}
           className="chat-layout-tile" style={position(tileRect)} data-pane-id={activeId === BROWSER_PANE_ID || isViewTabId(activeId) ? undefined : activeId}
           data-view-id={isViewTabId(activeId) ? activeId : undefined}
           data-solo={isThisTileSolo ? 'true' : undefined}
+          data-drag-placeholder={isPlaceholder ? held ? 'mini' : 'empty' : undefined}
           hidden={soloTile ? !isThisTileSolo : (activeId === BROWSER_PANE_ID && !browserVisible)}
           data-selected={activeId === selectedId || tabs.includes(selectedId)} aria-label={activeId === BROWSER_PANE_ID ? 'Browser' : title(activeId)}
           onFocusCapture={(event) => { if (activeId !== BROWSER_PANE_ID && activeId !== selectedId && !(event.target as HTMLElement).closest('[role="tablist"]')) onSelect(activeId) }}
           onPointerDownCapture={(event) => { if (activeId !== BROWSER_PANE_ID && activeId !== selectedId && !(event.target as HTMLElement).closest('[role="tablist"]')) onSelect(activeId) }}>
-          {activeId !== BROWSER_PANE_ID && <ChatLayoutPaneHeader activeId={tileActiveId} tabs={tileTabs} chatCount={chatCount}
-            busy={busy} toolsPreset={toolsPreset ?? null} title={title} activity={activity} reviewQueue={reviewQueue}
-            row={row} soloTile={soloTile ?? null} setSoloPaneId={setSoloPaneId} tabFocus={tabFocus} onSelect={onSelect}
-            onSelectTab={onSelectTab} onCloseTab={onCloseTab} onNewChat={onNewChat} onRenameChat={onRenameChat}
-            onTogglePin={onTogglePin} onPauseTab={onPauseTab} onResumeTab={onResumeTab} onOpenPresets={onOpenPresets}
-            onHide={onHide} setDragging={setDragging} canMaximize={canMaximize} isThisTileSolo={isThisTileSolo} />}
-          {activeId === selectedId && <div className="chat-layout-notice" role="status" aria-atomic="true">{notice}</div>}
-          {activeId === BROWSER_PANE_ID ? <div className="chat-layout-browser-frame" data-ui="layout.browser-dock">
-            {renderBrowser}
-          </div> : tileTabs.map((tabId) => <div key={tabId} className="chat-layout-content" role="tabpanel" id={`chat-panel-${tabId}`}
-            aria-label={title(tabId)} hidden={tabId !== tileActiveId}>{renderPane(tabId, tabId === tileActiveId)}</div>)}
+          <div className="chat-layout-tile-body"
+            style={isPlaceholder ? { ...position(mini.layout), '--mini-scale': mini.scale } as CSSProperties : undefined}>
+            {activeId !== BROWSER_PANE_ID && <ChatLayoutPaneHeader activeId={tileActiveId} tabs={tileTabs} chatCount={chatCount}
+              busy={busy} toolsPreset={toolsPreset ?? null} title={title} activity={activity} reviewQueue={reviewQueue}
+              row={row} soloTile={soloTile ?? null} setSoloPaneId={setSoloPaneId} tabFocus={tabFocus} onSelect={onSelect}
+              onSelectTab={onSelectTab} onCloseTab={onCloseTab} onNewChat={onNewChat} onRenameChat={onRenameChat}
+              onTogglePin={onTogglePin} onPauseTab={onPauseTab} onResumeTab={onResumeTab} onOpenPresets={onOpenPresets}
+              onHide={onHide} setDragging={setDragging} canMaximize={canMaximize} isThisTileSolo={isThisTileSolo} />}
+            {activeId === selectedId && <div className="chat-layout-notice" role="status" aria-atomic="true">{notice}</div>}
+            {activeId === BROWSER_PANE_ID ? <div className="chat-layout-browser-frame" data-ui="layout.browser-dock">
+              {renderBrowser}
+            </div> : tileTabs.map((tabId) => <div key={tabId} className="chat-layout-content" role="tabpanel" id={`chat-panel-${tabId}`}
+              aria-label={title(tabId)} hidden={tabId !== tileActiveId}>{renderPane(tabId, tabId === tileActiveId)}</div>)}
+          </div>
         </section>
       })}
       {dragging?.id === BROWSER_PANE_ID && !busy && (['left', 'right'] as const).map((edge) => <div key={edge}
