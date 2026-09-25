@@ -1,5 +1,6 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { errorMessage } from '../error-message.js'
+import type { Rect } from '../chat-layout/layout-tree.js'
 import {
   IDENTITY_CAMERA, dropMissingStops, focusCamera, overviewSlots, stepStop, visitStop,
   type Camera, type Size, type Space, type SpaceHistory
@@ -8,7 +9,8 @@ import {
 /**
  * `space`: the workspace as it always was, no transform anywhere. `arming`: the browser is being
  * swapped for its still before anything scales. `gliding`: the camera is moving. `overview`: every
- * space is visible. `switching`: a space's drawing fills the stage while main changes project.
+ * space is visible. `switching`: a space's drawing fills the stage while it is prepared (main's
+ * project and selected chat); no live workspace is mounted, so none can adopt that chat.
  */
 export type SpacePhase = 'space' | 'arming' | 'gliding' | 'overview' | 'switching'
 
@@ -38,12 +40,18 @@ async function browserStillReady(root: HTMLElement | null): Promise<void> {
   }
 }
 
-export function useSpaceNavigation({ enabled, current, spaces, size, stageRef }: {
+export function useSpaceNavigation({ enabled, current, spaces, size, stageRef, prepare, create, commit }: {
   enabled: boolean
   current: string
   spaces: readonly Space[]
   size: Size
   stageRef: RefObject<HTMLDivElement | null>
+  /** Make main show what `space` needs (its project, one of its chats) before it mounts. */
+  prepare: (space: Space) => Promise<void>
+  /** Add a space, prepared to be shown. */
+  create: () => Promise<Space>
+  /** Make a prepared space the one shown. */
+  commit: (id: string) => void
 }) {
   const [phase, setPhaseState] = useState<SpacePhase>('space')
   const [camera, setCamera] = useState<Camera>(IDENTITY_CAMERA)
@@ -101,37 +109,61 @@ export function useSpaceNavigation({ enabled, current, spaces, size, stageRef }:
     if (record) history.current = visitStop(history.current, { kind: 'overview' })
   }, [enabled, glide, setPhase, slotOf, stageRef])
 
+  /**
+   * Glide into `slot`, prepare what it shows with no live workspace mounted, then show it and land
+   * in one render. A failure glides back out to the overview with the reason.
+   */
+  const switchTo = useCallback(async (slot: Rect, prepared: () => Promise<string>, fallback: string): Promise<void> => {
+    const token = ++ticket.current
+    setError(null)
+    setPhase('gliding')
+    if (!await glide(focusCamera(slot, live.current.size), token)) return
+    setPhase('switching')
+    try {
+      const id = await prepared()
+      if (token !== ticket.current) return
+      history.current = visitStop(history.current, { kind: 'space', id })
+      commit(id)
+      land()
+    } catch (reason) {
+      if (token !== ticket.current) return
+      setError(errorMessage(reason, fallback))
+      history.current = visitStop(history.current, { kind: 'overview' })
+      setPhase('gliding')
+      if (await glide(IDENTITY_CAMERA, token)) setPhase('overview')
+    }
+  }, [commit, glide, land, setPhase])
+
   const enter = useCallback(async (id: string, record = true): Promise<void> => {
     const slot = slotOf(id)
     const space = live.current.spaces.find((entry) => entry.id === id)
     if (phaseRef.current !== 'overview' || !slot || !space) return
+    if (id !== live.current.current) {
+      await switchTo(slot, async () => { await prepare(space); return id }, 'Could not open that workspace')
+      return
+    }
     const token = ++ticket.current
     setError(null)
     setPhase('gliding')
     if (!await glide(focusCamera(slot, live.current.size), token)) return
     if (record) history.current = visitStop(history.current, { kind: 'space', id })
-    if (id === live.current.current) { land(); return }
-    // The drawing now fills the stage; the live space arrives when main announces the new project.
-    setPhase('switching')
-    try {
-      await window.closedai.chat.selectSpace(space.projectPath)
-    } catch (reason) {
-      if (token !== ticket.current) return
-      setError(errorMessage(reason, 'Could not open that space'))
-      history.current = visitStop(history.current, { kind: 'overview' })
-      setPhase('gliding')
-      if (await glide(IDENTITY_CAMERA, token)) setPhase('overview')
-    }
-  }, [glide, land, setPhase, slotOf])
+    land()
+  }, [glide, land, prepare, setPhase, slotOf, switchTo])
 
-  // Main changed project: the one being entered, a folder opened from the overview, or a model's
-  // project switch. The new space becomes the stop; a switch lands, anything else glides in.
+  /** The Add workspace slot: a new space takes its place in the grid, already showing its first chat. */
+  const add = useCallback(async (): Promise<void> => {
+    const slot = live.current.slots[live.current.spaces.length]
+    if (phaseRef.current !== 'overview' || !slot) return
+    await switchTo(slot, async () => (await create()).id, 'Could not add a workspace')
+  }, [create, switchTo])
+
+  // The shown space changed outside the overview's own switches (a model's project switch). It
+  // becomes the stop; seen from the overview, the camera glides into it.
   const previous = useRef(current)
   useLayoutEffect(() => {
     if (previous.current === current) return
     previous.current = current
     history.current = dropMissingStops(visitStop(history.current, { kind: 'space', id: current }), new Set(spaces.map((space) => space.id)))
-    if (phaseRef.current === 'switching') { land(); return }
     if (phaseRef.current !== 'overview' && phaseRef.current !== 'gliding') return
     const slot = slotOf(current)
     const token = ++ticket.current
@@ -159,10 +191,5 @@ export function useSpaceNavigation({ enabled, current, spaces, size, stageRef }:
     await enter(stop.id, false)
   }, [zoomOut, enter])
 
-  const openFolder = useCallback(async (): Promise<void> => {
-    setError(null)
-    try { await window.closedai.chat.openSpace() } catch (reason) { setError(errorMessage(reason, 'Could not open that folder')) }
-  }, [])
-
-  return { phase, camera, animate, slots, error, zoomOut, enter, toggle, step, openFolder }
+  return { phase, camera, animate, slots, error, zoomOut, enter, add, toggle, step }
 }

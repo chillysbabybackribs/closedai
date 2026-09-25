@@ -1,4 +1,5 @@
-import type { Rect } from '../chat-layout/layout-tree.js'
+import { chatPaneIds, type ChatLayout, type Rect } from '../chat-layout/layout-tree.js'
+import { chatTabIds } from '../chat-layout/layout-tabs.js'
 
 // A space is one workspace: its own saved split tree, tabs and browser position, and the project
 // folder main selects while it is shown. Several spaces can share a folder. The overview lays every
@@ -50,6 +51,15 @@ export function newSpace(spaces: readonly Space[], workspace: Workspace, id: str
   let name = base
   for (let n = 2; taken.has(name); n++) name = `${base} ${n}`
   return { id, cwd: workspace.cwd, projectPath: workspace.projectPath, name }
+}
+
+/**
+ * The chat to select before a space is shown: a chat in front of one of its tiles, else any of its
+ * chat tabs. The shown layout adopts the selected chat, so selecting one of its own keeps another
+ * space's chat from being pulled in.
+ */
+export function anchorChat(tree: ChatLayout | null, available: ReadonlySet<string>): string | null {
+  return [...chatPaneIds(tree), ...chatTabIds(tree)].find((id) => available.has(id)) ?? null
 }
 
 export function readSpaces(storage: Pick<Storage, 'getItem'>): SavedSpaces {

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  IDENTITY_CAMERA, LABEL_HEIGHT, createZoomGesture, dropMissingStops, focusCamera, liveTransform, overviewSlots,
+  IDENTITY_CAMERA, LABEL_HEIGHT, anchorChat, createZoomGesture, dropMissingStops, focusCamera, liveTransform, overviewSlots,
   newSpace, readSpaces, resolveCurrent, saveSpaces, slotAt, spaceName, stepStop, visitStop, type Space, type SpaceHistory
 } from './spaces-model.ts'
 
@@ -27,6 +27,16 @@ test('a new space takes its folder\'s name, numbered when that name is taken', (
   assert.equal(newSpace([b], workspace, 'x').name, 'a')
   assert.equal(newSpace([a, b], workspace, 'x').name, 'a 2')
   assert.deepEqual(newSpace([a, a2], workspace, 'x'), { id: 'x', cwd: '/p/a', projectPath: '/p/a', name: 'a 3' })
+})
+
+test('a space is entered on a chat of its own: one in front of a tile, else one behind', () => {
+  const tree = { kind: 'split' as const, id: 's', axis: 'horizontal' as const, ratio: 0.5,
+    first: { kind: 'pane' as const, id: 'closedai:view:history:1', tabs: ['closedai:view:history:1', 'c1'] },
+    second: { kind: 'pane' as const, id: 'c2', tabs: ['c2', 'c3'] } }
+  assert.equal(anchorChat(tree, new Set(['c1', 'c2', 'c3'])), 'c2')
+  assert.equal(anchorChat(tree, new Set(['c1', 'c3'])), 'c1')
+  assert.equal(anchorChat(tree, new Set()), null)
+  assert.equal(anchorChat(null, new Set(['c1'])), null)
 })
 
 test('space names use the folder name, and the home workspace is Home', () => {
