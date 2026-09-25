@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, safeStorage } from 'electron'
+import { app, BaseWindow, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, safeStorage, screen } from 'electron'
 import { mkdir } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { configureChromiumStartup } from './chromium-startup-policy.js'
@@ -70,6 +70,9 @@ import { createChatWorkspaceSelector } from './main-workspace-selector.js'
 import { createPaneChatHub } from './main-pane-chat-hub.js'
 import { mainCookieImportDeps, registerMainProcessIpc } from './main-ipc-registration.js'
 import { openMainWindow, type MainWindowHost } from './main-window-setup.js'
+import { AppWindowRegistry } from './windows/app-window-registry.js'
+import { AppWindowStore } from './windows/app-window-store.js'
+import { openDetachedWindow } from './windows/detached-window.js'
 
 // Chromium switches must land before `ready`. Owner decision: the Linux sandbox flags stay
 // exactly as appv1 has them (docs/electron-browser-platform-review.md §0).
@@ -83,6 +86,8 @@ Menu.setApplicationMenu(null)
 nativeTheme.themeSource = 'dark'
 
 let mainWindow: BrowserWindow | null = null
+let windows: AppWindowRegistry | null = null
+let windowStore: AppWindowStore | null = null
 let browserService: BrowserService | null = null
 let browserDownloads: BrowserDownloadService | null = null
 let browserHistory: BrowserHistoryStore | null = null
@@ -129,12 +134,10 @@ const liveVerifyHandle: LiveVerifyHandle = {
   researchService: null
 }
 
-// The BrowserWindow reference can outlive its WebContents during Electron shutdown. Keep all
-// renderer notifications behind one liveness check so late browser/service events are harmless.
-function sendToMainWindow<C extends IpcEventChannel>(channel: C, payload: IpcEventChannels[C]): void {
-  const window = mainWindow
-  if (!window || window.isDestroyed() || window.webContents.isDestroyed()) return
-  window.webContents.send(channel, payload)
+// The registry keeps every renderer notification behind a liveness check and decides which
+// windows hear it: browser state only reaches the main window, which hosts the browser.
+function sendToWindows<C extends IpcEventChannel>(channel: C, payload: IpcEventChannels[C]): void {
+  windows?.send(channel, payload)
 }
 
 const userData = (): string => app.getPath('userData')
@@ -156,17 +159,18 @@ async function main(): Promise<void> {
   setAppCheckoutPath(app.getAppPath())
   logGpuFeatureStatus()
   await mkdir(userData(), { recursive: true })
-  ;[browserHistory, savedSites, browserTabSession, settings, chatStore, securitySettings, agentLibrary] = await Promise.all([
+  ;[browserHistory, savedSites, browserTabSession, settings, chatStore, securitySettings, agentLibrary, windowStore] = await Promise.all([
     BrowserHistoryStore.open(join(userData(), 'browser-history.json')),
     SavedSitesStore.open(join(userData(), 'saved-sites.json')),
     BrowserTabSessionStore.open(join(userData(), 'browser-tabs.json')),
     AppSettingsStore.open(join(userData(), 'app-settings.json')),
     ChatStore.open(join(userData(), 'chats.json')),
     SecuritySettingsStore.open(join(userData(), 'security-settings.json')),
-    AgentLibraryStore.open(join(userData(), 'agent-library.json'))
+    AgentLibraryStore.open(join(userData(), 'agent-library.json')),
+    AppWindowStore.open(join(userData(), 'app-windows.json'))
   ])
-  savedSites.on('changed', (sites: SavedSite[]) => sendToMainWindow(IPC.event.savedSitesChanged, sites))
-  agentLibrary.on('changed', (agents: SavedAgent[]) => sendToMainWindow(IPC.event.agentLibraryChanged, agents))
+  savedSites.on('changed', (sites: SavedSite[]) => sendToWindows(IPC.event.savedSitesChanged, sites))
+  agentLibrary.on('changed', (agents: SavedAgent[]) => sendToWindows(IPC.event.agentLibraryChanged, agents))
   credentialVault = new CredentialVault(join(userData(), 'credential-vault.json'), safeStorageEncryption(safeStorage, process.platform), {
     secretsRequireKeychain: () => securitySettings!.get().secretsRequireKeychain
   })
@@ -232,6 +236,17 @@ async function main(): Promise<void> {
     workspace: () => chatWorkspace,
     browserCoordination
   }))
+  windows = new AppWindowRegistry({
+    store: windowStore,
+    openWindow: (id) => openDetachedWindow(id, { openLinkInNewTab: (url) => browserService?.openNewTab(url, false) }),
+    forgetPlacement: (id) => BaseWindow.clearPersistedState(`detached-${id}`),
+    releaseChats: (id) => chatService?.releaseWindow(id),
+    workspaceCwd: () => chatWorkspace,
+    display: (bounds) => {
+      const display = screen.getDisplayMatching(bounds)
+      return { id: display.id, label: display.label }
+    }
+  })
   // Pane records that settings used to hold become chat records once; ids are preserved.
   await migrateChatPeersIntoStore(settings, chatStore, { cwd: chatWorkspace, projectPath })
   const workspaceSelector = createChatWorkspaceSelector({
@@ -255,7 +270,7 @@ async function main(): Promise<void> {
   appAutomationAccess = new AppAutomationAccess(() => mainWindow)
   appCommandAccess = new AppCommandAccess({
     chat: () => chatService, browser: () => browserService, downloads: () => browserDownloads, window: () => mainWindow,
-    ui: () => appAutomationAccess, browserCoordination, agentRuns: () => agentRuns, agentLibrary: () => agentLibrary
+    windows: () => windows, ui: () => appAutomationAccess, browserCoordination, agentRuns: () => agentRuns, agentLibrary: () => agentLibrary
   })
   const captureAccess = new UiCaptureAccess(() => mainWindow, () => browserService)
   // Full-resolution captures for the transcript; the model only ever receives the scaled copy.
@@ -335,13 +350,14 @@ async function main(): Promise<void> {
     researchService?.cancelPane(paneId, snapshot?.threadId, snapshot?.activeTurnId)
   }, browserAssignmentIdle)
   chatService.on('event', (event: ChatWorkspaceEvent) => {
+    if (event.type === 'workspace' && event.snapshot.workspace) windows?.observeWorkspace(event.snapshot.workspace.cwd)
     if (event.type !== 'pane' || !['turn', 'replace'].includes(event.event.type)) return
     const snapshot = chatService?.paneSnapshot(event.paneId)
     researchService?.reconcile(event.paneId, snapshot?.threadId ?? null, snapshot?.activeTurnId ?? null)
   })
   // The loop behind agent chats: every finished turn is followed by the next cycle until paused.
   agentRuns = new AgentRunService(chatStore, chatService)
-  agentRuns.on('change', (event: AgentRunsEvent) => sendToMainWindow(IPC.event.agentRunsEvent, event))
+  agentRuns.on('change', (event: AgentRunsEvent) => sendToWindows(IPC.event.agentRunsEvent, event))
   // A run started from a library entry counts as that agent's use, whichever surface started it.
   agentRuns.on('started', (run: AgentRun) => { if (run.agentId) agentLibrary?.recordRun(run.agentId) })
   liveVerifyHandle.toolRegistry = toolRegistry
@@ -352,6 +368,9 @@ async function main(): Promise<void> {
     console.warn('[browser-cache] startup maintenance failed', error)
   })
   openMainWindow(mainWindowHost())
+  // Before the first renderer asks: the main window must know which chats detached windows hold.
+  if (mainWindow) windows.attachMain(mainWindow)
+  windows.restore(chatWorkspace)
   // Every later launch is latched, and all the import does then is confirm the jar is not
   // empty — a read of every cookie in it, which is slower than the first page paints. That
   // repair belongs after the app is up, not in front of it: a jar lost between launches is
@@ -405,8 +424,8 @@ function profileKeyFor(userDataDir: string): string | null {
 function mainIpcRegistration() {
   return {
     ipcMain,
-    sendToMainWindow,
-    mainWindow: () => mainWindow,
+    sendToWindows,
+    windows: () => windows,
     browserService: () => browserService,
     browserDownloads: () => browserDownloads,
     savedSites: () => savedSites,
@@ -427,7 +446,8 @@ function mainIpcRegistration() {
 function mainWindowHost(): MainWindowHost {
   return {
     downloadsRoot: () => app.getPath('downloads'),
-    sendToMainWindow,
+    sendToWindows,
+    sendChatEvent: (event) => windows?.sendChatEvent(event),
     browserHistory: browserHistory!,
     browserTabSession,
     securitySettings: securitySettings!,
@@ -458,6 +478,8 @@ app.on('before-quit', (event) => {
   if (quitting) return
   event.preventDefault()
   quitting = true
+  // Detached windows close with the app and reopen at the next launch.
+  windows?.shutdown()
   nativeInstrument?.dispose()
   videoJobs.dispose()
   stopBrowserCacheMaintenance?.()
@@ -474,6 +496,7 @@ app.on('before-quit', (event) => {
     browserHistory?.flush(),
     savedSites?.flush(),
     agentLibrary?.flush(),
+    windowStore?.flush(),
     browserTabSession?.close(),
     settings?.set({}),
     chatStore?.flush(),

@@ -4,6 +4,7 @@ import type { ChatSnapshot, ChatTranscriptItem } from '../shared/chat.js'
 import { describeAgentRun, type AgentRun, type AgentRunStartOptions } from '../shared/agent-runs.js'
 import type { SavedAgent } from '../shared/agent-library.js'
 import type { BrowserCoordination } from './tools/browser/coordination.js'
+import type { AppWindowDescription } from './windows/app-window-registry.js'
 import type {
   AppAgentRunRequest,
   AppBrowserTabRequest,
@@ -28,6 +29,8 @@ export type AppCommandDeps = {
   browser: () => AppBrowserTabs | null
   downloads: () => AppDownloadList | null
   window: () => AppWindowInfo | null
+  /** Every app window; detached ones hold chats moved out of the main window. */
+  windows?: () => { describe(): AppWindowDescription[] } | null
   ui?: () => AppUiHost | null
   browserCoordination?: BrowserCoordination
   /** The agent run driving a chat, when one exists; projected beside the chat's own state. */
@@ -88,8 +91,11 @@ export class AppCommandAccess implements AppCommandHost {
     }
     if (sections.includes('window')) {
       const window = this.deps.window()
+      const detached = (this.deps.windows?.()?.describe() ?? []).filter((entry) => !entry.main)
+        .map(({ id, focused, maximized, bounds, display, tabIds }) => ({ id, focused, maximized, bounds, display, chatIds: tabIds }))
       result.window = window ? {
-        focused: window.isFocused(), visible: window.isVisible(), maximized: window.isMaximized(), bounds: window.getBounds()
+        focused: window.isFocused(), visible: window.isVisible(), maximized: window.isMaximized(), bounds: window.getBounds(),
+        ...(detached.length ? { detached } : {})
       } : null
     }
     return result
