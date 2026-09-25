@@ -156,5 +156,12 @@ export function useLayoutGlide(canvasRef: RefObject<HTMLElement | null>, armed: 
       await Promise.all([...running.current.values()].map((animation) => animation.finished.catch(() => undefined)))
     }
   }, [])
-  return whenIdle
+  /** Record a box painted outside React (a window being moved) as laid out, so its commit does not glide. */
+  const settle = useCallback((element: HTMLElement): void => {
+    const rect = inlineRect(element)
+    if (!rect) return
+    running.current.get(element)?.finish()
+    laidOut.current.set(element, rect)
+  }, [])
+  return { whenIdle, settle }
 }
