@@ -47,9 +47,14 @@ export function tabsHeldElsewhere(): Set<string> {
   return new Set(snapshot.windows.filter((entry) => entry.id !== snapshot.self.id).flatMap((entry) => entry.tabIds))
 }
 
-/** True while another app window has focus: selections made there are that window's to show. */
-export function otherWindowFocused(): boolean {
-  return snapshot.windows.some((entry) => entry.id !== snapshot.self.id && entry.focused)
+/**
+ * Whether a chat no window holds yet (a new chat, one a tool opened) belongs here: to the window in
+ * front, or to the main window when no app window is. Focus comes from main, which tracks every
+ * window; a renderer's own `document.hasFocus()` can report true for a window behind another.
+ */
+export function adoptsUnheldChats(): boolean {
+  const focused = snapshot.windows.find((entry) => entry.focused)
+  return focused ? focused.id === snapshot.self.id : snapshot.self.main
 }
 
 export function useAppWindows(): Snapshot {

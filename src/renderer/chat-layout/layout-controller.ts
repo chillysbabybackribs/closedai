@@ -7,7 +7,7 @@ import { addTab, chatTabIds, focusChatTabInLayout, focusedCloseAction, isChatTab
 import { isWorkspaceViewKind, pinOnMove, pruneViewScopes, tileView, viewScope, viewTabId, workspaceView, type ViewKind } from './layout-views.js'
 import { removalNotice } from './layout-copy.js'
 import { adoptTabs, initialWindowTree } from './layout-windows.js'
-import { appWindow, onAppWindowCommand, otherWindowFocused, tabsHeldElsewhere, useAppWindows } from '../app-windows/app-window-store.js'
+import { adoptsUnheldChats, appWindow, onAppWindowCommand, tabsHeldElsewhere, useAppWindows } from '../app-windows/app-window-store.js'
 import { assignGroups, presetLayout, presetSlots, singleGroup, type CanvasSize, type LayoutPreset } from './layout-presets.js'
 const ERROR_TTL_MS = 8000
 /** Main announces a selection within one workspace event; past this the layout resyncs instead of staying locked. */
@@ -127,8 +127,7 @@ export function useChatLayout(
     const next = getSnapshot().selectedPaneId
     // Another window's chat is never opened twice. A chat no window holds yet (a new chat, one a
     // tool opened) goes to the window in front; the main window takes it when none is.
-    if (!tabIds(current.current.tree).includes(next) && (tabsHeldElsewhere().has(next)
-      || !(document.hasFocus() || (self.main && !otherWindowFocused())))) return
+    if (!tabIds(current.current.tree).includes(next) && (tabsHeldElsewhere().has(next) || !adoptsUnheldChats())) return
     const previous = selected.current
     selected.current = next
     setLayout((value) => {
