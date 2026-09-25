@@ -1,12 +1,11 @@
 import type { BrowserWindow } from 'electron'
-import { join } from 'node:path'
 import { session } from 'electron'
 import { IPC, type IpcEventChannel, type IpcEventChannels } from '../shared/ipc-channels.js'
 import type { BrowserDownload, BrowserState, BrowserTabInfo } from '../shared/types.js'
 import type { TraceEvent } from '../shared/trace.js'
 import type { ToolsEvent } from '../shared/tools.js'
 import type { ChatWorkspaceEvent } from '../shared/chat-peers.js'
-import { createMainWindow } from './main-window.js'
+import { createMainWindow, loadAppRenderer } from './main-window.js'
 import { BrowserService } from './browser-service.js'
 import { BrowserDownloadService } from './browser-download-service.js'
 import { BrowserHistoryStore } from './browser-history-store.js'
@@ -83,11 +82,7 @@ export function openMainWindow(host: MainWindowHost): BrowserWindow {
   host.toolTelemetry?.on('record', (record) => sendToolsEvent({ type: 'call', record }))
   host.toolTelemetry?.on('cleared', () => sendToolsEvent({ type: 'cleared' }))
 
-  if (process.env.ELECTRON_RENDERER_URL) {
-    void window.loadURL(process.env.ELECTRON_RENDERER_URL)
-  } else {
-    void window.loadFile(join(import.meta.dirname, '../renderer/index.html'))
-  }
+  loadAppRenderer(window)
   window.on('closed', () => disposeMainWindowServices(host))
   return window
 }

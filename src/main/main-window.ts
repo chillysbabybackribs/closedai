@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { installAppContextMenu } from './app-context-menu.js'
 import { installRendererRecovery } from './main-window-recovery.js'
+import { APP_WINDOW_QUERY } from '../shared/app-windows.js'
 
 export type MainWindowActions = {
   openLinkInNewTab: (url: string) => void
@@ -35,18 +36,31 @@ function loadAppIcon(): NativeImage | null {
 }
 
 export function createMainWindow(actions: MainWindowActions): BrowserWindow {
+  return createAppWindow(actions, { name: 'main', width: 1440, height: 920, minWidth: 1040, minHeight: 680 })
+}
+
+export type AppWindowFrame = {
+  /** Electron persists bounds, display and maximized state per name across launches. */
+  name: string
+  width: number
+  height: number
+  minWidth: number
+  minHeight: number
+  /** Used only when no state was persisted under `name`. */
+  x?: number
+  y?: number
+}
+
+/** A frameless app-shell window; the renderer draws its own title bar and window controls. */
+export function createAppWindow(actions: MainWindowActions, frame: AppWindowFrame): BrowserWindow {
   const icon = loadAppIcon()
   const window = new BrowserWindow({
-    width: 1440,
-    height: 920,
-    minWidth: 1040,
-    minHeight: 680,
+    ...frame,
     autoHideMenuBar: true,
     backgroundColor: '#0c0c0e',
     title: 'closedai',
     frame: false,
     show: false,
-    name: 'main',
     windowStatePersistence: true,
     ...(icon ? { icon } : {}),
     webPreferences: {
@@ -66,4 +80,16 @@ export function createMainWindow(actions: MainWindowActions): BrowserWindow {
   installAppContextMenu(window.webContents, Menu, actions)
   installRendererRecovery(window, { showErrorBox: (title, content) => dialog.showErrorBox(title, content) })
   return window
+}
+
+/** Load the app shell; a detached window carries its id so its renderer knows which window it is. */
+export function loadAppRenderer(window: BrowserWindow, windowId: string | null = null): void {
+  const query = windowId ? { [APP_WINDOW_QUERY]: windowId } : undefined
+  if (process.env.ELECTRON_RENDERER_URL) {
+    const url = new URL(process.env.ELECTRON_RENDERER_URL)
+    if (query) url.search = new URLSearchParams(query).toString()
+    void window.loadURL(url.toString())
+  } else {
+    void window.loadFile(join(import.meta.dirname, '../renderer/index.html'), query ? { query } : undefined)
+  }
 }
