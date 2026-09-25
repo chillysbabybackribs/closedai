@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type JSX } from 'react'
-import { ChevronLeft, ChevronRight, Columns2, LayoutGrid, SlidersHorizontal } from 'lucide-react'
+import { ChevronLeft, ChevronRight, LayoutGrid, SlidersHorizontal } from 'lucide-react'
 import { Button } from '../../components/ui/button.js'
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover.js'
 import { Switch } from '../../components/ui/switch.js'
@@ -14,6 +14,8 @@ import type { SpacesDockNav } from '../spaces/spaces-stage.js'
 import { DOCK_HEIGHT, DOCK_REACH, TRAY_LIFT, dockLocation, trayApps, type DockPrefs, type TrayAppId } from './dock-model.js'
 import { DockSurface } from './dock-surface.js'
 import { DockTray } from './dock-tray.js'
+import { DockLayoutMenu } from './dock-layout-menu.js'
+import type { LayoutPreset } from '../chat-layout/layout-presets.js'
 import type { MinimizedWindow } from '../chat-layout/floating/minimized-windows.js'
 import { useDockReveal } from './use-dock-reveal.js'
 
@@ -34,6 +36,8 @@ export type AppDockProps = {
   /** Some window floats: Tile windows puts every window back into the last tiled layout. */
   canTile: boolean
   onTileWindows: () => void
+  onApplyPreset: (preset: LayoutPreset) => void
+  onOpenLayouts: () => void
 }
 
 /**
@@ -41,8 +45,8 @@ export type AppDockProps = {
  * have zoomed, and where you are. Centre: the app tray. Right: dock settings. It hides until the
  * pointer reaches the bottom edge unless Keep visible is on.
  */
-export function AppDock({ nav, chats, chatTitle, browserVisible, prefs, onPrefsChange, onLaunch, onOpenSite, onAllSavedSites, minimized, onRestoreWindow, canTile, onTileWindows }: AppDockProps): JSX.Element {
-  const [openList, setOpenList] = useState<TrayAppId | 'settings' | null>(null)
+export function AppDock({ nav, chats, chatTitle, browserVisible, prefs, onPrefsChange, onLaunch, onOpenSite, onAllSavedSites, minimized, onRestoreWindow, canTile, onTileWindows, onApplyPreset, onOpenLayouts }: AppDockProps): JSX.Element {
+  const [openList, setOpenList] = useState<TrayAppId | 'settings' | 'layout' | null>(null)
   const [keyboard, setKeyboard] = useState(false)
   const { shown, show } = useDockReveal({ pinned: prefs.keepVisible, held: openList !== null || keyboard })
   // The freeze reads data-state: the page stays a still until the dock has slid fully away.
@@ -115,14 +119,8 @@ export function AppDock({ nav, chats, chatTitle, browserVisible, prefs, onPrefsC
             minimized={minimized} onRestoreWindow={onRestoreWindow} />
         </div>
         <div className="flex items-center gap-0.5">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="sm" data-ui="dock.tile-windows" disabled={!canTile} onClick={onTileWindows}>
-                <Columns2 aria-hidden="true" />Tile windows
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="top">Put every window back into the last tiled layout (Ctrl+Shift+L)</TooltipContent>
-          </Tooltip>
+          <DockLayoutMenu open={openList === 'layout'} onOpenChange={(open) => setOpenList(open ? 'layout' : null)}
+            canTile={canTile} onTileWindows={onTileWindows} onApplyPreset={onApplyPreset} onOpenLayouts={onOpenLayouts} />
           {/* Dock lists do not hand focus back on close: the button's tooltip would reopen over the page. */}
           <Popover open={openList === 'settings'} onOpenChange={(open) => setOpenList(open ? 'settings' : null)}>
             <Tooltip>

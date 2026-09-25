@@ -267,7 +267,9 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
             onOpenSite={(url) => { workspaceRef.current?.openSite(url).catch(report('Could not open the saved site')) }}
             onAllSavedSites={() => workspaceRef.current?.openView('saved-sites')}
             minimized={minimizedWindows} onRestoreWindow={(id) => workspaceRef.current?.restoreWindow(id)}
-            canTile={windowsFloating} onTileWindows={() => workspaceRef.current?.tileWindows()} />}>
+            canTile={windowsFloating} onTileWindows={() => workspaceRef.current?.tileWindows()}
+            onApplyPreset={(preset) => workspaceRef.current?.applyPreset(preset)}
+            onOpenLayouts={() => workspaceRef.current?.openLayoutPresets()} />}>
           {({ browserHeld, spaceId }) => <DesktopWorkspace
             key={spaceId ?? chat.workspace?.cwd ?? chat.state.cwd}
             spaceId={spaceId}

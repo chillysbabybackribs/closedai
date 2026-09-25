@@ -362,10 +362,16 @@ chat cannot be minimized or closed. Minimizing the browser hides it; the dock's 
 it back. The selected window keeps full-strength buttons; the others dim theirs until hovered.
 Double-clicking a floating window's header puts that window alone back into its slot.
 
-**Tile windows** puts every floating window back into its slot, so the last tiled layout returns
-exactly as it was (`tileWindows`; minimized windows stay minimized but return to their slot). It is
-on the dock beside Dock settings (`dock.tile-windows`), in View → Tile windows, and on Ctrl+Shift+L,
-and is disabled while nothing floats. It also ends a maximize.
+The dock's **Layout** menu (`dock.layout`, right side beside Dock settings, always clickable) is the
+one place to put windows back together (`dock-layout-menu.tsx`, rows `dock.layout-item`):
+**Chats left, browser right** gathers every window and tab, floating and minimized ones included,
+into one chat window left of the browser (the `browser-side` preset); **Chat, browser, chat** puts a
+chat either side of the browser (`browser-between`: the extra windows' tabs join the right-hand
+chat, and a new chat fills the right side when there is only one); **Tile windows** puts every
+floating window back into its slot, so the last tiled layout returns exactly as it was
+(`tileWindows`; minimized windows stay minimized but return to their slot; disabled while nothing
+floats, also View → Tile windows and Ctrl+Shift+L); **Workspace layout…** opens the layout dialog.
+Tile windows and the arrangements also end a maximize.
 
 **Keep on top** (`layout.keep-on-top`, a checkbox in a chat window header's context menu) marks the
 whole window, every tab in it, with `onTop: true` in the saved tree. It stacks above every window
