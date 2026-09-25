@@ -221,8 +221,8 @@ minting a new id. Main retains existing attached chats unless a departed chat is
 longer visible. The renderer decides which tile displays a selected chat, as described below.
 
 Continuation creates a new chat tab in the source tile with a local transcript digest, delivered once on its
-next message. **Fresh context** (`composer.continue`) sits under the composer beside Browser and Agents
-when the latest response can hand off; it is disabled while that chat's turn is actively running (`activeTurnId` set).
+next message. **Fresh context** (`composer.continue`) sits in the composer capsule beside Agents
+when the latest response can hand off (an icon, labelled once the context window is half full); it is disabled while that chat's turn is actively running (`activeTurnId` set).
 **Branch** (`chat.message-branch`) starts a new chat whose digest and `peer_chats.recall` boundary end at
 that specific assistant message; **Continue** carries the full conversation through its current end.
 Pausing a turn clears the active run (`activeTurnId`) and sets `pausedTurnId`, so Continue and Branch become
@@ -319,8 +319,8 @@ Two full-height chats can
 sit on either side of the browser. The browser starts on the right; drag a conversation tab,
 or empty chat header space onto the browser's left or right half to dock it on that side.
 During a chat drag, the native browser view is temporarily covered so the drop targets can receive
-the gesture. The **Browser** pill (`composer.browser`) under every composer hides/restores the browser in its saved position without
-closing tabs. **New chat** (`composer.new-chat`) beside it adds and selects a fresh conversation tab in the same tile. Chat headers offer **New chat to the right**, **New chat below**, and **Hide chat pane**.
+the gesture. The dock's **Browser** icon (`dock.app`, item `browser`) and View → Toggle browser pane hide/restore the browser in its saved position without
+closing tabs; `preview_html` shows it through the ui host's `revealBrowser`. The tile header **+** adds and selects a fresh conversation tab in the same tile. Chat headers offer **New chat to the right**, **New chat below**, and **Hide chat pane**.
 Hiding a tile neither detaches its runtime nor stops its turn; the model command `close_chat`
 still detaches and stops it.
 
@@ -443,22 +443,26 @@ pointer cancellation and lost capture restore the starting proportions, while wi
 the last position. The final geometry is painted before releasing the gesture. Nested splits support columns, rows,
 and quadrants, up to 32 visible chats. A tile has a 300 × 280 px minimum; the chat area scrolls
 when a small window cannot fit the chosen arrangement. Every layout uses the same one-line
-composer (a 52 px draft row, a 38 px footer, and a 32 px send/pause control). Drafts grow upward within a tile-relative height limit and
+composer (a 48 px capsule row with a 34 px send/pause control). Drafts grow upward within a tile-relative height limit and
 then scroll, leaving room for the transcript.
-Tiles at most 680 px wide or 640 px tall also tighten transcript spacing; under 460 px the setup
-folder trigger truncates on narrow composers, and under 330 px the model name too. Single-tab headers use the
+Tiles at most 680 px wide or 640 px tall also tighten transcript spacing; under 540 px the setup
+chip folds the folder to its icon, and under 380 px the chip narrows and the model name truncates. Single-tab headers use the
 available width for the title; the focused tile has the accent tab indicator.
-The composer is a single stack: a draft card (text and the action button on the right) and a
-footer bar beneath it with attach (`composer.upload`) on the left, the model setup trigger
-(`composer.setup`) naming the model (with a chevron), and the folder trigger (`composer.folder`)
-on the right naming the working folder. Model and folder controls share the same neutral color,
-with rounded hover surfaces inside a softly outlined composer. The model trigger fits its label
-and chevron, leaving the space before the folder outside its hover and click area. Under the card, **Browser** (`composer.browser`), **New chat** (`composer.new-chat`), **Agents** (`composer.agents`), and when the latest reply can hand off, **Fresh context** (`composer.continue`) appear in
-every chat. Browser toggles the embedded pane. New chat matches the tile header **+** for that pane. **Fresh context** continues the full thread in a new tab with a digest on the first send. Agents opens a menu of saved agents: **Start new run**
+The composer is one glass capsule floating over the foot of the transcript (`.chat-composer-dock`
+in `chat-pane.tsx`, which also carries the connection banner, credential approvals, the agent run
+strip and pane notices). The transcript scrolls underneath it: the dock publishes its height as
+`--composer-dock-height`, the scroller pads its end by it, and text fades as it slides under the
+capsule's live blur. One row holds attach (`composer.upload`), the agents icon (`composer.agents`)
+and, when the latest reply can hand off, **Fresh context** (`composer.continue`) on the left; the
+draft in the middle; then the setup chip, whose model half (`composer.setup`, with a chevron) and
+folder half (`composer.folder`) each open their own panel; and Send on the right. Send and the
+focus ring are the chat's one colour: the theme accent, or the wallpaper's most vivid hue while a
+backdrop is on. Sent user messages are cards cut from the same capsule material. New chat and
+Browser are not in the composer: the tile header **+** and the dock own them. **Fresh context** continues the full thread in a new tab with a digest on the first send. Agents opens a menu of saved agents: **Start new run**
 (`composer.agents-start`, a new tab beside **this** chat's tile and the run starts at once; only a
 **live** run for that agent offers **Open** instead), **New agent…** (`composer.agents-new`) and
-**Manage** (`composer.agents-manage`) for the workspace Agents tab. The pill shows how many runs are
-live workspace-wide. Agent → Agents… or the composer **Agents** pill still opens the **Agents** view tab (`view.agents`,
+**Manage** (`composer.agents-manage`) for the workspace Agents tab. The icon badges how many runs are
+live workspace-wide. Agent → Agents… or the composer's **Manage** still opens the **Agents** view tab (`view.agents`,
 `src/renderer/agent-library/`), which shows no scope chip and stacks three screens under a one-line
 header. The **Library** opens first: a grid of saved-agent cards (`agents.card`; live runs first,
 then most recently used, then never-run by name), each with the name, the first two lines of its
@@ -875,11 +879,14 @@ either kind, so a new icon never changes the tray's size or spacing.
   (defaults 14 and 15 px, range 13–22) from chat zoom. Appearance → Background is opt-in
   (default Off): Desktop wallpaper paints the OS wallpaper (GNOME `picture-uri`/`picture-uri-dark`,
   read by main via `window:desktopWallpaper` in `main/desktop-wallpaper.ts`) behind the shell,
-  dimmed by its measured brightness; it shows in the title bar and the gaps between tiles. Only a
-  chat's transcript area and the Overview stage are glass: a once-blurred copy of the same image
-  (`renderer/backdrop/`) under a near-opaque dark tint, painted with fixed attachment so it lines up
-  with the desktop without a live blur. Chat headers and tabs, the composer, the browser tile, and
-  view tiles (Tools, History, Agents) stay solid.
+  dimmed by its measured brightness; it shows in the gaps between tiles. The title bar and the dock
+  are full-width rails of one lighter glass (tint `--backdrop-rail`), with a hairline facing the
+  workspace; menus sit directly on the bar and search is a recessed field. A chat's transcript area
+  and the Overview stage are glass too: a once-blurred copy of the same image (`renderer/backdrop/`)
+  under a near-opaque dark tint, painted with fixed attachment so it lines up with the desktop
+  without a live blur. The composer capsule is the one live blur, and Send takes the wallpaper's
+  most vivid hue (`--backdrop-accent`). Chat headers and tabs, the browser tile, and view tiles
+  (Tools, History, Agents) stay solid.
 - Ctrl/Cmd+, opens settings, Ctrl/Cmd+H focuses chat search, Ctrl/Cmd+N creates a chat,
   Ctrl/Cmd+W closes the focused chat tab or hides its tile (same path as the ×; the last
   remaining chat stays), Ctrl/Cmd+Shift+W closes the window, F11 toggles fullscreen, and Escape
