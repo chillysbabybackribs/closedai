@@ -1,6 +1,6 @@
 import type { JSX } from 'react'
 import { useCallback, useEffect, useRef } from 'react'
-import { ChevronDown, Users } from 'lucide-react'
+import { Users } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover.js'
 import { cn } from '../lib/utils.js'
 import type { SavedAgent } from '../shared/agent-library.js'
@@ -74,16 +74,17 @@ export function ComposerAgentsMenu({ paneId, startEnabled, runningTurn, onStart,
         <button
           ref={triggerRef}
           type="button"
-          className={cn('composer-pill', runningCount > 0 && 'composer-pill-attention')}
+          className={cn('composer-tool', runningCount > 0 && 'composer-tool-attention')}
           data-ui="composer.agents"
           data-ui-key={paneId}
           disabled={runningTurn}
+          title={runningCount > 0 ? `Saved agents · ${runningCount} running` : 'Saved agents'}
+          aria-label={runningCount > 0 ? `Agents, ${runningCount} running` : 'Agents'}
           aria-haspopup="menu"
           aria-expanded={open}
         >
-          <Users size={14} strokeWidth={1.9} aria-hidden="true" />
-          <span className="composer-pill-label">Agents{runningCount > 0 ? ` · ${runningCount}` : ''}</span>
-          <ChevronDown className="composer-pill-chevron" size={11} strokeWidth={2} aria-hidden="true" />
+          <Users size={16} strokeWidth={1.9} aria-hidden="true" />
+          {runningCount > 0 && <span className="composer-tool-count" aria-hidden="true">{runningCount}</span>}
         </button>
       </PopoverTrigger>
       <PopoverContent

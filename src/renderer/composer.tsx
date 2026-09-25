@@ -7,10 +7,10 @@ import { PromptInput, PromptInputAction, PromptInputTextarea } from '../componen
 import type { ChatAttachment, ChatContextUsage, ChatModel, ChatPlanUsage, ChatProvider } from '../shared/chat.js'
 import { CHAT_PROVIDER_LABELS } from '../shared/chat-providers.js'
 import { AttachmentChips, AttachmentPicker, attachmentsFromFiles } from './composer-attachments.js'
-import { ComposerAccessPills } from './composer-access-pills.js'
 import { ComposerFolderMenu } from './composer-folder-menu.js'
 import { ComposerSetupMenu, type ComposerSetupHandle } from './composer-setup-menu.js'
 import { useComposerDraft } from './composer-drafts.js'
+import { ComposerWorkspaceTools } from './composer-workspace-tools.js'
 import { errorMessage } from './error-message.js'
 
 export type ComposerProps = {
@@ -55,9 +55,9 @@ export type ComposerProps = {
 }
 
 /**
- * The message card contains the draft and its actions. The setup trigger sits below it so the
- * selected model and folder read as metadata for the composer rather than taking space from the
- * writing surface; the trigger still opens the full setup panel.
+ * One glass capsule floating over the foot of the transcript: attach and workspace tools on the
+ * left, the draft in the middle (it grows upward as you type), and the setup chip — model and
+ * folder, each opening its own panel — beside Send on the right. There is no second row.
  */
 export function Composer({
   enabled,
@@ -233,45 +233,23 @@ export function Composer({
       onDragOver={(event) => event.preventDefault()}
       onDrop={dropFiles}
     >
-      <div className="composer-stack">
-        <PromptInput
-          value={input}
-          onValueChange={setInput}
-          onSubmit={() => void submit()}
-          isLoading={running || sending}
-          disabled={!enabled || sending}
-          maxHeight="var(--composer-max-height, min(36vh, 240px))"
-          className="composer-card"
-        >
-          {attachments.length > 0 && (
-            <AttachmentChips
-              attachments={attachments}
-              onRemove={(id) => setAttachments((current) => current.filter((attachment) => attachment.id !== id))}
-            />
-          )}
-          <div className="composer-row">
-            <div className="composer-input-wrap">
-              {visibleSuggestion && <div className="composer-suggestion" aria-hidden="true">
-                <span>{visibleSuggestion}</span><kbd>Tab</kbd>
-              </div>}
-              <PromptInputTextarea
-                aria-label={`Message ${providerLabel}`}
-                data-ui="composer.input"
-                data-can-send={canSend || undefined}
-                data-suggestion={Boolean(visibleSuggestion) || undefined}
-                placeholder={visibleSuggestion ? '' : inputPlaceholder}
-                spellCheck={false}
-                rows={1}
-                className="composer-textarea"
-                onPaste={pasteFiles}
-                onKeyDown={suggestionKeyDown}
-              />
-            </div>
-            {action}
-          </div>
-        </PromptInput>
-        <div className="composer-footer">
-          <div className="composer-footer-attach">
+      <PromptInput
+        value={input}
+        onValueChange={setInput}
+        onSubmit={() => void submit()}
+        isLoading={running || sending}
+        disabled={!enabled || sending}
+        maxHeight="var(--composer-max-height, min(36vh, 240px))"
+        className="composer-stack composer-card"
+      >
+        {attachments.length > 0 && (
+          <AttachmentChips
+            attachments={attachments}
+            onRemove={(id) => setAttachments((current) => current.filter((attachment) => attachment.id !== id))}
+          />
+        )}
+        <div className="composer-row">
+          <div className="composer-tools">
             <AttachmentPicker
               disabled={!enabled || running || sending}
               inputRef={fileInputRef}
@@ -280,8 +258,36 @@ export function Composer({
                 event.target.value = ''
               }}
             />
+            {paneId && (
+              <ComposerWorkspaceTools
+                paneId={paneId}
+                startEnabled={enabled}
+                runningTurn={running || sending}
+                continueMessageId={continueMessageId}
+                contextPercent={contextUsage?.percent ?? null}
+                onContinueInNewChat={onContinueInNewChat}
+                onComposerError={setComposerError}
+              />
+            )}
           </div>
-          <div className="composer-footer-setup">
+          <div className="composer-input-wrap">
+            {visibleSuggestion && <div className="composer-suggestion" aria-hidden="true">
+              <span>{visibleSuggestion}</span><kbd>Tab</kbd>
+            </div>}
+            <PromptInputTextarea
+              aria-label={`Message ${providerLabel}`}
+              data-ui="composer.input"
+              data-can-send={canSend || undefined}
+              data-suggestion={Boolean(visibleSuggestion) || undefined}
+              placeholder={visibleSuggestion ? '' : inputPlaceholder}
+              spellCheck={false}
+              rows={1}
+              className="composer-textarea"
+              onPaste={pasteFiles}
+              onKeyDown={suggestionKeyDown}
+            />
+          </div>
+          <div className="composer-setup-chip">
             <ComposerSetupMenu
               ref={setupMenuRef}
               modelsEnabled={enabled && !running}
@@ -311,18 +317,9 @@ export function Composer({
               onError={setComposerError}
             />
           </div>
+          {action}
         </div>
-      </div>
-      {paneId && (
-        <ComposerAccessPills
-          paneId={paneId}
-          startEnabled={enabled}
-          runningTurn={running || sending}
-          continueMessageId={continueMessageId}
-          onContinueInNewChat={onContinueInNewChat}
-          onComposerError={setComposerError}
-        />
-      )}
+      </PromptInput>
       {composerError && <div className="prompt-attachment-error" role="alert">{composerError}</div>}
     </form>
   )

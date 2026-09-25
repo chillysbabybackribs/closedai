@@ -1,11 +1,14 @@
 import type { JSX } from 'react'
 import { useState } from 'react'
 import { MessageSquareShare } from 'lucide-react'
+import { cn } from '../lib/utils.js'
 import { errorMessage } from './error-message.js'
 
 export type ComposerContinuePillProps = {
   messageId: string
   runningTurn: boolean
+  /** Show the words, not only the icon: the context window is filling up. */
+  labelled?: boolean
   onContinue: () => Promise<void>
   onError: (message: string) => void
 }
@@ -13,14 +16,14 @@ export type ComposerContinuePillProps = {
 const TITLE_IDLE = 'Continue this conversation in a new tab with a fresh context window'
 const TITLE_BUSY = 'Wait for the current turn to finish'
 
-/** Full-conversation handoff; lives under the composer so it stays visible after long threads. */
-export function ComposerContinuePill({ messageId, runningTurn, onContinue, onError }: ComposerContinuePillProps): JSX.Element {
+/** Full-conversation handoff; lives in the composer capsule so it stays visible after long threads. */
+export function ComposerContinuePill({ messageId, runningTurn, labelled = false, onContinue, onError }: ComposerContinuePillProps): JSX.Element {
   const [busy, setBusy] = useState(false)
   const disabled = runningTurn || busy
   return (
     <button
       type="button"
-      className="composer-pill composer-pill-continue"
+      className={cn('composer-tool', labelled && 'composer-chip composer-chip-continue')}
       data-ui="composer.continue"
       data-ui-key={messageId}
       disabled={disabled}
@@ -32,8 +35,8 @@ export function ComposerContinuePill({ messageId, runningTurn, onContinue, onErr
           .finally(() => setBusy(false))
       }}
     >
-      <MessageSquareShare size={14} strokeWidth={1.9} aria-hidden="true" />
-      <span className="composer-pill-label">Fresh context</span>
+      <MessageSquareShare size={15} strokeWidth={1.9} aria-hidden="true" />
+      {labelled && <span className="composer-chip-label">Fresh context</span>}
     </button>
   )
 }

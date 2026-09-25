@@ -9,6 +9,7 @@ test('the fresh context pill names the handoff and keeps the full phrase in the 
   const html = renderToStaticMarkup(createElement(ComposerContinuePill, {
     messageId: 'item-1',
     runningTurn: false,
+    labelled: true,
     onContinue: async () => {},
     onError: () => {}
   }))
