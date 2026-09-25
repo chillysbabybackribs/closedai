@@ -12,8 +12,11 @@ const overlaps = (a: Rect, b: Rect): boolean =>
  */
 export type CanvasTile = { id: string; tabs: string[]; rect: Rect; kind: 'tiled' | 'floating' | 'hidden'; z: number }
 
-/** Added to the stack place of a window kept on top. */
-export const ON_TOP = 1000
+/**
+ * Added to the stack place of a window kept on top: past any floating window (a saved tree holds
+ * at most 65), under the snap outline and the moving window (layout-windows.css).
+ */
+export const ON_TOP = 100
 
 const NOWHERE: Rect = { x: 0, y: 0, width: 0, height: 0 }
 

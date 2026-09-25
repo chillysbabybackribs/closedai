@@ -54,6 +54,8 @@
     0 22px 56px rgb(0 0 0 / 42%);
 }
 .chat-layout-tile[data-window='floating'] > .chat-layout-tile-body { overflow: hidden; border-radius: 9px; }
+/* Window stacking stays inside the canvas, under menus and dialogs, whatever a window's z-index. */
+.chat-layout-canvas { isolation: isolate; }
 /* The moving window rides above every other window and the snap outline. */
 .chat-layout-canvas .chat-layout-tile[data-moving] { z-index: 1000 !important; }
 
