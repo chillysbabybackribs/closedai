@@ -2,11 +2,13 @@ import type { JSX, ReactNode } from 'react'
 import { Dock, DockIcon } from '../../components/ui/dock.js'
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar.js'
 import { Button } from '../../components/ui/button.js'
+import { Separator } from '../../components/ui/separator.js'
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover.js'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../../components/ui/tooltip.js'
 import type { SavedSite } from '../../shared/saved-sites.js'
 import type { BrowserDownload } from '../../shared/types.js'
-import { APP_ICONS, AppIconMark } from '../app-icons.js'
+import { APP_ICONS, AppIconMark, type AppIconId } from '../app-icons.js'
+import type { MinimizedWindow } from '../chat-layout/floating/minimized-windows.js'
 import { BrowserSiteIcon } from '../browser-site-icon.js'
 import { downloadActions, downloadDetail } from '../browser-downloads-model.js'
 import { TRAY_ICON, TRAY_MAGNIFIED, type TrayApp, type TrayAppId } from './dock-model.js'
@@ -25,6 +27,9 @@ export type DockTrayProps = {
   onOpenSite: (url: string) => void
   onAllSavedSites: () => void
   onRevealDownload: (id: string) => void
+  /** Windows minimized in the shown workspace, after the apps like a desktop dock's. */
+  minimized: readonly MinimizedWindow[]
+  onRestoreWindow: (id: string) => void
 }
 
 /**
@@ -33,7 +38,7 @@ export type DockTrayProps = {
  * never changes the tray's size or spacing. The dot, tooltip and lists stay neutral.
  */
 export function DockTray(props: DockTrayProps): JSX.Element {
-  const { apps, magnify, openStack, onOpenStack, onLaunch } = props
+  const { apps, magnify, openStack, onOpenStack, onLaunch, minimized, onRestoreWindow } = props
   return <Dock data-slot="app-dock-tray" direction="bottom" iconSize={TRAY_ICON} iconMagnification={TRAY_MAGNIFIED}
     disableMagnification={!magnify}
     // The tab behind it is DockSurface, so the tray itself draws nothing. It fills the tab above the
@@ -48,6 +53,10 @@ export function DockTray(props: DockTrayProps): JSX.Element {
             </PopoverContent>
           </Popover>
         : <TrayButton app={app} onLaunch={onLaunch} />}
+    </DockIcon>)}
+    {minimized.length > 0 && <Separator orientation="vertical" className="mx-1 h-9 self-center" />}
+    {minimized.map((entry) => <DockIcon key={entry.id} padding={0} className="relative rounded-[22%]">
+      <MinimizedButton entry={entry} onRestore={onRestoreWindow} />
     </DockIcon>)}
   </Dock>
 }
@@ -69,8 +78,26 @@ function TrayButton({ app, stackOpen = false, onLaunch }: { app: TrayApp; stackO
   </Tooltip>
 }
 
+/** A minimized window's tile: its kind's icon, named by its front tab; a click puts it back. */
+function MinimizedButton({ entry, onRestore }: { entry: MinimizedWindow; onRestore: (id: string) => void }): JSX.Element {
+  const detail = entry.tabs > 1 ? `Minimized, ${entry.tabs} tabs` : 'Minimized'
+  return <Tooltip>
+    <TooltipTrigger asChild>
+      <button type="button" className="relative size-full rounded-[22%] outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        data-ui="dock.window" data-ui-key={entry.id} aria-label={`Restore ${entry.title} (${detail.toLowerCase()})`}
+        onClick={() => onRestore(entry.id)}>
+        <TrayTile id={entry.icon} />
+      </button>
+    </TooltipTrigger>
+    <TooltipContent side="top" sideOffset={10} className="flex flex-col gap-0.5">
+      <span className="font-medium">{entry.title}</span>
+      <span className="text-muted-foreground">{detail}</span>
+    </TooltipContent>
+  </Tooltip>
+}
+
 /** One tile: a picture fills it, a line icon sits in its middle on the tile's plain face. */
-function TrayTile({ id }: { id: TrayAppId }): JSX.Element {
+function TrayTile({ id }: { id: TrayAppId | AppIconId }): JSX.Element {
   const icon = APP_ICONS[id]
   return <Avatar className="size-full rounded-[22%] border border-border">
     {icon.kind === 'picture' && <AvatarImage src={icon.src} alt="" draggable={false} />}

@@ -257,7 +257,8 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
               else workspaceRef.current?.openView('agents')
             }}
             onOpenSite={(url) => { workspaceRef.current?.openSite(url).catch(report('Could not open the saved site')) }}
-            onAllSavedSites={() => workspaceRef.current?.openView('saved-sites')} />}>
+            onAllSavedSites={() => workspaceRef.current?.openView('saved-sites')}
+            minimized={minimizedWindows} onRestoreWindow={(id) => workspaceRef.current?.restoreWindow(id)} />}>
           {({ browserHeld, spaceId }) => <DesktopWorkspace
             key={spaceId ?? chat.workspace?.cwd ?? chat.state.cwd}
             spaceId={spaceId}
@@ -271,6 +272,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
             onRenameChat={(id, title) => setRenamingChat({ id, title })}
             onSavedSitesError={report('Could not update saved sites')}
             onBrowserVisibleChange={setBrowserVisible}
+            onMinimizedChange={setMinimizedWindows}
             archiveChat={history.deleteRow}
           />}
         </SpacesStage>}

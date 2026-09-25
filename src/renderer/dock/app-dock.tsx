@@ -14,6 +14,7 @@ import type { SpacesDockNav } from '../spaces/spaces-stage.js'
 import { DOCK_HEIGHT, DOCK_REACH, TRAY_LIFT, dockLocation, trayApps, type DockPrefs, type TrayAppId } from './dock-model.js'
 import { DockSurface } from './dock-surface.js'
 import { DockTray } from './dock-tray.js'
+import type { MinimizedWindow } from '../chat-layout/floating/minimized-windows.js'
 import { useDockReveal } from './use-dock-reveal.js'
 
 const SLIDE_MS = 200
@@ -28,6 +29,8 @@ export type AppDockProps = {
   onLaunch: (id: Exclude<TrayAppId, 'saved-sites' | 'downloads'>) => void
   onOpenSite: (url: string) => void
   onAllSavedSites: () => void
+  minimized: readonly MinimizedWindow[]
+  onRestoreWindow: (id: string) => void
 }
 
 /**
@@ -35,7 +38,7 @@ export type AppDockProps = {
  * have zoomed, and where you are. Centre: the app tray. Right: dock settings. It hides until the
  * pointer reaches the bottom edge unless Keep visible is on.
  */
-export function AppDock({ nav, chats, chatTitle, browserVisible, prefs, onPrefsChange, onLaunch, onOpenSite, onAllSavedSites }: AppDockProps): JSX.Element {
+export function AppDock({ nav, chats, chatTitle, browserVisible, prefs, onPrefsChange, onLaunch, onOpenSite, onAllSavedSites, minimized, onRestoreWindow }: AppDockProps): JSX.Element {
   const [openList, setOpenList] = useState<TrayAppId | 'settings' | null>(null)
   const [keyboard, setKeyboard] = useState(false)
   const { shown, show } = useDockReveal({ pinned: prefs.keepVisible, held: openList !== null || keyboard })
@@ -105,7 +108,8 @@ export function AppDock({ nav, chats, chatTitle, browserVisible, prefs, onPrefsC
             savedSites={savedSites} downloads={downloads}
             onOpenSite={(url) => { setOpenList(null); onOpenSite(url) }}
             onAllSavedSites={() => { setOpenList(null); onAllSavedSites() }}
-            onRevealDownload={(id) => { void window.closedai.browserDownloads.reveal(id) }} />
+            onRevealDownload={(id) => { void window.closedai.browserDownloads.reveal(id) }}
+            minimized={minimized} onRestoreWindow={onRestoreWindow} />
         </div>
         {/* Dock lists do not hand focus back on close: the button's tooltip would reopen over the page. */}
         <Popover open={openList === 'settings'} onOpenChange={(open) => setOpenList(open ? 'settings' : null)}>
