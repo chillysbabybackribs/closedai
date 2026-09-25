@@ -204,9 +204,10 @@ export function layoutGeometry(tree: ChatLayout, width: number, height: number, 
 /** A view pinned to one chat; unpinned views follow their tile and are absent here. */
 export type ViewScopes = Record<string, { pinnedChatId: string }>
 export type SavedChatLayout = { tree: ChatLayout | null; browserVisible: boolean; views?: ViewScopes }
-// A detached window keeps its own layout for the project beside the main window's.
-const storageKey = (cwd: string, windowId?: string): string =>
-  `closedai.chat-layout.v1:${cwd}${windowId && windowId !== MAIN_WINDOW_ID ? `#window:${windowId}` : ''}`
+// Keyed by the main window's space (a project folder for spaces made before space ids); a detached
+// window keeps its own layout for the project beside the main window's.
+const storageKey = (key: string, windowId?: string): string =>
+  `closedai.chat-layout.v1:${key}${windowId && windowId !== MAIN_WINDOW_ID ? `#window:${windowId}` : ''}`
 
 function validViewScopes(raw: unknown, tabs: Set<string>): ViewScopes {
   const views: ViewScopes = {}
@@ -220,10 +221,10 @@ function validViewScopes(raw: unknown, tabs: Set<string>): ViewScopes {
   return views
 }
 
-export function readLayout(storage: Pick<Storage, 'getItem'>, cwd: string, windowId?: string): SavedChatLayout {
+export function readLayout(storage: Pick<Storage, 'getItem'>, key: string, windowId?: string): SavedChatLayout {
   const fallback = { tree: null, browserVisible: true }
   try {
-    const raw = JSON.parse(storage.getItem(storageKey(cwd, windowId)) ?? 'null') as SavedChatLayout | null
+    const raw = JSON.parse(storage.getItem(storageKey(key, windowId)) ?? 'null') as SavedChatLayout | null
     const seen = new Set<string>()
     const chats = new Set<string>()
     const validate = (node: ChatLayout | null, depth = 0): boolean => {
@@ -253,6 +254,6 @@ export function readLayout(storage: Pick<Storage, 'getItem'>, cwd: string, windo
   } catch { return fallback }
 }
 
-export function saveLayout(storage: Pick<Storage, 'setItem'>, cwd: string, layout: SavedChatLayout, windowId?: string): void {
-  try { storage.setItem(storageKey(cwd, windowId), JSON.stringify(layout)) } catch { /* Best-effort preference. */ }
+export function saveLayout(storage: Pick<Storage, 'setItem'>, key: string, layout: SavedChatLayout, windowId?: string): void {
+  try { storage.setItem(storageKey(key, windowId), JSON.stringify(layout)) } catch { /* Best-effort preference. */ }
 }

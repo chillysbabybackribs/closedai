@@ -13,18 +13,23 @@ const ERROR_TTL_MS = 8000
 /** Main announces a selection within one workspace event; past this the layout resyncs instead of staying locked. */
 const CONFIRM_TIMEOUT_MS = 5000
 
-/** The component owning this hook is keyed by project directory. */
+/**
+ * The component owning this hook is keyed by the space it shows. `spaceId` names the main window's
+ * saved layout (several spaces can share a project); a detached window keeps its project's own.
+ */
 export function useChatLayout(
   getSnapshot: () => ChatWorkspaceSnapshot,
-  layoutRevision: string
+  layoutRevision: string,
+  spaceId?: string
 ) {
   const snapshot = getSnapshot()
   const cwd = snapshot.workspace?.cwd ?? snapshot.selected.cwd
   // A detached window keeps its own saved layout and never hosts the browser.
   const self = appWindow()
+  const layoutKey = self.main && spaceId ? spaceId : cwd
   const windows = useAppWindows()
   const [layout, setLayout] = useState(() => {
-    const saved = readLayout(window.localStorage, cwd, self.id)
+    const saved = readLayout(window.localStorage, layoutKey, self.id)
     const tree = initialWindowTree(saved.tree, {
       available: new Set(snapshot.chats.map((chat) => chat.paneId)), elsewhere: tabsHeldElsewhere(),
       selectedPaneId: snapshot.selectedPaneId, detached: !self.main, initialTabs: self.initialTabs,
@@ -76,14 +81,14 @@ export function useChatLayout(
   useEffect(() => {
     const persist = (): void => {
       const value = layoutPersist.current
-      saveLayout(window.localStorage, cwd, { ...value, views: pruneViewScopes(value.views, value.tree) }, self.id)
+      saveLayout(window.localStorage, layoutKey, { ...value, views: pruneViewScopes(value.views, value.tree) }, self.id)
     }
     const timer = window.setTimeout(persist, 250)
     return () => {
       window.clearTimeout(timer)
       persist()
     }
-  }, [cwd, layout])
+  }, [layoutKey, layout])
 
   useEffect(() => {
     if (!hasTiles) return

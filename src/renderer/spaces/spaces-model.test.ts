@@ -2,20 +2,31 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   IDENTITY_CAMERA, LABEL_HEIGHT, createZoomGesture, dropMissingStops, focusCamera, liveTransform, overviewSlots,
-  readSpaces, saveSpaces, slotAt, spaceList, spaceName, stepStop, visitStop, type SpaceHistory
+  newSpace, readSpaces, resolveCurrent, saveSpaces, slotAt, spaceName, stepStop, visitStop, type Space, type SpaceHistory
 } from './spaces-model.ts'
 
 const size = { width: 1200, height: 800 }
 
-test('the spaces are the saved ones plus the current workspace, in the order they were added', () => {
-  const a = { cwd: '/p/a', projectPath: '/p/a' }
-  const b = { cwd: '/p/b', projectPath: '/p/b' }
-  // A first launch has just the workspace it opened in.
-  assert.deepEqual(spaceList([], a).map((space) => space.id), ['/p/a'])
-  // Being in a saved space keeps its place; entering a new one appends it.
-  assert.deepEqual(spaceList([a, b], b).map((space) => space.id), ['/p/a', '/p/b'])
-  assert.deepEqual(spaceList([a], { cwd: '/p/c', projectPath: '/p/c' }).map((space) => space.id), ['/p/a', '/p/c'])
-  assert.deepEqual(spaceList([a, a], a).map((space) => space.id), ['/p/a'])
+const a: Space = { id: '/p/a', cwd: '/p/a', projectPath: '/p/a', name: 'a' }
+const a2: Space = { id: 'space:2', cwd: '/p/a', projectPath: '/p/a', name: 'a 2' }
+const b: Space = { id: '/p/b', cwd: '/p/b', projectPath: '/p/b', name: 'b' }
+
+test('the current space is the remembered one in main\'s folder, else the first there, else a new one', () => {
+  assert.equal(resolveCurrent([a, a2, b], 'space:2', { cwd: '/p/a', projectPath: '/p/a' }).current, a2)
+  // A remembered space in another folder than main shows is not current (main switched project).
+  assert.equal(resolveCurrent([a, a2, b], 'space:2', { cwd: '/p/b', projectPath: '/p/b' }).current, b)
+  assert.equal(resolveCurrent([a, a2, b], null, { cwd: '/p/a', projectPath: '/p/a' }).current, a)
+  // A first launch, or a switch into a folder no space uses, adds a space named after the folder.
+  const fresh = resolveCurrent([a], null, { cwd: '/p/c', projectPath: '/p/c' })
+  assert.deepEqual(fresh.current, { id: '/p/c', cwd: '/p/c', projectPath: '/p/c', name: 'c' })
+  assert.deepEqual(fresh.spaces.map((space) => space.id), ['/p/a', '/p/c'])
+})
+
+test('a new space takes its folder\'s name, numbered when that name is taken', () => {
+  const workspace = { cwd: '/p/a', projectPath: '/p/a' }
+  assert.equal(newSpace([b], workspace, 'x').name, 'a')
+  assert.equal(newSpace([a, b], workspace, 'x').name, 'a 2')
+  assert.deepEqual(newSpace([a, a2], workspace, 'x'), { id: 'x', cwd: '/p/a', projectPath: '/p/a', name: 'a 3' })
 })
 
 test('space names use the folder name, and the home workspace is Home', () => {
@@ -23,15 +34,15 @@ test('space names use the folder name, and the home workspace is Home', () => {
   assert.equal(spaceName('/home/dp', null), 'Home')
 })
 
-test('saved spaces survive a round trip and ignore junk', () => {
+test('saved spaces survive a round trip, and entries from before ids use their folder', () => {
   const store = new Map<string, string>()
   const storage = { getItem: (key: string) => store.get(key) ?? null, setItem: (key: string, value: string) => { store.set(key, value) } }
-  saveSpaces(storage, spaceList([{ cwd: '/p/a', projectPath: '/p/a' }], { cwd: '/home', projectPath: null }))
-  assert.deepEqual(readSpaces(storage), [{ cwd: '/p/a', projectPath: '/p/a' }, { cwd: '/home', projectPath: null }])
-  store.set('closedai.spaces.v2', '{"spaces":[1,{"cwd":"/p/x"},{"cwd":""},null]}')
-  assert.deepEqual(readSpaces(storage), [{ cwd: '/p/x', projectPath: null }])
+  saveSpaces(storage, { spaces: [a, a2], current: 'space:2' })
+  assert.deepEqual(readSpaces(storage), { spaces: [a, a2], current: 'space:2' })
+  store.set('closedai.spaces.v2', '{"spaces":[1,{"cwd":"/p/x","projectPath":"/p/x"},{"cwd":""},null,{"cwd":"/p/x"}]}')
+  assert.deepEqual(readSpaces(storage), { spaces: [{ id: '/p/x', cwd: '/p/x', projectPath: '/p/x', name: 'x' }], current: null })
   store.set('closedai.spaces.v2', 'not json')
-  assert.deepEqual(readSpaces(storage), [])
+  assert.deepEqual(readSpaces(storage), { spaces: [], current: null })
 })
 
 test('overview slots keep the window shape, fit inside it and never overlap', () => {

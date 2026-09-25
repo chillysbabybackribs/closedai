@@ -34,7 +34,7 @@ export type ChatLayoutHandle = {
   applyPreset: (preset: LayoutPreset) => void
 }
 
-export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, toolsPreset = null, browserHeld = false, onRenameChat, onSavedSitesError, archiveChat, ref }: {
+export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, toolsPreset = null, browserHeld = false, spaceId, onRenameChat, onSavedSitesError, archiveChat, ref }: {
   chat: ReturnType<typeof useChatController>
   savedSites: BrowserSavedSitesController
   reviewQueue: ChatReviewQueue
@@ -42,6 +42,8 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
   toolsPreset?: 'full' | 'read-only' | 'custom' | null
   /** Zoomed out to the spaces overview: the browser shows its still and the page keeps its bounds. */
   browserHeld?: boolean
+  /** The space this workspace shows; its id names the saved layout. */
+  spaceId?: string
   onRenameChat?: (id: string, title: string) => void
   onSavedSitesError?: (reason: unknown) => void
   archiveChat?: (chatId: string) => Promise<void>
@@ -50,7 +52,7 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
   const workspaceSnapshotRef = useRef(chat.snapshot)
   workspaceSnapshotRef.current = chat.snapshot
   const layoutRevision = chatLayoutRevision(chat.snapshot)
-  const layout = useChatLayout(() => workspaceSnapshotRef.current, layoutRevision)
+  const layout = useChatLayout(() => workspaceSnapshotRef.current, layoutRevision, spaceId)
   const browserDragHandle = useMemo(() => <button type="button"
     className="browser-layout-drag" data-ui="layout.browser-drag" draggable={!layout.busy} disabled={layout.busy}
     aria-label="Move browser" title="Drag above or beside a chat; drop at the workspace edge for a full-height column"

@@ -1,17 +1,19 @@
 import type { Rect } from '../chat-layout/layout-tree.js'
 
-// A space is one project's workspace: its saved split tree, tabs and browser position. The
-// overview lays every space out as a window-shaped slot; a camera zooms between a slot and the
-// whole overview. Zooming is geometry only — which project main shows is changed separately.
+// A space is one workspace: its own saved split tree, tabs and browser position, and the project
+// folder main selects while it is shown. Several spaces can share a folder. The overview lays every
+// space out as a window-shaped slot; a camera zooms between a slot and the whole overview. Zooming
+// is geometry only — which project main shows, and which chat it selects, change separately.
 
+/** `id` also names the space's saved layout; spaces from before ids existed use their folder. */
 export type Space = { id: string; cwd: string; projectPath: string | null; name: string }
-/** What is saved per space: the project main selects to show it. */
-export type SpaceEntry = { cwd: string; projectPath: string | null }
 export type SpaceStop = { kind: 'overview' } | { kind: 'space'; id: string }
 export type SpaceHistory = { stops: SpaceStop[]; index: number }
 /** Screen = translate(x, y) · scale(k) · world. */
 export type Camera = { x: number; y: number; k: number }
 export type Size = { width: number; height: number }
+export type Workspace = { cwd: string; projectPath: string | null }
+export type SavedSpaces = { spaces: Space[]; current: string | null }
 
 export const IDENTITY_CAMERA: Camera = { x: 0, y: 0, k: 1 }
 // v1 listed every recent project main remembered; v2 is only the spaces the user has.
@@ -29,35 +31,47 @@ export function spaceName(cwd: string, projectPath: string | null): string {
 }
 
 /**
- * The spaces the user has, in the order they were added, plus the workspace they are in when it is
- * not one of them yet (the first launch, a folder just added, or a model's project switch). Folders
- * main merely remembers are not spaces. A stable order keeps each space where it was, so the
- * overview can be navigated from memory.
+ * The space being shown for main's workspace: the remembered one when it is in that folder, else
+ * the first space in the folder, else a new space for it (the first launch, or a model's project
+ * switch into a folder no space uses). Returns the list with that space in it.
  */
-export function spaceList(saved: readonly SpaceEntry[], current: SpaceEntry): Space[] {
-  const spaces: Space[] = []
-  for (const entry of [...saved, current]) {
-    if (spaces.some((space) => space.id === entry.cwd)) continue
-    spaces.push({ id: entry.cwd, cwd: entry.cwd, projectPath: entry.projectPath, name: spaceName(entry.cwd, entry.projectPath) })
-  }
-  return spaces
+export function resolveCurrent(spaces: readonly Space[], currentId: string | null, workspace: Workspace): { spaces: Space[]; current: Space } {
+  const remembered = spaces.find((space) => space.id === currentId && space.cwd === workspace.cwd)
+  const inFolder = remembered ?? spaces.find((space) => space.cwd === workspace.cwd)
+  if (inFolder) return { spaces: [...spaces], current: inFolder }
+  const current = { id: workspace.cwd, cwd: workspace.cwd, projectPath: workspace.projectPath, name: spaceName(workspace.cwd, workspace.projectPath) }
+  return { spaces: [...spaces.filter((space) => space.id !== current.id), current], current }
 }
 
-export function readSpaces(storage: Pick<Storage, 'getItem'>): SpaceEntry[] {
+/** A new space in `workspace`'s folder, named after it and numbered when the name is taken. */
+export function newSpace(spaces: readonly Space[], workspace: Workspace, id: string): Space {
+  const base = spaceName(workspace.cwd, workspace.projectPath)
+  const taken = new Set(spaces.map((space) => space.name))
+  let name = base
+  for (let n = 2; taken.has(name); n++) name = `${base} ${n}`
+  return { id, cwd: workspace.cwd, projectPath: workspace.projectPath, name }
+}
+
+export function readSpaces(storage: Pick<Storage, 'getItem'>): SavedSpaces {
   try {
-    const raw = JSON.parse(storage.getItem(SPACES_KEY) ?? 'null') as { spaces?: unknown } | null
-    if (!Array.isArray(raw?.spaces)) return []
-    return raw.spaces.flatMap((entry): SpaceEntry[] => {
-      const { cwd, projectPath } = (entry ?? {}) as { cwd?: unknown; projectPath?: unknown }
-      if (typeof cwd !== 'string' || !cwd) return []
-      return [{ cwd, projectPath: typeof projectPath === 'string' && projectPath ? projectPath : null }]
-    })
-  } catch { return [] }
+    const raw = JSON.parse(storage.getItem(SPACES_KEY) ?? 'null') as { spaces?: unknown; current?: unknown } | null
+    if (!Array.isArray(raw?.spaces)) return { spaces: [], current: null }
+    const spaces: Space[] = []
+    for (const entry of raw.spaces) {
+      const { id, cwd, projectPath, name } = (entry ?? {}) as Record<string, unknown>
+      if (typeof cwd !== 'string' || !cwd) continue
+      const path = typeof projectPath === 'string' && projectPath ? projectPath : null
+      const key = typeof id === 'string' && id ? id : cwd
+      if (spaces.some((space) => space.id === key)) continue
+      spaces.push({ id: key, cwd, projectPath: path, name: typeof name === 'string' && name ? name : spaceName(cwd, path) })
+    }
+    return { spaces, current: typeof raw.current === 'string' ? raw.current : null }
+  } catch { return { spaces: [], current: null } }
 }
 
-export function saveSpaces(storage: Pick<Storage, 'setItem'>, spaces: readonly SpaceEntry[]): void {
-  const entries = spaces.map(({ cwd, projectPath }) => ({ cwd, projectPath }))
-  try { storage.setItem(SPACES_KEY, JSON.stringify({ spaces: entries })) } catch { /* Best-effort preference. */ }
+export function saveSpaces(storage: Pick<Storage, 'setItem'>, saved: SavedSpaces): void {
+  const spaces = saved.spaces.map(({ id, cwd, projectPath, name }) => ({ id, cwd, projectPath, name }))
+  try { storage.setItem(SPACES_KEY, JSON.stringify({ spaces, current: saved.current })) } catch { /* Best-effort preference. */ }
 }
 
 /**

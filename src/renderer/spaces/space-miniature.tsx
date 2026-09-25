@@ -14,12 +14,12 @@ type MiniatureTab = { id: string; title: string; state: 'idle' | 'working' | 'pa
  * Only the space you came from is live DOM; this costs a few divs per tile, and each tab's running
  * or paused mark comes from the workspace-wide chat rows, so it stays current while zoomed out.
  */
-export const SpaceMiniature = memo(function SpaceMiniature({ cwd, size, chats }: {
-  cwd: string
+export const SpaceMiniature = memo(function SpaceMiniature({ spaceId, size, chats }: {
+  spaceId: string
   size: Size
   chats: readonly ChatRowSummary[]
 }): ReactElement {
-  const saved = useMemo(() => readLayout(window.localStorage, cwd), [cwd])
+  const saved = useMemo(() => readLayout(window.localStorage, spaceId), [spaceId])
   const rows = useMemo(() => new Map(chats.map((row) => [row.paneId, row])), [chats])
   const geometry = useMemo(() => {
     const tree = saved.tree && !saved.browserVisible ? removePane(saved.tree, BROWSER_PANE_ID) : saved.tree
