@@ -30,20 +30,28 @@ export function saveDockPrefs(storage: Pick<Storage, 'setItem'>, prefs: DockPref
 }
 
 /** Height of the strip along the bottom of the window. */
-export const DOCK_HEIGHT = 48
-/** Tray icon size at rest and under the pointer (about 1.4x while the tray is short). */
-export const TRAY_ICON = 36
-export const TRAY_MAGNIFIED = 50
+export const DOCK_HEIGHT = 56
+/** Tray tile size at rest and under the pointer (1.33x). */
+export const TRAY_ICON = 48
+export const TRAY_MAGNIFIED = 64
+/** The tray floats over the strip's centre: its padding, and its gap above the window edge. */
+export const TRAY_PADDING = 6
+export const TRAY_LIFT = 4
+/**
+ * How far above the window's bottom edge the dock can draw: a magnified tile at the top of the
+ * tray. The dock's box is this tall, so a browser under any part of it counts as covered.
+ */
+export const DOCK_REACH = TRAY_LIFT + 1 + TRAY_PADDING + TRAY_MAGNIFIED + 3
 /**
  * With Keep visible on, the workspace ends this far above the window's bottom edge. The gap past
- * the strip keeps the browser's edge margin (titlebar-browser-freeze.ts) clear of the dock, so a
+ * the dock's reach keeps the browser's edge margin (titlebar-browser-freeze.ts) clear of it, so a
  * dock that is always shown never turns the page into a still.
  */
-export const DOCK_RESERVE = DOCK_HEIGHT + 6
+export const DOCK_RESERVE = DOCK_REACH + 6
 /** The workspace's own bottom padding: a renderer strip no native browser view ever covers. */
 export const REVEAL_EDGE = 10
 /** Above this the pointer has left the dock, so a shown dock starts its hide delay. */
-export const HOLD_BAND = DOCK_HEIGHT + 24
+export const HOLD_BAND = DOCK_REACH + 16
 export const HIDE_DELAY_MS = 380
 
 /**

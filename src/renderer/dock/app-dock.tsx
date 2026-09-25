@@ -11,7 +11,7 @@ import { dockSummary, dockTiles } from '../agent-runs/agent-run-overview-model.j
 import { useBrowserDownloadsController } from '../browser-downloads-controller.js'
 import { useSavedSitesList } from '../browser-saved-sites-controller.js'
 import type { SpacesDockNav } from '../spaces/spaces-stage.js'
-import { DOCK_HEIGHT, dockLocation, trayApps, type DockPrefs, type TrayAppId } from './dock-model.js'
+import { DOCK_HEIGHT, DOCK_REACH, TRAY_LIFT, dockLocation, trayApps, type DockPrefs, type TrayAppId } from './dock-model.js'
 import { DockTray } from './dock-tray.js'
 import { useDockReveal } from './use-dock-reveal.js'
 
@@ -68,13 +68,14 @@ export function AppDock({ nav, chats, chatTitle, browserVisible, prefs, onPrefsC
 
   return <TooltipProvider>
     <div ref={root} data-slot="app-dock" data-ui="dock.bar" data-state={shown || !down ? 'open' : 'closed'}
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-40" style={{ height: DOCK_HEIGHT }}
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-40" style={{ height: DOCK_REACH }}
       onFocus={(event) => { if (event.target.matches(':focus-visible')) { setKeyboard(true); show() } }}
       onBlur={(event) => { if (!root.current?.contains(event.relatedTarget as Node | null)) setKeyboard(false) }}>
-      <div className={cn('pointer-events-auto relative flex h-full items-center justify-between gap-2 border-t border-border',
-        'bg-background/80 px-2 backdrop-blur-md transition-transform duration-200 ease-out motion-reduce:transition-none',
-        shown ? 'translate-y-0' : 'translate-y-full')}>
-        <div className="flex max-w-[calc(50%-140px)] min-w-0 items-center gap-0.5">
+      {/* The strip; the tray floats over its centre and rises above it, so hiding moves both past the edge. */}
+      <div style={{ height: DOCK_HEIGHT }} className={cn('pointer-events-auto absolute inset-x-0 bottom-0 flex items-center justify-between gap-2',
+        'border-t border-border bg-background/80 px-3 backdrop-blur-md transition-transform duration-200 ease-out motion-reduce:transition-none',
+        shown ? 'translate-y-0' : 'translate-y-[calc(100%+32px)]')}>
+        <div className="flex max-w-[calc(50%-190px)] min-w-0 items-center gap-0.5">
           <Button variant="ghost" size="sm" data-ui="dock.overview" aria-pressed={nav.overview} disabled={nav.moving}
             className={cn(nav.overview && 'bg-accent text-accent-foreground')} onClick={nav.toggleOverview}>
             <LayoutGrid aria-hidden="true" />Overview
@@ -92,7 +93,7 @@ export function AppDock({ nav, chats, chatTitle, browserVisible, prefs, onPrefsC
             </span>)}
           </span>
         </div>
-        <div className="absolute bottom-px left-1/2 -translate-x-1/2">
+        <div className="absolute left-1/2 -translate-x-1/2" style={{ bottom: TRAY_LIFT }}>
           <DockTray apps={apps} magnify={prefs.magnify}
             openStack={openList === 'saved-sites' || openList === 'downloads' ? openList : null}
             onOpenStack={setOpenList}

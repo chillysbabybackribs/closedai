@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  DEFAULT_DOCK_PREFS, DOCK_RESERVE, DOCK_HEIGHT, HOLD_BAND, REVEAL_EDGE, dockLocation, pointerReveal, readDockPrefs,
+  DEFAULT_DOCK_PREFS, DOCK_REACH, DOCK_RESERVE, DOCK_HEIGHT, TRAY_ICON, TRAY_LIFT, TRAY_MAGNIFIED, TRAY_PADDING, HOLD_BAND, REVEAL_EDGE, dockLocation, pointerReveal, readDockPrefs,
   saveDockPrefs, trayApps, type TrayInput
 } from './dock-model.js'
 
@@ -35,7 +35,12 @@ describe('dock prefs', () => {
 
   it('reserves room past the strip so a pinned dock never overlaps the browser edge margin', () => {
     // titlebar-browser-freeze.ts widens the browser box by 3px when testing overlap.
-    assert.ok(DOCK_RESERVE - DOCK_HEIGHT > 3)
+    assert.ok(DOCK_RESERVE - DOCK_REACH > 3)
+  })
+
+  it('reaches past a magnified tile and floats the resting tray above the strip', () => {
+    assert.ok(DOCK_REACH >= TRAY_LIFT + TRAY_PADDING + TRAY_MAGNIFIED)
+    assert.ok(TRAY_LIFT + 2 * TRAY_PADDING + TRAY_ICON > DOCK_HEIGHT)
   })
 })
 

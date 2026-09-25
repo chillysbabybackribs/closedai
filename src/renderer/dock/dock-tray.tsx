@@ -36,7 +36,8 @@ export function DockTray(props: DockTrayProps): JSX.Element {
   const { apps, magnify, openStack, onOpenStack, onLaunch } = props
   return <Dock data-slot="app-dock-tray" direction="bottom" iconSize={TRAY_ICON} iconMagnification={TRAY_MAGNIFIED}
     disableMagnification={!magnify}
-    className="mx-0 mt-0 h-[54px] gap-1.5 border-border bg-background/70 px-2 py-[3px] shadow-lg">
+    // Height is TRAY_ICON + 2 * TRAY_PADDING + its 1px border; p-1.5 is TRAY_PADDING.
+    className="mx-0 mt-0 h-[62px] gap-2 rounded-[20px] border-border bg-popover/90 p-1.5 shadow-xl">
     {apps.map((app) => <DockIcon key={app.id} padding={0} className="relative rounded-[22%]">
       {app.stack
         ? <Popover open={openStack === app.id} onOpenChange={(open) => onOpenStack(open ? app.id : null)}>
@@ -56,7 +57,7 @@ function TrayButton({ app, stackOpen = false, onLaunch }: { app: TrayApp; stackO
     data-ui="dock.app" data-ui-key={app.id} aria-label={`${app.label}: ${app.note}`}
     onClick={onLaunch ? () => onLaunch(app.id) : undefined}>
     <TrayTile id={app.id} />
-    {app.active && <span className="absolute -bottom-[3px] left-1/2 size-1 -translate-x-1/2 rounded-full bg-foreground/70" aria-hidden="true" />}
+    {app.active && <span className="absolute -bottom-[5px] left-1/2 size-1 -translate-x-1/2 rounded-full bg-foreground/70" aria-hidden="true" />}
   </button>
   return <Tooltip>
     <TooltipTrigger asChild>{app.stack ? <PopoverTrigger asChild>{button}</PopoverTrigger> : button}</TooltipTrigger>
@@ -73,7 +74,7 @@ function TrayTile({ id }: { id: TrayAppId }): JSX.Element {
   return <Avatar className="size-full rounded-[22%] border border-border">
     {icon.kind === 'picture' && <AvatarImage src={icon.src} alt="" draggable={false} />}
     <AvatarFallback className="rounded-[22%] bg-secondary text-foreground">
-      {icon.kind === 'line' && <AppIconMark id={id} size={TRAY_ICON} className="size-[46%]" />}
+      {icon.kind === 'line' && <AppIconMark id={id} size={TRAY_ICON} className="size-[50%]" />}
     </AvatarFallback>
   </Avatar>
 }
