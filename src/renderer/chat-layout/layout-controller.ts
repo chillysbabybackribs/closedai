@@ -6,6 +6,8 @@ import { BROWSER_PANE_ID, WORKSPACE_DOCK_ID, chatPaneIds, isViewTabId, withBrows
 import { addTab, chatTabIds, focusChatTabInLayout, focusedCloseAction, isChatTabActive, moveTab, neighborTile, pruneTabs, removeTab, selectTab, tabIds, tabOwner, type TileDirection } from './layout-tabs.js'
 import { isWorkspaceViewKind, pinOnMove, pruneViewScopes, tileView, viewScope, viewTabId, workspaceView, type ViewKind } from './layout-views.js'
 import { removalNotice } from './layout-copy.js'
+import { adoptTabs, initialWindowTree } from './layout-windows.js'
+import { appWindow, onAppWindowCommand, otherWindowFocused, tabsHeldElsewhere, useAppWindows } from '../app-windows/app-window-store.js'
 import { assignGroups, presetLayout, presetSlots, singleGroup, type CanvasSize, type LayoutPreset } from './layout-presets.js'
 const ERROR_TTL_MS = 8000
 /** Main announces a selection within one workspace event; past this the layout resyncs instead of staying locked. */
@@ -409,11 +411,71 @@ export function useChatLayout(
       release()
     }
   }, [cwd, clearError, fail, release])
+  // Move a tab into a new window of its own; the last tab stays, so this window is never empty.
+  const detachTab = useCallback(async (id: string): Promise<void> => {
+    const remaining = removeTab(current.current.tree, id)
+    if (pending.current || !remaining || !paneIds(remaining).length) return
+    try {
+      await window.closedai.windows.detachTabs(cwd, [id])
+      if (selected.current === id) selected.current = chatPaneIds(remaining)[0] ?? id
+      setLayout((value) => ({ ...value, tree: withoutTab(value.tree, id) }))
+      clearError()
+    } catch (reason) { fail(reason) }
+  }, [cwd, clearError, fail])
+
+  // A detached window's tab goes back to the main window; its last tab takes the window with it.
+  const returnTab = useCallback(async (id: string): Promise<void> => {
+    if (pending.current || self.main) return
+    const remaining = removeTab(current.current.tree, id)
+    try {
+      await window.closedai.windows.returnTabs([id])
+      if (!remaining || !paneIds(remaining).length) await window.closedai.window.close()
+      else setLayout((value) => ({ ...value, tree: withoutTab(value.tree, id) }))
+    } catch (reason) { fail(reason) }
+  }, [fail])
+
+  const activateTabRef = useRef(activateTab)
+  activateTabRef.current = activateTab
+  useEffect(() => onAppWindowCommand((command) => {
+    if (command.type === 'activateTab') void activateTabRef.current(command.tabId)
+    else if (command.type === 'adoptTabs') {
+      setLayout((value) => ({ ...value, tree: adoptTabs(value.tree, command.tabIds, tabOwner(value.tree, selected.current)) }))
+    }
+  }), [])
+
+  // A window brought to the front makes its own chat the selected one, so the keyboard, menus and
+  // tools act on what the user is looking at rather than on a chat in the window behind.
+  useEffect(() => {
+    const claimSelection = (): void => {
+      const tree = current.current.tree
+      const next = latestSnapshot.current().selectedPaneId
+      if (pending.current || tabIds(tree).includes(next) || (self.main && !tabsHeldElsewhere().has(next))) return
+      const own = chatTabIds(tree).includes(selected.current) ? selected.current : chatPaneIds(tree)[0]
+      if (own) void window.closedai.chat.selectPane(own).catch(() => {})
+    }
+    if (document.hasFocus()) claimSelection()
+    window.addEventListener('focus', claimSelection)
+    return () => window.removeEventListener('focus', claimSelection)
+  }, [])
+
   const toggleBrowser = useCallback(() => setLayout((value) => ({ ...value, browserVisible: !value.browserVisible })), [])
   const showBrowser = useCallback(() => setLayout((value) => value.browserVisible ? value : { ...value, browserVisible: true }), [])
   return {
-    ...layout, error: error?.text ?? '', notice: notice?.text ?? '', busy, dock, newChat, continueChat, focusPane,
+    ...layout, browserVisible: self.main && layout.browserVisible, detached: !self.main,
+    error: error?.text ?? '', notice: notice?.text ?? '', busy, dock, newChat, continueChat, focusPane,
     activateTab, openView, toggleView, pinView, moveTabToTile, closeTab, hide, closeFocused, resize, arrange,
-    toggleBrowser, showBrowser
+    toggleBrowser, showBrowser, detachTab, returnTab
   }
+}
+
+/** A tab another window holds is brought forward there instead of being opened twice. */
+async function revealedElsewhere(tree: ChatLayout, id: string): Promise<boolean> {
+  if (tabIds(tree).includes(id) || !tabsHeldElsewhere().has(id)) return false
+  return window.closedai.windows.revealTab(id)
+}
+
+function withoutTab(tree: ChatLayout, id: string): ChatLayout {
+  const removed = removeTab(tree, id)
+  const next = removed ? ensureExpandedGroup(removed) : removed
+  return next && paneIds(next).length ? next : tree
 }

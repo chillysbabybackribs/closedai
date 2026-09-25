@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type ReactElement, type Ref } from 'react'
-import { BrowserPane } from '../browser-pane.js'
 import type { BrowserSavedSitesController } from '../browser-saved-sites-controller.js'
-import { useBrowserController } from '../browser-controller.js'
+import { onAppWindowCommand } from '../app-windows/app-window-store.js'
+import { WorkspaceBrowser } from './workspace-browser.js'
 import type { AgentRunStartOptions } from '../../shared/agent-runs.js'
 import { type useChatController } from '../chat-controller.js'
 import { injectComposerDraft } from '../composer-drafts.js'
@@ -57,8 +57,6 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
       event.dataTransfer.effectAllowed = 'move'
     }}><span className="browser-layout-drag-dots" aria-hidden="true" /></button>, [layout.busy])
   const [layoutDragging, setLayoutDragging] = useState(false)
-  const browser = useBrowserController(`${layoutRevision}\0${layout.browserVisible ? '1' : '0'}`, layout.browserVisible, layoutDragging)
-  const imageTabId = browser.browser.image?.tabId
   const [browserRevealVersion, setBrowserRevealVersion] = useState(0)
   const [presetsOpen, setPresetsOpen] = useState(false)
   const [agentsMenuPaneId, setAgentsMenuPaneId] = useState<string | null>(null)
@@ -81,13 +79,6 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
       onNewChat={() => { void layout.newChat(id) }} />
   }
   const renderPane = useCallback((id: string, visible: boolean) => renderPaneRef.current(id, visible), [])
-  const renderBrowser = useMemo(() => (
-    <div className="workspace-right" data-mode="browser" data-with-browser={layout.browserVisible ? 'yes' : 'no'}>
-      <div className={`workspace-surface workspace-surface-browser${layout.browserVisible ? '' : ' is-collapsed'}`}>
-        <BrowserPane controller={browser} savedSites={savedSites} dragHandle={browserDragHandle} />
-      </div>
-    </div>
-  ), [browser, browserDragHandle, layout.browserVisible, savedSites])
   const continueChatRef = useRef<(id: string) => Promise<void>>(async () => {})
   const startAgentRef = useRef<(id: string, options: AgentRunStartOptions) => Promise<void>>(async () => {})
   startAgentRef.current = async (launchPaneId, options) => {
@@ -116,28 +107,30 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
     layout.showBrowser()
     setBrowserRevealVersion((value) => value + 1)
   }, [layout.showBrowser])
+  const renderBrowser = useMemo(() => layout.detached ? null : <WorkspaceBrowser
+    layoutKey={`${layoutRevision}\0${layout.browserVisible ? '1' : '0'}`} visible={layout.browserVisible} occluded={layoutDragging}
+    savedSites={savedSites} dragHandle={browserDragHandle} onReveal={revealBrowser} onShow={layout.showBrowser} />,
+  [layout.detached, layoutRevision, layout.browserVisible, layoutDragging, savedSites, browserDragHandle, revealBrowser, layout.showBrowser])
+  // The browser lives in the main window: a detached window's Browser control brings that forward.
+  const toggleBrowserHere = useCallback(() => {
+    if (layout.detached) { void window.closedai.windows.showBrowser(); return }
+    layout.toggleBrowser()
+    setBrowserRevealVersion((value) => value + 1)
+  }, [layout.detached, layout.toggleBrowser])
+  useEffect(() => onAppWindowCommand((command) => { if (command.type === 'showBrowser') revealBrowser() }), [revealBrowser])
   useImperativeHandle(ref, () => ({
     splitChat: (chatId, edge) => layout.dock(chatId, chat.selectedPaneId, edge),
     activateChat: (chatId) => layout.activateTab(chatId),
     openView: (kind) => layout.openView(kind, chat.selectedPaneId),
     toggleView: (kind) => layout.toggleView(kind),
-    toggleBrowser: () => {
-      layout.toggleBrowser()
-      setBrowserRevealVersion((value) => value + 1)
-    },
+    toggleBrowser: toggleBrowserHere,
     closeFocused: () => layout.closeFocused(),
     openLayoutPresets: () => setPresetsOpen(true),
     applyPreset: (preset) => {
       setBrowserRevealVersion((value) => value + 1)
       void layout.arrange(preset, canvasSize.current)
     }
-  }), [layout.dock, layout.activateTab, layout.openView, layout.toggleView, layout.toggleBrowser, layout.closeFocused, layout.arrange, chat.selectedPaneId])
-  useEffect(() => window.closedai.browser.onState((state) => {
-    if (state.image || state.url.startsWith('file:')) revealBrowser()
-  }), [revealBrowser])
-  useEffect(() => {
-    if (imageTabId) layout.showBrowser()
-  }, [imageTabId, layout.showBrowser])
+  }), [layout.dock, layout.activateTab, layout.openView, layout.toggleView, toggleBrowserHere, layout.closeFocused, layout.arrange, chat.selectedPaneId])
   const select = useCallback((id: string): void => { void layout.focusPane(id) }, [layout.focusPane])
   const onDock = useCallback((id: string | null, target: string, edge: import('./layout-tree.js').DockEdge | null, singleTab?: boolean) => {
     return layout.dock(id, target, edge, singleTab)
@@ -151,7 +144,11 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
   const onOpenPresets = useCallback(() => setPresetsOpen(true), [])
   const onHide = useCallback((id: string) => { void layout.hide(id) }, [layout.hide])
   const onSizeChange = useCallback((size: CanvasSize) => { canvasSize.current = size }, [])
-  const actions = useMemo(() => ({ moveTab: layout.moveTabToTile }), [layout.moveTabToTile])
+  const actions = useMemo(() => ({
+    moveTab: layout.moveTabToTile,
+    detachTab: (id: string) => { void layout.detachTab(id) },
+    returnTab: layout.detached ? (id: string) => { void layout.returnTab(id) } : undefined
+  }), [layout.moveTabToTile, layout.detachTab, layout.returnTab, layout.detached])
   const onRename = useMemo(() => onRenameChat
     ? (id: string) => onRenameChat(id, chatsRef.current.find((row) => row.paneId === id)?.title ?? 'New chat')
     : undefined, [onRenameChat])
@@ -171,23 +168,19 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
     openSite: openSavedSite
   }), [savedSites.update, savedSites.remove, openSavedSite])
   const reportSavedSitesError = useCallback((reason: unknown) => { onSavedSitesError?.(reason) }, [onSavedSitesError])
-  const toggleBrowserPane = useCallback(() => {
-    layout.toggleBrowser()
-    setBrowserRevealVersion((value) => value + 1)
-  }, [layout.toggleBrowser])
   const focusChatTab = useCallback((chatId: string, anchorPaneId: string) => {
     const tile = tabOwner(layout.tree, anchorPaneId) ?? anchorPaneId
     return layout.activateTab(chatId, tile)
   }, [layout.activateTab, layout.tree])
   const paneActions = useMemo<WorkspacePaneActions>(() => ({
-    toggleBrowser: toggleBrowserPane,
+    toggleBrowser: toggleBrowserHere,
     newChat: (paneId) => { void layout.newChat(paneId) },
     openAgentsView: (anchorPaneId) => layout.openView('agents', anchorPaneId),
     focusChatTab,
     startAgentFromPane: (paneId, options) => startAgentRef.current(paneId, options),
     agentsMenuPaneId,
     setAgentsMenuPaneId
-  }), [toggleBrowserPane, layout.newChat, layout.openView, focusChatTab, agentsMenuPaneId])
+  }), [toggleBrowserHere, layout.newChat, layout.openView, focusChatTab, agentsMenuPaneId])
   const viewContext = useMemo<WorkspaceViewContextValue>(() => ({
     tree: layout.tree, views: layout.views, selectedPaneId: chat.selectedPaneId, chats: chat.chats, title: chatTitle,
     listChats: chat.listChats, archiveChat: archiveChat ?? chat.archiveChat, activateChat: layout.activateTab,
