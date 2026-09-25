@@ -13,6 +13,7 @@ import { useChatLayout } from './layout-controller.js'
 import { paneIds } from './layout-tree.js'
 import { BrowserWindowControls } from './floating/window-controls.js'
 import { minimizedWindows, type MinimizedWindow } from './floating/minimized-windows.js'
+import { hasFloatingWindows } from './floating/window-arrange.js'
 import { tabOwner } from './layout-tabs.js'
 import { VIEW_LABELS, parseViewTab, type ViewKind } from './layout-views.js'
 import { LayoutPresetsDialog } from './layout-presets-dialog.js'
@@ -39,9 +40,11 @@ export type ChatLayoutHandle = {
   applyPreset: (preset: LayoutPreset) => void
   /** Bring a minimized window back from the dock. */
   restoreWindow: (id: string) => void
+  /** Tile windows: every floating window back into the last tiled layout (dock, View menu, Ctrl+Shift+L). */
+  tileWindows: () => void
 }
 
-export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, toolsPreset = null, browserHeld = false, spaceId, onRenameChat, onSavedSitesError, onBrowserVisibleChange, onMinimizedChange, archiveChat, ref }: {
+export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, toolsPreset = null, browserHeld = false, spaceId, onRenameChat, onSavedSitesError, onBrowserVisibleChange, onMinimizedChange, onFloatingChange, archiveChat, ref }: {
   chat: ReturnType<typeof useChatController>
   savedSites: BrowserSavedSitesController
   reviewQueue: ChatReviewQueue
@@ -57,6 +60,8 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
   onBrowserVisibleChange?: (visible: boolean) => void
   /** Windows minimized to the dock, for the dock outside this workspace. */
   onMinimizedChange?: (windows: MinimizedWindow[]) => void
+  /** Whether any window floats, so Tile windows outside this workspace knows it has work. */
+  onFloatingChange?: (floating: boolean) => void
   archiveChat?: (chatId: string) => Promise<void>
   ref?: Ref<ChatLayoutHandle>
 }) {
@@ -147,6 +152,9 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
   const minimizedKey = JSON.stringify(minimized)
   useEffect(() => { onMinimizedChange?.(JSON.parse(minimizedKey) as MinimizedWindow[]) }, [minimizedKey, onMinimizedChange])
   useEffect(() => () => onMinimizedChange?.([]), [onMinimizedChange])
+  const floating = hasFloatingWindows(layout.tree)
+  useEffect(() => { onFloatingChange?.(floating) }, [floating, onFloatingChange])
+  useEffect(() => () => onFloatingChange?.(false), [onFloatingChange])
   useImperativeHandle(ref, () => ({
     splitChat: (chatId, edge) => layout.dock(chatId, chat.selectedPaneId, edge),
     activateChat: (chatId) => layout.activateTab(chatId),
@@ -163,7 +171,11 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
       setBrowserRevealVersion((value) => value + 1)
       void layout.arrange(preset, canvasSize.current)
     },
-    restoreWindow: (id) => layout.windows.restore(id)
+    restoreWindow: (id) => layout.windows.restore(id),
+    tileWindows: () => {
+      setBrowserRevealVersion((value) => value + 1)
+      layout.windows.tileAll()
+    }
   }), [layout.windows, layout.dock, layout.activateTab, layout.openView, layout.toggleView, toggleBrowserHere, revealBrowser, savedSites, layout.closeFocused, layout.arrange, chat.selectedPaneId])
   const select = useCallback((id: string): void => { void layout.focusPane(id) }, [layout.focusPane])
   const onDock = useCallback((id: string | null, target: string, edge: import('./layout-tree.js').DockEdge | null, singleTab?: boolean) => {

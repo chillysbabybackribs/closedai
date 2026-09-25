@@ -11,7 +11,7 @@ import { WindowControls } from './floating/window-controls.js'
 import { paneHideHint, tabCloseHint } from './layout-copy.js'
 import type { TabActivity } from './tab-activity.js'
 
-function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset, title, activity, reviewQueue, row, soloTile, setSoloPaneId, tabFocus, hideHint, closeHint, tabActivity, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onTogglePin, onPauseTab, onResumeTab, onOpenPresets, onHide, setDragging, canMaximize, isThisTileSolo, canMinimize, onMinimize }: {
+function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset, title, activity, reviewQueue, row, soloTile, setSoloPaneId, tabFocus, hideHint, closeHint, tabActivity, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onTogglePin, onPauseTab, onResumeTab, onOpenPresets, onHide, setDragging, canMaximize, isThisTileSolo, canMinimize, onMinimize, onTile, onTop, onKeepOnTop }: {
   activeId: string
   tabs: string[]
   chatCount: number
@@ -42,6 +42,10 @@ function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset
   isThisTileSolo: boolean
   canMinimize: boolean
   onMinimize: (id: string) => void
+  /** Only while the window floats: put it back into its slot of the tiled layout. */
+  onTile?: () => void
+  onTop: boolean
+  onKeepOnTop: (id: string, onTop: boolean) => void
 }) {
   // A view in front has no chat actions: rename, pin, pause belong to the chat it follows, not the tab.
   const view = isViewTabId(activeId)
@@ -53,7 +57,8 @@ function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset
         }}
         onDoubleClick={(event) => {
           if ((event.target as HTMLElement).closest('button')) return
-          if (canMaximize || isThisTileSolo) setSoloPaneId((current) => current ? null : activeId)
+          if (onTile && !isThisTileSolo) onTile()
+          else if (canMaximize || isThisTileSolo) setSoloPaneId((current) => current ? null : activeId)
         }}>
         {/* The canvas moves the window from a press here or on the header's empty space. */}
         <button type="button" className="chat-layout-drag" data-ui="layout.pane-drag" data-ui-key={activeId}
@@ -73,7 +78,7 @@ function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset
           onClick={() => onNewChat(activeId)}>
           <Plus size={14} aria-hidden="true" />
         </button>
-        <WindowControls id={activeId} busy={busy} maximized={isThisTileSolo} canMinimize={canMinimize}
+        <WindowControls id={activeId} busy={busy} maximized={isThisTileSolo} floating={Boolean(onTile)} canMinimize={canMinimize}
           canMaximize={canMaximize} closeLabel={`Close window · ${hideHint}`} canClose={chatCount >= 2}
           onMinimize={() => {
             if (soloTile) setSoloPaneId(null)
@@ -88,7 +93,7 @@ function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset
     </ContextMenu.Trigger>
     <ChatLayoutContextMenu activeId={activeId} tabs={tabs} chatCount={chatCount} busy={busy}
       hideHint={hideHint} closeHint={closeHint} tabActivity={tabActivity}
-      pinned={row?.pinnedAt != null}
+      pinned={row?.pinnedAt != null} onTop={onTop} onToggleOnTop={() => onKeepOnTop(activeId, !onTop)}
       onOpenPresets={onOpenPresets ? () => { if (soloTile) setSoloPaneId(null); onOpenPresets() } : undefined}
       onRename={onRenameChat && !view ? () => onRenameChat(activeId) : undefined}
       onTogglePin={onTogglePin && !view ? () => onTogglePin(activeId, row?.pinnedAt == null) : undefined}

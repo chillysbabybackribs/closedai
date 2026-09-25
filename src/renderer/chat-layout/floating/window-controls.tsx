@@ -5,10 +5,12 @@ import type { ResizeEdge } from './window-layout.js'
 const EDGES: readonly ResizeEdge[] = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw']
 
 /** A window's minimize, maximize and close buttons, at the right end of its header. */
-export function WindowControls({ id, busy, maximized, canMinimize, canMaximize, closeLabel, canClose, onMinimize, onToggleMaximize, onClose }: {
+export function WindowControls({ id, busy, maximized, floating = false, canMinimize, canMaximize, closeLabel, canClose, onMinimize, onToggleMaximize, onClose }: {
   id: string
   busy: boolean
   maximized: boolean
+  /** A floating window's header double-click tiles it instead of maximizing. */
+  floating?: boolean
   canMinimize: boolean
   canMaximize: boolean
   /** Omitted for a window that closes some other way (the browser hides from the dock). */
@@ -25,7 +27,7 @@ export function WindowControls({ id, busy, maximized, canMinimize, canMaximize, 
       <Minus size={14} aria-hidden="true" />
     </button>
     <button type="button" data-ui="layout.window-maximize" data-ui-key={id} disabled={!canMaximize && !maximized}
-      title={`${maximizeLabel} · double-click the header`} aria-label={maximizeLabel} aria-pressed={maximized}
+      title={floating ? maximizeLabel : `${maximizeLabel} · double-click the header`} aria-label={maximizeLabel} aria-pressed={maximized}
       onClick={onToggleMaximize}>
       {maximized ? <Copy size={12} aria-hidden="true" /> : <Square size={11} aria-hidden="true" />}
     </button>
@@ -48,13 +50,13 @@ export function WindowResizeHandles({ id, onStart }: {
 }
 
 /** The canvas owns maximizing; the browser's header, rendered by the workspace, reads it here. */
-export const BrowserWindowContext = createContext<{ maximized: boolean; canMaximize: boolean; toggleMaximize: () => void }>({
-  maximized: false, canMaximize: false, toggleMaximize: () => {}
+export const BrowserWindowContext = createContext<{ maximized: boolean; floating: boolean; canMaximize: boolean; toggleMaximize: () => void }>({
+  maximized: false, floating: false, canMaximize: false, toggleMaximize: () => {}
 })
 
 /** The browser window's buttons: minimizing hides it, and the dock's Browser icon brings it back. */
 export function BrowserWindowControls({ busy, onMinimize }: { busy: boolean; onMinimize: () => void }): JSX.Element {
-  const { maximized, canMaximize, toggleMaximize } = useContext(BrowserWindowContext)
-  return <WindowControls id="browser" busy={busy} maximized={maximized} canMinimize canMaximize={canMaximize}
+  const { maximized, floating, canMaximize, toggleMaximize } = useContext(BrowserWindowContext)
+  return <WindowControls id="browser" busy={busy} maximized={maximized} floating={floating} canMinimize canMaximize={canMaximize}
     onMinimize={onMinimize} onToggleMaximize={toggleMaximize} />
 }

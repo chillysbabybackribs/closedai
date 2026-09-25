@@ -265,6 +265,7 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
   }
   const browserWindow = useMemo(() => ({
     maximized: soloTile?.id === BROWSER_PANE_ID,
+    floating: floatingIds.has(BROWSER_PANE_ID),
     canMaximize: chatCount >= 1 || floatingIds.has(BROWSER_PANE_ID),
     toggleMaximize: () => setSoloPaneId((current) => current ? null : BROWSER_PANE_ID)
   }), [soloTile?.id, chatCount, floatingIds.has(BROWSER_PANE_ID), setSoloPaneId])

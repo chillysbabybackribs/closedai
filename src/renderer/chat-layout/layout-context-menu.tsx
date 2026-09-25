@@ -1,6 +1,6 @@
 import { createContext, useContext, type ReactNode } from 'react'
 import { ContextMenu } from 'radix-ui'
-import { ArrowLeftToLine, ArrowRightToLine, LayoutGrid, PanelLeftClose, Pause, Pencil, Pin, PinOff, Play, SquareArrowDownLeft, SquareArrowOutUpRight, X } from 'lucide-react'
+import { ArrowLeftToLine, ArrowRightToLine, Check, Layers, LayoutGrid, PanelLeftClose, Pause, Pencil, Pin, PinOff, Play, SquareArrowDownLeft, SquareArrowOutUpRight, X } from 'lucide-react'
 import type { TabActivity } from './tab-activity.js'
 import type { TileDirection } from './layout-tabs.js'
 
@@ -16,7 +16,7 @@ export const ChatLayoutActions = createContext<{
 }>({})
 
 export function ChatLayoutContextMenu({ activeId, tabs, chatCount, busy, hideHint, closeHint, tabActivity,
-  pinned, onOpenPresets, onRename, onTogglePin, onPause, onResume, onCloseTab, onHide
+  pinned, onTop, onToggleOnTop, onOpenPresets, onRename, onTogglePin, onPause, onResume, onCloseTab, onHide
 }: {
   activeId: string
   tabs: string[]
@@ -26,6 +26,9 @@ export function ChatLayoutContextMenu({ activeId, tabs, chatCount, busy, hideHin
   closeHint: string
   tabActivity?: TabActivity
   pinned: boolean
+  /** Keep on top: the whole window, every tab in it, stays above windows without it. */
+  onTop: boolean
+  onToggleOnTop: () => void
   onOpenPresets?: () => void
   onRename?: () => void
   onTogglePin?: () => void
@@ -37,7 +40,7 @@ export function ChatLayoutContextMenu({ activeId, tabs, chatCount, busy, hideHin
   return <ContextMenu.Portal>
     <ChatLayoutContextMenuContent activeId={activeId} tabs={tabs} chatCount={chatCount} busy={busy}
       hideHint={hideHint} closeHint={closeHint} tabActivity={tabActivity} pinned={pinned}
-      onOpenPresets={onOpenPresets} onRename={onRename} onTogglePin={onTogglePin}
+      onTop={onTop} onToggleOnTop={onToggleOnTop} onOpenPresets={onOpenPresets} onRename={onRename} onTogglePin={onTogglePin}
       onPause={onPause} onResume={onResume}
       onCloseTab={onCloseTab} onHide={onHide} />
   </ContextMenu.Portal>
@@ -45,7 +48,7 @@ export function ChatLayoutContextMenu({ activeId, tabs, chatCount, busy, hideHin
 
 /** Menu body (also mounted in tests without Radix portal). */
 export function ChatLayoutContextMenuContent(props: Parameters<typeof ChatLayoutContextMenu>[0]): ReactNode {
-  const { activeId, tabs, chatCount, busy, hideHint, closeHint, tabActivity, pinned, onOpenPresets, onRename,
+  const { activeId, tabs, chatCount, busy, hideHint, closeHint, tabActivity, pinned, onTop, onToggleOnTop, onOpenPresets, onRename,
     onTogglePin, onPause, onResume, onCloseTab, onHide } = props
   const { moveTab, detachTab, returnTab } = useContext(ChatLayoutActions)
   const canHidePane = chatCount >= 2
@@ -82,7 +85,17 @@ export function ChatLayoutContextMenuContent(props: Parameters<typeof ChatLayout
       <LayoutMenuRow data-ui="layout.tab-return" data-ui-key={activeId} label="Move to main window"
         icon={<SquareArrowDownLeft size={ICON} aria-hidden="true" />} disabled={busy} onSelect={() => returnTab(activeId)} />
     )}
-    {hasCloseActions && onOpenPresets && <ContextMenu.Separator className="titlebar-menu-separator" />}
+    {hasCloseActions && <ContextMenu.Separator className="titlebar-menu-separator" />}
+    <ContextMenu.CheckboxItem className="titlebar-menu-item chat-layout-menu-item" data-ui="layout.keep-on-top"
+      data-ui-key={activeId} checked={onTop} onCheckedChange={onToggleOnTop}>
+      <div className="chat-layout-menu-item-main">
+        <div className="chat-layout-menu-item-left">
+          <Layers size={ICON} aria-hidden="true" />
+          <span>Keep on top</span>
+        </div>
+      </div>
+      <ContextMenu.ItemIndicator className="titlebar-menu-shortcut"><Check size={14} aria-hidden="true" /></ContextMenu.ItemIndicator>
+    </ContextMenu.CheckboxItem>
     {onOpenPresets && (
       <LayoutMenuRow data-ui="layout.presets" data-ui-key={activeId} label="Workspace layout…"
         icon={<LayoutGrid size={ICON} aria-hidden="true" />} disabled={busy} onSelect={onOpenPresets} />
