@@ -1,0 +1,99 @@
+/* Tiles as windows (chat-layout/floating/): window buttons, floating frames, resize grips and
+   the snap outline shown while a window moves. */
+
+/* Minimize, maximize and close sit at the right end of a window's header. */
+.chat-window-controls {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 1px;
+}
+.chat-layout-header .chat-window-controls button,
+.browser-tabstrip-row > .chat-window-controls button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  color: var(--chrome-fg);
+  background: transparent;
+  cursor: pointer;
+}
+.browser-tabstrip-row > .chat-window-controls button:hover:not(:disabled) {
+  color: var(--chrome-fg-strong);
+  background: var(--surface-control-hover);
+}
+.browser-tabstrip-row > .chat-window-controls button:disabled { opacity: 0.3; cursor: default; }
+.browser-tabstrip-row > .chat-window-controls button:focus-visible { outline: 1px solid var(--focus-ink); outline-offset: -1px; }
+.chat-window-controls button[data-ui='layout.pane-hide']:hover:not(:disabled) { color: #fff; background: #e5484d; }
+/* The window in front of the keyboard keeps full-strength buttons; the others step back. */
+.chat-layout-tile:not([data-selected='true']) .chat-window-controls { opacity: 0.65; }
+.chat-layout-tile:not([data-selected='true']):hover .chat-window-controls { opacity: 1; }
+
+/* The browser's tab strip scrolls; its window buttons stay put beside it on the same surface. */
+.browser-tabstrip-host > .browser-tabstrip-row {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  border-radius: 9px 9px 0 0;
+  background: var(--tab-active-surface, #191919);
+}
+.browser-tabstrip-row > .browser-tabstrip { flex: 1; border-top-right-radius: 0; }
+.browser-tabstrip-row > .chat-window-controls { padding: 4px 4px 0 2px; }
+
+/* A floating window is lifted higher than the tiles. Its body clips the rounded corners, so
+   the grips can reach past the edge where the native page never covers them. */
+:root .chat-layout-canvas .chat-layout-tile[data-window='floating']:not([data-drag-placeholder]) {
+  overflow: visible;
+  box-shadow:
+    0 0 0 1px var(--tile-edge),
+    0 2px 4px rgb(0 0 0 / 30%),
+    0 22px 56px rgb(0 0 0 / 42%);
+}
+.chat-layout-tile[data-window='floating'] > .chat-layout-tile-body { overflow: hidden; border-radius: 9px; }
+/* The moving window rides above every other window and the snap outline. */
+.chat-layout-canvas .chat-layout-tile[data-moving] { z-index: 1000 !important; }
+
+.chat-window-resize { position: absolute; z-index: 2; touch-action: none; }
+.chat-window-resize[data-edge='n'] { top: -4px; left: 10px; right: 10px; height: 8px; cursor: ns-resize; }
+.chat-window-resize[data-edge='s'] { bottom: -4px; left: 10px; right: 10px; height: 8px; cursor: ns-resize; }
+.chat-window-resize[data-edge='e'] { right: -4px; top: 10px; bottom: 10px; width: 8px; cursor: ew-resize; }
+.chat-window-resize[data-edge='w'] { left: -4px; top: 10px; bottom: 10px; width: 8px; cursor: ew-resize; }
+.chat-window-resize[data-edge='ne'] { top: -4px; right: -4px; width: 14px; height: 14px; cursor: nesw-resize; }
+.chat-window-resize[data-edge='sw'] { bottom: -4px; left: -4px; width: 14px; height: 14px; cursor: nesw-resize; }
+.chat-window-resize[data-edge='nw'] { top: -4px; left: -4px; width: 14px; height: 14px; cursor: nwse-resize; }
+.chat-window-resize[data-edge='se'] { bottom: -4px; right: -4px; width: 14px; height: 14px; cursor: nwse-resize; }
+
+/* Where the window lands if released now: a filled outline for a place, a ring for a window to join. */
+.chat-layout-snap-preview {
+  position: absolute;
+  z-index: 900;
+  box-sizing: border-box;
+  border: 1px solid var(--focus-ink);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--focus-ink) 16%, transparent);
+  pointer-events: none;
+  transition: left 120ms ease-out, top 120ms ease-out, width 120ms ease-out, height 120ms ease-out;
+}
+.chat-layout-snap-preview[data-kind='group'] {
+  border-width: 2px;
+  background: color-mix(in srgb, var(--focus-ink) 6%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat-layout-snap-preview { transition: none; }
+}
+
+/* While a window moves or resizes, the whole page takes that cursor and nothing selects text. */
+body[data-window-gesture] * { user-select: none !important; }
+body[data-window-gesture='move'], body[data-window-gesture='move'] * { cursor: grabbing !important; }
+body:is([data-window-gesture='n'], [data-window-gesture='s']),
+body:is([data-window-gesture='n'], [data-window-gesture='s']) * { cursor: ns-resize !important; }
+body:is([data-window-gesture='e'], [data-window-gesture='w']),
+body:is([data-window-gesture='e'], [data-window-gesture='w']) * { cursor: ew-resize !important; }
+body:is([data-window-gesture='ne'], [data-window-gesture='sw']),
+body:is([data-window-gesture='ne'], [data-window-gesture='sw']) * { cursor: nesw-resize !important; }
+body:is([data-window-gesture='nw'], [data-window-gesture='se']),
+body:is([data-window-gesture='nw'], [data-window-gesture='se']) * { cursor: nwse-resize !important; }

@@ -98,21 +98,6 @@
 .browser-layout-drag:focus-visible { outline: 1px solid var(--focus-ink); outline-offset: -2px; }
 .browser-layout-drag:active { cursor: grabbing; }
 .browser-layout-drag:disabled { opacity: 0.3; cursor: default; }
-.chat-layout-workspace-dock {
-  position: absolute;
-  top: 38px;
-  bottom: 0;
-  width: 32px;
-  z-index: 6;
-  visibility: hidden;
-  background: color-mix(in srgb, var(--focus-ink) 12%, transparent);
-  border: 1px solid var(--focus-ink);
-}
-.chat-layout-workspace-dock[data-edge='left'] { left: 0; }
-.chat-layout-workspace-dock[data-edge='right'] { right: 0; }
-.chat-layout-workspace-dock { pointer-events: none; display: grid; place-items: center; }
-.chat-layout-workspace-dock span { writing-mode: vertical-rl; font-size: 11px; color: var(--chrome-fg-strong); }
-.chat-layout-workspace-dock[data-active='true'] { visibility: visible; }
 .chat-layout-canvas { position: relative; width: 100%; height: 100%; }
 /* Preview geometry is already frame-coalesced. Tiles glide between previews through
    transform animations (layout-motion.ts); animating dimensions would reflow transcripts
