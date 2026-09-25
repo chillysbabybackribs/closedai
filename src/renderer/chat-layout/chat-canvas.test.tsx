@@ -145,7 +145,7 @@ test('ChatCanvas names running close/hide actions and overlays a pane status not
     tree: tabbedTree,
     selectedId: 'tab-1',
     busy: false,
-    notice: 'Pane hidden · Tasks continue in the background',
+    notice: 'Window closed · Tasks continue in the background',
     browserVisible: false,
     renderBrowser: createElement('div', { id: 'browser-content' }, 'Browser'),
     onDragActive: () => {},
@@ -168,7 +168,7 @@ test('ChatCanvas names running close/hide actions and overlays a pane status not
   assert.match(html, /aria-label="Close tab: Chat tab-2 · Task keeps running"/)
   assert.match(html, /title="Close tab · Does not stop tasks"/)
   assert.match(html, /data-ui="layout\.pane-hide"[^>]*title="Close window · Tasks keep running"/)
-  assert.match(html, /class="chat-layout-notice"[^>]*>Pane hidden · Tasks continue in the background/)
+  assert.match(html, /class="chat-layout-notice"[^>]*>Window closed · Tasks continue in the background/)
 })
 
 test('ChatCanvas renders a view tab with its kind glyph, no chat status, and a new-chat button', () => {

@@ -65,7 +65,7 @@ export function ChatLayoutContextMenuContent(props: Parameters<typeof ChatLayout
         shortcut="Ctrl+W" icon={<X size={ICON} aria-hidden="true" />} disabled={busy} onSelect={onCloseTab} />
     )}
     {canHidePane && (
-      <LayoutMenuRow data-ui="layout.pane-hide" data-ui-key={activeId} label="Hide pane" hint={hideHint}
+      <LayoutMenuRow data-ui="layout.pane-hide" data-ui-key={activeId} label="Close window" hint={hideHint}
         icon={<PanelLeftClose size={ICON} aria-hidden="true" />} disabled={busy} onSelect={onHide} />
     )}
     {canMoveTab && <>

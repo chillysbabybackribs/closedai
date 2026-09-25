@@ -354,7 +354,7 @@ export function useChatLayout(
         return next && paneIds(next).length ? { ...value, tree: next } : value
       })
       clearError()
-      reportRemoval(tabIds(tree).filter((tab) => tabOwner(tree, tab) === id), 'Pane hidden')
+      reportRemoval(tabIds(tree).filter((tab) => tabOwner(tree, tab) === id), 'Window closed')
     } catch (reason) { fail(reason) }
     finally { pending.current = false }
   }, [clearError, fail, reportRemoval])
