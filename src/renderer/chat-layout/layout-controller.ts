@@ -2,13 +2,14 @@ import { ensureExpandedGroup, layoutGroups } from './layout-docking.js'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ChatWorkspaceSnapshot } from '../../shared/chat-peers.js'
 import { errorMessage } from '../error-message.js'
-import { BROWSER_PANE_ID, WORKSPACE_DOCK_ID, chatPaneIds, type Rect, isViewTabId, withBrowser, dockBrowser, dockPane, paneIds, readLayout, removePane, resizeSplit, saveLayout, type ChatLayout, type DockEdge, type SplitResizePhase } from './layout-tree.js'
+import { BROWSER_PANE_ID, WORKSPACE_DOCK_ID, chatPaneIds, isViewTabId, withBrowser, dockBrowser, dockPane, paneIds, readLayout, removePane, resizeSplit, saveLayout, type ChatLayout, type DockEdge, type SplitResizePhase } from './layout-tree.js'
 import { addTab, chatTabIds, focusChatTabInLayout, focusedCloseAction, isChatTabActive, moveTab, neighborTile, pruneTabs, removeTab, selectTab, tabIds, tabOwner, type TileDirection } from './layout-tabs.js'
 import { isWorkspaceViewKind, pinOnMove, pruneViewScopes, tileView, viewScope, viewTabId, workspaceView, type ViewKind } from './layout-views.js'
 import { removalNotice } from './layout-copy.js'
 import { adoptTabs, initialWindowTree } from './layout-windows.js'
 import { adoptsUnheldChats, appWindow, onAppWindowCommand, tabsHeldElsewhere, useAppWindows } from '../app-windows/app-window-store.js'
-import { floatBeside, floatWindow, groupWindow, minimizeWindow, raiseWindow, restoreWindow, snapWindow } from './floating/window-layout.js'
+import { floatBeside, groupWindow, minimizeWindow, raiseWindow, restoreWindow } from './floating/window-layout.js'
+import { setWindowOnTop, tileWindows } from './floating/window-arrange.js'
 import { assignGroups, presetLayout, presetSlots, singleGroup, type CanvasSize, type LayoutPreset } from './layout-presets.js'
 const ERROR_TTL_MS = 8000
 /** Main announces a selection within one workspace event; past this the layout resyncs instead of staying locked. */
@@ -474,8 +475,10 @@ export function useChatLayout(
     })
   }, [])
   const windowActions = useMemo(() => ({
-    float: (id: string, rect: Rect) => windowTree((tree) => floatWindow(tree, id, rect)),
-    snap: (id: string, target: string, edge: DockEdge) => windowTree((tree) => snapWindow(tree, id, target, edge, crypto.randomUUID())),
+    change: windowTree,
+    /** Tile windows: every floating window back into its slot of the last tiled layout. */
+    tileAll: () => windowTree(tileWindows),
+    keepOnTop: (id: string, onTop: boolean) => windowTree((tree) => setWindowOnTop(tree, id, onTop)),
     group: (source: string, target: string) => windowTree((tree) => groupWindow(tree, source, target)),
     raise: (id: string) => windowTree((tree) => raiseWindow(tree, id)),
     minimize: (id: string) => {

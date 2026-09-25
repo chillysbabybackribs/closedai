@@ -10,7 +10,9 @@ import type { TabActivity } from './tab-activity.js'
 import { chatDropAt, dragPreviewPanes, dragSplitPreview } from './layout-drag-preview.js'
 import { ChatLayoutPaneHeader } from './chat-layout-pane-header.js'
 import { GLIDE_MS, miniature, useLayoutGlide } from './layout-motion.js'
-import { minimizeWindow } from './floating/window-layout.js'
+import { findWindow, floatWindow, minimizeWindow } from './floating/window-layout.js'
+import { tearOffWindow, tileWindow } from './floating/window-arrange.js'
+import { snapTarget } from './floating/window-targets.js'
 import { browserCovered, canvasTiles, floatingFront } from './floating/window-tiles.js'
 import { useWindowDrag, type WindowFrame } from './floating/use-window-drag.js'
 import { useMaximizedWindow } from './floating/use-maximized-window.js'
@@ -26,11 +28,12 @@ const TILE_BORDER = 1
 
 /** Window operations the canvas asks of the layout; none of them crosses IPC. */
 export type WindowActions = {
-  float: (id: string, rect: Rect) => void
-  snap: (id: string, target: string, edge: DockEdge) => void
+  /** Rearrange windows; a window move is the tree alone. */
+  change: (update: (tree: ChatLayout) => ChatLayout) => void
   group: (source: string, target: string) => void
   raise: (id: string) => void
   minimize: (id: string) => void
+  keepOnTop: (id: string, onTop: boolean) => void
 }
 
 /** Where a pointer press starts moving a window: its grip or its header's empty space. */
@@ -225,13 +228,22 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
   const frame = useRef<() => WindowFrame>(() => ({ tree, size, browserVisible, tiled: [], floating: [] }))
   frame.current = () => ({ tree, size, browserVisible, tiled: geometry.panes, floating })
   const windowFrame = useCallback(() => frame.current(), [])
+  // A window torn out of the tiled layer leaves the others where they are on screen, floating.
+  const floatAt = useCallback((id: string, rect: Rect, tornOff: boolean) => {
+    const { tiled } = frame.current()
+    windows.change((tree) => tornOff ? tearOffWindow(tree, id, rect, tiled) : floatWindow(tree, id, rect))
+  }, [windows])
+  const snapAt = useCallback((id: string, target: Parameters<typeof snapTarget>[2]) => {
+    const { size, tiled, floating } = frame.current()
+    windows.change((tree) => snapTarget(tree, id, target, size, tiled, floating, crypto.randomUUID()))
+  }, [windows])
   const { gesture, startMove, startResize } = useWindowDrag({
     canvas: canvasRef, frame: windowFrame, onPainted: settle,
     onActive: useCallback(() => {
       glideArmed.current = true
       dragActiveListener.current(true)
     }, []),
-    onFloat: windows.float, onSnap: windows.snap, onGroup: windows.group,
+    onFloat: floatAt, onSnap: snapAt, onGroup: windows.group,
     onMaximize: useCallback((id: string) => setSoloPaneId(id), [setSoloPaneId])
   })
   useEffect(() => {
@@ -324,7 +336,7 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
         const floats = kind === 'floating' && !isThisTileSolo
         const browser = activeId === BROWSER_PANE_ID
         return <section key={tileReactKey(activeId, tileTabs)}
-          className="chat-layout-tile" style={{ ...position(tileRect), zIndex: floats ? 10 + z : undefined }}
+          className="chat-layout-tile" style={{ ...position(tileRect), zIndex: z && !isThisTileSolo ? 10 + z : undefined }}
           data-pane-id={browser || isViewTabId(activeId) ? undefined : activeId}
           data-view-id={isViewTabId(activeId) ? activeId : undefined}
           data-window={kind} data-moving={gesture?.id === activeId ? gesture.kind : undefined}
@@ -338,7 +350,11 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
             if (!browser && activeId !== selectedId && !(event.target as HTMLElement).closest('[role="tablist"]')) onSelect(activeId)
           }}
           onPointerDown={(event) => { if (!busy && !soloTile && pressesMoveHandle(event)) startMove(event, activeId) }}
-          onDoubleClick={browser ? (event) => { if (pressesMoveHandle(event)) browserWindow.toggleMaximize() } : undefined}>
+          onDoubleClick={browser ? (event) => {
+            if (!pressesMoveHandle(event)) return
+            if (floats) windows.change((current) => tileWindow(current, activeId))
+            else browserWindow.toggleMaximize()
+          } : undefined}>
           <div className="chat-layout-tile-body"
             style={isPlaceholder ? { ...position(mini.layout), '--mini-scale': mini.scale } as CSSProperties : undefined}>
             {!browser && <ChatLayoutPaneHeader activeId={tileActiveId} tabs={tileTabs} chatCount={chatCount}
@@ -347,7 +363,9 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
               onSelectTab={onSelectTab} onCloseTab={onCloseTab} onNewChat={onNewChat} onRenameChat={onRenameChat}
               onTogglePin={onTogglePin} onPauseTab={onPauseTab} onResumeTab={onResumeTab} onOpenPresets={onOpenPresets}
               onHide={onHide} setDragging={setDragging} canMaximize={canMaximize || kind === 'floating'} isThisTileSolo={isThisTileSolo}
-              canMinimize={minimizeWindow(tree, activeId) !== tree} onMinimize={windows.minimize} />}
+              canMinimize={minimizeWindow(tree, activeId) !== tree} onMinimize={windows.minimize}
+              onTile={floats ? () => windows.change((current) => tileWindow(current, activeId)) : undefined}
+              onTop={Boolean(findWindow(tree, activeId)?.onTop)} onKeepOnTop={windows.keepOnTop} />}
             {activeId === selectedId && <div className="chat-layout-notice" role="status" aria-atomic="true">{notice}</div>}
             {browser ? <div className="chat-layout-browser-frame" data-ui="layout.browser-dock">
               <BrowserWindowContext.Provider value={browserWindow}>{renderBrowser}</BrowserWindowContext.Provider>
