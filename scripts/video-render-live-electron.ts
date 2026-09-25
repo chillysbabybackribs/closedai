@@ -9,6 +9,8 @@ import { recordPageVideo } from '../src/main/video-render/page-recorder.js'
 const root = process.env.CLOSEDAI_VIDEO_CHECK_ROOT
 if (!root) throw new Error('Run through scripts/video-render-live-check.mjs')
 app.setPath('userData', join(root, 'profile'))
+// The recorder's offscreen window is the only window; closing it must not quit the fixture.
+app.on('window-all-closed', () => {})
 const watchdog = setTimeout(() => { console.error('Video render fixture exceeded sixty seconds'); app.exit(1) }, 60_000)
 
 const WIDTH = 320
@@ -82,7 +84,7 @@ app.whenReady().then(async () => {
   ), /cancelled/)
   assert.deepEqual(execFileSync('ls', ['-A', root]).toString().split('\n').filter((name) => name.includes('cancelled')), [])
 
-  console.log(`video render live check passed (${Date.now() - started}ms)`)
+  console.error(`video render live check passed (${Date.now() - started}ms)`)
   clearTimeout(watchdog)
   app.exit(0)
 }).catch((error) => {
