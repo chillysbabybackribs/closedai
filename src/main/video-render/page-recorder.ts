@@ -57,15 +57,15 @@ export async function recordPageVideo(
     await contents.debugger.sendCommand('Emulation.setDeviceMetricsOverride', {
       width: request.width, height: request.height, deviceScaleFactor: 1, mobile: false
     })
-    await withTimeout(contents.loadURL(request.url), LOAD_TIMEOUT_MS, 'The page did not finish loading')
-    await withTimeout(contents.executeJavaScript(`window.${VIDEO_CLOCK_GLOBAL}.prepare()`), STEP_TIMEOUT_MS, 'The page did not settle after load')
-    encoder = startEncoder({ output: partial, width: request.width, height: request.height, fps: request.fps, audio: request.audio })
+    console.error('dbg attach ok'); await withTimeout(contents.loadURL(request.url), LOAD_TIMEOUT_MS, 'The page did not finish loading')
+    console.error('dbg loaded'); await withTimeout(contents.executeJavaScript(`window.${VIDEO_CLOCK_GLOBAL}.prepare()`), STEP_TIMEOUT_MS, 'The page did not settle after load')
+    console.error('dbg prepared'); encoder = startEncoder({ output: partial, width: request.width, height: request.height, fps: request.fps, audio: request.audio })
     for (let index = 0; index < total; index++) {
       signal.throwIfAborted()
       const ms = (index * 1000) / request.fps
       await withTimeout(contents.executeJavaScript(`window.${VIDEO_CLOCK_GLOBAL}.step(${ms})`), STEP_TIMEOUT_MS, `Frame ${index} did not paint`)
       await encoder.write(await frameBitmap(contents, request.width, request.height))
-      onFrame(index + 1, total)
+      console.error('dbg frame', index); onFrame(index + 1, total)
     }
     await encoder.finish()
     await rename(partial, request.output)
