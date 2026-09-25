@@ -48,7 +48,7 @@ export const UI_CONTROLS = {
   'layout.tab-detach': 'Tab context menu: move this tab into a new window that can be placed on another monitor; item is the tab id',
   'layout.tab-return': 'Tab context menu in a detached window: move this tab back into the main window; item is the tab id',
   'spaces.slot': 'Workspace overview (View → Workspace overview, Ctrl+Shift+O, or Ctrl+scroll out): zoom into this workspace, switching to its project; item is the project folder',
-  'spaces.add': 'Workspace overview: the Add workspace tile; pick a folder, add it to the overview and zoom into it',
+  'spaces.add': 'Workspace overview: the Add workspace tile; adds a workspace in the current folder with a fresh chat left of the browser and zooms into it',
 
 
   'chat.rename-dialog': 'Dialog for renaming a chat conversation',

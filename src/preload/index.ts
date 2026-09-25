@@ -110,7 +110,6 @@ const api: ClosedaiApi = {
     selectProject: (paneId, projectPath) => invoke(IPC.invoke.chat.selectProject, paneId, projectPath),
     clearProject: (paneId) => invoke(IPC.invoke.chat.clearProject, paneId),
     selectSpace: (projectPath) => invoke(IPC.invoke.chat.selectSpace, projectPath),
-    openSpace: () => invoke(IPC.invoke.chat.openSpace),
     providerAvailability: () => invoke(IPC.invoke.chat.providerAvailability),
     onEvent: (listener) => subscribe(IPC.event.chatEvent, listener)
   },

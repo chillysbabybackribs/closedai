@@ -1,10 +1,12 @@
-import { useEffect, useImperativeHandle, useMemo, useRef, useState, type CSSProperties, type ReactElement, type ReactNode, type Ref } from 'react'
+import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type CSSProperties, type ReactElement, type ReactNode, type Ref } from 'react'
 import { Plus } from 'lucide-react'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
+import { chatTabIds } from '../chat-layout/layout-tabs.js'
+import { readLayout } from '../chat-layout/layout-tree.js'
 import { SpaceMiniature } from './space-miniature.js'
 import {
-  LABEL_HEIGHT, cameraTransform, createZoomGesture, liveTransform, readSpaces, saveSpaces, slotAt, spaceList,
-  type Size, type SpaceEntry
+  LABEL_HEIGHT, anchorChat, cameraTransform, createZoomGesture, liveTransform, newSpace, readSpaces, resolveCurrent,
+  saveSpaces, slotAt, type SavedSpaces, type Size, type Space, type Workspace
 } from './spaces-model.js'
 import { GLIDE_MS, useSpaceNavigation } from './use-space-navigation.js'
 
@@ -18,36 +20,78 @@ const EASE = 'cubic-bezier(0.2, 0.7, 0.2, 1)'
 const editable = (target: EventTarget | null): boolean => target instanceof HTMLElement
   && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
 
+/** Main answers over IPC and then announces the result in a workspace event; wait for the event. */
+async function until(done: () => boolean, timeoutMs = 5000): Promise<boolean> {
+  const end = performance.now() + timeoutMs
+  while (!done()) {
+    if (performance.now() > end) return false
+    await new Promise((resolve) => window.setTimeout(resolve, 30))
+  }
+  return true
+}
+
 /**
  * Spaces around the workspace. Each project's layout is a space; zooming out shrinks the live
  * workspace into its slot beside drawings of the others, and choosing one zooms into it. Nothing
  * here transforms the workspace while you are in a space, so tiles, menus and the native browser
  * lay out exactly as they do without spaces.
  */
-export function SpacesStage({ enabled, workspace, chats, children, ref }: {
+export function SpacesStage({ enabled, workspace, chats, selectedPaneId, children, ref }: {
   /** Main window only: a detached window holds tabs of one project and has no browser. */
   enabled: boolean
-  workspace: SpaceEntry
+  workspace: Workspace
   chats: readonly ChatRowSummary[]
-  /** The live workspace; `browserHeld` asks it to show its browser as a still. */
-  children: (browserHeld: boolean) => ReactNode
+  selectedPaneId: string
+  /**
+   * The live workspace for `spaceId` (absent in a detached window); `browserHeld` asks it to show
+   * its browser as a still.
+   */
+  children: (shown: { browserHeld: boolean; spaceId?: string }) => ReactNode
   ref?: Ref<SpacesHandle>
 }): ReactElement {
   const stageRef = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState<Size>({ width: 0, height: 0 })
-  const [saved, setSaved] = useState(() => readSpaces(window.localStorage))
-  const spaces = useMemo(() => spaceList(saved, { cwd: workspace.cwd, projectPath: workspace.projectPath }),
+  const [saved, setSavedState] = useState(() => readSpaces(window.localStorage))
+  const setSaved = useCallback((update: (value: SavedSpaces) => SavedSpaces) => setSavedState((value) => {
+    const next = update(value)
+    if (next !== value) saveSpaces(window.localStorage, next)
+    return next
+  }), [])
+  const { spaces, current } = useMemo(() => resolveCurrent(saved.spaces, saved.current, workspace),
     [saved, workspace.cwd, workspace.projectPath])
-  const nav = useSpaceNavigation({ enabled, current: workspace.cwd, spaces, size, stageRef })
+  // The space shown is always one of yours and is remembered, so a relaunch returns to it.
+  useEffect(() => {
+    setSaved((value) => value.current === current.id && value.spaces.length === spaces.length ? value : { spaces, current: current.id })
+  }, [spaces, current.id, setSaved])
+
+  const latest = useRef({ workspace, chats, selectedPaneId, spaces })
+  latest.current = { workspace, chats, selectedPaneId, spaces }
+  const prepare = useCallback(async (space: Space): Promise<void> => {
+    if (space.cwd !== latest.current.workspace.cwd) {
+      await window.closedai.chat.selectSpace(space.projectPath)
+      if (!await until(() => latest.current.workspace.cwd === space.cwd)) throw new Error(`${space.name} did not open`)
+    }
+    const available = new Set(latest.current.chats.map((row) => row.paneId))
+    const anchor = anchorChat(readLayout(window.localStorage, space.id).tree, available)
+    if (!anchor || anchor === latest.current.selectedPaneId) return
+    await window.closedai.chat.openChat(anchor)
+    await until(() => latest.current.selectedPaneId === anchor)
+  }, [])
+  // A new space is the folder you were working in, with a fresh chat: with no saved layout yet it
+  // opens as that chat on the left and the browser on the right.
+  const create = useCallback(async (): Promise<Space> => {
+    const { workspace: from, spaces: list } = latest.current
+    const space = newSpace(list, { cwd: from.cwd, projectPath: from.projectPath }, `space:${crypto.randomUUID()}`)
+    const chatId = await window.closedai.chat.newPeer()
+    await until(() => latest.current.selectedPaneId === chatId && latest.current.chats.some((row) => row.paneId === chatId))
+    setSaved((value) => ({ ...value, spaces: [...value.spaces, space] }))
+    return space
+  }, [setSaved])
+  const commit = useCallback((id: string) => setSaved((value) => ({ ...value, current: id })), [setSaved])
+
+  const nav = useSpaceNavigation({ enabled, current: current.id, spaces, size, stageRef, prepare, create, commit })
   const { phase, camera, animate, slots, step, toggle, enter, zoomOut } = nav
   useImperativeHandle(ref, () => ({ toggleOverview: toggle }), [toggle])
-
-  // The workspace you are in is always one of your spaces; being in a new one adds it.
-  useEffect(() => {
-    if (spaces.length === saved.length) return
-    saveSpaces(window.localStorage, spaces)
-    setSaved(spaces)
-  }, [spaces, saved.length])
 
   useEffect(() => {
     const host = stageRef.current
@@ -61,8 +105,8 @@ export function SpacesStage({ enabled, workspace, chats, children, ref }: {
   }, [])
 
   // Ctrl+scroll or a pinch zooms out of a space; in the overview any scroll zooms toward the pointer.
-  const input = useRef({ phase, slots, spaces, current: workspace.cwd, step, zoomOut, enter })
-  input.current = { phase, slots, spaces, current: workspace.cwd, step, zoomOut, enter }
+  const input = useRef({ phase, slots, spaces, current: current.id, step, zoomOut, enter })
+  input.current = { phase, slots, spaces, current: current.id, step, zoomOut, enter }
   useEffect(() => {
     if (!enabled) return
     const host = stageRef.current!
@@ -109,15 +153,20 @@ export function SpacesStage({ enabled, workspace, chats, children, ref }: {
     }
   }, [enabled])
 
+  // Running chats per space, from each space's saved tabs; read only while the overview shows them.
+  const zoomed = phase !== 'space' && phase !== 'arming'
   const running = useMemo(() => {
     const counts = new Map<string, number>()
-    for (const row of chats) if (row.running) counts.set(row.cwd, (counts.get(row.cwd) ?? 0) + 1)
+    if (!zoomed) return counts
+    const live = new Set(chats.filter((row) => row.running).map((row) => row.paneId))
+    for (const space of spaces) {
+      counts.set(space.id, chatTabIds(readLayout(window.localStorage, space.id).tree).filter((id) => live.has(id)).length)
+    }
     return counts
-  }, [chats])
+  }, [chats, spaces, zoomed])
 
-  if (!enabled) return <div className="spaces-stage">{children(false)}</div>
-  const zoomed = phase !== 'space' && phase !== 'arming'
-  const currentIndex = spaces.findIndex((space) => space.id === workspace.cwd)
+  if (!enabled) return <div className="spaces-stage">{children({ browserHeld: false })}</div>
+  const currentIndex = spaces.findIndex((space) => space.id === current.id)
   const currentSlot = slots[currentIndex]
   const addSlot = slots[spaces.length]
   const transition = animate ? `transform ${GLIDE_MS}ms ${EASE}` : 'none'
@@ -127,14 +176,14 @@ export function SpacesStage({ enabled, workspace, chats, children, ref }: {
   return <div ref={stageRef} className="spaces-stage" data-spaces-overview={phase === 'space' ? undefined : phase}>
     <div className="spaces-live" style={liveStyle} inert={phase !== 'space'}
       data-native-bounds-hold={zoomed ? '' : undefined}>
-      {children(phase !== 'space')}
+      {phase !== 'switching' && children({ browserHeld: phase !== 'space', spaceId: current.id })}
     </div>
     {zoomed && <div className="spaces-world" style={{ width: size.width, height: size.height, transform: cameraTransform(camera), transition }}
-      onDoubleClick={(event) => { if (event.target === event.currentTarget) void enter(workspace.cwd) }}>
+      onDoubleClick={(event) => { if (event.target === event.currentTarget) void enter(current.id) }}>
       {spaces.map((space, index) => {
         const slot = slots[index]
         if (!slot) return null
-        const count = running.get(space.cwd) ?? 0
+        const count = running.get(space.id) ?? 0
         const here = index === currentIndex
         return <div key={space.id} className="spaces-slot-group" data-current={here}>
           <div className="spaces-slot-label" style={{ left: slot.x, top: slot.y - LABEL_HEIGHT, width: slot.width, height: LABEL_HEIGHT }}>
@@ -146,14 +195,14 @@ export function SpacesStage({ enabled, workspace, chats, children, ref }: {
             aria-label={`${here ? 'Return to' : 'Open'} workspace ${space.name}${count ? `, ${count} running` : ''}`}
             title={space.cwd} disabled={phase !== 'overview'} onClick={() => { void enter(space.id) }}>
             {!here && <div className="spaces-slot-scale" style={{ transform: `scale(${size.width ? slot.width / size.width : 1})` }}>
-              <SpaceMiniature cwd={space.cwd} size={size} chats={chats} />
+              <SpaceMiniature spaceId={space.id} size={size} chats={chats} />
             </div>}
           </button>
         </div>
       })}
       {addSlot && <button type="button" className="spaces-add" data-ui="spaces.add" disabled={phase !== 'overview'}
         style={{ left: addSlot.x, top: addSlot.y, width: addSlot.width, height: addSlot.height }}
-        onClick={() => { void nav.openFolder() }}>
+        title={`New workspace in ${current.cwd}`} onClick={() => { void nav.add() }}>
         <Plus size={28} strokeWidth={1.6} aria-hidden="true" />
         <span>Add workspace</span>
       </button>}

@@ -79,15 +79,6 @@ export function registerChatIpc(ipcMain: IpcMain, getService: () => ChatWorkspac
     if (!(await stat(path).then((entry) => entry.isDirectory(), () => false))) throw new Error(`${path} is no longer a folder`)
     return requireService().selectProject(path)
   })
-  ipcMain.handle(IPC.invoke.chat.openSpace, async () => {
-    const result = await dialog.showOpenDialog({
-      title: 'Add a workspace',
-      properties: ['openDirectory', 'createDirectory']
-    })
-    if (result.canceled || !result.filePaths[0]) return false
-    await requireService().selectProject(resolve(result.filePaths[0]))
-    return true
-  })
   // Needs no service: a first-run screen asks this before any chat has started a provider.
   ipcMain.handle(IPC.invoke.chat.providerAvailability, () => detectProviderAvailability())
   ipcMain.handle(IPC.invoke.chat.login, async () => {

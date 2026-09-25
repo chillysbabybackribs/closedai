@@ -229,9 +229,11 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
       <div className="workspace" data-mode="chat">
         {!chat.selectedPaneId && <AppStartup connection={chat.state.connection} onRetry={chat.retryStartup} />}
         {chat.selectedPaneId && !projectElsewhere && <SpacesStage ref={spacesRef} enabled={appWindow().main}
-          workspace={chat.workspace ?? { cwd: chat.state.cwd, projectPath: null }} chats={chat.chats}>
-          {(browserHeld) => <DesktopWorkspace
-            key={chat.workspace?.cwd ?? chat.state.cwd}
+          workspace={chat.workspace ?? { cwd: chat.state.cwd, projectPath: null }} chats={chat.chats}
+          selectedPaneId={chat.selectedPaneId}>
+          {({ browserHeld, spaceId }) => <DesktopWorkspace
+            key={spaceId ?? chat.workspace?.cwd ?? chat.state.cwd}
+            spaceId={spaceId}
             ref={workspaceRef}
             chat={chat}
             savedSites={savedSites}
