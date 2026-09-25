@@ -62,6 +62,8 @@ export function browserResourceLockKey(request: ToolCallRequest, input: JsonObje
     }
   }
   if (namespace === 'closedai_ui' && tool === 'capture') return null
+  // A render opens its tab when the job finishes, after the call; only play adds one in-call.
+  if (namespace === 'media' && tool === 'video') return action === 'play' ? 'browser:strip' : null
   if (namespace === 'browser_cdp') {
     if (tool === 'page' && ['click', 'click_at', 'type', 'press_key', 'scroll', 'dismiss_overlay'].includes(action)) {
       return 'browser:page-input'

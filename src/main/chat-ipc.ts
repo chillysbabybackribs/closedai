@@ -1,4 +1,5 @@
-import { dialog, shell, type IpcMain } from 'electron'
+import { dialog, shell, type IpcMain, type WebContents } from 'electron'
+import { MAIN_WINDOW_ID } from '../shared/app-windows.js'
 import { resolve } from 'node:path'
 import type { ChatAttachment } from '../shared/chat.js'
 import { CHAT_TURN_PAGE_SIZE } from '../shared/chat.js'
@@ -7,7 +8,13 @@ import { IPC } from '../shared/ipc-channels.js'
 import type { ChatWorkspaceSurface } from './chat-peers/peer-manager.js'
 import { detectProviderAvailability } from './provider-availability.js'
 
-export function registerChatIpc(ipcMain: IpcMain, getService: () => ChatWorkspaceSurface | null): void {
+/** Which window a request came from, and where that window's tiles are recorded for event routing. */
+export type ChatIpcWindows = {
+  idOf: (sender: WebContents) => string | null
+  claim: (windowId: string, visible: string[], tabs: string[]) => void
+}
+
+export function registerChatIpc(ipcMain: IpcMain, getService: () => ChatWorkspaceSurface | null, windows: () => ChatIpcWindows | null = () => null): void {
   const requireService = (): ChatWorkspaceSurface => {
     const service = getService()
     if (!service) throw new Error('Chat service is not available')
@@ -23,8 +30,13 @@ export function registerChatIpc(ipcMain: IpcMain, getService: () => ChatWorkspac
   )
   ipcMain.handle(IPC.invoke.chat.interrupt, (_event, paneId: string) => requireService().interrupt(paneId))
   ipcMain.handle(IPC.invoke.chat.selectPane, (_event, paneId: string) => requireService().selectPane(paneId))
-  ipcMain.handle(IPC.invoke.chat.setVisiblePanes, (_event, cwd: string, paneIds: string[], retainedTabIds?: string[]) =>
-    requireService().setVisiblePanes(cwd, paneIds, retainedTabIds))
+  ipcMain.handle(IPC.invoke.chat.setVisiblePanes, async (event, cwd: string, paneIds: string[], retainedTabIds?: string[]) => {
+    const registry = windows()
+    const windowId = registry?.idOf(event.sender) ?? MAIN_WINDOW_ID
+    // Routed first, so the stream that showing a chat wakes reaches the window that shows it.
+    registry?.claim(windowId, paneIds, retainedTabIds ?? [])
+    await requireService().setVisiblePanes(cwd, paneIds, retainedTabIds, windowId)
+  })
   ipcMain.handle(IPC.invoke.chat.selectModel, (_event, paneId: string, modelId: string) => requireService().selectModel(paneId, modelId))
   ipcMain.handle(IPC.invoke.chat.selectReasoningEffort, (_event, paneId: string, effort: string) =>
     requireService().selectReasoningEffort(paneId, effort)

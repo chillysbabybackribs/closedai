@@ -5,6 +5,7 @@ import type { ModelsEvent } from '../shared/model-settings.js'
 import type { ToolsEvent } from '../shared/tools.js'
 import { IPC, type IpcEventChannel, type IpcEventChannels } from '../shared/ipc-channels.js'
 import { registerWindowIpc } from './window-ipc.js'
+import { registerAppWindowsIpc } from './windows/ipc.js'
 import { registerBrowserCoreIpc } from './browser-core-ipc.js'
 import { registerBrowserDownloadsIpc } from './browser-downloads-ipc.js'
 import { registerSavedSitesIpc } from './saved-sites-ipc.js'
@@ -35,12 +36,12 @@ import type { ToolRegistry } from './tools/registry.js'
 import type { ToolTelemetry } from './tools/telemetry.js'
 import type { CredentialApprovalBroker } from './security-approvals.js'
 import type { BrowserPermissionBroker } from './browser-permission-broker.js'
-import type { BrowserWindow } from 'electron'
+import type { AppWindowRegistry } from './windows/app-window-registry.js'
 
 export type MainIpcRegistration = {
   ipcMain: IpcMain
-  sendToMainWindow: <C extends IpcEventChannel>(channel: C, payload: IpcEventChannels[C]) => void
-  mainWindow: () => BrowserWindow | null
+  sendToWindows: <C extends IpcEventChannel>(channel: C, payload: IpcEventChannels[C]) => void
+  windows: () => AppWindowRegistry | null
   browserService: () => BrowserService | null
   browserDownloads: () => BrowserDownloadService | null
   savedSites: () => SavedSitesStore | null
@@ -66,12 +67,13 @@ export function mainCookieImportDeps(reg: MainIpcRegistration): CookieImportDeps
 }
 
 export function registerMainProcessIpc(reg: MainIpcRegistration): void {
-  registerWindowIpc(reg.ipcMain, reg.mainWindow)
-  registerBrowserCoreIpc(reg.ipcMain, reg.browserService, reg.savedSites)
+  registerWindowIpc(reg.ipcMain)
+  registerAppWindowsIpc(reg.ipcMain, reg.windows)
+  registerBrowserCoreIpc(reg.ipcMain, reg.browserService, reg.savedSites, (sender) => reg.windows()?.isMain(sender) ?? true)
   registerBrowserDownloadsIpc(reg.ipcMain, reg.browserDownloads)
   registerSavedSitesIpc(reg.ipcMain, reg.savedSites)
   registerLocalFilesIpc(reg.ipcMain, reg.browserService)
-  registerChatIpc(reg.ipcMain, reg.chatService)
+  registerChatIpc(reg.ipcMain, reg.chatService, reg.windows)
   registerAgentRunsIpc(reg.ipcMain, reg.agentRuns)
   registerAgentLibraryIpc(reg.ipcMain, reg.agentLibrary)
   registerTraceIpc(reg.ipcMain, traceLog)
@@ -82,7 +84,7 @@ export function registerMainProcessIpc(reg: MainIpcRegistration): void {
     credentialApprovals: reg.credentialApprovals,
     permissions: reg.permissionRequests,
     importCookies: () => importBrowserCookiesNow(mainCookieImportDeps(reg)),
-    send: reg.sendToMainWindow
+    send: reg.sendToWindows
   })
   registerToolsIpc(reg.ipcMain, {
     registry: reg.toolRegistry,
@@ -90,11 +92,11 @@ export function registerMainProcessIpc(reg: MainIpcRegistration): void {
     providers: () => [...CHAT_PROVIDERS],
     onEnabledChanged: async (toolId, enabled, disabledIds) => {
       await reg.settings()?.set({ disabledTools: disabledIds })
-      reg.sendToMainWindow(IPC.event.toolsEvent, { type: 'enabled', toolId, enabled } satisfies ToolsEvent)
+      reg.sendToWindows(IPC.event.toolsEvent, { type: 'enabled', toolId, enabled } satisfies ToolsEvent)
     },
     onEnabledManyChanged: async (disabledIds) => {
       await reg.settings()?.set({ disabledTools: disabledIds })
-      reg.sendToMainWindow(IPC.event.toolsEvent, { type: 'changed' } satisfies ToolsEvent)
+      reg.sendToWindows(IPC.event.toolsEvent, { type: 'changed' } satisfies ToolsEvent)
     }
   })
   registerModelsIpc(reg.ipcMain, {
@@ -117,12 +119,12 @@ export function registerMainProcessIpc(reg: MainIpcRegistration): void {
     onDisabledChanged: async (modelId, enabled, disabledIds) => {
       await reg.settings()?.set({ disabledModels: disabledIds })
       reg.chatService()?.modelSettings.refresh()
-      reg.sendToMainWindow(IPC.event.modelsEvent, { type: 'enabled', modelId, enabled } satisfies ModelsEvent)
+      reg.sendToWindows(IPC.event.modelsEvent, { type: 'enabled', modelId, enabled } satisfies ModelsEvent)
     },
     onDisabledManyChanged: async (disabledIds) => {
       await reg.settings()?.set({ disabledModels: disabledIds })
       reg.chatService()?.modelSettings.refresh()
-      reg.sendToMainWindow(IPC.event.modelsEvent, { type: 'changed' } satisfies ModelsEvent)
+      reg.sendToWindows(IPC.event.modelsEvent, { type: 'changed' } satisfies ModelsEvent)
     }
   })
 }

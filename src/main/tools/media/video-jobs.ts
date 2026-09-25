@@ -76,7 +76,7 @@ export class VideoJobs {
       await Promise.race([
         job.settled,
         new Promise<void>((resolve) => { timer = setTimeout(resolve, waitMs) }),
-        new Promise<void>((resolve) => { onAbort = resolve; signal.addEventListener('abort', resolve, { once: true }) })
+        new Promise<void>((resolve) => { onAbort = () => resolve(); signal.addEventListener('abort', onAbort, { once: true }) })
       ])
       clearTimeout(timer)
       signal.removeEventListener('abort', onAbort)

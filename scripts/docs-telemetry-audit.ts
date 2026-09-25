@@ -19,6 +19,7 @@ import { credentialVaultTools } from '../src/main/tools/credential-vault/index.t
 import { createToolRegistry, type ToolRegistry } from '../src/main/tools/index.ts'
 import { measureToolContextBudget } from '../src/main/tools/tool-context-budget.ts'
 import { nativeInstrumentTools } from '../src/main/tools/native-instrument/index.ts'
+import { mediaTools } from '../src/main/tools/media/index.ts'
 import { peerChatTools } from '../src/main/tools/peer-chats/index.ts'
 import { searchTools } from '../src/main/tools/search/index.ts'
 import type { ResearchDependencies } from '../src/main/tools/search/research/service.ts'
@@ -99,6 +100,7 @@ function buildRegistry(): ToolRegistry {
     nativeInstrumentTools(stubHost as never, () => false),
     credentialVaultTools(stubHost, stubHost),
     appTools(stubHost, stubHost),
+    mediaTools({ app: stubHost, ui: stubHost, page: stubHost, record: stubHost as never }),
     browserTools(() => stubHost(), () => stubHost(), () => stubHost()),
     cdpTools(stubHost),
     captureTools(stubHost, stubHost as never),

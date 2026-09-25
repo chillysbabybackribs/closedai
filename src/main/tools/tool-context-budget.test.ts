@@ -8,6 +8,7 @@ import { cdpTools } from './cdp/index.ts'
 import { captureTools } from './capture/index.ts'
 import { createToolRegistry } from './index.ts'
 import { nativeInstrumentTools } from './native-instrument/index.ts'
+import { mediaTools } from './media/index.ts'
 import { credentialVaultTools } from './credential-vault/index.ts'
 import { peerChatTools } from './peer-chats/index.ts'
 import { searchTools } from './search/index.ts'
@@ -42,6 +43,7 @@ function fullRegistry() {
     nativeInstrumentTools(stubHost as never, () => false),
     credentialVaultTools(stubHost, stubHost),
     appTools(stubHost, stubHost),
+    mediaTools({ app: stubHost, ui: stubHost, page: stubHost, record: stubHost as never }),
     browserTools(() => stubHost(), () => stubHost(), () => stubHost()),
     cdpTools(stubHost),
     captureTools(stubHost, stubHost as never),
@@ -54,7 +56,7 @@ function fullRegistry() {
 
 test('eager Codex tool wire stays within the regression budget', () => {
   const budget = measureToolContextBudget(fullRegistry())
-  assert.equal(budget.toolCount, 27)
+  assert.equal(budget.toolCount, 28)
   assert.ok(budget.deferredWireChars > budget.eagerWireChars, 'most schema weight should stay deferred')
   assert.ok(budget.eagerWireChars <= 3_600, `eager wire grew to ${budget.eagerWireChars}`)
   assert.ok(budget.advertisedTokens <= 1_850, `advertised tokens grew to ${budget.advertisedTokens}`)

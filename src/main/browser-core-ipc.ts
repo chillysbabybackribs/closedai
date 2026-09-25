@@ -1,4 +1,4 @@
-import type { IpcMain } from 'electron'
+import type { IpcMain, WebContents } from 'electron'
 import type { BrowserBounds } from '../shared/types.js'
 import { IPC } from '../shared/ipc-channels.js'
 import type { BrowserService } from './browser-service.js'
@@ -8,9 +8,12 @@ import { rankSavedFirst, type SavedSitesStore } from './saved-sites-store.js'
 export function registerBrowserCoreIpc(
   ipcMain: Pick<IpcMain, 'handle'>,
   getBrowserService: () => BrowserService | null,
-  getSavedSites: () => SavedSitesStore | null = () => null
+  getSavedSites: () => SavedSitesStore | null = () => null,
+  // The page is laid out in the main window; a detached window's renderer must never move it.
+  isBrowserHost: (sender: WebContents) => boolean = () => true
 ): void {
-  ipcMain.handle(IPC.invoke.browser.setBounds, (_event, bounds: BrowserBounds) => getBrowserService()?.setBounds(bounds))
+  ipcMain.handle(IPC.invoke.browser.setBounds, (event, bounds: BrowserBounds) =>
+    isBrowserHost(event.sender) ? getBrowserService()?.setBounds(bounds) : undefined)
   ipcMain.handle(IPC.invoke.browser.navigate, (_event, input: string) => getBrowserService()?.navigate(input))
   ipcMain.handle(IPC.invoke.browser.back, () => getBrowserService()?.back())
   ipcMain.handle(IPC.invoke.browser.forward, () => getBrowserService()?.forward())

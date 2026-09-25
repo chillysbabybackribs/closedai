@@ -1,30 +1,31 @@
-import type { BrowserWindow, IpcMain } from 'electron'
+import { BrowserWindow, type IpcMain, type IpcMainInvokeEvent } from 'electron'
 import { IPC } from '../shared/ipc-channels.js'
 import { registerInvoke } from './ipc-register.js'
 
+// Title-bar controls act on the window whose renderer pressed them, main or detached.
 export function registerWindowIpc(
   ipcMain: Pick<IpcMain, 'handle'>,
-  getMainWindow: () => BrowserWindow | null
+  windowOf: (event: IpcMainInvokeEvent) => BrowserWindow | null = (event) => BrowserWindow.fromWebContents(event.sender)
 ): void {
-  registerInvoke(ipcMain, IPC.invoke.window.minimize, () => {
-    getMainWindow()?.minimize()
+  registerInvoke(ipcMain, IPC.invoke.window.minimize, (event) => {
+    windowOf(event)?.minimize()
   })
-  registerInvoke(ipcMain, IPC.invoke.window.maximize, () => {
-    const window = getMainWindow()
+  registerInvoke(ipcMain, IPC.invoke.window.maximize, (event) => {
+    const window = windowOf(event)
     if (!window) return
     if (window.isMaximized()) window.unmaximize()
     else window.maximize()
   })
-  registerInvoke(ipcMain, IPC.invoke.window.toggleFullscreen, () => {
-    const window = getMainWindow()
+  registerInvoke(ipcMain, IPC.invoke.window.toggleFullscreen, (event) => {
+    const window = windowOf(event)
     if (!window) return
     window.setFullScreen(!window.isFullScreen())
   })
-  registerInvoke(ipcMain, IPC.invoke.window.close, () => {
-    getMainWindow()?.close()
+  registerInvoke(ipcMain, IPC.invoke.window.close, (event) => {
+    windowOf(event)?.close()
   })
-  registerInvoke(ipcMain, IPC.invoke.window.toggleDevTools, () => {
-    const contents = getMainWindow()?.webContents
+  registerInvoke(ipcMain, IPC.invoke.window.toggleDevTools, (event) => {
+    const contents = windowOf(event)?.webContents
     if (!contents) return
     if (contents.isDevToolsOpened()) contents.closeDevTools()
     else contents.openDevTools({ mode: 'detach' })

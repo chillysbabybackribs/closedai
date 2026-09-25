@@ -51,6 +51,8 @@ import { peerChatTools } from './tools/peer-chats/index.js'
 import { NativeControllerClient } from './native-instrument/client.js'
 import { NativeInstrumentService } from './native-instrument/service.js'
 import { nativeInstrumentTools } from './tools/native-instrument/index.js'
+import { mediaTools, VideoJobs } from './tools/media/index.js'
+import { recordPageVideo } from './video-render/page-recorder.js'
 import { ToolTelemetry } from './tools/telemetry.js'
 import { traceToolCalls } from './trace/taps.js'
 import { CredentialVault } from './credential-vault.js'
@@ -109,6 +111,7 @@ let cursorBridge: CursorToolBridge | null = null
 let browserSessionFlush: Promise<void> | null = null
 let cdpAccess: BrowserCdpAccess | null = null
 let nativeInstrument: NativeInstrumentService | null = null
+const videoJobs = new VideoJobs()
 let appAutomationAccess: AppAutomationAccess | null = null
 let appCommandAccess: AppCommandAccess | null = null
 let stopBrowserCacheMaintenance: (() => void) | null = null
@@ -276,6 +279,7 @@ async function main(): Promise<void> {
       approve: (request, signal) => credentialApprovals.ask(request, signal)
     })),
     appTools(() => appCommandAccess, () => appAutomationAccess, () => pageAccess),
+    mediaTools({ app: () => appCommandAccess, ui: () => appAutomationAccess, page: () => pageAccess, record: recordPageVideo }, videoJobs),
     browserTools(() => pageAccess, () => networkAccess, () => networkAccess),
     cdpTools(() => cdpAccess, artifacts.service),
     captureTools(() => captureAccess, screenshots),
@@ -455,6 +459,7 @@ app.on('before-quit', (event) => {
   event.preventDefault()
   quitting = true
   nativeInstrument?.dispose()
+  videoJobs.dispose()
   stopBrowserCacheMaintenance?.()
   stopBrowserCacheMaintenance = null
   stopVerifyJanitor?.()

@@ -24,7 +24,10 @@ import type { AppAutomationAccess } from './app-automation-access.js'
 import type { NativeInstrumentService } from './native-instrument/service.js'
 export type MainWindowHost = {
   downloadsRoot: () => string
-  sendToMainWindow: <C extends IpcEventChannel>(channel: C, payload: IpcEventChannels[C]) => void
+  /** Every window, except browser channels, which only the main window renders. */
+  sendToWindows: <C extends IpcEventChannel>(channel: C, payload: IpcEventChannels[C]) => void
+  /** Chat events, each transcript stream routed to the window showing that chat. */
+  sendChatEvent: (event: ChatWorkspaceEvent) => void
   browserHistory: BrowserHistoryStore
   browserTabSession: BrowserTabSessionStore | null
   securitySettings: SecuritySettingsStore
@@ -65,10 +68,10 @@ export function openMainWindow(host: MainWindowHost): BrowserWindow {
   host.setBrowserDownloads(browserDownloads)
   browserDownloads.install(session.fromPartition(PARTITION))
   browserDownloads.on('changed', (downloads: BrowserDownload[]) =>
-    host.sendToMainWindow(IPC.event.browserDownloadsChanged, downloads)
+    host.sendToWindows(IPC.event.browserDownloadsChanged, downloads)
   )
   const batchChat = rendererChatBatcher(
-    (event) => host.sendToMainWindow(IPC.event.chatEvent, event),
+    (event) => host.sendChatEvent(event),
     traceChatIpcMetrics
   )
   const forwardChat = rendererChatForwarder(
@@ -77,8 +80,8 @@ export function openMainWindow(host: MainWindowHost): BrowserWindow {
     traceChatEvent(event)
     forwardChat(event)
   })
-  traceLog.on('event', (event: TraceEvent) => host.sendToMainWindow(IPC.event.traceEvent, event))
-  const sendToolsEvent = (event: ToolsEvent): void => { host.sendToMainWindow(IPC.event.toolsEvent, event) }
+  traceLog.on('event', (event: TraceEvent) => host.sendToWindows(IPC.event.traceEvent, event))
+  const sendToolsEvent = (event: ToolsEvent): void => { host.sendToWindows(IPC.event.toolsEvent, event) }
   host.toolTelemetry?.on('record', (record) => sendToolsEvent({ type: 'call', record }))
   host.toolTelemetry?.on('cleared', () => sendToolsEvent({ type: 'cleared' }))
 
@@ -88,9 +91,9 @@ export function openMainWindow(host: MainWindowHost): BrowserWindow {
 }
 
 export function wireBrowserEvents(host: MainWindowHost, service: BrowserService): void {
-  service.on('state', (state: BrowserState) => host.sendToMainWindow(IPC.event.browserState, state))
+  service.on('state', (state: BrowserState) => host.sendToWindows(IPC.event.browserState, state))
   service.on('tabs', (tabs: BrowserTabInfo[]) => {
-    host.sendToMainWindow(IPC.event.browserTabs, tabs)
+    host.sendToWindows(IPC.event.browserTabs, tabs)
     host.browserTabSession?.save(service.persistTabs())
   })
   service.on('error', (error: unknown) => {

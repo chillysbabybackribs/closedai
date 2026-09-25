@@ -29,6 +29,10 @@ const waitField = {
   type: 'number', minimum: 0, maximum: MAX_WAIT_S,
   description: `Seconds to wait for the render to finish before returning its progress; default ${DEFAULT_WAIT_S}, max ${MAX_WAIT_S}.`
 }
+const pathField = {
+  type: 'string', minLength: 1, maxLength: 4096,
+  description: 'render: the .html/.htm page; play: an .mp4/.webm. Relative to the chat cwd or absolute inside it.'
+}
 const jobField = { type: 'string', minLength: 1, maxLength: 100, description: 'job_id returned by render.' }
 
 /**
@@ -58,7 +62,7 @@ export function mediaTools(hosts: MediaHosts, jobs = new VideoJobs()): ToolNames
             description: 'Start rendering `path` for `duration_s`. Writes `output` (default: the page name with .mp4) only when encoding succeeds, then opens it in a new tab unless open is false. One render runs at a time.',
             timeoutMs: (MAX_WAIT_S + 15) * 1000,
             inputSchema: objectSchema({
-              path: { type: 'string', minLength: 1, maxLength: 4096, description: '.html/.htm file relative to the chat cwd or absolute inside it.' },
+              path: pathField,
               duration_s: { type: 'number', minimum: 0.1, maximum: 600, description: 'Video length in seconds.' },
               output: { type: 'string', minLength: 1, maxLength: 4096, description: '.mp4 path inside the cwd; parent folders are created; an existing file is replaced.' },
               fps: { type: 'integer', minimum: 1, maximum: 60, description: 'Frames per second; default 30.' },
@@ -109,9 +113,7 @@ export function mediaTools(hosts: MediaHosts, jobs = new VideoJobs()): ToolNames
           {
             action: 'play',
             description: 'Open an existing .mp4 or .webm under the chat cwd in a new browser tab and show the browser pane.',
-            inputSchema: objectSchema({
-              path: { type: 'string', minLength: 1, maxLength: 4096, description: 'Video file relative to the chat cwd or absolute inside it.' }
-            }, ['path']),
+            inputSchema: objectSchema({ path: pathField }, ['path']),
             run: async (input, context) => {
               const file = await resolveWorkspaceFile(stringArg(input, 'path')!, cwdOf(context.paneId), PLAYABLE, 'play opens .mp4 or .webm files')
               return jsonResult(await openWorkspacePreview(file, context.paneId, hosts))

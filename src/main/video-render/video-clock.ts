@@ -54,8 +54,7 @@ function installVideoClock(globalName: string): void {
     if (!new.target) return new RealDate(epoch + now).toString()
     return args.length === 0 ? new RealDate(epoch + now) : new (RealDate as unknown as new (...a: unknown[]) => Date)(...args)
   } as unknown as DateConstructor
-  Object.assign(VirtualDate, { now: () => epoch + now, parse: RealDate.parse, UTC: RealDate.UTC })
-  VirtualDate.prototype = RealDate.prototype
+  Object.assign(VirtualDate, { now: () => epoch + now, parse: RealDate.parse, UTC: RealDate.UTC, prototype: RealDate.prototype })
   ;(window as unknown as { Date: DateConstructor }).Date = VirtualDate
 
   // Element.animate starts an animation mid-step; record its birth at the exact virtual time.
