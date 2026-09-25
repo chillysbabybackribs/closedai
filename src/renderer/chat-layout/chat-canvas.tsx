@@ -1,5 +1,5 @@
 import { expandedPaneIds } from './layout-docking.js'
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent as ReactDragEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent as ReactDragEvent, type ReactNode } from 'react'
 import type { ChatReviewQueue } from '../chat-history/review-queue.js'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import { BROWSER_PANE_ID, CHAT_DRAG_TYPE, isViewTabId, layoutGeometry, removePane, type ChatLayout, type DockEdge, type Rect, type SplitResizePhase } from './layout-tree.js'
@@ -35,7 +35,7 @@ export type WindowActions = {
 
 /** Where a pointer press starts moving a window: its grip or its header's empty space. */
 const MOVE_HANDLE = '[data-window-grip], .chat-layout-header, .browser-tabstrip'
-const pressesMoveHandle = (event: ReactPointerEvent): boolean => {
+const pressesMoveHandle = (event: { target: EventTarget }): boolean => {
   const target = event.target as HTMLElement
   return target.matches(MOVE_HANDLE) || Boolean(target.closest('[data-window-grip]'))
 }
@@ -314,43 +314,51 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
           setSettling(null)
         }
       }}>
-      {renderedTiles.map(({ id: activeId, tabs, rect }) => {
+      {tiles.map(({ id: activeId, tabs, rect, kind, z }) => {
         const isThisTileSolo = soloTile ? (soloTile.id === activeId || soloTile.tabs.includes(activeId)) : false
         const tileRect = isThisTileSolo ? soloRect : rect
         const tileTabs = tabs
         const tileActiveId = tileTabs.includes(activeId) ? activeId : (tileTabs[0] ?? activeId)
         const row = chatRow?.(activeId)
         const isPlaceholder = placeholder?.id === activeId && mini !== null
+        const floats = kind === 'floating' && !isThisTileSolo
+        const browser = activeId === BROWSER_PANE_ID
         return <section key={tileReactKey(activeId, tileTabs)}
-          className="chat-layout-tile" style={position(tileRect)} data-pane-id={activeId === BROWSER_PANE_ID || isViewTabId(activeId) ? undefined : activeId}
+          className="chat-layout-tile" style={{ ...position(tileRect), zIndex: floats ? 10 + z : undefined }}
+          data-pane-id={browser || isViewTabId(activeId) ? undefined : activeId}
           data-view-id={isViewTabId(activeId) ? activeId : undefined}
+          data-window={kind} data-moving={gesture?.id === activeId ? gesture.kind : undefined}
           data-solo={isThisTileSolo ? 'true' : undefined}
           data-drag-placeholder={isPlaceholder ? held ? 'mini' : 'empty' : undefined}
-          hidden={soloTile ? !isThisTileSolo : (activeId === BROWSER_PANE_ID && !browserVisible)}
-          data-selected={activeId === selectedId || tabs.includes(selectedId)} aria-label={activeId === BROWSER_PANE_ID ? 'Browser' : title(activeId)}
-          onFocusCapture={(event) => { if (activeId !== BROWSER_PANE_ID && activeId !== selectedId && !(event.target as HTMLElement).closest('[role="tablist"]')) onSelect(activeId) }}
-          onPointerDownCapture={(event) => { if (activeId !== BROWSER_PANE_ID && activeId !== selectedId && !(event.target as HTMLElement).closest('[role="tablist"]')) onSelect(activeId) }}>
+          hidden={soloTile ? !isThisTileSolo : kind === 'hidden'}
+          data-selected={activeId === selectedId || tabs.includes(selectedId)} aria-label={browser ? 'Browser' : title(activeId)}
+          onFocusCapture={(event) => { if (!browser && activeId !== selectedId && !(event.target as HTMLElement).closest('[role="tablist"]')) onSelect(activeId) }}
+          onPointerDownCapture={(event) => {
+            if (floats) windows.raise(activeId)
+            if (!browser && activeId !== selectedId && !(event.target as HTMLElement).closest('[role="tablist"]')) onSelect(activeId)
+          }}
+          onPointerDown={(event) => { if (!busy && !soloTile && pressesMoveHandle(event)) startMove(event, activeId) }}
+          onDoubleClick={browser ? (event) => { if (pressesMoveHandle(event)) browserWindow.toggleMaximize() } : undefined}>
           <div className="chat-layout-tile-body"
             style={isPlaceholder ? { ...position(mini.layout), '--mini-scale': mini.scale } as CSSProperties : undefined}>
-            {activeId !== BROWSER_PANE_ID && <ChatLayoutPaneHeader activeId={tileActiveId} tabs={tileTabs} chatCount={chatCount}
+            {!browser && <ChatLayoutPaneHeader activeId={tileActiveId} tabs={tileTabs} chatCount={chatCount}
               busy={busy} toolsPreset={toolsPreset ?? null} title={title} activity={activity} reviewQueue={reviewQueue}
               row={row} soloTile={soloTile ?? null} setSoloPaneId={setSoloPaneId} tabFocus={tabFocus} onSelect={onSelect}
               onSelectTab={onSelectTab} onCloseTab={onCloseTab} onNewChat={onNewChat} onRenameChat={onRenameChat}
               onTogglePin={onTogglePin} onPauseTab={onPauseTab} onResumeTab={onResumeTab} onOpenPresets={onOpenPresets}
-              onHide={onHide} setDragging={setDragging} canMaximize={canMaximize} isThisTileSolo={isThisTileSolo} />}
+              onHide={onHide} setDragging={setDragging} canMaximize={canMaximize || kind === 'floating'} isThisTileSolo={isThisTileSolo}
+              canMinimize={minimizeWindow(tree, activeId) !== tree} onMinimize={windows.minimize} />}
             {activeId === selectedId && <div className="chat-layout-notice" role="status" aria-atomic="true">{notice}</div>}
-            {activeId === BROWSER_PANE_ID ? <div className="chat-layout-browser-frame" data-ui="layout.browser-dock">
-              {renderBrowser}
+            {browser ? <div className="chat-layout-browser-frame" data-ui="layout.browser-dock">
+              <BrowserWindowContext.Provider value={browserWindow}>{renderBrowser}</BrowserWindowContext.Provider>
             </div> : tileTabs.map((tabId) => <div key={tabId} className="chat-layout-content" role="tabpanel" id={`chat-panel-${tabId}`}
               aria-label={title(tabId)} hidden={tabId !== tileActiveId}>{renderPane(tabId, tabId === tileActiveId)}</div>)}
           </div>
+          {floats && !busy && <WindowResizeHandles id={activeId} onStart={startResize} />}
         </section>
       })}
-      {dragging?.id === BROWSER_PANE_ID && !busy && (['left', 'right'] as const).map((edge) => <div key={edge}
-        className="chat-layout-workspace-dock" data-edge={edge} data-ui="layout.workspace-dock" data-ui-key={edge}
-        data-active={browserDrop?.target === WORKSPACE_DOCK_ID && browserDrop.edge === edge}
-        aria-label={`Move browser to full-height ${edge} column`}
-      ><span>Full-height column</span></div>)}
+      {gesture?.preview && <div className="chat-layout-snap-preview" data-kind={gesture.target.kind}
+        style={position(gesture.preview)} aria-hidden="true" />}
       {!soloTile && layoutDividers.map((divider) => <LayoutDivider key={divider.id}
         divider={divider} splitResize={splitResize} onResize={onResize} />)}
     </div>
@@ -369,6 +377,7 @@ function chatCanvasPropsEqual(previous: ChatCanvasProps, next: ChatCanvasProps):
     && previous.onPauseTab === next.onPauseTab && previous.onResumeTab === next.onResumeTab
     && previous.onOpenPresets === next.onOpenPresets && previous.onSizeChange === next.onSizeChange
     && previous.onDock === next.onDock && previous.onHide === next.onHide && previous.onResize === next.onResize
+    && previous.windows === next.windows && previous.onBrowserCovered === next.onBrowserCovered
 }
 
 export const ChatCanvas = memo(ChatCanvasInner, chatCanvasPropsEqual)

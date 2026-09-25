@@ -1,16 +1,17 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import { ContextMenu } from 'radix-ui'
-import { Plus, X } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import type { ChatReviewQueue } from '../chat-history/review-queue.js'
 import { ChatLayoutContextMenu } from './layout-context-menu.js'
 import { ChatLayoutPaneHints } from './chat-layout-pane-hints.js'
 import { ChatTabs } from './chat-tabs.js'
-import { CHAT_DRAG_TYPE, isViewTabId } from './layout-tree.js'
+import { isViewTabId } from './layout-tree.js'
+import { WindowControls } from './floating/window-controls.js'
 import { paneHideHint, tabCloseHint } from './layout-copy.js'
 import type { TabActivity } from './tab-activity.js'
 
-function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset, title, activity, reviewQueue, row, soloTile, setSoloPaneId, tabFocus, hideHint, closeHint, tabActivity, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onTogglePin, onPauseTab, onResumeTab, onOpenPresets, onHide, setDragging, canMaximize, isThisTileSolo }: {
+function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset, title, activity, reviewQueue, row, soloTile, setSoloPaneId, tabFocus, hideHint, closeHint, tabActivity, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onTogglePin, onPauseTab, onResumeTab, onOpenPresets, onHide, setDragging, canMaximize, isThisTileSolo, canMinimize, onMinimize }: {
   activeId: string
   tabs: string[]
   chatCount: number
@@ -39,6 +40,8 @@ function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset
   setDragging: (value: { id: string; singleTab: boolean } | null) => void
   canMaximize: boolean
   isThisTileSolo: boolean
+  canMinimize: boolean
+  onMinimize: (id: string) => void
 }) {
   // A view in front has no chat actions: rename, pin, pause belong to the chat it follows, not the tab.
   const view = isViewTabId(activeId)
@@ -52,14 +55,10 @@ function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset
           if ((event.target as HTMLElement).closest('button')) return
           if (canMaximize || isThisTileSolo) setSoloPaneId((current) => current ? null : activeId)
         }}>
+        {/* The canvas moves the window from a press here or on the header's empty space. */}
         <button type="button" className="chat-layout-drag" data-ui="layout.pane-drag" data-ui-key={activeId}
-          draggable={!busy} disabled={busy} aria-label="Drag to move pane"
-          title="Drag to move whole pane · Tab drags move one conversation"
-          onDragStart={(event) => {
-            event.dataTransfer.setData(CHAT_DRAG_TYPE, activeId)
-            event.dataTransfer.effectAllowed = 'move'
-            setDragging({ id: activeId, singleTab: false })
-          }}>
+          data-window-grip="" disabled={busy} aria-label="Move window"
+          title="Drag to move the window: to a workspace edge to tile it, onto a tab strip to join its tabs · Tab drags move one conversation">
           <span className="chat-layout-drag-dots" aria-hidden="true" />
         </button>
         <ChatTabs ids={tabs} activeId={activeId} busy={busy} canClose={tabs.length > 1 || chatCount > 1}
@@ -74,13 +73,17 @@ function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset
           onClick={() => onNewChat(activeId)}>
           <Plus size={14} aria-hidden="true" />
         </button>
-        <button data-ui="layout.pane-hide" data-ui-key={activeId} disabled={busy || chatCount < 2}
-          title={`Hide pane · ${hideHint}`} aria-label={`Hide pane · ${hideHint}`} onClick={() => {
+        <WindowControls id={activeId} busy={busy} maximized={isThisTileSolo} canMinimize={canMinimize}
+          canMaximize={canMaximize} closeLabel={`Close window · ${hideHint}`} canClose={chatCount >= 2}
+          onMinimize={() => {
+            if (soloTile) setSoloPaneId(null)
+            onMinimize(activeId)
+          }}
+          onToggleMaximize={() => setSoloPaneId((current) => current ? null : activeId)}
+          onClose={() => {
             if (soloTile) setSoloPaneId(null)
             onHide(activeId)
-          }}>
-          <X size={14} aria-hidden="true" />
-        </button>
+          }} />
       </header>
     </ContextMenu.Trigger>
     <ChatLayoutContextMenu activeId={activeId} tabs={tabs} chatCount={chatCount} busy={busy}

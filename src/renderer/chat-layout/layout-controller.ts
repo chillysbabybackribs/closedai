@@ -1,13 +1,14 @@
-import { ensureExpandedGroup, expandAllDockedGroups, layoutGroups } from './layout-docking.js'
+import { ensureExpandedGroup, layoutGroups } from './layout-docking.js'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ChatWorkspaceSnapshot } from '../../shared/chat-peers.js'
 import { errorMessage } from '../error-message.js'
-import { BROWSER_PANE_ID, WORKSPACE_DOCK_ID, chatPaneIds, isViewTabId, withBrowser, dockBrowser, dockPane, paneIds, readLayout, removePane, resizeSplit, saveLayout, type ChatLayout, type DockEdge, type SplitResizePhase } from './layout-tree.js'
+import { BROWSER_PANE_ID, WORKSPACE_DOCK_ID, chatPaneIds, type Rect, isViewTabId, withBrowser, dockBrowser, dockPane, paneIds, readLayout, removePane, resizeSplit, saveLayout, type ChatLayout, type DockEdge, type SplitResizePhase } from './layout-tree.js'
 import { addTab, chatTabIds, focusChatTabInLayout, focusedCloseAction, isChatTabActive, moveTab, neighborTile, pruneTabs, removeTab, selectTab, tabIds, tabOwner, type TileDirection } from './layout-tabs.js'
 import { isWorkspaceViewKind, pinOnMove, pruneViewScopes, tileView, viewScope, viewTabId, workspaceView, type ViewKind } from './layout-views.js'
 import { removalNotice } from './layout-copy.js'
 import { adoptTabs, initialWindowTree } from './layout-windows.js'
 import { adoptsUnheldChats, appWindow, onAppWindowCommand, tabsHeldElsewhere, useAppWindows } from '../app-windows/app-window-store.js'
+import { floatBeside, floatWindow, groupWindow, minimizeWindow, raiseWindow, restoreWindow, snapWindow } from './floating/window-layout.js'
 import { assignGroups, presetLayout, presetSlots, singleGroup, type CanvasSize, type LayoutPreset } from './layout-presets.js'
 const ERROR_TTL_MS = 8000
 /** Main announces a selection within one workspace event; past this the layout resyncs instead of staying locked. */
@@ -35,7 +36,7 @@ export function useChatLayout(
       selectedPaneId: snapshot.selectedPaneId, detached: !self.main, initialTabs: self.initialTabs,
       fallbackView: () => viewTabId('history', crypto.randomUUID())
     })
-    return { ...saved, tree: withBrowser(expandAllDockedGroups(ensureExpandedGroup(tree))) }
+    return { ...saved, tree: withBrowser(ensureExpandedGroup(tree)) }
   })
   // Objects rather than strings: repeating the same message restarts its dismissal timer.
   const [error, setError] = useState<{ text: string } | null>(null)
@@ -110,7 +111,7 @@ export function useChatLayout(
     const available = new Set(chatIdsKey.split('\0').filter(Boolean))
     setLayout((value) => {
       const pruned = pruneTabs(value.tree, available)
-      const tree = pruned ? expandAllDockedGroups(ensureExpandedGroup(pruned)) : pruned
+      const tree = pruned ? ensureExpandedGroup(pruned) : pruned
       return tree === value.tree ? value : { ...value, tree: tree! }
     })
   }, [chatIdsKey, cwd])
@@ -216,8 +217,9 @@ export function useChatLayout(
         // Dragging a hidden sidebar tab out leaves its sibling tabs in their tile.
         const tree = edge && tabOwner(value.tree, added) && !paneIds(value.tree).includes(added)
           ? removeTab(value.tree, added)! : value.tree
+        // Split beside a floating window, the new window floats too, cascaded from it.
         return { ...value, views, tree: edge
-          ? dockPane(tree, added, target, edge, crypto.randomUUID())
+          ? floatBeside(dockPane(tree, added, target, edge, crypto.randomUUID()), added, target)
           : addTab(tree, target, added) }
       })
       if (view) release()
@@ -463,13 +465,38 @@ export function useChatLayout(
     return () => window.removeEventListener('focus', claimSelection)
   }, [])
 
+  // Window moves are the tree alone: the chats they carry stay open, so none of them crosses IPC.
+  const windowTree = useCallback((change: (tree: ChatLayout) => ChatLayout): void => {
+    if (pending.current) return
+    setLayout((value) => {
+      const tree = change(value.tree)
+      return tree === value.tree ? value : { ...value, tree }
+    })
+  }, [])
+  const windows = useMemo(() => ({
+    float: (id: string, rect: Rect) => windowTree((tree) => floatWindow(tree, id, rect)),
+    snap: (id: string, target: string, edge: DockEdge) => windowTree((tree) => snapWindow(tree, id, target, edge, crypto.randomUUID())),
+    group: (source: string, target: string) => windowTree((tree) => groupWindow(tree, source, target)),
+    raise: (id: string) => windowTree((tree) => raiseWindow(tree, id)),
+    minimize: (id: string) => {
+      windowTree((tree) => minimizeWindow(tree, id))
+      // The selection follows what is on screen, like hiding a pane.
+      const remaining = chatPaneIds(minimizeWindow(current.current.tree, id))
+      if (tabOwner(current.current.tree, selected.current) === id && remaining[0]) void focusPane(remaining[0])
+    },
+    restore: (id: string) => {
+      windowTree((tree) => restoreWindow(tree, id))
+      void focusPane(id)
+    }
+  }), [windowTree, focusPane])
+
   const toggleBrowser = useCallback(() => setLayout((value) => ({ ...value, browserVisible: !value.browserVisible })), [])
   const showBrowser = useCallback(() => setLayout((value) => value.browserVisible ? value : { ...value, browserVisible: true }), [])
   return {
     ...layout, browserVisible: self.main && layout.browserVisible, detached: !self.main,
     error: error?.text ?? '', notice: notice?.text ?? '', busy, dock, newChat, continueChat, focusPane,
     activateTab, openView, toggleView, pinView, moveTabToTile, closeTab, hide, closeFocused, resize, arrange,
-    toggleBrowser, showBrowser, detachTab, returnTab
+    toggleBrowser, showBrowser, detachTab, returnTab, windows
   }
 }
 
