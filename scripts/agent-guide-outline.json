@@ -49,9 +49,9 @@
         "Provider threads replay tool results and images every send until rotation, compaction, or a handoff/branch.",
         "search.query depth quick (default) uses one provider; balanced and deep wait for several. Prefer search.run for parallel research.",
         "Prefer embedded_browser.script extract on structured JSON; use capture sparingly (image tokens add up). Codex code mode: pass capture data URLs to image(), not JSON text with base64.",
-        "Codex loads most ClosedAI tools on discovery (deferLoading), including search.query; only embedded_browser.page and closedai_app.state are eager (~1k advertised tokens). Disable unused tool groups in Settings to shrink the per-turn catalog.",
+        "Codex loads most ClosedAI tools on discovery (deferLoading), including search.query; only embedded_browser.page and closedai_app.state are eager (~1k advertised tokens). Cursor and Antigravity MCP expose full enabled schemas per session — disable unused tool groups in Settings to shrink catalog size.",
         "Start a fresh chat, branch, or handoff when context usage is high instead of one endless thread.",
-        "Codex and Claude rotate to a thin seed after idle when context passes chatCompactAtTokens (default 28k) or chatCompactAtPercent (default 80); peer_chats.recall can recover omitted evidence."
+        "With seamless rotation (default), Codex, Claude, Cursor, and Antigravity idle-rotate to a thin seed when context crosses chatCompactAtTokens (default 28k), chatCompactAtPercent (default 80), or task-aware limits (transcript items, tool calls, tool-output volume); peer_chats.recall can recover omitted evidence."
       ]
     },
     {
