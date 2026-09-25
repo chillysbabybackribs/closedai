@@ -60,3 +60,10 @@
   background: transparent;
 }
 :root[data-backdrop] .chat-layout-browser-frame .browser-tabstrip { background: transparent; }
+
+/* Overview frosts the whole desktop behind the space miniatures, as the OS does for its own. */
+:root[data-backdrop] .spaces-stage[data-spaces-overview] {
+  background:
+    linear-gradient(rgb(0 0 0 / 32%), rgb(0 0 0 / 32%)),
+    var(--backdrop-blur) center / cover no-repeat fixed;
+}
