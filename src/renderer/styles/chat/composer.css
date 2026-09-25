@@ -1,5 +1,6 @@
 /* The composer (composer.tsx): one glass capsule floating over the foot of the transcript.
-   Tools, the draft, the setup chip and Send share a single row; the draft grows upward. The
+   Tools, the draft, the setup chip and Send share a single row until the draft wraps; then the
+   capsule expands, the draft spans its width and the controls drop to a row beneath. The
    capsule is the chat's one see-through surface: a live blur of the transcript scrolling under
    it. Setup panels (composer-setup-menu.tsx) open from the chip. */
 
@@ -80,6 +81,7 @@
 /* The line. Controls sit on the bottom edge so a draft grows upward above them. */
 .composer-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
   gap: 6px;
   min-height: 48px;
@@ -96,9 +98,28 @@
 
 .composer-input-wrap {
   position: relative;
-  flex: 1 1 auto;
+  /* A zero basis: the draft takes the room the controls leave and never pushes them aside. */
+  flex: 1 1 0;
   align-self: center;
   min-width: 0;
+}
+
+/* Expanded: the draft moves to its own full-width line on top and the controls form a row
+   beneath it, tools on the left and the setup chip with Send on the right. Only order and
+   wrapping change, so the textarea keeps its focus and caret across the switch. */
+.composer-stack[data-expanded] .composer-row {
+  row-gap: 4px;
+}
+
+.composer-stack[data-expanded] .composer-input-wrap {
+  order: -1;
+  flex-basis: 100%;
+  padding: 1px 6px 0;
+}
+
+.composer-stack[data-expanded] .composer-setup-chip {
+  max-width: 62%;
+  margin-left: auto;
 }
 
 .composer-textarea {
@@ -235,13 +256,13 @@
 }
 
 /* The setup chip: model and folder as one rounded chip with two halves, each opening its own
-   panel. It reads as the capsule's metadata, quieter than the draft. */
+   panel. It reads as the capsule's metadata, quieter than the draft. Its automatic minimum width
+   (its content, capped by max-width) keeps the model name from being squeezed away. */
 .composer-setup-chip {
   display: flex;
   flex: 0 1 auto;
   margin-bottom: 1px;
   align-items: stretch;
-  min-width: 0;
   max-width: 48%;
   height: 32px;
   border: 1px solid color-mix(in srgb, var(--foreground) 9%, transparent);

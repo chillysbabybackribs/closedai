@@ -1,5 +1,5 @@
 import type { ClipboardEvent, DragEvent, FormEvent, JSX, KeyboardEvent, Ref } from 'react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ArrowUp, Play, Square } from 'lucide-react'
 
 import { Button } from '../components/ui/button.js'
@@ -56,8 +56,11 @@ export type ComposerProps = {
 
 /**
  * One glass capsule floating over the foot of the transcript: attach and workspace tools on the
- * left, the draft in the middle (it grows upward as you type), and the setup chip — model and
- * folder, each opening its own panel — beside Send on the right. There is no second row.
+ * left, the draft in the middle, and the setup chip — model and folder, each opening its own
+ * panel — beside Send on the right. Once the draft wraps, holds a line break, or carries an
+ * attachment, the capsule expands: the draft spans the full width and the controls drop to a row
+ * beneath it. It stays expanded until the draft is sent or cleared, so a draft that fits one line
+ * only at the wider width does not flip back and forth as you type.
  */
 export function Composer({
   enabled,
@@ -100,8 +103,24 @@ export function Composer({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const focusAfterSendRef = useRef(false)
   const canSend = (input.trim().length > 0 || attachments.length > 0) && !sending && enabled && !running
+  const [wrapped, setWrapped] = useState(false)
+  const expanded = wrapped || attachments.length > 0 || input.includes('\n')
 
   useEffect(() => setDismissedSuggestion(null), [promptSuggestion])
+
+  // Measured before paint, so the one-row capsule never shows a wrapped draft for a frame.
+  useLayoutEffect(() => {
+    if (!input) {
+      setWrapped(false)
+      return
+    }
+    const textarea = formRef.current?.querySelector<HTMLTextAreaElement>('textarea')
+    if (expanded || !textarea) return
+    const style = getComputedStyle(textarea)
+    const lineHeight = parseFloat(style.lineHeight) || 22
+    const textHeight = textarea.scrollHeight - parseFloat(style.paddingTop || '0') - parseFloat(style.paddingBottom || '0')
+    if (textHeight > lineHeight * 1.5) setWrapped(true)
+  }, [input, expanded])
 
   useEffect(() => {
     if (sending || !focusAfterSendRef.current) return
@@ -241,6 +260,7 @@ export function Composer({
         disabled={!enabled || sending}
         maxHeight="var(--composer-max-height, min(36vh, 240px))"
         className="composer-stack composer-card"
+        data-expanded={expanded || undefined}
       >
         {attachments.length > 0 && (
           <AttachmentChips

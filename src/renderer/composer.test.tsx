@@ -4,6 +4,7 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 
 import { Composer, type ComposerProps } from './composer.tsx'
+import { resetAllComposerDrafts, setComposerDraft } from './composer-drafts.ts'
 
 const baseProps: ComposerProps = {
   enabled: true,
@@ -104,4 +105,13 @@ test('composer copy names the pane provider, not Codex', () => {
   const cursor = renderToStaticMarkup(createElement(Composer, { ...baseProps, provider: 'cursor' }))
   assert.match(cursor, /placeholder="Message Cursor"/)
   assert.match(cursor, /aria-label="Send to Cursor \(Enter\)"/)
+})
+
+test('the capsule is one row for an empty draft and expands once it holds a line break', () => {
+  const idle = renderToStaticMarkup(createElement(Composer, { ...baseProps, paneId: 'pane-idle' }))
+  assert.doesNotMatch(idle, /data-expanded/)
+  setComposerDraft('pane-multi', { input: 'first line\nsecond line', attachments: [] })
+  const multi = renderToStaticMarkup(createElement(Composer, { ...baseProps, paneId: 'pane-multi' }))
+  assert.match(multi, /class="[^"]*composer-stack[^"]*"[^>]*data-expanded="true"/)
+  resetAllComposerDrafts()
 })

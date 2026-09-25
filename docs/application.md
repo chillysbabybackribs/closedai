@@ -443,8 +443,10 @@ pointer cancellation and lost capture restore the starting proportions, while wi
 the last position. The final geometry is painted before releasing the gesture. Nested splits support columns, rows,
 and quadrants, up to 32 visible chats. A tile has a 300 × 280 px minimum; the chat area scrolls
 when a small window cannot fit the chosen arrangement. Every layout uses the same one-line
-composer (a 48 px capsule row with a 34 px send/pause control). Drafts grow upward within a tile-relative height limit and
-then scroll, leaving room for the transcript.
+composer (a 48 px capsule row with a 34 px send/pause control). Once a draft wraps, holds a line break, or carries an
+attachment, the capsule expands: the draft spans its full width and the tools, setup chip and Send drop to a row beneath it
+until the draft is sent or cleared. Drafts grow upward within a tile-relative height limit and then scroll, leaving room for
+the transcript.
 Tiles at most 680 px wide or 640 px tall also tighten transcript spacing; under 540 px the setup
 chip folds the folder to its icon, and under 380 px the chip narrows and the model name truncates. Single-tab headers use the
 available width for the title; the focused tile has the accent tab indicator.
@@ -452,7 +454,7 @@ The composer is one glass capsule floating over the foot of the transcript (`.ch
 in `chat-pane.tsx`, which also carries the connection banner, credential approvals, the agent run
 strip and pane notices). The transcript scrolls underneath it: the dock publishes its height as
 `--composer-dock-height`, the scroller pads its end by it, and text fades as it slides under the
-capsule's live blur. One row holds attach (`composer.upload`), the agents icon (`composer.agents`)
+capsule's live blur. The one-row capsule holds attach (`composer.upload`), the agents icon (`composer.agents`)
 and, when the latest reply can hand off, **Fresh context** (`composer.continue`) on the left; the
 draft in the middle; then the setup chip, whose model half (`composer.setup`, with a chevron) and
 folder half (`composer.folder`) each open their own panel; and Send on the right. Send and the
