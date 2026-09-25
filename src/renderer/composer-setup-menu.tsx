@@ -99,13 +99,13 @@ export function ComposerSetupMenu({
     <Popover open={open} onOpenChange={setOpen} modal={false}>
       <PopoverTrigger
         ref={triggerRef}
-        className="composer-footer-model-trigger"
+        className="composer-chip-model-trigger"
         aria-label="Model, reasoning effort, and context usage"
         title={`${trigger.name}${trigger.effort ? ` · ${trigger.effort} effort` : ''}`}
         data-ui="composer.setup"
       >
-        <span className="composer-footer-model-name">{trigger.name}</span>
-        <ChevronDown className="composer-footer-chevron" size={12} strokeWidth={2.2} aria-hidden="true" />
+        <span className="composer-chip-model-name">{trigger.name}</span>
+        <ChevronDown className="composer-chip-chevron" size={12} strokeWidth={2.2} aria-hidden="true" />
       </PopoverTrigger>
       <PopoverContent
         className="composer-setup"

@@ -44,13 +44,13 @@ export function ComposerFolderMenu({
       <PopoverTrigger
         ref={triggerRef}
         type="button"
-        className="composer-footer-folder-trigger"
+        className="composer-chip-folder-trigger"
         aria-label="Working folder"
         title={title}
         data-ui="composer.folder"
       >
-        <FolderOpen className="composer-footer-folder-icon" size={12} strokeWidth={2.2} aria-hidden="true" />
-        <span className="composer-footer-folder-name">
+        <FolderOpen className="composer-chip-folder-icon" size={12} strokeWidth={2.2} aria-hidden="true" />
+        <span className="composer-chip-folder-name">
           {folder}{projectPending ? ' (queued)' : ''}
         </span>
       </PopoverTrigger>
