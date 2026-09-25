@@ -21,4 +21,5 @@ test('resolveHtmlPreview rejects paths outside cwd and non-html', async () => {
   const txt = path.join(cwd, 'note.txt')
   await writeFile(txt, 'hi')
   await assert.rejects(resolveHtmlPreview('note.txt', cwd), /\.html/)
+  await assert.rejects(resolveHtmlPreview('missing.html', cwd), /^Error: No file at .*missing\.html$/)
 })

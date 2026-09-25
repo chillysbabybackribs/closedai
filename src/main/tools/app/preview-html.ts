@@ -10,8 +10,10 @@ const HTML_EXT = new Set(['.html', '.htm'])
 export type WorkspaceFile = { path: string; fileUrl: string }
 
 /** Resolve a workspace HTML mock to an absolute path and file URL, confined to cwd. */
-export async function resolveHtmlPreview(input: string, cwd: string): Promise<WorkspaceFile> {
-  return resolveWorkspaceFile(input, cwd, HTML_EXT, 'preview_html only opens .html or .htm files')
+export async function resolveHtmlPreview(
+  input: string, cwd: string, wrongType = 'preview_html only opens .html or .htm files'
+): Promise<WorkspaceFile> {
+  return resolveWorkspaceFile(input, cwd, HTML_EXT, wrongType)
 }
 
 /** An existing file under cwd with one of `extensions` (lower-case, with the dot). */
@@ -20,7 +22,9 @@ export async function resolveWorkspaceFile(
 ): Promise<WorkspaceFile> {
   const absolute = insideCwd(input, cwd)
   if (!extensions.has(path.extname(absolute).toLowerCase())) throw new Error(wrongType)
-  const info = await stat(absolute)
+  const info = await stat(absolute).catch((error: NodeJS.ErrnoException) => {
+    throw error.code === 'ENOENT' ? new Error(`No file at ${absolute}`) : error
+  })
   if (!info.isFile()) throw new Error(`${absolute} is not a file`)
   await access(absolute)
   return { path: absolute, fileUrl: pathToFileURL(absolute).href }

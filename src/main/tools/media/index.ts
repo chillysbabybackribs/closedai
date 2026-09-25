@@ -74,7 +74,7 @@ export function mediaTools(hosts: MediaHosts, jobs = new VideoJobs()): ToolNames
             }, ['path', 'duration_s']),
             run: async (input, context) => {
               const cwd = cwdOf(context.paneId)
-              const page = await resolveHtmlPreview(stringArg(input, 'path')!, cwd)
+              const page = await resolveHtmlPreview(stringArg(input, 'path')!, cwd, 'render needs an .html or .htm page')
               const outputArg = stringArg(input, 'output') ?? page.path.replace(/\.html?$/i, '.mp4')
               const output = insideCwd(outputArg, cwd)
               if (path.extname(output).toLowerCase() !== '.mp4') return usageResult('media.video render: output must end in .mp4')
