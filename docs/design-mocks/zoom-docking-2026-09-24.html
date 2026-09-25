@@ -36,7 +36,7 @@
   .viewport { position: absolute; left: 0; top: 0; transform-origin: 0 0; width: 1120px; height: 630px; overflow: hidden; border-radius: 10px; background: #5a5854; user-select: none; }
   .world { position: absolute; left: 0; top: 0; width: 1120px; height: 630px; transform-origin: 0 0; transition: transform var(--dur) var(--ease); }
   .group { position: absolute; border-radius: 12px; background: rgb(0 0 0 / 13%); }
-  .chip { position: absolute; top: 0; left: 10px; transform-origin: 0 50%; transform: translateY(-50%) scale(var(--inv, 1)); transition: transform var(--dur) var(--ease), opacity 200ms; white-space: nowrap; font-size: 11px; font-weight: 600; letter-spacing: .03em; color: #eeeae4; background: #6f6c68; padding: 2px 7px; border-radius: 5px; pointer-events: none; }
+  .chip { position: absolute; top: 5px; left: 9px; transform-origin: 0 0; transform: scale(var(--inv, 1)); transition: transform var(--dur) var(--ease), opacity 200ms; white-space: nowrap; font-size: 11px; font-weight: 600; letter-spacing: .03em; color: #eeeae4; background: #6f6c68; padding: 2px 7px; border-radius: 5px; pointer-events: none; }
   .slot { position: absolute; left: 0; top: 0; width: 1120px; height: 630px; transform-origin: 0 0; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 10px rgb(0 0 0 / 28%); }
   .slot > .chip { top: auto; bottom: 10px; left: 10px; transform-origin: 0 100%; transform: scale(var(--leaf-inv, 1)); background: rgb(32 34 35 / 78%); }
   .slot[data-focused] > .chip { opacity: 0; }
@@ -101,7 +101,7 @@
 <p class="note"><b class="hi">How it maps onto ClosedAI.</b> Each workspace is today's <code>chat-layout</code> split tree, unchanged. What's new is one tree of workspaces above it, using the same split and dock code. Chats are DOM, so a CSS scale shrinks them and they keep streaming while zoomed out. The browser is a native view and can't be CSS-scaled, so zoomed out it shows a <code>capturePage</code> snapshot and goes live again when you zoom back in. Inside a workspace, plain scrolling still scrolls the chat and double-clicking a divider still balances the split, so zooming out from there uses Ctrl+scroll, pinch or a shortcut.</p>
 
 <script>
-const VW = 1120, VH = 630, GAP = 10, PAD = 9, ROOT_PAD = 14, ICON_BELOW = 190
+const VW = 1120, VH = 630, GAP = 10, PAD = 9, LABEL = 18, ROOT_PAD = 14, ICON_BELOW = 190
 
 const chat = (title, state, user, reply, selected) => `
   <div class="tile"${selected ? ' data-selected' : ''}>
@@ -155,8 +155,8 @@ function layout (node, rect, parent) {
     leaves.push(node)
     return
   }
-  const pad = parent ? (node.name ? PAD : 0) : ROOT_PAD
-  const inner = { x: rect.x + pad, y: rect.y + pad, w: rect.w - pad * 2, h: rect.h - pad * 2 }
+  const pad = parent ? (node.name ? PAD : 0) : ROOT_PAD, top = parent && node.name ? LABEL : 0
+  const inner = { x: rect.x + pad, y: rect.y + pad + top, w: rect.w - pad * 2, h: rect.h - pad * 2 - top }
   const n = node.kids.length, row = node.dir === 'row'
   const size = ((row ? inner.w : inner.h) - GAP * (n - 1)) / n
   node.kids.forEach((kid, i) => layout(kid, row
