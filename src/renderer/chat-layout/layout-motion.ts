@@ -9,11 +9,19 @@ import type { Rect } from './layout-tree.js'
 // its running transform, so a preview that changes mid-flight bends instead of jumping.
 // Transforms do not fire ResizeObserver: the caller keeps the native browser view
 // occluded until `whenIdle` resolves, then re-measures the settled box.
+//
+// The dragged tile becomes a placeholder at its destination. Its body keeps the size it had
+// before the drag and is shown scaled down inside it (a miniature, so nothing reflows);
+// when the placeholder is released the body glides from that miniature to fill the tile.
 
 export const GLIDE_MS = 190
 const GLIDE_EASING = 'cubic-bezier(0.22, 1, 0.36, 1)'
 const EPSILON = 0.5
 const MOVING = '.chat-layout-tile, [data-ui="layout.divider"]'
+const BODY = ':scope > .chat-layout-tile-body'
+/** Largest miniature scale, and the share of the placeholder a miniature may fill. */
+const MINI_MAX_SCALE = 0.5
+const MINI_FIT = 0.6
 
 export type Glide = { dx: number; dy: number; sx: number; sy: number }
 
@@ -41,6 +49,37 @@ export function inlineRect(element: HTMLElement): Rect | null {
   return Object.values(rect).every(Number.isFinite) ? rect : null
 }
 
+export type Miniature = { layout: Rect; scale: number }
+
+/**
+ * A body of `source` size centred in a placeholder of `placeholder` size, scaled about its
+ * centre. Sizes are the tile's inner box; the layout rect is relative to that box.
+ */
+export function miniature(placeholder: { width: number; height: number }, source: { width: number; height: number }): Miniature {
+  const fit = Math.min(placeholder.width / source.width, placeholder.height / source.height)
+  const scale = Math.max(0.05, Math.min(MINI_MAX_SCALE, fit * MINI_FIT))
+  return {
+    layout: { x: (placeholder.width - source.width) / 2, y: (placeholder.height - source.height) / 2, width: source.width, height: source.height },
+    scale
+  }
+}
+
+/** Where a box scaled about its centre appears. */
+export function centreScaled(layout: Rect, scale: number): Rect {
+  const width = layout.width * scale
+  const height = layout.height * scale
+  return { x: layout.x + (layout.width - width) / 2, y: layout.y + (layout.height - height) / 2, width, height }
+}
+
+/** Keyframes playing a glide back to identity; `opacity` also fades a body in from that value. */
+export function glideKeyframes(glide: Glide, opacity?: number): Keyframe[] {
+  const fade = opacity === undefined ? [{}, {}] : [{ opacity }, { opacity: 1 }]
+  return [
+    { transformOrigin: '0 0', transform: `translate(${glide.dx}px, ${glide.dy}px) scale(${glide.sx}, ${glide.sy})`, ...fade[0] },
+    { transformOrigin: '0 0', transform: 'none', ...fade[1] }
+  ]
+}
+
 function reducedMotion(): boolean {
   return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
@@ -58,11 +97,37 @@ function currentRect(element: HTMLElement, layout: Rect, running: Animation | un
  */
 export function useLayoutGlide(canvasRef: RefObject<HTMLElement | null>, armed: () => boolean) {
   const laidOut = useRef(new WeakMap<Element, Rect>())
+  const miniatures = useRef(new WeakMap<Element, { rect: Rect; opacity: number }>())
   const running = useRef(new Map<Element, Animation>())
+  const play = (element: HTMLElement, keyframes: Keyframe[]): void => {
+    const animation = element.animate(keyframes, { duration: GLIDE_MS, easing: GLIDE_EASING })
+    running.current.set(element, animation)
+    // Released through the promise, not events, so whenIdle never re-awaits a landed glide.
+    const release = (): void => { if (running.current.get(element) === animation) running.current.delete(element) }
+    animation.finished.then(release, release)
+  }
   useLayoutEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
     const animate = armed() && !reducedMotion()
+    for (const tile of canvas.querySelectorAll<HTMLElement>('.chat-layout-tile')) {
+      const body = tile.querySelector<HTMLElement>(BODY)
+      if (!body) continue
+      const mode = tile.dataset.dragPlaceholder
+      const layout = mode ? inlineRect(body) : null
+      if (layout) {
+        const scale = parseFloat(body.style.getPropertyValue('--mini-scale'))
+        miniatures.current.set(body, { rect: centreScaled(layout, Number.isFinite(scale) ? scale : 1), opacity: mode === 'mini' ? 1 : 0 })
+        continue
+      }
+      const shown = miniatures.current.get(body)
+      if (!shown) continue
+      miniatures.current.delete(body)
+      running.current.get(body)?.cancel()
+      if (!animate || typeof body.animate !== 'function') continue
+      const glide = glideFrom(shown.rect, { x: 0, y: 0, width: body.offsetWidth, height: body.offsetHeight })
+      play(body, glide ? glideKeyframes(glide, shown.opacity) : [{ opacity: shown.opacity }, { opacity: 1 }])
+    }
     for (const element of canvas.querySelectorAll<HTMLElement>(MOVING)) {
       const next = inlineRect(element)
       if (!next) continue
@@ -80,14 +145,7 @@ export function useLayoutGlide(canvasRef: RefObject<HTMLElement | null>, armed: 
       const glide = glideFrom(currentRect(element, previous, inFlight), next)
       inFlight?.cancel()
       if (!glide) continue
-      const animation = element.animate([
-        { transformOrigin: '0 0', transform: `translate(${glide.dx}px, ${glide.dy}px) scale(${glide.sx}, ${glide.sy})` },
-        { transformOrigin: '0 0', transform: 'none' }
-      ], { duration: GLIDE_MS, easing: GLIDE_EASING })
-      running.current.set(element, animation)
-      // Released through the promise, not events, so whenIdle never re-awaits a landed glide.
-      const release = (): void => { if (running.current.get(element) === animation) running.current.delete(element) }
-      animation.finished.then(release, release)
+      play(element, glideKeyframes(glide))
     }
   })
   /** Resolve once every glide in flight has landed or been cancelled. */
