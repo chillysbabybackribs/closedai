@@ -75,7 +75,7 @@ export function useSpaceNavigation({ enabled, current, spaces, size, stageRef, c
   // Focus inside the space (usually a composer) returns when you come back to it.
   const returnFocus = useRef<HTMLElement | null>(null)
   // One slot per space, then one for "Add workspace".
-  const slots = useMemo(() => overviewSlots(spaces.length + 1, size), [spaces.length, size])
+  const slots = useMemo(() => overviewSlots(spaces.length, size, true), [spaces.length, size])
   const live = useRef({ current, spaces, slots, size })
   live.current = { current, spaces, slots, size }
   const slotOf = useCallback((id: string) => {
@@ -162,10 +162,13 @@ export function useSpaceNavigation({ enabled, current, spaces, size, stageRef, c
     land()
   }, [glide, land, prepare, setPhase, slotOf, switchTo])
 
-  /** The Add workspace slot: a new space takes its place in the grid, already showing its first chat. */
+  /** The Add workspace tile: a new space joins the grid, already showing its first chat. */
   const add = useCallback(async (): Promise<void> => {
-    const slot = live.current.slots[live.current.spaces.length]
-    if (phaseRef.current !== 'overview' || !slot) return
+    const tile = live.current.slots[live.current.spaces.length]
+    if (phaseRef.current !== 'overview' || !tile) return
+    // The tile is narrow; glide into a window-shaped box centred on it so the zoom keeps its shape.
+    const width = tile.height * (live.current.size.width / Math.max(1, live.current.size.height))
+    const slot = { x: tile.x + tile.width / 2 - width / 2, y: tile.y, width, height: tile.height }
     await switchTo(slot, async () => (await create()).id, 'Could not add a workspace')
   }, [create, switchTo])
 

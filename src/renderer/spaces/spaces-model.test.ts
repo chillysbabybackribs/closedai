@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  IDENTITY_CAMERA, LABEL_HEIGHT, anchorChat, createZoomGesture, dropMissingStops, focusCamera, liveTransform, overviewSlots,
+  ADD_TILE_WIDTH, IDENTITY_CAMERA, LABEL_HEIGHT, OVERVIEW_GAP, anchorChat, createZoomGesture, dropMissingStops, focusCamera, liveTransform, overviewSlots,
   newSpace, readSpaces, resolveCurrent, saveSpaces, slotAt, spaceName, stepStop, visitStop, type Space, type SpaceHistory
 } from './spaces-model.ts'
 
@@ -73,6 +73,23 @@ test('overview slots keep the window shape, fit inside it and never overlap', ()
   const [only] = overviewSlots(1, size)
   assert.ok(only!.width <= size.width * 0.6 + 1e-9)
   assert.ok(Math.abs(only!.x + only!.width / 2 - size.width / 2) < 1e-9)
+})
+
+test('the Add workspace tile is a narrow tile ending the last row', () => {
+  for (const count of [1, 2, 3, 4, 6]) {
+    const slots = overviewSlots(count, size, true)
+    assert.equal(slots.length, count + 1)
+    const last = slots[count - 1]!
+    const tile = slots[count]!
+    assert.ok(Math.abs(tile.width - last.width * ADD_TILE_WIDTH) < 1e-9)
+    assert.equal(tile.height, last.height)
+    assert.equal(tile.y, last.y)
+    assert.ok(Math.abs(tile.x - (last.x + last.width + OVERVIEW_GAP)) < 1e-9)
+    assert.ok(tile.x + tile.width <= size.width)
+    // The last row, tile included, stays centred.
+    const rowStart = slots.filter((slot) => slot.y === last.y)[0]!.x
+    assert.ok(Math.abs(rowStart + (tile.x + tile.width) - size.width) < 1e-6)
+  }
 })
 
 test('a short last row is centred', () => {

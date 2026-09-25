@@ -54,13 +54,14 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 0;
+  padding: 0 8px;
   border: 1.5px dashed rgb(238 234 228 / 26%);
   border-radius: 10px;
   background: transparent;
   color: rgb(238 234 228 / 62%);
   font: inherit;
   font-size: 13px;
+  text-align: center;
   cursor: pointer;
   transition: background 120ms, border-color 120ms, color 120ms;
 }

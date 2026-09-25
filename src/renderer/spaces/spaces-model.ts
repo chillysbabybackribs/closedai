@@ -84,18 +84,27 @@ export function saveSpaces(storage: Pick<Storage, 'setItem'>, saved: SavedSpaces
   try { storage.setItem(SPACES_KEY, JSON.stringify({ spaces, current: saved.current })) } catch { /* Best-effort preference. */ }
 }
 
+/** The Add workspace tile's width, as a share of a space's slot: a narrow tile ending the last row. */
+export const ADD_TILE_WIDTH = 0.25
+
 /**
  * Window-shaped slots for `count` spaces in a centred grid, each with room for its label above.
- * The column count is whichever gives the largest slots; a short last row is centred.
+ * The column count is whichever gives the largest slots; a short last row is centred. `withAdd`
+ * appends the Add workspace tile: a slot-high tile a quarter as wide, ending the last row.
  */
-export function overviewSlots(count: number, size: Size): Rect[] {
+export function overviewSlots(count: number, size: Size, withAdd = false): Rect[] {
   const n = Math.max(1, count)
   const { width: W, height: H } = size
-  if (W <= 0 || H <= 0) return Array.from({ length: n }, () => ({ x: 0, y: 0, width: 0, height: 0 }))
+  if (W <= 0 || H <= 0) return Array.from({ length: n + (withAdd ? 1 : 0) }, () => ({ x: 0, y: 0, width: 0, height: 0 }))
+  const add = withAdd ? ADD_TILE_WIDTH : 0
   let best = { cols: 1, rows: n, scale: 0 }
   for (let cols = 1; cols <= n; cols++) {
     const rows = Math.ceil(n / cols)
-    const byWidth = (W - 2 * OVERVIEW_PAD - (cols - 1) * OVERVIEW_GAP) / cols / W
+    const last = n - (rows - 1) * cols
+    // The widest row, in slot widths and in gaps: a full row, or the last row with the tile.
+    const units = Math.max(cols, last + add)
+    const gaps = last + add > cols ? last : cols - 1
+    const byWidth = (W - 2 * OVERVIEW_PAD - gaps * OVERVIEW_GAP) / units / W
     const byHeight = (H - 2 * OVERVIEW_PAD - rows * LABEL_HEIGHT - (rows - 1) * OVERVIEW_GAP) / rows / H
     const scale = Math.min(byWidth, byHeight)
     if (scale > best.scale) best = { cols, rows, scale }
@@ -103,12 +112,14 @@ export function overviewSlots(count: number, size: Size): Rect[] {
   const scale = Math.max(0.02, Math.min(MAX_SLOT_SCALE, best.scale))
   const slotW = W * scale
   const slotH = H * scale
+  const addW = slotW * add
   const gridH = best.rows * (slotH + LABEL_HEIGHT) + (best.rows - 1) * OVERVIEW_GAP
   const top = (H - gridH) / 2
-  return Array.from({ length: n }, (_, index) => {
+  const place = (index: number): Rect => {
     const row = Math.floor(index / best.cols)
     const inRow = Math.min(best.cols, n - row * best.cols)
-    const rowW = inRow * slotW + (inRow - 1) * OVERVIEW_GAP
+    const tile = withAdd && row === best.rows - 1 ? OVERVIEW_GAP + addW : 0
+    const rowW = inRow * slotW + (inRow - 1) * OVERVIEW_GAP + tile
     const col = index - row * best.cols
     return {
       x: (W - rowW) / 2 + col * (slotW + OVERVIEW_GAP),
@@ -116,10 +127,12 @@ export function overviewSlots(count: number, size: Size): Rect[] {
       width: slotW,
       height: slotH
     }
-  })
+  }
+  const slots = Array.from({ length: n }, (_, index) => place(index))
+  if (withAdd) slots.push({ ...place(n - 1), x: place(n - 1).x + slotW + OVERVIEW_GAP, width: addW })
+  return slots
 }
 
-/** The camera that makes `slot` fill the stage exactly (slots share the stage's aspect). */
 export function focusCamera(slot: Rect, size: Size): Camera {
   const k = slot.width > 0 ? size.width / slot.width : 1
   return { x: -slot.x * k, y: -slot.y * k, k }
