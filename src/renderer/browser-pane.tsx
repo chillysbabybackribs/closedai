@@ -20,11 +20,13 @@ import { WebPermissionBar } from './web-permission-bar.js'
 // Memoized: the pane stays mounted, and its native-view host ref and ResizeObserver must
 // survive re-renders of the shell around it.
 export const BrowserPane = memo(function BrowserPane({
-  controller, savedSites, dragHandle
+  controller, savedSites, dragHandle, windowControls
 }: {
   controller: BrowserController
   savedSites: BrowserSavedSitesController
   dragHandle?: ReactNode
+  /** A window's minimize and maximize buttons, beside the tab strip rather than scrolling in it. */
+  windowControls?: ReactNode
 }): JSX.Element {
   const downloads = useBrowserDownloadsController()
   // Whichever panel opens last wins. Keep the callbacks current without treating their changing
@@ -49,7 +51,10 @@ export const BrowserPane = memo(function BrowserPane({
     <section className="browser-pane" aria-label="Browser" data-ui-surface="browser">
       <div className={`browser-shell ${downloads.isOpen && !controller.browser.image && !controller.browser.file ? 'has-downloads' : ''} ${controller.browser.image ? 'has-image-viewer' : ''} ${controller.browser.file ? 'has-file-viewer' : ''}`}>
         <div className="browser-tabstrip-host">
-          <BrowserTabs controller={controller} savedSites={savedSites} dragHandle={dragHandle} onError={report} />
+          <div className="browser-tabstrip-row">
+            <BrowserTabs controller={controller} savedSites={savedSites} dragHandle={dragHandle} onError={report} />
+            {windowControls}
+          </div>
           {notice ? (
             <div className="browser-chrome-notice" role="alert">
               <span>{notice.text}</span>

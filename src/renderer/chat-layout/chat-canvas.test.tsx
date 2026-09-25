@@ -5,6 +5,8 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { ChatCanvas } from './chat-canvas.tsx'
 import type { ChatLayout } from './layout-tree.ts'
 
+const windows = { float: () => {}, snap: () => {}, group: () => {}, raise: () => {}, minimize: () => {} }
+
 const multiPaneTree: ChatLayout = {
   kind: 'split',
   id: 'split-1',
@@ -35,7 +37,8 @@ test('ChatCanvas renders multi-pane split with context menu trigger and dividers
     onNewChat: () => {},
     onDock: () => {},
     onHide: () => {},
-    onResize: () => {}
+    onResize: () => {},
+    windows
   }))
 
   // Both panes rendered as tiles
@@ -70,7 +73,8 @@ test('ChatCanvas renders single pane with disabled pane-hide and no dividers', (
     onNewChat: () => {},
     onDock: () => {},
     onHide: () => {},
-    onResize: () => {}
+    onResize: () => {},
+    windows
   }))
 
   assert.match(html, /data-pane-id="pane-single"/)
@@ -103,7 +107,8 @@ test('ChatCanvas renders tabbed pane with single tile, persistent header, and hi
     onNewChat: () => {},
     onDock: () => {},
     onHide: () => {},
-    onResize: () => {}
+    onResize: () => {},
+    windows
   }))
 
   // Only one section tile rendered for the tabbed group
@@ -154,7 +159,8 @@ test('ChatCanvas names running close/hide actions and overlays a pane status not
     onNewChat: () => {},
     onDock: () => {},
     onHide: () => {},
-    onResize: () => {}
+    onResize: () => {},
+    windows
   }))
 
   assert.match(html, /title="Close tab · Task keeps running"/)
@@ -183,7 +189,8 @@ test('ChatCanvas renders a view tab with its kind glyph, no chat status, and a n
     onNewChat: () => {},
     onDock: () => {},
     onHide: () => {},
-    onResize: () => {}
+    onResize: () => {},
+    windows
   }))
 
   // The tile is named by its active view, so it carries no chat pane id for automation.

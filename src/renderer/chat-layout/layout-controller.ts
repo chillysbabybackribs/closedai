@@ -473,7 +473,7 @@ export function useChatLayout(
       return tree === value.tree ? value : { ...value, tree }
     })
   }, [])
-  const windows = useMemo(() => ({
+  const windowActions = useMemo(() => ({
     float: (id: string, rect: Rect) => windowTree((tree) => floatWindow(tree, id, rect)),
     snap: (id: string, target: string, edge: DockEdge) => windowTree((tree) => snapWindow(tree, id, target, edge, crypto.randomUUID())),
     group: (source: string, target: string) => windowTree((tree) => groupWindow(tree, source, target)),
@@ -496,7 +496,7 @@ export function useChatLayout(
     ...layout, browserVisible: self.main && layout.browserVisible, detached: !self.main,
     error: error?.text ?? '', notice: notice?.text ?? '', busy, dock, newChat, continueChat, focusPane,
     activateTab, openView, toggleView, pinView, moveTabToTile, closeTab, hide, closeFocused, resize, arrange,
-    toggleBrowser, showBrowser, detachTab, returnTab, windows
+    toggleBrowser, showBrowser, detachTab, returnTab, windows: windowActions
   }
 }
 
