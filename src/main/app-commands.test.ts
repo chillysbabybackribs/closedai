@@ -289,6 +289,24 @@ test('browser_tab duplicate reports the source url while the copy is still loadi
   assert.equal(result.tabs[1]?.navigationPending, true)
 })
 
+test('browser_tab back flags the tab while the history navigation is still committing', async () => {
+  const tabs = browser()
+  let loading = false
+  tabs.tabList = () => [{ id: '1', pos: 1, title: 'Next', url: 'https://example.com/next', favicon: null, isLoading: loading, active: true }]
+  tabs.snapshot = () => ({ url: 'https://example.com/next', title: 'Next', isLoading: loading, canGoBack: true, canGoForward: false })
+  tabs.back = () => { tabs.calls.push(['back']); loading = true }
+  const { host } = access(new FakeWorkspace(), tabs)
+  const result = await host.browserTab({ op: 'back' }) as {
+    active: { navigationPending?: boolean }
+    tabs: Array<{ navigationPending?: boolean }>
+  }
+  assert.equal(result.active.navigationPending, true)
+  assert.equal(result.tabs[0]?.navigationPending, true)
+  loading = false
+  const settled = await host.browserTab({ op: 'reload', tabId: '1' }) as { active: { navigationPending?: boolean } }
+  assert.equal(settled.active.navigationPending, undefined)
+})
+
 test('a tab a chat opens for its own work is selected, like one the user opens', async () => {
   const { host, tabs } = access()
   await host.browserTab({ op: 'new', url: 'https://example.com' }, 'pane-1')

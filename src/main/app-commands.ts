@@ -231,6 +231,8 @@ export class AppCommandAccess implements AppCommandHost {
     }
     const previous = new Set(browser.tabList().map(tab => tab.id))
     let pendingUrl: string | null = null
+    // back/forward/reload return before the commit, so the row still shows the page being left.
+    let navigatingTabId: string | null = null
     switch (request.op) {
       // A tab opened for browser work comes to the front, whoever asked for it: the user sees
       // what the model is doing, and a selected tab is the one Chromium runs at full speed.
@@ -251,9 +253,17 @@ export class AppCommandAccess implements AppCommandHost {
         browser.duplicateTab(sourceId, true)
         break
       }
-      case 'back': browser.back(request.tabId); break
-      case 'forward': browser.forward(request.tabId); break
-      case 'reload': request.tabId ? browser.reloadTab(requireTab()) : browser.reload(); break
+      case 'back':
+      case 'forward':
+      case 'reload': {
+        const tabId = request.tabId ? requireTab() : browser.tabList().find((tab) => tab.active)?.id ?? null
+        if (request.op === 'back') browser.back(request.tabId)
+        else if (request.op === 'forward') browser.forward(request.tabId)
+        else if (request.tabId) browser.reloadTab(request.tabId)
+        else browser.reload()
+        navigatingTabId = tabId
+        break
+      }
       case 'rename': browser.renameTab(requireTab(), request.title ?? null); break
       case 'release':
         if (!paneId) throw new Error('Releasing a tab requires a calling chat')
@@ -276,6 +286,7 @@ export class AppCommandAccess implements AppCommandHost {
     if (paneId) for (const tab of created) this.deps.browserCoordination?.claim(tab.id, paneId)
     let projected = projectBrowser(browser)
     if (pendingUrl) projected = applyPendingNavigation(projected, pendingUrl, created.map((tab) => tab.id))
+    if (navigatingTabId) projected = markNavigationPending(projected, navigatingTabId)
     return { ...projected, coordination: this.deps.browserCoordination?.snapshot(paneId) }
   }
 
@@ -390,6 +401,19 @@ export function applyPendingNavigation(
     ...projected,
     active: patch({ ...active, active: true }),
     tabs: tabs.map((tab) => patch(tab))
+  }
+}
+
+/** Flags a tab whose history navigation or reload has started but not committed, so its URL is not read as the result. */
+export function markNavigationPending(projected: Record<string, unknown>, tabId: string): Record<string, unknown> {
+  type TabRow = { id: string; isLoading: boolean; active: boolean }
+  const tabs = projected.tabs as TabRow[]
+  const row = tabs.find((tab) => tab.id === tabId)
+  if (!row?.isLoading) return projected
+  return {
+    ...projected,
+    ...(row.active ? { active: { ...(projected.active as object), navigationPending: true } } : {}),
+    tabs: tabs.map((tab) => tab.id === tabId ? { ...tab, navigationPending: true } : tab)
   }
 }
 
