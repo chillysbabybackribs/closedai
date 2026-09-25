@@ -316,13 +316,51 @@ Search chats focus it. File → Manage chat history opens (or, when it is alread
 History view tab in the selected chat's tile.
 New chats use the tab + button or File → New chat (Ctrl+N).
 Two full-height chats can
-sit on either side of the browser. The browser starts on the right; drag a conversation tab,
-or empty chat header space onto the browser's left or right half to dock it on that side.
-During a chat drag, the native browser view is temporarily covered so the drop targets can receive
+sit on either side of the browser. The browser starts on the right; drag a conversation tab
+onto the browser's left or right half to dock it on that side.
+During a drag, the native browser view is temporarily covered so the drop targets can receive
 the gesture. The dock's **Browser** icon (`dock.app`, item `browser`) and View → Toggle browser pane hide/restore the browser in its saved position without
-closing tabs; `preview_html` shows it through the ui host's `revealBrowser`. The tile header **+** adds and selects a fresh conversation tab in the same tile. Chat headers offer **New chat to the right**, **New chat below**, and **Hide chat pane**.
+closing tabs; `preview_html` shows it through the ui host's `revealBrowser`. The tile header **+** adds and selects a fresh conversation tab in the same tile. Chat headers end with the window buttons described under Windows on the canvas.
 Hiding a tile neither detaches its runtime nor stops its turn; the model command `close_chat`
 still detaches and stops it.
+
+### Windows on the canvas
+
+Every tile, the browser included, is a window (`src/renderer/chat-layout/floating/`). A window is
+**tiled** (a slot in the split tree, laid out by dividers), **floating** (lifted out of the split
+tree into its own rect, stacked above every tiled window) or **minimized** (listed in the dock). All
+three stay in the one saved tree: a pane carries `float: {x, y, width, height, z}` while it floats
+and `docked: true` while it is minimized, so tabs, grouping, selection, pruning, presets and
+per-space persistence treat every window alike, and a window keeps its place (slot or rect) through
+a minimize. `layoutGeometry` lays out only the tiled layer (`tiledTree`); floating rects are clamped
+to the canvas when drawn so a header always stays reachable. The canvas draws windows in tree order
+and stacks them with `z-index`, so a window changing layer never moves its DOM node or resets a
+transcript's scroll.
+
+A window's header is its title bar. Pressing its grip (`layout.pane-drag`; the browser's is
+`layout.browser-drag`) or the header's empty space and dragging moves the window with the pointer;
+the box is painted outside React while it moves and the tree changes once, on release. A tiled
+window tears off at a floating size under the pointer. Where it is released decides the rest:
+within 14 px of the workspace's left or right side it becomes a full-height column there; at the
+top edge it maximizes; over a window's tab strip its tabs join that window (never the browser's);
+within the outer band of a tiled window (up to 56 px) it splits beside it; anywhere else it floats
+where it was dropped. An outline shows the landing place, or rings the window it would join.
+Escape puts the window back. A floating window resizes from any edge or corner
+(`layout.window-resize`) and comes to the front when pressed. Tab drags keep their own behaviour:
+onto a tab strip or a tiled window's edge as before, and onto a floating window only to join its
+tabs. A chat opened beside a floating window (a split) floats too, cascaded from it.
+
+The header's window buttons are **Minimize** (`layout.window-minimize`), **Maximize**
+(`layout.window-maximize`; double-clicking the header does the same, and Escape restores) and
+**Close window** (`layout.pane-hide`, which hides without stopping, as before). The last visible
+chat cannot be minimized or closed. Minimizing the browser hides it; the dock's Browser icon brings
+it back. The selected window keeps full-strength buttons; the others dim theirs until hovered.
+
+The native page paints above every DOM window, so while a floating window above the browser
+overlaps it the browser shows its still (`browserCovered` in `window-tiles.ts`), and it goes live
+again when that window moves away, is minimized, or the browser is brought in front. A covered page
+that was resized is captured once more after it lays out (`createBrowserFreezeRefresh`), and the
+bounds hook waits for a gliding tile at any depth above the page before measuring it.
 
 Each tile header shows conversation and view tabs and a **+** button (`layout.new-chat`) that adds
 and selects a fresh conversation tab in that tile. It uses that tile's active chat model and
@@ -694,7 +732,10 @@ sites** and **Downloads** open a list above the icon. In Saved sites, a row (`do
 shows the browser and opens the site, and **All saved sites** (`dock.all-saved-sites`) opens the
 view. In Downloads, a finished file's row (`dock.download`) shows it in its folder. A neutral dot
 under a tile means something in it is running or showing. Each tooltip gives the surface's name
-and what is in it now.
+and what is in it now. Windows minimized in the shown workspace follow the app tiles after a
+divider (`dock.window`, item is the window's front tab): each shows its kind's icon, its tooltip
+names the front tab and how many tabs it holds, and a click restores it where it was, in front, and
+selects it. `DesktopWorkspace` reports the list through `onMinimizedChange`.
 
 Every feature icon is named once in `src/renderer/app-icons.tsx`: a `line` icon takes the text
 colour, and a `picture` (a future full-colour SVG) keeps its own. The tray tiles and the view-tab
