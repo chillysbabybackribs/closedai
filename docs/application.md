@@ -340,8 +340,13 @@ transcript's scroll.
 A window's header is its title bar. Pressing its grip (`layout.pane-drag`; the browser's is
 `layout.browser-drag`) or the header's empty space and dragging moves the window with the pointer;
 the box is painted outside React while it moves and the tree changes once, on release. A tiled
-window tears off at a floating size under the pointer. Where it is released decides the rest:
-within 14 px of the workspace's left or right side it becomes a full-height column there; at the
+window tears off at a floating size under the pointer. Moving one window never resizes another: a
+window released free out of the tiled layer leaves every other tiled window floating exactly where
+it was on screen (`tearOffWindow` in `window-arrange.ts`), each still holding its slot in the tree.
+Where it is released decides the rest: within 14 px of the workspace's left or right side it
+becomes a full-height column there while other windows are tiled; with nothing else tiled it floats
+over that half of the workspace, and when a floating window already fills the other half flush to
+its side, the two become a tiled pair sharing a divider at that window's width (`snapToSide`). At the
 top edge it maximizes; over a window's tab strip its tabs join that window (never the browser's);
 within the outer band of a tiled window (up to 56 px) it splits beside it; anywhere else it floats
 where it was dropped. An outline shows the landing place, or rings the window it would join.
@@ -351,14 +356,28 @@ onto a tab strip or a tiled window's edge as before, and onto a floating window 
 tabs. A chat opened beside a floating window (a split) floats too, cascaded from it.
 
 The header's window buttons are **Minimize** (`layout.window-minimize`), **Maximize**
-(`layout.window-maximize`; double-clicking the header does the same, and Escape restores) and
-**Close window** (`layout.pane-hide`, which hides without stopping, as before). The last visible
+(`layout.window-maximize`; double-clicking a tiled window's header does the same, and Escape
+restores) and **Close window** (`layout.pane-hide`, which hides without stopping, as before). The last visible
 chat cannot be minimized or closed. Minimizing the browser hides it; the dock's Browser icon brings
 it back. The selected window keeps full-strength buttons; the others dim theirs until hovered.
+Double-clicking a floating window's header puts that window alone back into its slot.
+
+**Tile windows** puts every floating window back into its slot, so the last tiled layout returns
+exactly as it was (`tileWindows`; minimized windows stay minimized but return to their slot). It is
+on the dock beside Dock settings (`dock.tile-windows`), in View → Tile windows, and on Ctrl+Shift+L,
+and is disabled while nothing floats. It also ends a maximize.
+
+**Keep on top** (`layout.keep-on-top`, a checkbox in a chat window header's context menu) marks the
+whole window, every tab in it, with `onTop: true` in the saved tree. It stacks above every window
+without it (`ON_TOP` in `window-tiles.ts`), a tiled one included, and moving other windows later
+does not cover it. The browser cannot be kept on top.
 
 The native page paints above every DOM window, so while a floating window above the browser
 overlaps it the browser shows its still (`browserCovered` in `window-tiles.ts`), and it goes live
-again when that window moves away, is minimized, or the browser is brought in front. A covered page
+again when that window moves away, is minimized, or the browser is brought in front. A window kept
+on top cannot be passed that way, so the browser gives way to it instead: it is drawn in the
+largest part of its rect that window leaves showing (`uncoveredRect`), and the page stays live. Only
+when no such part meets the browser's minimum size does it keep its rect and show its still. A covered page
 that was resized is captured once more after it lays out (`createBrowserFreezeRefresh`), and the
 bounds hook waits for a gliding tile at any depth above the page before measuring it.
 
