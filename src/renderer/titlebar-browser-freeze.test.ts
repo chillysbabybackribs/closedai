@@ -116,3 +116,35 @@ test('resized browser previews coalesce captures and discard obsolete frames', a
   await tick()
   assert.deepEqual(published, ['resized', 'recovered'])
 })
+
+test('a covered page that was resized is captured once more after it lays out', async () => {
+  const { createBrowserFreezeRefresh } = await import('./titlebar-browser-freeze.js')
+  type Shot = import('../shared/types.js').BrowserShot
+  const pending: Array<(shot: Shot | null) => void> = []
+  const settles: Array<() => void> = []
+  const published: string[] = []
+  const refresh = createBrowserFreezeRefresh(
+    () => new Promise((resolve) => pending.push(resolve)),
+    (shot) => published.push(shot.imageUrl),
+    (run) => settles.push(run)
+  )
+  const bounds = { x: 0, y: 0, width: 800, height: 600, visible: true, occluded: true }
+  const frame = (imageUrl: string): Shot => ({ imageUrl, tabId: 'a', url: '', title: '' })
+  const tick = () => new Promise<void>((resolve) => setImmediate(resolve))
+  refresh(bounds)
+  pending.shift()!(frame('first'))
+  await tick()
+  assert.equal(settles.length, 1)
+  settles.shift()!()
+  assert.equal(pending.length, 1, 'the settled page is captured again')
+  pending.shift()!(frame('laid-out'))
+  await tick()
+  assert.deepEqual(published, ['first', 'laid-out'])
+  assert.equal(settles.length, 0, 'one settle capture per size, not a loop')
+  refresh({ ...bounds, width: 500 })
+  pending.shift()!(frame('smaller'))
+  await tick()
+  refresh({ ...bounds, occluded: false })
+  settles.shift()!()
+  assert.equal(pending.length, 0, 'a released page is not captured again')
+})

@@ -60,12 +60,20 @@ export function overlayBlocksBrowser(root: ParentNode = document): boolean {
 
 // Keep at most one compositor capture in flight. A newer size (or restoration) makes
 // its result obsolete; capture the latest request next without holding up bounds IPC.
+// A page resized while covered can still show its old frame when the first capture lands, and a
+// covering window (a floating chat above the browser) may stay for minutes, so each size gets one
+// more capture once the page has had time to lay out, unless a newer size or release came first.
+const SETTLE_CAPTURE_MS = 300
+
 export function createBrowserFreezeRefresh(
   capture: () => Promise<BrowserShot | null>,
-  publish: (shot: BrowserShot) => void
+  publish: (shot: BrowserShot) => void,
+  settle: (run: () => void) => void = (run) => { setTimeout(run, SETTLE_CAPTURE_MS) }
 ): (bounds: BrowserBounds) => void {
   let latest: BrowserBounds | null = null
+  let current: BrowserBounds | null = null
   let running = false
+  const settled = new WeakSet<BrowserBounds>()
   const drain = async (): Promise<void> => {
     running = true
     while (latest) {
@@ -73,12 +81,21 @@ export function createBrowserFreezeRefresh(
       const shot = await capture().catch(() => null)
       if (latest !== request) continue
       latest = null
-      if (shot) publish(shot)
+      if (!shot) continue
+      publish(shot)
+      if (settled.has(request)) continue
+      settled.add(request)
+      settle(() => {
+        if (current !== request || latest) return
+        latest = request
+        if (!running) void drain()
+      })
     }
     running = false
   }
   return (bounds) => {
     latest = bounds.visible !== false && bounds.occluded ? bounds : null
+    current = latest
     if (latest && !running) void drain()
   }
 }

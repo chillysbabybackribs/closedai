@@ -144,8 +144,8 @@ export function clampWindow(rect: Rect, canvas: WindowSize, minimum: WindowSize)
  * canvas, placed so the point under the pointer stays under it.
  */
 export function tearOffRect(tile: Rect, canvas: WindowSize, pointer: { x: number; y: number }, minimum: WindowSize): Rect {
-  const width = clamp(Math.min(tile.width, canvas.width * 0.6), minimum.width, tile.width)
-  const height = clamp(Math.min(tile.height, canvas.height * 0.8), minimum.height, tile.height)
+  const width = clamp(Math.min(tile.width, canvas.width * 0.45), minimum.width, tile.width)
+  const height = clamp(Math.min(tile.height, canvas.height * 0.75), minimum.height, tile.height)
   const across = tile.width > 0 ? (pointer.x - tile.x) / tile.width : 0.5
   const down = Math.min(pointer.y - tile.y, WINDOW_HEADER - 8)
   return { x: Math.round(pointer.x - across * width), y: Math.round(pointer.y - down), width: Math.round(width), height: Math.round(height) }

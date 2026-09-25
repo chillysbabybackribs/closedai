@@ -88,7 +88,7 @@ test('clamping keeps the header reachable and the window at least its floor', ()
 
 test('tearing off keeps the grabbed point under the pointer', () => {
   const torn = tearOffRect({ x: 0, y: 0, width: 1000, height: 900 }, { width: 1600, height: 900 }, { x: 500, y: 12 }, { width: 300, height: 280 })
-  assert.deepEqual(torn, { x: 20, y: 0, width: 960, height: 720 })
+  assert.deepEqual(torn, { x: 140, y: 0, width: 720, height: 675 })
 })
 
 test('resizing moves only the grabbed edges and stops at the floor', () => {
