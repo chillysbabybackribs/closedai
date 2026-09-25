@@ -7,6 +7,7 @@ import { APP_REVEAL_CHAT_TAB_EVENT, type AppRevealChatTabDetail } from '../share
 import { HeaderChatSearch } from './chat-history/header-search.js'
 import { useHistoryController } from './chat-history/history-controller.js'
 import { AppWindowControls } from './app-window-controls.js'
+import { appWindow } from './app-windows/app-window-store.js'
 import { useChatController } from './chat-controller.js'
 import {
   applyChatZoomCommand,
@@ -165,6 +166,9 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
   }, [])
 
   const selectedRow = chat.chats.find((row) => row.paneId === chat.selectedPaneId)
+  // A detached window belongs to one project; main closes it when another project is selected.
+  const windowCwd = appWindow().cwd
+  const projectElsewhere = windowCwd !== null && (chat.workspace?.cwd ?? chat.state.cwd) !== windowCwd
   const ready = chat.state.connection.state === 'ready'
   const running = chat.state.activeTurnId !== null
   // Compaction is a manual step only where the provider does not rotate seamlessly; elsewhere
@@ -218,7 +222,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
       )}
       <div className="workspace" data-mode="chat">
         {!chat.selectedPaneId && <AppStartup connection={chat.state.connection} onRetry={chat.retryStartup} />}
-        {chat.selectedPaneId && <DesktopWorkspace
+        {chat.selectedPaneId && !projectElsewhere && <DesktopWorkspace
           key={chat.workspace?.cwd ?? chat.state.cwd}
           ref={workspaceRef}
           chat={chat}
