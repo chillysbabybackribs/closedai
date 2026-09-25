@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { accentColor, backdropTone, meanLuminance } from './backdrop-tone.js'
+import { accentColor, backdropTone, meanLuminance, railTint } from './backdrop-tone.js'
 
 test('mean luminance spans black to white in linear light', () => {
   assert.equal(meanLuminance([0, 0, 0, 255, 0, 0, 0, 255]), 0)
@@ -15,13 +15,21 @@ test('brighter wallpapers get a heavier dim and a denser glass tint', () => {
   const bright = backdropTone(0.6)
   assert.ok(bright.dim > dark.dim)
   assert.ok(bright.glass > dark.glass)
-  assert.ok(bright.rail > dark.rail)
-  assert.ok(bright.rail < bright.glass, 'the rails stay lighter glass than a tile')
+})
+
+test('each rail is tinted to the band behind it so a bright sky and dark ground match', () => {
+  // Fuji: a bright sunset sky behind the title bar, a dark foreground behind the dock.
+  const top = railTint(0.348)
+  const bottom = railTint(0.082)
+  assert.ok(top > bottom)
+  assert.ok(Math.abs((1 - top) * 0.348 - (1 - bottom) * 0.082) < 0.005, 'both rails land at the same darkness')
+  assert.equal(railTint(0), 0.5)
+  assert.equal(railTint(1), 0.9)
 })
 
 test('the tone stays inside its legibility bounds for any input', () => {
-  assert.deepEqual(backdropTone(-1), { dim: 0.18, glass: 0.84, rail: 0.5 })
-  assert.deepEqual(backdropTone(5), { dim: 0.62, glass: 0.94, rail: 0.7 })
+  assert.deepEqual(backdropTone(-1), { dim: 0.18, glass: 0.84 })
+  assert.deepEqual(backdropTone(5), { dim: 0.62, glass: 0.94 })
 })
 
 test('the accent is the most vivid hue, not the most common one', () => {

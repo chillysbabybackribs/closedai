@@ -13,10 +13,14 @@
   --glass-fill:
     linear-gradient(rgb(var(--glass-ink) / var(--backdrop-glass)), rgb(var(--glass-ink) / var(--backdrop-glass))),
     var(--backdrop-blur) center / cover no-repeat fixed;
-  /* The rails (title bar, dock) are the desktop's own glass: the same blurred wallpaper under a
-     lighter tint than a tile, so they read as one material top and bottom. */
-  --glass-rail-fill:
-    linear-gradient(rgb(var(--glass-ink) / var(--backdrop-rail)), rgb(var(--glass-ink) / var(--backdrop-rail))),
+  /* The rails (title bar, dock) are the desktop's own glass: the same blurred wallpaper, each under
+     the tint that brings the band behind it to one shared darkness (railTint in backdrop-tone.ts),
+     so a bright sky and a dark foreground still give a matching pair. */
+  --glass-rail-top:
+    linear-gradient(rgb(var(--glass-ink) / var(--backdrop-rail-top)), rgb(var(--glass-ink) / var(--backdrop-rail-top))),
+    var(--backdrop-blur) center / cover no-repeat fixed;
+  --glass-rail-bottom:
+    linear-gradient(rgb(var(--glass-ink) / var(--backdrop-rail-bottom)), rgb(var(--glass-ink) / var(--backdrop-rail-bottom))),
     var(--backdrop-blur) center / cover no-repeat fixed;
   --glass-edge: rgb(255 255 255 / 11%);
   --glass-sheen: rgb(255 255 255 / 9%);
@@ -26,7 +30,7 @@
    One full-width bar top and bottom, like a desktop's menu bar and dock. A hairline faces the
    workspace and a faint sheen catches the outer edge. Items on the bar lose their own fills. */
 :root[data-backdrop] .shell-titlebar {
-  background: var(--glass-rail-fill);
+  background: var(--glass-rail-top);
   box-shadow: inset 0 1px 0 var(--glass-sheen), inset 0 -1px 0 var(--glass-edge), 0 1px 0 rgb(0 0 0 / 22%);
 }
 
@@ -49,7 +53,7 @@
 /* The dock trades its live blur for the same pre-blurred glass: identical colour to the title
    bar, and nothing to recompute while tiles move beneath it. */
 :root[data-backdrop] [data-slot="dock-surface-fill"] {
-  background: var(--glass-rail-fill);
+  background: var(--glass-rail-bottom);
   backdrop-filter: none;
 }
 

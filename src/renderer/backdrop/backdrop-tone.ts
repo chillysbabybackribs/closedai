@@ -7,8 +7,6 @@ export type BackdropTone = {
   dim: number
   /** Dark tint alpha over the blurred wallpaper behind a chat transcript: a hint of colour, not a see-through pane. */
   glass: number
-  /** Dark tint alpha over the blurred wallpaper in the title bar and dock: lighter than a tile, since they are the desktop. */
-  rail: number
 }
 
 /** Mean relative luminance (0 dark … 1 white) of RGBA pixel data. */
@@ -26,9 +24,22 @@ export function backdropTone(luminance: number): BackdropTone {
   const light = Math.min(1, Math.max(0, luminance))
   return {
     dim: round(clamp(0.18 + 0.7 * light, 0.18, 0.62)),
-    glass: round(clamp(0.84 + 0.2 * light, 0.84, 0.94)),
-    rail: round(clamp(0.5 + 0.3 * light, 0.5, 0.7))
+    glass: round(clamp(0.84 + 0.2 * light, 0.84, 0.94))
   }
+}
+
+/** Linear light a rail settles at, whatever the wallpaper behind it: the dock's depth over the Fuji foreground. */
+const RAIL_TARGET = 0.04
+
+/**
+ * Dark tint alpha for a rail (title bar, dock) from the luminance of the wallpaper band behind it.
+ * Each rail is tinted to land at the same darkness, so a bright sky above and a dark foreground
+ * below still give a matching pair. The floor keeps a dark band from reading as no bar at all;
+ * the ceiling keeps some of the photo's colour in a bright one.
+ */
+export function railTint(bandLuminance: number): number {
+  const light = Math.max(bandLuminance, 0.001)
+  return round(clamp(1 - RAIL_TARGET / light, 0.5, 0.9))
 }
 
 const HUE_BINS = 24

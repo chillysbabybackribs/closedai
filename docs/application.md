@@ -880,7 +880,9 @@ either kind, so a new icon never changes the tray's size or spacing.
   (default Off): Desktop wallpaper paints the OS wallpaper (GNOME `picture-uri`/`picture-uri-dark`,
   read by main via `window:desktopWallpaper` in `main/desktop-wallpaper.ts`) behind the shell,
   dimmed by its measured brightness; it shows in the gaps between tiles. The title bar and the dock
-  are full-width rails of one lighter glass (tint `--backdrop-rail`), with a hairline facing the
+  are full-width rails of one glass, each tinted from the wallpaper band behind it
+  (`--backdrop-rail-top`/`--backdrop-rail-bottom`, `railTint`) so both land at the same darkness over a bright sky or a dark
+  foreground, with a hairline facing the
   workspace; menus sit directly on the bar and search is a recessed field. A chat's transcript area
   and the Overview stage are glass too: a once-blurred copy of the same image (`renderer/backdrop/`)
   under a near-opaque dark tint, painted with fixed attachment so it lines up with the desktop

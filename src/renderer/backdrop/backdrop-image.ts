@@ -13,6 +13,9 @@ export type PreparedBackdrop = {
   luminance: number
   /** The wallpaper's vivid hue for Send and focus; null keeps the theme accent. */
   accent: string | null
+  /** Luminance of the bands behind the title bar and the dock, which tint each rail. */
+  topLuminance: number
+  bottomLuminance: number
 }
 
 const BLURRED_WIDTH = 480
@@ -53,10 +56,23 @@ async function encode(bitmap: ImageBitmap, width: number, blur: number, quality:
   return URL.createObjectURL(await canvas.convertToBlob({ type: 'image/jpeg', quality }))
 }
 
-function sampleTone(bitmap: ImageBitmap): Pick<PreparedBackdrop, 'luminance' | 'accent'> {
+function sampleTone(bitmap: ImageBitmap): Pick<PreparedBackdrop, 'luminance' | 'accent' | 'topLuminance' | 'bottomLuminance'> {
   const canvas = new OffscreenCanvas(32, 18)
   const context = canvas.getContext('2d', { willReadFrequently: true })!
   context.drawImage(bitmap, 0, 0, 32, 18)
   const pixels = context.getImageData(0, 0, 32, 18).data
-  return { luminance: meanLuminance(pixels), accent: accentColor(pixels) }
+  // The title bar and the dock each cover about the outer 5% of a screen-shaped window.
+  const band = Math.max(1, Math.round(bitmap.height * 0.05))
+  const bandLuminance = (sy: number): number => {
+    const strip = new OffscreenCanvas(64, 4)
+    const stripContext = strip.getContext('2d', { willReadFrequently: true })!
+    stripContext.drawImage(bitmap, 0, sy, bitmap.width, band, 0, 0, 64, 4)
+    return meanLuminance(stripContext.getImageData(0, 0, 64, 4).data)
+  }
+  return {
+    luminance: meanLuminance(pixels),
+    accent: accentColor(pixels),
+    topLuminance: bandLuminance(0),
+    bottomLuminance: bandLuminance(bitmap.height - band)
+  }
 }

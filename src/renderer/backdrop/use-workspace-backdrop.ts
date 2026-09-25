@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { WorkspaceBackdrop } from '../settings/appearance-settings.js'
 import { prepareBackdrop, releaseBackdrop } from './backdrop-image.js'
-import { backdropTone } from './backdrop-tone.js'
+import { backdropTone, railTint } from './backdrop-tone.js'
 
 export type BackdropStatus =
   | { state: 'off' }
@@ -9,7 +9,7 @@ export type BackdropStatus =
   | { state: 'ready'; name: string }
   | { state: 'unavailable' }
 
-const ROOT_PROPERTIES = ['--backdrop-image', '--backdrop-blur', '--backdrop-dim', '--backdrop-glass', '--backdrop-rail', '--backdrop-accent'] as const
+const ROOT_PROPERTIES = ['--backdrop-image', '--backdrop-blur', '--backdrop-dim', '--backdrop-glass', '--backdrop-rail-top', '--backdrop-rail-bottom', '--backdrop-accent'] as const
 
 /** Paints the chosen backdrop behind the shell: `data-backdrop` on the root plus the image and tone variables the glass styles read. */
 export function useWorkspaceBackdrop(mode: WorkspaceBackdrop): BackdropStatus {
@@ -43,7 +43,8 @@ export function useWorkspaceBackdrop(mode: WorkspaceBackdrop): BackdropStatus {
       root.style.setProperty('--backdrop-blur', `url("${backdrop.blurred}")`)
       root.style.setProperty('--backdrop-dim', String(tone.dim))
       root.style.setProperty('--backdrop-glass', String(tone.glass))
-      root.style.setProperty('--backdrop-rail', String(tone.rail))
+      root.style.setProperty('--backdrop-rail-top', String(railTint(backdrop.topLuminance)))
+      root.style.setProperty('--backdrop-rail-bottom', String(railTint(backdrop.bottomLuminance)))
       if (backdrop.accent) root.style.setProperty('--backdrop-accent', backdrop.accent)
       root.dataset.backdrop = mode
       setStatus({ state: 'ready', name: backdrop.name })
