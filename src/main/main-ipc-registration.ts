@@ -1,5 +1,5 @@
 import type { IpcMain } from 'electron'
-import { session } from 'electron'
+import { BrowserWindow, session } from 'electron'
 import { CHAT_PROVIDERS } from '../shared/chat-providers.js'
 import type { ModelsEvent } from '../shared/model-settings.js'
 import type { ToolsEvent } from '../shared/tools.js'
@@ -67,7 +67,7 @@ export function mainCookieImportDeps(reg: MainIpcRegistration): CookieImportDeps
 }
 
 export function registerMainProcessIpc(reg: MainIpcRegistration): void {
-  registerWindowIpc(reg.ipcMain)
+  registerWindowIpc(reg.ipcMain, (event) => BrowserWindow.fromWebContents(event.sender))
   registerAppWindowsIpc(reg.ipcMain, reg.windows)
   registerBrowserCoreIpc(reg.ipcMain, reg.browserService, reg.savedSites, (sender) => reg.windows()?.isMain(sender) ?? true)
   registerBrowserDownloadsIpc(reg.ipcMain, reg.browserDownloads)

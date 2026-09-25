@@ -1,11 +1,11 @@
-import { BrowserWindow, type IpcMain, type IpcMainInvokeEvent } from 'electron'
+import type { BrowserWindow, IpcMain, IpcMainInvokeEvent } from 'electron'
 import { IPC } from '../shared/ipc-channels.js'
 import { registerInvoke } from './ipc-register.js'
 
 // Title-bar controls act on the window whose renderer pressed them, main or detached.
 export function registerWindowIpc(
   ipcMain: Pick<IpcMain, 'handle'>,
-  windowOf: (event: IpcMainInvokeEvent) => BrowserWindow | null = (event) => BrowserWindow.fromWebContents(event.sender)
+  windowOf: (event: IpcMainInvokeEvent) => BrowserWindow | null
 ): void {
   registerInvoke(ipcMain, IPC.invoke.window.minimize, (event) => {
     windowOf(event)?.minimize()

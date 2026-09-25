@@ -55,3 +55,13 @@ test('window IPC is a no-op after the window has gone away', async () => {
   await invoke('window:toggleDevTools')
   await invoke('window:close')
 })
+
+test('window IPC acts on the window whose renderer asked', async () => {
+  const closed: string[] = []
+  const windows = new Map([[1, { close: () => closed.push('main') }], [2, { close: () => closed.push('detached') }]])
+  const handlers = new Map<string, Handler>()
+  const ipcMain = { handle: (channel: string, handler: Handler) => { handlers.set(channel, handler) } } as unknown as Pick<IpcMain, 'handle'>
+  registerWindowIpc(ipcMain, (event) => (windows.get(event.sender.id) ?? null) as unknown as BrowserWindow)
+  await handlers.get('window:close')!({ sender: { id: 2 } } as IpcMainInvokeEvent)
+  assert.deepEqual(closed, ['detached'])
+})
