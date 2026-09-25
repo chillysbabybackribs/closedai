@@ -30,7 +30,7 @@ export function DockSurface({ tray }: { tray: HTMLElement | null }): JSX.Element
 
   return <div ref={root} aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 -z-10" style={{ height: DOCK_HEIGHT + TAB_RISE }}>
     {box && <>
-      <div className="absolute inset-0 bg-popover/85 backdrop-blur-md" style={{ clipPath: `path('${dockOutlinePath(box, 0, true)}')` }} />
+      <div data-slot="dock-surface-fill" className="absolute inset-0 bg-popover/85 backdrop-blur-md" style={{ clipPath: `path('${dockOutlinePath(box, 0, true)}')` }} />
       <svg className="absolute inset-0 size-full overflow-visible">
         <path d={dockOutlinePath(box, 0.5)} fill="none" strokeWidth={1} className="stroke-[var(--hairline-strong)]" />
       </svg>

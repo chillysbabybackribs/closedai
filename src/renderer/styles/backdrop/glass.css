@@ -13,8 +13,46 @@
   --glass-fill:
     linear-gradient(rgb(var(--glass-ink) / var(--backdrop-glass)), rgb(var(--glass-ink) / var(--backdrop-glass))),
     var(--backdrop-blur) center / cover no-repeat fixed;
+  /* The rails (title bar, dock) are the desktop's own glass: the same blurred wallpaper under a
+     lighter tint than a tile, so they read as one material top and bottom. */
+  --glass-rail-fill:
+    linear-gradient(rgb(var(--glass-ink) / var(--backdrop-rail)), rgb(var(--glass-ink) / var(--backdrop-rail))),
+    var(--backdrop-blur) center / cover no-repeat fixed;
   --glass-edge: rgb(255 255 255 / 11%);
   --glass-sheen: rgb(255 255 255 / 9%);
+  /* The wallpaper's vivid hue: Send and the composer's focus ring, the one colour in the chat. */
+  --composer-accent: var(--backdrop-accent, var(--tab-accent, #8ab4f8));
+}
+
+/* ---- Rails ---------------------------------------------------------------
+   One full-width bar top and bottom, like a desktop's menu bar and dock. A hairline faces the
+   workspace and a faint sheen catches the outer edge. Items on the bar lose their own fills. */
+:root[data-backdrop] .shell-titlebar {
+  background: var(--glass-rail-fill);
+  box-shadow: inset 0 1px 0 var(--glass-sheen), inset 0 -1px 0 var(--glass-edge), 0 1px 0 rgb(0 0 0 / 22%);
+}
+
+:root[data-backdrop] .titlebar-nav-group {
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Search is the one recessed field on the bar. */
+:root[data-backdrop] .header-chat-search-field {
+  background: rgb(0 0 0 / 24%);
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 32%), 0 1px 0 rgb(255 255 255 / 6%);
+}
+:root[data-backdrop] .header-chat-search-field:hover { background: rgb(0 0 0 / 30%); }
+:root[data-backdrop] .header-chat-search-field:focus-within {
+  background: rgb(0 0 0 / 34%);
+  box-shadow: 0 0 0 1px var(--focus-halo), inset 0 1px 2px rgb(0 0 0 / 32%);
+}
+
+/* The dock trades its live blur for the same pre-blurred glass: identical colour to the title
+   bar, and nothing to recompute while tiles move beneath it. */
+:root[data-backdrop] [data-slot="dock-surface-fill"] {
+  background: var(--glass-rail-fill);
+  backdrop-filter: none;
 }
 
 :root[data-backdrop] .shell {

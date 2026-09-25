@@ -9,7 +9,7 @@ export type BackdropStatus =
   | { state: 'ready'; name: string }
   | { state: 'unavailable' }
 
-const ROOT_PROPERTIES = ['--backdrop-image', '--backdrop-blur', '--backdrop-dim', '--backdrop-glass'] as const
+const ROOT_PROPERTIES = ['--backdrop-image', '--backdrop-blur', '--backdrop-dim', '--backdrop-glass', '--backdrop-rail', '--backdrop-accent'] as const
 
 /** Paints the chosen backdrop behind the shell: `data-backdrop` on the root plus the image and tone variables the glass styles read. */
 export function useWorkspaceBackdrop(mode: WorkspaceBackdrop): BackdropStatus {
@@ -43,6 +43,8 @@ export function useWorkspaceBackdrop(mode: WorkspaceBackdrop): BackdropStatus {
       root.style.setProperty('--backdrop-blur', `url("${backdrop.blurred}")`)
       root.style.setProperty('--backdrop-dim', String(tone.dim))
       root.style.setProperty('--backdrop-glass', String(tone.glass))
+      root.style.setProperty('--backdrop-rail', String(tone.rail))
+      if (backdrop.accent) root.style.setProperty('--backdrop-accent', backdrop.accent)
       root.dataset.backdrop = mode
       setStatus({ state: 'ready', name: backdrop.name })
     })()

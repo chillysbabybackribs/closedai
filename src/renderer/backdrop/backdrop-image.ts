@@ -1,5 +1,5 @@
 import type { DesktopWallpaper } from '../../shared/desktop-wallpaper.js'
-import { meanLuminance } from './backdrop-tone.js'
+import { accentColor, meanLuminance } from './backdrop-tone.js'
 
 /* The wallpaper is prepared once per activation: a copy sized to the screen for the window
    gaps, and a small heavily blurred copy that tiles and chrome paint as their glass. Blurring
@@ -11,6 +11,8 @@ export type PreparedBackdrop = {
   image: string
   blurred: string
   luminance: number
+  /** The wallpaper's vivid hue for Send and focus; null keeps the theme accent. */
+  accent: string | null
 }
 
 const BLURRED_WIDTH = 480
@@ -24,7 +26,7 @@ export async function prepareBackdrop(wallpaper: DesktopWallpaper, screenWidth: 
       encode(bitmap, sharpWidth, 0, 0.9),
       encode(bitmap, BLURRED_WIDTH, BLUR_RADIUS, 0.85)
     ])
-    return { name: wallpaper.name, image, blurred, luminance: sampleLuminance(bitmap) }
+    return { name: wallpaper.name, image, blurred, ...sampleTone(bitmap) }
   } finally {
     bitmap.close()
   }
@@ -51,9 +53,10 @@ async function encode(bitmap: ImageBitmap, width: number, blur: number, quality:
   return URL.createObjectURL(await canvas.convertToBlob({ type: 'image/jpeg', quality }))
 }
 
-function sampleLuminance(bitmap: ImageBitmap): number {
+function sampleTone(bitmap: ImageBitmap): Pick<PreparedBackdrop, 'luminance' | 'accent'> {
   const canvas = new OffscreenCanvas(32, 18)
   const context = canvas.getContext('2d', { willReadFrequently: true })!
   context.drawImage(bitmap, 0, 0, 32, 18)
-  return meanLuminance(context.getImageData(0, 0, 32, 18).data)
+  const pixels = context.getImageData(0, 0, 32, 18).data
+  return { luminance: meanLuminance(pixels), accent: accentColor(pixels) }
 }

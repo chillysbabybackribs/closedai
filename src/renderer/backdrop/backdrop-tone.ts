@@ -7,6 +7,8 @@ export type BackdropTone = {
   dim: number
   /** Dark tint alpha over the blurred wallpaper behind a chat transcript: a hint of colour, not a see-through pane. */
   glass: number
+  /** Dark tint alpha over the blurred wallpaper in the title bar and dock: lighter than a tile, since they are the desktop. */
+  rail: number
 }
 
 /** Mean relative luminance (0 dark … 1 white) of RGBA pixel data. */
@@ -24,8 +26,50 @@ export function backdropTone(luminance: number): BackdropTone {
   const light = Math.min(1, Math.max(0, luminance))
   return {
     dim: round(clamp(0.18 + 0.7 * light, 0.18, 0.62)),
-    glass: round(clamp(0.84 + 0.2 * light, 0.84, 0.94))
+    glass: round(clamp(0.84 + 0.2 * light, 0.84, 0.94)),
+    rail: round(clamp(0.5 + 0.3 * light, 0.5, 0.7))
   }
+}
+
+const HUE_BINS = 24
+
+/**
+ * The wallpaper's most vivid hue as a colour that reads on dark glass (Send, the focus ring):
+ * the Fuji sunset gives its orange. Pixels are weighted by chroma squared, so a small bright
+ * patch outweighs a large washed-out sky. Lightness is fixed so any photo yields a legible
+ * accent. Null when the image has no real colour, and the theme accent stays.
+ */
+export function accentColor(rgba: ArrayLike<number>): string | null {
+  const weights = new Array<number>(HUE_BINS).fill(0)
+  const saturation = new Array<number>(HUE_BINS).fill(0)
+  for (let index = 0; index + 3 < rgba.length; index += 4) {
+    const [hue, chroma, sat] = hueOf(rgba[index]! / 255, rgba[index + 1]! / 255, rgba[index + 2]! / 255)
+    if (chroma < 0.12) continue
+    const bin = Math.floor(hue / (360 / HUE_BINS)) % HUE_BINS
+    weights[bin]! += chroma * chroma
+    saturation[bin]! += sat * chroma * chroma
+  }
+  let best = 0
+  for (let bin = 1; bin < HUE_BINS; bin += 1) if (weights[bin]! > weights[best]!) best = bin
+  if (weights[best]! < 0.02) return null
+  // The chosen bin's neighbours pull the hue toward where the colour actually sits.
+  const prev = (best + HUE_BINS - 1) % HUE_BINS
+  const next = (best + 1) % HUE_BINS
+  const total = weights[prev]! + weights[best]! + weights[next]!
+  const width = 360 / HUE_BINS
+  const hue = ((best + 0.5) * width + (weights[next]! - weights[prev]!) / total * width + 360) % 360
+  const sat = clamp(saturation[best]! / weights[best]!, 0.68, 0.88)
+  return `hsl(${Math.round(hue)} ${Math.round(sat * 100)}% 64%)`
+}
+
+function hueOf(red: number, green: number, blue: number): [number, number, number] {
+  const max = Math.max(red, green, blue)
+  const min = Math.min(red, green, blue)
+  const chroma = max - min
+  if (chroma === 0) return [0, 0, 0]
+  const hue = max === red ? ((green - blue) / chroma + 6) % 6 : max === green ? (blue - red) / chroma + 2 : (red - green) / chroma + 4
+  const lightness = (max + min) / 2
+  return [hue * 60, chroma, chroma / (1 - Math.abs(2 * lightness - 1))]
 }
 
 function linear(channel: number): number {
