@@ -163,6 +163,9 @@ export function useSpaceNavigation({ enabled, current, spaces, size, stageRef, p
   useLayoutEffect(() => {
     if (previous.current === current) return
     previous.current = current
+    // Mid-switch, main's new folder briefly resolves to that folder's first space; the switch
+    // records its own destination when it commits.
+    if (phaseRef.current === 'switching') return
     history.current = dropMissingStops(visitStop(history.current, { kind: 'space', id: current }), new Set(spaces.map((space) => space.id)))
     if (phaseRef.current !== 'overview' && phaseRef.current !== 'gliding') return
     const slot = slotOf(current)
