@@ -1,5 +1,5 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import { dirname } from 'node:path'
+import { readFile, rename } from 'node:fs/promises'
+import { writeAtomic } from '../atomic-write.js'
 import { McpHttpBridge, type McpCallContext } from '../tools/mcp-http-bridge.js'
 import type { ToolRegistry } from '../tools/registry.js'
 import { ANTIGRAVITY_MCP_CONFIG_PATH } from './antigravity-cli.js'
@@ -29,6 +29,11 @@ import { ANTIGRAVITY_MCP_CONFIG_PATH } from './antigravity-cli.js'
 // - The config is one file for every app instance. The default profile registers bare namespace
 //   names; any other profile (a second checkout, a test run) suffixes a stable hash so it never
 //   redirects the user's running app at its own bridge.
+// - Every instance read-modify-writes that shared file, and headless runs get killed. A plain
+//   truncating write killed mid-flight left it at zero bytes (2026-09-23), after which every
+//   launch failed to parse it and ran Antigravity with no ClosedAI tools. Writes are atomic, an
+//   empty file reads as empty config, an unparseable one is moved aside, and the registration is
+//   re-asserted before every CLI spawn so an entry another instance dropped heals on the next turn.
 
 export type AntigravityServer = { server: string; namespace: string }
 
@@ -38,6 +43,7 @@ const CONVERSATION_META = 'antigravity.google/conversation_id'
 
 export class AntigravityToolBridge extends McpHttpBridge {
   private registered: string[] = []
+  private writes: Promise<unknown> = Promise.resolve()
 
   constructor(
     registry: ToolRegistry,
@@ -64,8 +70,21 @@ export class AntigravityToolBridge extends McpHttpBridge {
     await super.stop()
   }
 
+  /**
+   * Make sure the CLI config points at this bridge. Called before each spawn, because the CLI
+   * reads the file only at process start and other instances edit it too. A no-op read when the
+   * entries are already current.
+   */
+  async ensureRegistered(): Promise<void> {
+    if (this.listening) await this.register()
+  }
+
   /** Once the port is known, point the CLI at every enabled namespace with one config write. */
-  protected override async onListening(): Promise<void> {
+  protected override onListening(): Promise<void> {
+    return this.register()
+  }
+
+  private async register(): Promise<void> {
     const endpoints = this.endpoints()
     const namespaces = new Map(this.registry.enabledNamespaces().map((namespace) => [namespace.name, namespace]))
     const written = await this.rewriteConfig((servers) => {
@@ -83,29 +102,65 @@ export class AntigravityToolBridge extends McpHttpBridge {
   }
 
   /**
-   * Edit the CLI's config file in place, creating it when the CLI has never written one. The CLI
-   * does not rewrite it on exit (verified: an entry removed while a chat process ran stayed
-   * removed), so this is safe once no `mcp` verb is running. Returns whether the write landed.
+   * Apply an idempotent edit to the CLI's config file, creating it when the CLI has never written
+   * one. The CLI does not rewrite it on exit (verified: an entry removed while a chat process ran
+   * stayed removed), so this is safe once no `mcp` verb is running. Writes are serialized within
+   * this bridge; across instances the edit is re-checked after the write and re-applied if a
+   * concurrent writer replaced the file in between. Returns whether the edit is on disk.
    */
-  private async rewriteConfig(edit: (servers: Record<string, Record<string, unknown>>) => void): Promise<boolean> {
+  private rewriteConfig(edit: (servers: Record<string, Record<string, unknown>>) => void): Promise<boolean> {
+    const run = this.writes.then(() => this.applyEdit(edit))
+    this.writes = run.catch(() => false)
+    return run
+  }
+
+  private async applyEdit(edit: (servers: Record<string, Record<string, unknown>>) => void): Promise<boolean> {
     const path = this.options.configPath ?? ANTIGRAVITY_MCP_CONFIG_PATH
     try {
-      let parsed: { mcpServers?: Record<string, Record<string, unknown>> } = {}
-      try {
-        parsed = JSON.parse(await readFile(path, 'utf8')) as typeof parsed
-      } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
-        await mkdir(dirname(path), { recursive: true })
+      for (let attempt = 0; ; attempt += 1) {
+        const { config, raw } = await readConfig(path)
+        const servers = config.mcpServers ?? {}
+        edit(servers)
+        const next = `${JSON.stringify({ ...config, mcpServers: servers }, null, 2)}\n`
+        if (next === raw) return true
+        if (attempt === WRITE_ATTEMPTS) return false
+        await writeAtomic(path, next)
       }
-      const servers = parsed.mcpServers ?? {}
-      edit(servers)
-      await writeFile(path, `${JSON.stringify({ ...parsed, mcpServers: servers }, null, 2)}\n`)
-      return true
     } catch (error) {
       console.warn('[antigravity] could not update the agy MCP config:', error instanceof Error ? error.message : error)
       return false
     }
   }
+}
+
+type McpConfig = { mcpServers?: Record<string, Record<string, unknown>> } & Record<string, unknown>
+
+const WRITE_ATTEMPTS = 3
+
+/**
+ * The config and its exact text (null when missing or unusable, so any edit writes). A zero-byte
+ * file is what an interrupted truncating write leaves and is read as empty; text that does not
+ * parse to an object is moved aside, not overwritten, so nothing the user wrote is lost.
+ */
+async function readConfig(path: string): Promise<{ config: McpConfig; raw: string | null }> {
+  let raw: string
+  try {
+    raw = await readFile(path, 'utf8')
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return { config: {}, raw: null }
+    throw error
+  }
+  if (!raw.trim()) return { config: {}, raw: null }
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) return { config: parsed as McpConfig, raw }
+  } catch {
+    // Fall through: moved aside below.
+  }
+  const aside = `${path}.corrupt-${Date.now()}`
+  await rename(path, aside)
+  console.warn(`[antigravity] agy MCP config was not valid JSON; moved it to ${aside}`)
+  return { config: {}, raw: null }
 }
 
 function conversationIdOf(extra: unknown): string | null {

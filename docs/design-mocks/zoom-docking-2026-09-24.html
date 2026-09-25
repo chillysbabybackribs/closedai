@@ -33,11 +33,11 @@
 
   /* The app window. Nothing is drawn in it except the zoomable world. */
   .fit { position: relative; max-width: 1120px; }
-  .viewport { position: absolute; left: 0; top: 0; transform-origin: 0 0; width: 1120px; height: 630px; overflow: hidden; border-radius: 10px; background: #5a5854; user-select: none; }
-  .world { position: absolute; left: 0; top: 0; width: 1120px; height: 630px; transform-origin: 0 0; transition: transform var(--dur) var(--ease); }
+  .viewport { position: absolute; left: 0; top: 0; transform-origin: 0 0; width: 1120px; height: 630px; overflow: hidden; border-radius: 10px; background: radial-gradient(120% 100% at 28% 8%, #6f6c66, #45433f 72%); user-select: none; }
+  .world { position: absolute; left: 0; top: 0; width: 1120px; height: 590px; transform-origin: 0 0; transition: transform var(--dur) var(--ease); }
   .group { position: absolute; border-radius: 12px; background: rgb(0 0 0 / 13%); }
   .chip { position: absolute; top: 5px; left: 9px; transform-origin: 0 0; transform: scale(var(--inv, 1)); transition: transform var(--dur) var(--ease), opacity 200ms; white-space: nowrap; font-size: 11px; font-weight: 600; letter-spacing: .03em; color: #eeeae4; background: #6f6c68; padding: 2px 7px; border-radius: 5px; pointer-events: none; }
-  .slot { position: absolute; left: 0; top: 0; width: 1120px; height: 630px; transform-origin: 0 0; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 10px rgb(0 0 0 / 28%); }
+  .slot { position: absolute; left: 0; top: 0; width: 1120px; height: 590px; transform-origin: 0 0; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 10px rgb(0 0 0 / 28%); }
   .slot > .chip { top: auto; bottom: 10px; left: 10px; transform-origin: 0 100%; transform: scale(var(--leaf-inv, 1)); background: rgb(32 34 35 / 78%); }
   .slot[data-focused] > .chip { opacity: 0; }
   .slot[data-focused] { box-shadow: none; }
@@ -71,10 +71,43 @@
   .icon .s { display: flex; align-items: center; gap: 4px; color: var(--muted-foreground); font-size: 8px; }
   .icon .s .dot { width: 5px; height: 5px; }
 
-  /* Optional orientation cue: shows the path for a moment after each zoom, then fades. Not a bar. */
-  .toast { position: absolute; z-index: 25; left: 50%; top: 12px; transform: translateX(-50%); padding: 5px 11px; border-radius: 999px; background: rgb(32 34 35 / 82%); color: #eeeae4; font-size: 12px; font-weight: 500; opacity: 0; transition: opacity 260ms; pointer-events: none; white-space: nowrap; }
-  .toast[data-on] { opacity: 1; }
-  .toast .sep { opacity: .5; margin: 0 5px; }
+  /* The dock: a translucent full-width strip of controls with the app tray floating over its centre. */
+  .canvas { position: absolute; left: 0; top: 0; width: 1120px; height: 590px; overflow: hidden; border-radius: 10px 10px 0 0; }
+  .dock { position: absolute; left: 0; right: 0; bottom: 0; height: 40px; z-index: 40; }
+  .strip { position: absolute; inset: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 8px; background: rgb(32 34 35 / 40%); backdrop-filter: blur(16px) saturate(1.2); box-shadow: inset 0 1px 0 rgb(255 255 255 / 10%); }
+  .side { display: flex; align-items: center; gap: 2px; }
+  .dk { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 9px; border: 0; border-radius: 7px; background: transparent; color: #e4e0d9; font: inherit; font-size: 12px; cursor: pointer; }
+  .dk:hover { background: rgb(238 234 228 / 12%); }
+  .dk[data-on] { background: rgb(238 234 228 / 20%); color: #fff; }
+  .dk:disabled { opacity: .38; cursor: default; background: transparent; }
+  .dk.ic { padding: 0 5px; }
+  .dock svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .path { margin-left: 8px; max-width: 170px; overflow: hidden; text-overflow: ellipsis; color: #cfcac2; font-size: 12px; white-space: nowrap; }
+  .path .sep { opacity: .5; margin: 0 5px; }
+  .tray { position: absolute; left: 50%; bottom: 3px; transform: translateX(-50%); height: 50px; display: flex; align-items: center; gap: 7px; padding: 0 9px; border-radius: 15px; background: rgb(238 234 228 / 16%); backdrop-filter: blur(18px) saturate(1.3); border: 1px solid rgb(255 255 255 / 16%); box-shadow: 0 8px 24px rgb(0 0 0 / 25%); transition: box-shadow 160ms, background 160ms; }
+  .tray[data-target] { background: rgb(143 178 220 / 30%); box-shadow: 0 0 0 2px #8fb2dc, 0 8px 24px rgb(0 0 0 / 25%); }
+  .app { position: relative; width: 36px; height: 36px; padding: 0; border: 0; background: none; cursor: pointer; transition: transform 160ms var(--ease); }
+  .app:hover { transform: translateY(-3px); }
+  .sq { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; color: #fff; background: linear-gradient(180deg, color-mix(in srgb, var(--c) 72%, white), var(--c)); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 14%), 0 1px 3px rgb(0 0 0 / 30%); }
+  .dock .sq svg { width: 18px; height: 18px; }
+  .sq.mini { background: var(--surface-card); color: var(--chrome-fg-strong); font-size: 11px; font-weight: 600; }
+  .run { position: absolute; left: 50%; bottom: -6px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: #eeeae4; }
+  .tray .div { width: 1px; height: 30px; background: rgb(255 255 255 / 22%); margin: 0 2px; }
+  .tip { position: absolute; bottom: calc(100% + 9px); left: 50%; transform: translateX(-50%); white-space: nowrap; background: rgb(32 34 35 / 90%); color: #eeeae4; font-size: 11.5px; padding: 3px 8px; border-radius: 6px; opacity: 0; pointer-events: none; transition: opacity 120ms; }
+  .tip small { color: #aaa69f; font-size: 11px; margin-left: 6px; }
+  .app:hover .tip { opacity: 1; }
+  .pop { position: absolute; bottom: 50px; z-index: 45; width: 280px; padding: 8px; border-radius: 12px; background: rgb(44 43 41 / 82%); backdrop-filter: blur(18px); border: 1px solid rgb(255 255 255 / 14%); box-shadow: 0 14px 40px rgb(0 0 0 / 40%); color: #eeeae4; font-size: 12px; opacity: 0; transform: translateY(6px); transition: opacity 160ms, transform 160ms var(--ease); pointer-events: none; }
+  .pop[data-on] { opacity: 1; transform: none; pointer-events: auto; }
+  .pop h4 { margin: 2px 4px 6px; font-size: 11px; font-weight: 600; color: #cfcac2; }
+  .pop .row { display: flex; justify-content: space-between; gap: 14px; padding: 5px 6px; border-radius: 6px; cursor: default; }
+  .pop .row:hover { background: rgb(238 234 228 / 10%); }
+  .pop .row span:last-child { color: #aaa69f; }
+  .mapbox { position: relative; width: 264px; height: 139px; border-radius: 6px; background: rgb(0 0 0 / 22%); }
+  .mapbox .g { position: absolute; border: 1px solid rgb(238 234 228 / 30%); border-radius: 4px; pointer-events: none; }
+  .mapbox .l { position: absolute; border-radius: 3px; background: rgb(238 234 228 / 62%); cursor: pointer; }
+  .mapbox .l:hover { background: #eeeae4; }
+  .mapbox .l[data-run]::after { content: ""; position: absolute; right: 3px; top: 3px; width: 4px; height: 4px; border-radius: 50%; background: var(--ok-ink); }
+  .mapbox .view { position: absolute; border: 2px solid #8fb2dc; border-radius: 4px; pointer-events: none; transition: all 260ms var(--ease); }
 
   /* Box-select in the zoomed-out view: tiles under the box light up, releasing opens a view of only those. */
   .world { transition: transform var(--dur) var(--ease), opacity 320ms var(--ease); }
@@ -84,14 +117,14 @@
   .icon[data-picked] { outline: 3px solid #8fb2dc; }
 
   /* The opened selection is an ordinary workspace: tiles reflow with animation while one is dragged. */
-  .frame { position: absolute; inset: 0; z-index: 10; }
+  .frame { position: absolute; inset: 0; }
   .frame::before { content: ""; position: absolute; inset: 0; background: var(--chassis); border-radius: 10px; opacity: 0; transition: opacity 320ms var(--ease); }
   .frame[data-on]::before { opacity: 1; }
   .frame .tile { position: absolute; transform-origin: 0 0; transition: left 260ms var(--ease), top 260ms var(--ease), width 260ms var(--ease), height 260ms var(--ease), transform var(--dur) var(--ease), box-shadow 200ms; }
   .frame .tile .hdr { cursor: grab; }
   .frame .tile[data-float] { z-index: 5; box-shadow: 0 14px 40px rgb(0 0 0 / 38%), 0 0 0 1px rgb(0 0 0 / 12%); }
   /* Lifted: collapses to its header under the pointer; left/top follow the pointer without easing. */
-  .frame .tile[data-lifted] { z-index: 30; transition: width 200ms var(--ease), height 200ms var(--ease), box-shadow 200ms; box-shadow: 0 12px 34px rgb(0 0 0 / 40%); opacity: .96; }
+  .frame .tile[data-lifted] { z-index: 50; transition: width 200ms var(--ease), height 200ms var(--ease), box-shadow 200ms; box-shadow: 0 12px 34px rgb(0 0 0 / 40%); opacity: .96; }
   .frame .tile[data-lifted] .hdr { cursor: grabbing; }
   .ghost { position: absolute; border-radius: 8px; background: rgb(238 234 228 / 16%); border: 1.5px solid rgb(238 234 228 / 55%); backdrop-filter: blur(6px); opacity: 0; pointer-events: none; z-index: 2; transition: left 260ms var(--ease), top 260ms var(--ease), width 260ms var(--ease), height 260ms var(--ease), opacity 160ms; }
   .ghost[data-on] { opacity: 1; }
@@ -103,17 +136,14 @@
 </style>
 </head>
 <body>
-<h1>Zoom out to see every workspace — concept v3</h1>
+<h1>Zoom out to see every workspace — concept v4, with a dock</h1>
 <p class="lede">An interactive HTML/CSS mock, not an image-generated concept. It uses the live warm-chat tokens and the direction-C tab header. <b class="hi">The window has no navigation bar.</b> A zoomed-in workspace looks the same as the app does today. When you zoom out, the whole workspace shrinks as-is and sits beside the others, so the zoomed-out view is the navigator. Workspaces nest: “Work” holds two of them, and “Archive” is nested deeply enough that its workspaces show as icons until you zoom into it.</p>
 
 <div class="fit" id="fit"><div class="viewport" id="vp">
-  <div class="world" id="world"></div>
+  <div class="canvas"><div class="world" id="world"></div></div>
   <div class="frame" id="frame" hidden></div>
-  <div class="toast" id="toast"></div>
 </div></div>
 <div class="demo">
-  <span>Mock controls (not app UI):</span>
-  <button id="out">Zoom out</button><button id="back">Back</button><button id="fwd">Forward</button>
   <span class="grow"></span>
   <span><kbd>scroll</kbd> in overview · <kbd>Ctrl</kbd>+<kbd>scroll</kbd> or pinch inside a workspace · double-click a workspace to go in · double-click the background to go out · <kbd>Alt</kbd>+<kbd>←</kbd>/<kbd>→</kbd> back/forward</span>
 </div>
@@ -122,13 +152,14 @@
   <span><b class="hi">New in v3:</b> zoomed out, <kbd>drag a box</kbd> over any tiles to open a view of only those · in that view, <kbd>drag a tile header</kbd> onto another tile's edge to dock it, or into a tile's middle to float it · <kbd>Esc</kbd> or double-click a gap to go back</span>
 </div>
 
+<p class="note"><b class="hi">The dock (new in v4, from the video).</b> As in his build, the dock is a translucent strip along the bottom of the window with an app tray floating over its centre. The canvas stops above it, the way his windows do. <b class="hi">Left of the strip:</b> Overview (zoom all the way out), Desktop (back to the workspace you were in), back/forward, and where you are now. <b class="hi">Right:</b> Map, a small popover of the whole tree that you can click to jump, and dock settings. <b class="hi">The tray</b> holds ClosedAI's own surfaces rather than OS apps: Chats, Browser and Agent runs take you to where they live, and a dot under an icon means something in it is running. Saved sites and Downloads open a small list, like a macOS stack. After the divider come chats you've minimized. In a box-selected view, drag a tile's header onto the dock to minimize it, and click its card to bring it back. The frosted glass blurs the app's own content, not your OS desktop, so it needs no transparent Electron window.</p>
 <p class="note"><b class="hi">What each step does.</b> Each scroll step moves one named level: workspace → “Work” → everything, the same “one step of the scroll wheel” as in the video. Scrolling in zooms toward whatever is under the pointer. At the top level, double-clicking the background returns you to the last workspace you were in, which matches his double-click toggle between the desktop and the overview. Back/forward goes through your zoom history (Alt+arrows, mouse side buttons). The transcript also mentions buttons and saved frames. Here a saved frame is just a named group you can zoom to, so no strip is needed.</p>
 <p class="note"><b class="hi">How it maps onto ClosedAI.</b> Each workspace is today's <code>chat-layout</code> split tree, unchanged. What's new is one tree of workspaces above it, using the same split and dock code. Chats are DOM, so a CSS scale shrinks them and they keep streaming while zoomed out. The browser is a native view and can't be CSS-scaled, so zoomed out it shows a <code>capturePage</code> snapshot and goes live again when you zoom back in. Inside a workspace, plain scrolling still scrolls the chat and double-clicking a divider still balances the split, so zooming out from there uses Ctrl+scroll, pinch or a shortcut.</p>
 
 <p class="note"><b class="hi">Box-select and smooth docking (new in v3, from your screenshots).</b> In the video, dragging a box over three windows in the zoomed-out view opens a view of only those, and the other windows reflow smoothly while one is being dragged. Here the box picks individual tiles (chats and browsers), not whole workspaces, because a view of three chats at full size is something you can work in. The tiles keep their left-to-right and top-to-bottom order. The opened view is an ordinary layout: in the app it would be a temporary <code>ChatLayout</code> built from the existing pane ids, so the chats move rather than being copied, and Back returns them. When you drag a header, the tile collapses to its tab and the others close the gap. Hovering near another tile's edge opens a frosted slot where it will land, and dropping in a tile's middle leaves it floating. The app already computes this live preview (<code>layout-drag-preview.ts</code>). Tiles are positioned with plain left/top/width/height and no transition, though (<code>chat-canvas.tsx:14</code>), so today the preview snaps instead of gliding.</p>
 
 <script>
-const VW = 1120, VH = 630, GAP = 10, PAD = 9, LABEL = 18, ROOT_PAD = 14, ICON_BELOW = 190
+const VW = 1120, VH = 590, DOCK = 40, GAP = 10, PAD = 9, LABEL = 18, ROOT_PAD = 14, ICON_BELOW = 190
 
 const chat = (title, state, user, reply, selected) => `
   <div class="tile"${selected ? ' data-selected' : ''}>
@@ -167,7 +198,7 @@ const TREE = { id: 'root', name: 'Everything', dir: 'row', kids: [
   ] },
 ] }
 
-const world = document.getElementById('world'), vp = document.getElementById('vp'), toast = document.getElementById('toast')
+const world = document.getElementById('world'), vp = document.getElementById('vp')
 const nodes = {}, leaves = []
 let seq = 0
 
@@ -225,7 +256,7 @@ function render () {
 render()
 
 // Camera: fit the target node to the window. A workspace fills it exactly; a group letterboxes.
-let cur = 'root', k = 1, tx = 0, ty = 0, lastLeaf = 'dev', toastTimer = 0
+let cur = 'root', k = 1, tx = 0, ty = 0, lastLeaf = 'dev'
 const hist = ['root']; let hIndex = 0
 
 function target (node) { return node.ws ? node.fit : node.rect }
@@ -233,6 +264,7 @@ function isStop (node) { return !node.parent || node.ws || node.name }
 function label (node) { return node.ws ? WS[node.ws].name : node.name }
 
 function go (id, record = true) {
+  if (frame) closeFrame()
   const node = nodes[id], r = target(node)
   cur = id
   if (node.ws) lastLeaf = id
@@ -256,10 +288,7 @@ function go (id, record = true) {
 function showPath (node, extra) {
   const parts = extra ? [extra] : []
   for (let n = node; n; n = n.parent) if (isStop(n)) parts.unshift(label(n))
-  toast.innerHTML = parts.join('<span class="sep">›</span>')
-  toast.toggleAttribute('data-on', true)
-  clearTimeout(toastTimer)
-  toastTimer = setTimeout(() => toast.removeAttribute('data-on'), 1300)
+  syncDock(parts)
 }
 
 function zoomOut () {
@@ -288,7 +317,7 @@ const fitEl = document.getElementById('fit')
 function fitWindow () {
   fitScale = Math.min(1, fitEl.parentElement.clientWidth / VW)
   vp.style.transform = `scale(${fitScale})`
-  fitEl.style.height = `${VH * fitScale}px`
+  fitEl.style.height = `${(VH + DOCK) * fitScale}px`
 }
 fitWindow()
 addEventListener('resize', fitWindow)
@@ -311,6 +340,7 @@ vp.addEventListener('wheel', e => {
 }, { passive: false })
 
 vp.addEventListener('dblclick', e => {
+  if (e.target.closest('.dock, .pop')) return
   if (frame) { if (e.target === frameEl) exitFrame(); return }
   const leaf = e.target.closest('[data-ws]')
   if (leaf && leaf.dataset.ws !== cur) return go(leaf.dataset.ws)
@@ -333,9 +363,6 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && frame) exitFrame()
 })
 vp.addEventListener('mouseup', e => { if (e.button === 3) step(-1); if (e.button === 4) step(1) })
-document.getElementById('out').onclick = () => frame ? exitFrame() : zoomOut()
-document.getElementById('back').onclick = () => step(-1)
-document.getElementById('fwd').onclick = () => step(1)
 
 // Box-select → a view of only the picked tiles. In the app: a transient ChatLayout of existing pane ids.
 const frameEl = document.getElementById('frame'), FGAP = 8, INNER = { x: 8, y: 8, w: VW - 16, h: VH - 16 }
@@ -465,7 +492,7 @@ function exitFrame () {
 }
 
 vp.addEventListener('mousedown', e => {
-  if (e.button !== 0 || frame || nodes[cur].ws) return
+  if (e.button !== 0 || frame || nodes[cur].ws || e.target.closest('.dock, .pop')) return
   e.preventDefault()
   press = { at: local(e), el: null, keys: [] }
 })
@@ -508,7 +535,9 @@ function dragMove (e) {
     lift(p)
   }
   Object.assign(drag.t.el.style, { left: `${p.x - drag.grab.x}px`, top: `${p.y - drag.grab.y}px` })
-  const drop = dropAt(p)
+  const overDock = p.y > VH - 12
+  tray.toggleAttribute('data-target', overDock)
+  const drop = overDock ? 'dock' : dropAt(p)
   if (drag.drop !== undefined && drop?.target === drag.drop?.target && drop?.edge === drag.drop?.edge) return
   drag.drop = drop
   const ghost = frameEl.querySelector('.ghost')
@@ -526,8 +555,10 @@ function dragEnd (e) {
   if (!d.lifted) return
   frameEl.querySelector('.ghost').removeAttribute('data-on')
   d.t.el.removeAttribute('data-lifted')
+  tray.removeAttribute('data-target')
   frame.tree = d.preview ?? d.base
   relayout(frame.tree)
+  if (d.drop === 'dock') return minimize(d)
   if (d.preview) return
   const p = local(e), w = 460, h = 320
   const r = { x: clamp(p.x - d.grab.x, 8, VW - w - 8), y: clamp(p.y - d.grab.y, 8, VH - h - 8), w, h }
@@ -556,6 +587,147 @@ addEventListener('mouseup', e => {
   clearPicks()
   if (done.keys.length) openFrame(done.keys)
 })
+// The dock. Strip: where you are and how to move. Tray: ClosedAI's surfaces, then chats minimized to it.
+const I = {
+  grid: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+  desk: '<rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/>',
+  back: '<path d="M15 18l-6-6 6-6"/>',
+  fwd: '<path d="M9 18l6-6-6-6"/>',
+  map: '<path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/>',
+  sliders: '<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
+  chat: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/>',
+  pulse: '<path d="M3 12h4l3-8 4 16 3-8h4"/>',
+  star: '<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>',
+  down: '<path d="M12 4v11M7 10l5 5 5-5M4 20h16"/>',
+}
+const svg = name => `<svg viewBox="0 0 24 24">${I[name]}</svg>`
+const APPS = [
+  { name: 'Chats', note: '9 open · 3 streaming', c: '#3f5f86', icon: 'chat', run: true, open: () => go(lastLeaf) },
+  { name: 'Browser', note: '3 tabs', c: '#3f7580', icon: 'globe', run: true, open: () => go('dev') },
+  { name: 'Agent runs', note: '2 running · 1 paused', c: '#2f7a4f', icon: 'pulse', run: true, open: () => go('agents') },
+  { name: 'Saved sites', note: 'brief at 8:00', c: '#96692f', icon: 'star', rows: ['Saved sites', ['github.com/YaLTeR/niri', '2h ago'], ['ai-sdk.dev/elements', 'yesterday'], ['news.ycombinator.com', 'in daily brief']] },
+  { name: 'Downloads', note: '3 files', c: '#5f5687', icon: 'down', rows: ['Downloads', ['zoom-docking-capture.mp4', '4.2 MB'], ['niri-25.08.tar.gz', '1.1 MB'], ['launch-review.pdf', '310 KB']] },
+]
+
+const vpDock = document.createElement('div')
+vpDock.className = 'dock'
+vpDock.innerHTML = `
+  <div class="strip">
+    <div class="side">
+      <button class="dk" data-act="overview">${svg('grid')}Overview</button>
+      <button class="dk" data-act="desktop">${svg('desk')}Desktop</button>
+      <button class="dk ic" data-act="back" title="Back (Alt+←)">${svg('back')}</button>
+      <button class="dk ic" data-act="fwd" title="Forward (Alt+→)">${svg('fwd')}</button>
+      <span class="path" id="dockPath"></span>
+    </div>
+    <div class="side">
+      <button class="dk" data-act="map">${svg('map')}Map</button>
+      <button class="dk ic" data-act="settings" title="Dock settings">${svg('sliders')}</button>
+    </div>
+  </div>
+  <div class="tray" id="tray">
+    ${APPS.map((a, i) => `<button class="app" data-app="${i}"><span class="sq" style="--c:${a.c}">${svg(a.icon)}</span>${a.run ? '<i class="run"></i>' : ''}<span class="tip">${a.name}<small>${a.note}</small></span></button>`).join('')}
+    <span class="div" hidden></span>
+  </div>`
+const pop = document.createElement('div')
+pop.className = 'pop'
+vp.append(vpDock, pop)
+const tray = vpDock.querySelector('.tray'), trayDiv = tray.querySelector('.div'), dockPath = vpDock.querySelector('#dockPath')
+const act = name => vpDock.querySelector(`[data-act="${name}"]`)
+let popFor = null
+
+function syncDock (parts) {
+  // The tray owns the centre, so the location keeps its last two levels.
+  if (parts) dockPath.innerHTML = parts.slice(-2).join('<span class="sep">›</span>')
+  act('overview').toggleAttribute('data-on', !frame && cur === 'root')
+  act('desktop').toggleAttribute('data-on', !frame && !!nodes[cur].ws)
+  act('back').disabled = hIndex <= 0
+  act('fwd').disabled = hIndex >= hist.length - 1
+  if (popFor === act('map')) renderMap()
+}
+
+function openPop (anchor, html) {
+  if (popFor === anchor) return closePop()
+  closePop()
+  popFor = anchor
+  anchor.toggleAttribute('data-on', true)
+  pop.innerHTML = html
+  const a = boxOf(anchor)
+  pop.style.left = `${clamp(a.x + a.w / 2 - 140, 8, VW - 288)}px`
+  pop.toggleAttribute('data-on', true)
+}
+function closePop () {
+  if (!popFor) return
+  if (popFor.classList.contains('dk')) popFor.removeAttribute('data-on')
+  popFor = null
+  pop.removeAttribute('data-on')
+  syncDock()
+}
+const rowsHtml = ([title, ...rows]) => `<h4>${title}</h4>${rows.map(([a, b]) => `<div class="row"><span>${a}</span><span>${b}</span></div>`).join('')}`
+
+function renderMap () {
+  const s = 264 / VW, px = r => `left:${r.x * s}px;top:${r.y * s}px;width:${r.w * s}px;height:${r.h * s}px`
+  const groups = Object.values(nodes).filter(n => !n.ws && n.name && n.parent).map(n => `<span class="g" style="${px(n.rect)}"></span>`)
+  const cells = leaves.map(l => `<span class="l" data-go="${l.id}" title="${WS[l.ws].name}" style="${px(l.fit)}"${WS[l.ws].state === 'run' ? ' data-run' : ''}></span>`)
+  const view = frame ? '' : `<span class="view" style="${px(target(nodes[cur]))}"></span>`
+  pop.innerHTML = `<h4>Map · click a workspace to go there</h4><div class="mapbox">${groups.join('')}${cells.join('')}${view}</div>`
+}
+
+vpDock.addEventListener('click', e => {
+  const b = e.target.closest('[data-act], [data-app], [data-min]')
+  if (!b) return
+  if (b.dataset.act === 'overview') { closePop(); return frame ? (closeFrame(), go('root')) : go('root') }
+  if (b.dataset.act === 'desktop') { closePop(); return go(lastLeaf) }
+  if (b.dataset.act === 'back') return step(-1)
+  if (b.dataset.act === 'fwd') return step(1)
+  if (b.dataset.act === 'map') { openPop(b, ''); if (popFor) renderMap(); return }
+  if (b.dataset.act === 'settings') return openPop(b, rowsHtml(['Dock', ['Position', 'Bottom'], ['Hide when a chat is maximized', 'On'], ['Show location', 'On']]))
+  if (b.dataset.min) return restore(b.dataset.min)
+  const app = APPS[b.dataset.app]
+  if (app.rows) return openPop(b, rowsHtml(app.rows))
+  closePop()
+  app.open()
+})
+pop.addEventListener('click', e => { const l = e.target.closest('[data-go]'); if (l) { go(l.dataset.go); renderMap() } })
+vp.addEventListener('mousedown', e => { if (popFor && !e.target.closest('.dock, .pop')) closePop() }, true)
+
+// Drag a tile onto the dock to minimize it; click its card to bring it back.
+const minimized = {}
+function minimize (d) {
+  const { t } = d, el = t.el
+  frame.tiles = frame.tiles.filter(x => x !== t)
+  const title = el.querySelector('.tab').textContent.trim()
+  const btn = document.createElement('button')
+  btn.className = 'app'
+  btn.dataset.min = t.key
+  btn.innerHTML = `<span class="sq mini">${title.replace(/^Agent:\s*/, '').split(/\s+/).map(w => w.match(/[a-z0-9]/i)?.[0]).filter(Boolean).join('').slice(0, 2).toUpperCase()}</span><span class="tip">${title}<small>minimized</small></span>`
+  tray.appendChild(btn)
+  trayDiv.hidden = false
+  minimized[t.key] = el
+  const to = boxOf(btn)
+  el.style.transition = 'left 300ms var(--ease), top 300ms var(--ease), width 300ms var(--ease), height 300ms var(--ease), opacity 160ms 180ms'
+  place(el, to)
+  el.style.opacity = '0'
+  setTimeout(() => { if (!frame?.tiles.some(x => x.el === el)) el.remove() }, 360)
+}
+function restore (key) {
+  const btn = tray.querySelector(`[data-min="${key}"]`), from = boxOf(btn), el = minimized[key]
+  btn.remove()
+  delete minimized[key]
+  trayDiv.hidden = !tray.querySelector('[data-min]')
+  if (!frame) return openFrame([key])
+  Object.assign(el.style, { transition: 'none', opacity: '', transform: '' })
+  el.removeAttribute('data-float')
+  place(el, from)
+  frameEl.appendChild(el)
+  frame.tiles.push({ key, el })
+  frame.tree = frame.tree ? { dir: 'row', f: 1, kids: [{ ...frame.tree, f: 2 }, { tile: key, f: 1 }] } : { tile: key, f: 1 }
+  void el.offsetWidth
+  el.style.transition = ''
+  relayout(frame.tree)
+}
+
 world.style.transition = 'none'
 go('root', 'init')
 requestAnimationFrame(() => requestAnimationFrame(() => { world.style.transition = '' }))

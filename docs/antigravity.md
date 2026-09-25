@@ -153,6 +153,14 @@ Antigravity cost. The entries are removed at quit by editing the file the same w
 not rewrite it on exit, verified). While the app runs, a standalone `agy` session also sees the
 servers, which is harmless.
 
+Every edit is an atomic temp-file-and-rename write, re-read afterwards and re-applied (up to three
+times) if another instance replaced the file in between. A zero-byte file reads as empty config,
+and one that does not parse is moved aside to `mcp_config.json.corrupt-<ms>` rather than
+overwritten. Before each CLI spawn the service re-asserts the registration, a read-only no-op when
+the entries are current, so an entry another instance dropped comes back on the next turn. This
+replaced a truncating write that a killed headless run left at zero bytes (2026-09-23); every
+later launch failed to parse it and ran Antigravity with no ClosedAI tools.
+
 The config is one file for every app instance. The default profile registers bare namespace names;
 any other profile (a second checkout, a headless test run with its own `--user-data-dir`) suffixes a
 stable hash of its userData path (`embedded_browser_1k2j9x`), so it never redirects the user's running
