@@ -1,8 +1,8 @@
 # closedai
 
 ClosedAI is an Electron 44 workspace with an embedded Chromium browser and a chat surface
-supporting Codex, Claude Code, Antigravity, and Cursor. Multiple chats can run in one project; the
-sidebar selects conversations, and the layout can show several chats at once. All chats share the app's browser session.
+supporting Codex, Claude Code, Antigravity, and Cursor. Multiple chats can run in one project; title-bar search and History find saved chats, and the
+layout can show several chats at once. All chats share the app's browser session.
 Project selection restores that directory's open chats and model preferences.
 
 The renderer talks to the main process through the typed `window.closedai` preload bridge.
