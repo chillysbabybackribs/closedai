@@ -10,10 +10,15 @@ export const COMPOSER_FONT_SIZE_MIN = 13
 export const COMPOSER_FONT_SIZE_MAX = 22
 export const APPEARANCE_STORAGE_KEY = 'closedai.appearance.v1'
 
+/* What paints behind the tiles. Off keeps the flat chassis; desktop mirrors the OS wallpaper. Opt-in. */
+export type WorkspaceBackdrop = 'off' | 'desktop'
+export const WORKSPACE_BACKDROP_DEFAULT: WorkspaceBackdrop = 'off'
+
 export type AppearanceSettings = {
   chatFontSize: number
   composerFontSize: number
   chatZoom: number
+  backdrop: WorkspaceBackdrop
 }
 
 type AppearanceStorage = Pick<Storage, 'getItem' | 'setItem'>
@@ -21,7 +26,8 @@ type AppearanceStorage = Pick<Storage, 'getItem' | 'setItem'>
 export const DEFAULT_APPEARANCE_SETTINGS: AppearanceSettings = {
   chatFontSize: CHAT_FONT_SIZE_DEFAULT,
   composerFontSize: COMPOSER_FONT_SIZE_DEFAULT,
-  chatZoom: CHAT_ZOOM_DEFAULT
+  chatZoom: CHAT_ZOOM_DEFAULT,
+  backdrop: WORKSPACE_BACKDROP_DEFAULT
 }
 
 export function normalizeAppearanceSettings(value: unknown): AppearanceSettings {
@@ -34,7 +40,8 @@ export function normalizeAppearanceSettings(value: unknown): AppearanceSettings 
       COMPOSER_FONT_SIZE_MAX,
       COMPOSER_FONT_SIZE_DEFAULT
     ),
-    chatZoom: clampChatZoom(typeof record.chatZoom === 'number' ? record.chatZoom : CHAT_ZOOM_DEFAULT)
+    chatZoom: clampChatZoom(typeof record.chatZoom === 'number' ? record.chatZoom : CHAT_ZOOM_DEFAULT),
+    backdrop: record.backdrop === 'desktop' ? 'desktop' : WORKSPACE_BACKDROP_DEFAULT
   }
 }
 

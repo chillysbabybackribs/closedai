@@ -1,5 +1,6 @@
 import type { BrowserWindow, IpcMain, IpcMainInvokeEvent } from 'electron'
 import { IPC } from '../shared/ipc-channels.js'
+import { readDesktopWallpaper } from './desktop-wallpaper.js'
 import { registerInvoke } from './ipc-register.js'
 
 // Title-bar controls act on the window whose renderer pressed them, main or detached.
@@ -30,4 +31,6 @@ export function registerWindowIpc(
     if (contents.isDevToolsOpened()) contents.closeDevTools()
     else contents.openDevTools({ mode: 'detach' })
   })
+  // The workspace backdrop can mirror the desktop; main reads it because the renderer has no file access.
+  registerInvoke(ipcMain, IPC.invoke.window.desktopWallpaper, () => readDesktopWallpaper())
 }

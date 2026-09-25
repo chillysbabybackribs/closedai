@@ -19,6 +19,7 @@ test('IPC invoke constants cover the typed invoke registry', () => {
     'window:close',
     'window:toggleFullscreen',
     'window:toggleDevTools',
+    'window:desktopWallpaper',
     'windows:context',
     'windows:list',
     'windows:detachTabs',

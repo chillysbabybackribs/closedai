@@ -35,6 +35,8 @@ export type ClosedaiApi = {
     close: () => Promise<void>
     /** Developer menu: open or close DevTools for the app window itself, not a browser tab. */
     toggleDevTools: () => Promise<void>
+    /** The OS desktop wallpaper for the workspace backdrop; null when the desktop has none the app can paint. */
+    desktopWallpaper: () => Promise<import('./desktop-wallpaper.js').DesktopWallpaper | null>
   }
   /** The app's windows: which one this renderer is, and moving chat tabs between them. */
   windows: {

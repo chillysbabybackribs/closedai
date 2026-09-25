@@ -30,6 +30,7 @@ export type IpcInvokeChannels = {
   'window:toggleFullscreen': { args: []; result: void }
   'window:close': { args: []; result: void }
   'window:toggleDevTools': { args: []; result: void }
+  'window:desktopWallpaper': { args: []; result: import('./desktop-wallpaper.js').DesktopWallpaper | null }
   'windows:context': { args: []; result: AppWindowContext }
   'windows:list': { args: []; result: AppWindowInfo[] }
   'windows:detachTabs': { args: [string, string[]]; result: AppWindowId }
@@ -161,7 +162,8 @@ export const IPC = {
       maximize: 'window:maximize',
       toggleFullscreen: 'window:toggleFullscreen',
       close: 'window:close',
-      toggleDevTools: 'window:toggleDevTools'
+      toggleDevTools: 'window:toggleDevTools',
+      desktopWallpaper: 'window:desktopWallpaper'
     },
     windows: {
       context: 'windows:context',

@@ -30,7 +30,8 @@ const api: ClosedaiApi = {
     maximize: () => invoke(IPC.invoke.window.maximize),
     toggleFullscreen: () => invoke(IPC.invoke.window.toggleFullscreen),
     close: () => invoke(IPC.invoke.window.close),
-    toggleDevTools: () => invoke(IPC.invoke.window.toggleDevTools)
+    toggleDevTools: () => invoke(IPC.invoke.window.toggleDevTools),
+    desktopWallpaper: () => invoke(IPC.invoke.window.desktopWallpaper)
   },
   windows: {
     context: () => invoke(IPC.invoke.windows.context),
