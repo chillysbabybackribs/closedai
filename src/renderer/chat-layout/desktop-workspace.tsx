@@ -10,7 +10,9 @@ import type { AppearanceSettings } from '../settings/appearance-settings.js'
 import { ChatCanvas } from './chat-canvas.js'
 import { ChatLayoutActions } from './layout-context-menu.js'
 import { useChatLayout } from './layout-controller.js'
-import { BROWSER_PANE_ID, CHAT_DRAG_TYPE, paneIds } from './layout-tree.js'
+import { paneIds } from './layout-tree.js'
+import { BrowserWindowControls } from './floating/window-controls.js'
+import { minimizedWindows, type MinimizedWindow } from './floating/minimized-windows.js'
 import { tabOwner } from './layout-tabs.js'
 import { VIEW_LABELS, parseViewTab, type ViewKind } from './layout-views.js'
 import { LayoutPresetsDialog } from './layout-presets-dialog.js'
@@ -35,9 +37,11 @@ export type ChatLayoutHandle = {
   closeFocused: () => Promise<void>
   openLayoutPresets: () => void
   applyPreset: (preset: LayoutPreset) => void
+  /** Bring a minimized window back from the dock. */
+  restoreWindow: (id: string) => void
 }
 
-export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, toolsPreset = null, browserHeld = false, spaceId, onRenameChat, onSavedSitesError, onBrowserVisibleChange, archiveChat, ref }: {
+export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, toolsPreset = null, browserHeld = false, spaceId, onRenameChat, onSavedSitesError, onBrowserVisibleChange, onMinimizedChange, archiveChat, ref }: {
   chat: ReturnType<typeof useChatController>
   savedSites: BrowserSavedSitesController
   reviewQueue: ChatReviewQueue
@@ -51,6 +55,8 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
   onSavedSitesError?: (reason: unknown) => void
   /** Whether this workspace shows its browser, for controls outside it (the dock). */
   onBrowserVisibleChange?: (visible: boolean) => void
+  /** Windows minimized to the dock, for the dock outside this workspace. */
+  onMinimizedChange?: (windows: MinimizedWindow[]) => void
   archiveChat?: (chatId: string) => Promise<void>
   ref?: Ref<ChatLayoutHandle>
 }) {
@@ -58,14 +64,13 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
   workspaceSnapshotRef.current = chat.snapshot
   const layoutRevision = chatLayoutRevision(chat.snapshot)
   const layout = useChatLayout(() => workspaceSnapshotRef.current, layoutRevision, spaceId)
+  // The canvas moves the browser window from a press on this grip, as it does a chat's.
   const browserDragHandle = useMemo(() => <button type="button"
-    className="browser-layout-drag" data-ui="layout.browser-drag" draggable={!layout.busy} disabled={layout.busy}
-    aria-label="Move browser" title="Drag above or beside a chat; drop at the workspace edge for a full-height column"
-    onDragStart={(event) => {
-      event.dataTransfer.setData(CHAT_DRAG_TYPE, BROWSER_PANE_ID)
-      event.dataTransfer.effectAllowed = 'move'
-    }}><span className="browser-layout-drag-dots" aria-hidden="true" /></button>, [layout.busy])
+    className="browser-layout-drag" data-ui="layout.browser-drag" data-window-grip="" disabled={layout.busy}
+    aria-label="Move browser window" title="Drag to move the browser window: to a workspace edge or a chat's edge to tile it"
+  ><span className="browser-layout-drag-dots" aria-hidden="true" /></button>, [layout.busy])
   const [layoutDragging, setLayoutDragging] = useState(false)
+  const [browserCovered, setBrowserCovered] = useState(false)
   const [browserRevealVersion, setBrowserRevealVersion] = useState(0)
   const [presetsOpen, setPresetsOpen] = useState(false)
   const [agentsMenuPaneId, setAgentsMenuPaneId] = useState<string | null>(null)
@@ -116,10 +121,15 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
     layout.showBrowser()
     setBrowserRevealVersion((value) => value + 1)
   }, [layout.showBrowser])
+  // Minimizing the browser hides it; the dock's Browser icon brings it back.
+  const browserControls = useMemo(() => <BrowserWindowControls busy={layout.busy} onMinimize={layout.toggleBrowser} />,
+    [layout.busy, layout.toggleBrowser])
   const renderBrowser = useMemo(() => layout.detached ? null : <WorkspaceBrowser
-    layoutKey={`${layoutRevision}\0${layout.browserVisible ? '1' : '0'}`} visible={layout.browserVisible} occluded={layoutDragging || browserHeld}
-    savedSites={savedSites} dragHandle={browserDragHandle} onReveal={revealBrowser} onShow={layout.showBrowser} />,
-  [layout.detached, layoutRevision, layout.browserVisible, layoutDragging, browserHeld, savedSites, browserDragHandle, revealBrowser, layout.showBrowser])
+    layoutKey={`${layoutRevision}\0${layout.browserVisible ? '1' : '0'}`} visible={layout.browserVisible}
+    occluded={layoutDragging || browserHeld || browserCovered}
+    savedSites={savedSites} dragHandle={browserDragHandle} windowControls={browserControls} onReveal={revealBrowser} onShow={layout.showBrowser} />,
+  [layout.detached, layoutRevision, layout.browserVisible, layoutDragging, browserHeld, browserCovered, savedSites, browserDragHandle,
+    browserControls, revealBrowser, layout.showBrowser])
   // The browser lives in the main window: a detached window's Browser control brings that forward.
   const toggleBrowserHere = useCallback(() => {
     if (layout.detached) { void window.closedai.windows.showBrowser(); return }
@@ -133,6 +143,10 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
     return () => window.removeEventListener(APP_REVEAL_BROWSER_EVENT, revealBrowser)
   }, [revealBrowser])
   useEffect(() => { onBrowserVisibleChange?.(layout.browserVisible) }, [layout.browserVisible, onBrowserVisibleChange])
+  const minimized = useMemo(() => minimizedWindows(layout.tree, title), [layout.tree, title, chat.chats])
+  const minimizedKey = JSON.stringify(minimized)
+  useEffect(() => { onMinimizedChange?.(JSON.parse(minimizedKey) as MinimizedWindow[]) }, [minimizedKey, onMinimizedChange])
+  useEffect(() => () => onMinimizedChange?.([]), [onMinimizedChange])
   useImperativeHandle(ref, () => ({
     splitChat: (chatId, edge) => layout.dock(chatId, chat.selectedPaneId, edge),
     activateChat: (chatId) => layout.activateTab(chatId),
@@ -148,8 +162,9 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
     applyPreset: (preset) => {
       setBrowserRevealVersion((value) => value + 1)
       void layout.arrange(preset, canvasSize.current)
-    }
-  }), [layout.dock, layout.activateTab, layout.openView, layout.toggleView, toggleBrowserHere, revealBrowser, savedSites, layout.closeFocused, layout.arrange, chat.selectedPaneId])
+    },
+    restoreWindow: (id) => layout.windows.restore(id)
+  }), [layout.windows, layout.dock, layout.activateTab, layout.openView, layout.toggleView, toggleBrowserHere, revealBrowser, savedSites, layout.closeFocused, layout.arrange, chat.selectedPaneId])
   const select = useCallback((id: string): void => { void layout.focusPane(id) }, [layout.focusPane])
   const onDock = useCallback((id: string | null, target: string, edge: import('./layout-tree.js').DockEdge | null, singleTab?: boolean) => {
     return layout.dock(id, target, edge, singleTab)
@@ -223,7 +238,7 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
         onSelect={select} onDock={onDock} onSelectTab={onSelectTab} onCloseTab={onCloseTab} onNewChat={onNewChat}
         onRenameChat={onRename} onTogglePin={onTogglePin} onContinueChat={(id) => { void continueChatRef.current(id) }}
         onPauseTab={onPauseTab} onResumeTab={onResumeTab} onOpenPresets={onOpenPresets} onSizeChange={onSizeChange}
-        onHide={onHide} onResize={layout.resize}
+        onHide={onHide} onResize={layout.resize} windows={layout.windows} onBrowserCovered={setBrowserCovered}
         renderPane={renderPane}
       renderBrowser={renderBrowser}
     />
