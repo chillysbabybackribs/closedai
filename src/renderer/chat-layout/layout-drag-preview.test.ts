@@ -22,13 +22,6 @@ test('dragSplitPreview resizes sibling chats while dragging a pane to split', ()
   )
 })
 
-test('dragSplitPreview matches browser dock preview geometry', () => {
-  const tree = withBrowser(pair)
-  const preview = dragSplitPreview(tree, BROWSER_PANE_ID, { target: 'a', edge: 'top' }, false, 1600, 900)
-  assert.ok(preview)
-  assert.equal(preview!.panes.find((pane) => pane.id === 'b')!.rect.height, 900)
-})
-
 test('dragSplitPreview returns null for tab-strip drops', () => {
   assert.equal(dragSplitPreview(pair, 'a', { target: 'b', edge: null }, true, 800, 600), null)
 })

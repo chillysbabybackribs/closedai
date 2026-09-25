@@ -1,6 +1,5 @@
 import { BROWSER_PANE_ID, dockPane, layoutGeometry, paneIds, removePane, type ChatLayout, type DockEdge, type Rect } from './layout-tree.js'
 import { moveTab, removeTab, tabOwner } from './layout-tabs.js'
-import { browserDropPreview, splitDropEdge } from './browser-drop.js'
 
 export type DragDropTarget = { target: string; edge: DockEdge | null }
 
@@ -28,7 +27,7 @@ export function dragPreviewTree(
       )
 }
 
-/** Live split geometry while a pane or browser is dragged; null when the drop would not change splits. */
+/** Live split geometry while a tab is dragged; null when the drop would not change splits. */
 export function dragSplitPreview(
   tree: ChatLayout,
   sourceId: string,
@@ -39,9 +38,6 @@ export function dragSplitPreview(
   browserVisible = true
 ): ReturnType<typeof layoutGeometry> | null {
   if (!drop.edge) return null
-  if (sourceId === BROWSER_PANE_ID) {
-    return browserDropPreview(tree, { target: drop.target, edge: drop.edge }, width, height)
-  }
   const previewTree = dragPreviewTree(tree, sourceId, drop, singleTab)
   // Apply the move to the saved tree before projecting visibility, just as commit does.
   // A hidden browser retains its dock position without taking up preview space.
@@ -78,4 +74,24 @@ export function dragPreviewPanes(
   if (!preview) return committed
   return [...committed.map((pane) => preview.panes.find((next) => next.id === pane.id) ?? pane),
     ...preview.panes.filter((pane) => !committed.some((previous) => previous.id === pane.id))]
+}
+
+/** Pixel-based hysteresis for split previews. */
+export function splitDropEdge(rect: Rect, x: number, y: number, previous: DockEdge | null): DockEdge {
+  const dx = (x - rect.x) / rect.width
+  const dy = (y - rect.y) / rect.height
+  const distances: Record<DockEdge, number> = { left: dx, right: 1 - dx, top: dy, bottom: 1 - dy }
+  const edge = (Object.keys(distances) as DockEdge[]).reduce((best, candidate) => distances[candidate] < distances[best] ? candidate : best)
+  // Measure penetration into the new zone in pixels, including diagonal boundaries.
+  // This holds through small hand movements without delaying deliberate movement.
+  if (previous && previous !== edge) {
+    const horizontal = (side: DockEdge): boolean => side === 'left' || side === 'right'
+    const sameAxis = horizontal(previous) === horizontal(edge)
+    const gradient = sameAxis
+      ? 2 / (horizontal(edge) ? rect.width : rect.height)
+      : Math.hypot(1 / rect.width, 1 / rect.height)
+    const margin = Math.min(32, Math.min(rect.width, rect.height) * 0.1)
+    if (distances[previous] - distances[edge] <= margin * gradient) return previous
+  }
+  return edge
 }
