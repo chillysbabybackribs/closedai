@@ -13,6 +13,9 @@ import type { BrowserBounds } from '../shared/types.js'
 //  - a trailing in-flight drain plus two settle frames catch post-commit layout reflow.
 //  - observing ancestors (not only the host) catches layout moves where a sibling rail
 //    changes size and the host shifts.
+//  - a finite transform animation on the host or an ancestor (a layout tile gliding to its
+//    new place) makes the client rect transitional, and landing fires no ResizeObserver:
+//    reads wait for the glide to land, then re-measure the settled box.
 //
 // `visible` is authoritative rather than inferred from the rect: main hides the view outright
 // when another surface is showing, so no sliver survives a collapsed host.
@@ -29,6 +32,22 @@ export function boundsEqual(a: BrowserBounds, b: BrowserBounds): boolean {
     a.visible === b.visible &&
     a.occluded === b.occluded
   )
+}
+
+/** Finite transform animations moving `host` or its observed ancestors. */
+export function transformGlides(host: Element): Animation[] {
+  const glides: Animation[] = []
+  let element: Element | null = host
+  for (let depth = 0; element && depth <= ANCESTOR_OBSERVE_DEPTH; depth += 1) {
+    for (const animation of element.getAnimations?.() ?? []) {
+      const effect = animation.effect as KeyframeEffect | null
+      if (animation.playState === 'finished' || !effect?.getKeyframes) continue
+      if (effect.getComputedTiming().endTime === Infinity) continue
+      if (effect.getKeyframes().some((frame) => 'transform' in frame)) glides.push(animation)
+    }
+    element = element.parentElement
+  }
+  return glides
 }
 
 export function useNativeViewBounds(
@@ -53,6 +72,7 @@ export function useNativeViewBounds(
     let settleLeft = 0
     let inflight = false
     let destroyed = false
+    let awaitingLanding = false
 
     const read = (): BrowserBounds => {
       const rect = host.getBoundingClientRect()
@@ -87,6 +107,7 @@ export function useNativeViewBounds(
         settleRaf = 0
         if (destroyed || settleLeft <= 0) return
         settleLeft -= 1
+        if (transformGlides(host).length) { sync(); return }
         pending = read()
         if (!coalesceRaf) coalesceRaf = requestAnimationFrame(flushCoalesced)
         if (settleLeft > 0) settleRaf = requestAnimationFrame(step)
@@ -95,6 +116,16 @@ export function useNativeViewBounds(
     }
 
     const sync = (): void => {
+      const glides = transformGlides(host)
+      if (glides.length) {
+        if (awaitingLanding) return
+        awaitingLanding = true
+        void Promise.all(glides.map((glide) => glide.finished.catch(() => undefined))).then(() => {
+          awaitingLanding = false
+          if (!destroyed) sync()
+        })
+        return
+      }
       pending = read()
       if (!coalesceRaf) coalesceRaf = requestAnimationFrame(flushCoalesced)
       queueSettle()
