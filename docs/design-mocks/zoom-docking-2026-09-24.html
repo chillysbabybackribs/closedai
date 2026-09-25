@@ -138,7 +138,7 @@
 </style>
 </head>
 <body>
-<h1>Zoom out to see every workspace — concept v4, with a dock</h1>
+<h1>Zoom out to see every workspace — concept v5, with a hidden dock</h1>
 <p class="lede">An interactive HTML/CSS mock, not an image-generated concept. It uses the live warm-chat tokens and the direction-C tab header. <b class="hi">The window has no navigation bar.</b> A zoomed-in workspace looks the same as the app does today. When you zoom out, the whole workspace shrinks as-is and sits beside the others, so the zoomed-out view is the navigator. Workspaces nest: “Work” holds two of them, and “Archive” is nested deeply enough that its workspaces show as icons until you zoom into it.</p>
 
 <div class="fit" id="fit"><div class="viewport" id="vp">
@@ -151,10 +151,12 @@
 </div>
 <div class="demo">
   <span class="grow"></span>
-  <span><b class="hi">New in v3:</b> zoomed out, <kbd>drag a box</kbd> over any tiles to open a view of only those · in that view, <kbd>drag a tile header</kbd> onto another tile's edge to dock it, or into a tile's middle to float it · <kbd>Esc</kbd> or double-click a gap to go back</span>
+  <span><b class="hi">New in v5:</b> move the pointer to the <kbd>bottom edge</kbd> to show the dock · <b class="hi">v3:</b> zoomed out, <kbd>drag a box</kbd> over any tiles to open a view of only those · in that view, <kbd>drag a tile header</kbd> onto another tile's edge to dock it, or into a tile's middle to float it · <kbd>Esc</kbd> or double-click a gap to go back</span>
 </div>
 
-<p class="note"><b class="hi">The dock (new in v4, from the video).</b> As in his build, the dock is a translucent strip along the bottom of the window with an app tray floating over its centre. The canvas stops above it, the way his windows do. <b class="hi">Left of the strip:</b> Overview (zoom all the way out), Desktop (back to the workspace you were in), back/forward, and where you are now. <b class="hi">Right:</b> Map, a small popover of the whole tree that you can click to jump, and dock settings. <b class="hi">The tray</b> holds ClosedAI's own surfaces rather than OS apps: Chats, Browser and Agent runs take you to where they live, and a dot under an icon means something in it is running. Saved sites and Downloads open a small list, like a macOS stack. After the divider come chats you've minimized. In a box-selected view, drag a tile's header onto the dock to minimize it, and click its card to bring it back. The frosted glass blurs the app's own content, not your OS desktop, so it needs no transparent Electron window.</p>
+<p class="note"><b class="hi">Hidden until you reach for it (new in v5).</b> The dock starts hidden, and the workspace uses the full height of the window. Touch the bottom edge with the pointer and the dock slides up over the canvas. Move away from it and it slides back down after a short pause. It stays up while a list or the map is open, and while you drag a tile toward it to minimize it. In the app, the bottom few pixels are always the workspace's own padding, never a browser view, so the renderer always sees the pointer arrive at the edge. While the dock is up, it shortens any native browser view it covers, because a native view would otherwise draw on top of it. Dock settings has a <i>Keep visible</i> switch for people who want it always shown.</p>
+<p class="note"><b class="hi">The tray is an app launcher that will grow.</b> The five icons are what exists today. Each one is a single entry with a name, icon, color, status line and open action. As more apps are built into ClosedAI, each adds its own entry, and the tray widens from the centre the way the macOS Dock does. Minimized chats always come after the divider, so apps and parked chats never mix.</p>
+<p class="note"><b class="hi">The dock (from v4, from the video).</b> As in his build, the dock is a translucent strip along the bottom of the window with an app tray floating over its centre. <b class="hi">Left of the strip:</b> Overview (zoom all the way out), Desktop (back to the workspace you were in), back/forward, and where you are now. <b class="hi">Right:</b> Map, a small popover of the whole tree that you can click to jump, and dock settings. <b class="hi">The tray</b> holds ClosedAI's own surfaces rather than OS apps: Chats, Browser and Agent runs take you to where they live, and a dot under an icon means something in it is running. Saved sites and Downloads open a small list, like a macOS stack. After the divider come chats you've minimized. In a box-selected view, drag a tile's header onto the dock to minimize it, and click its card to bring it back. The frosted glass blurs the app's own content, not your OS desktop, so it needs no transparent Electron window.</p>
 <p class="note"><b class="hi">What each step does.</b> Each scroll step moves one named level: workspace → “Work” → everything, the same “one step of the scroll wheel” as in the video. Scrolling in zooms toward whatever is under the pointer. At the top level, double-clicking the background returns you to the last workspace you were in, which matches his double-click toggle between the desktop and the overview. Back/forward goes through your zoom history (Alt+arrows, mouse side buttons). The transcript also mentions buttons and saved frames. Here a saved frame is just a named group you can zoom to, so no strip is needed.</p>
 <p class="note"><b class="hi">How it maps onto ClosedAI.</b> Each workspace is today's <code>chat-layout</code> split tree, unchanged. What's new is one tree of workspaces above it, using the same split and dock code. Chats are DOM, so a CSS scale shrinks them and they keep streaming while zoomed out. The browser is a native view and can't be CSS-scaled, so zoomed out it shows a <code>capturePage</code> snapshot and goes live again when you zoom back in. Inside a workspace, plain scrolling still scrolls the chat and double-clicking a divider still balances the split, so zooming out from there uses Ctrl+scroll, pinch or a shortcut.</p>
 
@@ -541,7 +543,8 @@ function dragMove (e) {
   const overDock = dockShown && p.y > VH - DOCK - 14
   tray.toggleAttribute('data-target', overDock)
   const drop = overDock ? 'dock' : dropAt(p)
-  if (drag.drop !== undefined && drop?.target === drag.drop?.target && drop?.edge === drag.drop?.edge) return
+  const same = (x, y) => x === y || (typeof x === 'object' && typeof y === 'object' && x?.target === y?.target && x?.edge === y?.edge)
+  if (drag.drop !== undefined && same(drop, drag.drop)) return
   drag.drop = drop
   const ghost = frameEl.querySelector('.ghost')
   drag.preview = drop?.edge ? dockAt(drag.base, drag.t.key, drop.target, drop.edge) : null
