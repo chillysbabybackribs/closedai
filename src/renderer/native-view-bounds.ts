@@ -25,7 +25,7 @@ import type { BrowserBounds } from '../shared/types.js'
 // when another surface is showing, so no sliver survives a collapsed host.
 
 const SETTLE_FRAMES = 2
-// Host to tile: frame, shell, pane, browser column, dock frame, tile body, tile.
+// Host up to the tile body: frame, shell, pane, surface, browser column, dock frame, tile body.
 const ANCESTOR_OBSERVE_DEPTH = 7
 
 export function boundsEqual(a: BrowserBounds, b: BrowserBounds): boolean {
@@ -39,18 +39,20 @@ export function boundsEqual(a: BrowserBounds, b: BrowserBounds): boolean {
   )
 }
 
-/** Finite transform animations moving `host` or its observed ancestors. */
+/**
+ * Finite transform animations moving `host` or any ancestor. The whole chain, not only the observed
+ * depth: the layout tile that glides sits one level past it, and a glide missed there reports the
+ * page's box mid-flight and never again, which a covered page (under a floating window) keeps.
+ */
 export function transformGlides(host: Element): Animation[] {
   const glides: Animation[] = []
-  let element: Element | null = host
-  for (let depth = 0; element && depth <= ANCESTOR_OBSERVE_DEPTH; depth += 1) {
+  for (let element: Element | null = host; element; element = element.parentElement) {
     for (const animation of element.getAnimations?.() ?? []) {
       const effect = animation.effect as KeyframeEffect | null
       if (animation.playState === 'finished' || !effect?.getKeyframes) continue
       if (effect.getComputedTiming().endTime === Infinity) continue
       if (effect.getKeyframes().some((frame) => 'transform' in frame)) glides.push(animation)
     }
-    element = element.parentElement
   }
   return glides
 }

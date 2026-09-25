@@ -18,6 +18,11 @@ test('transform glides on the host or an ancestor defer the read; endless or fin
   const tile = { parentElement: null, getAnimations: () => [glide, animation([{ opacity: 0.8 }])] }
   const host = { parentElement: tile, getAnimations: () => [animation([{ transform: 'rotate(1turn)' }], Infinity)] }
   assert.deepEqual(transformGlides(host as unknown as Element), [glide])
+  // The tile sits deeper than the observed ancestors; its glide still defers the read.
+  type Node = { parentElement: unknown; getAnimations: () => Animation[] }
+  let deep: Node = { parentElement: tile, getAnimations: () => [] }
+  for (let depth = 0; depth < 10; depth += 1) deep = { parentElement: deep, getAnimations: () => [] }
+  assert.deepEqual(transformGlides(deep as unknown as Element), [glide])
   const landed = { parentElement: null, getAnimations: () => [animation([{ transform: 'none' }], 190, 'finished')] }
   assert.deepEqual(transformGlides(landed as unknown as Element), [])
 })
