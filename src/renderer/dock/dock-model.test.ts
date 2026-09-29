@@ -19,7 +19,7 @@ function memoryStorage(initial: Record<string, string> = {}): Storage {
 
 const quiet: TrayInput = {
   runningChats: 0, browserVisible: false, agentRuns: 0, runningAgentRuns: 0, agentSummary: 'No agents running',
-  savedSites: 0, downloads: 0, activeDownloads: 0
+  savedSites: 0, notes: 0, downloads: 0, activeDownloads: 0
 }
 
 describe('dock prefs', () => {
