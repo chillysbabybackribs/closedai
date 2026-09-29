@@ -1,106 +1,203 @@
-/* ---- Browser quick chat -------------------------------------------------- */
+/* ---- Browser quick chat layer ------------------------------------------- */
 
-/* The page and the quick chat share the shell's last row. The chat is laid out under the page,
-   never over it: the live page is a native view that paints above any renderer overlay, so the
-   open chat takes a row of its own and the page gets shorter. */
-.browser-stage {
-  display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
-  min-width: 0;
-  min-height: 0;
+/* The quick chat floats over the live page in a transparent native layer of its own (main
+   quick-chat-overlay/). Its document is see-through; the layer is fitted to .quick-chat-layer,
+   whose padding is the shadow's room, and main rests it on the page's foot. */
+html.quick-chat-surface,
+html.quick-chat-surface body,
+html.quick-chat-surface #root {
+  background: transparent;
 }
 
-.browser-stage:has(> .browser-quick-chat.is-open) {
-  grid-template-rows: minmax(0, 1fr) clamp(260px, 44%, 640px);
+.quick-chat-layer {
+  --quick-chat-margin: 14px;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--quick-chat-margin);
 }
 
-.browser-stage > .browser-frame {
-  border-radius: 0;
-}
-
-.browser-quick-chat {
-  display: grid;
-  grid-template-rows: auto;
-  min-width: 0;
-  min-height: 0;
-  border-radius: 0 0 9px 9px;
-  background: var(--surface-card);
-}
-
-.browser-quick-chat.is-open {
-  grid-template-rows: 30px minmax(0, 1fr);
-  box-shadow: inset 0 1px 0 var(--hairline);
-}
-
-/* Collapsed: one centered button in a slim strip, continuous with the page's bezel. */
-.browser-quick-chat-strip {
+/* Closed: one round button. */
+.quick-chat-fab {
   display: grid;
   place-items: center;
-  height: 28px;
-  padding-bottom: 4px;
-}
-
-.browser-quick-chat-toggle {
-  display: grid;
-  place-items: center;
-  width: 46px;
-  height: 22px;
-  border: 0;
-  border-radius: 11px;
-  background: color-mix(in srgb, var(--chrome-fg) 9%, transparent);
-  color: var(--chrome-fg);
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--hairline);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--surface-raised) 94%, transparent);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 22px rgb(0 0 0 / 34%);
+  color: var(--chrome-fg-strong);
   transition:
     background 110ms var(--ease-chrome),
-    color 110ms var(--ease-chrome);
+    transform 110ms var(--ease-chrome);
 }
 
-.browser-quick-chat-toggle:hover {
-  background: color-mix(in srgb, var(--chrome-fg) 16%, transparent);
+.quick-chat-fab:hover {
+  background: var(--surface-control-hover, #343434);
+  transform: translateY(-1px);
 }
 
-.browser-quick-chat-toggle:focus-visible {
+.quick-chat-fab:focus-visible {
   outline: 2px solid var(--tab-accent, #8ab4f8);
-  outline-offset: 1px;
+  outline-offset: 2px;
 }
 
-.browser-quick-chat-toggle.is-running {
+.quick-chat-fab.is-running {
   color: var(--tab-accent, #8ab4f8);
 }
 
-.browser-quick-chat-header {
+/* Open: the card. Compact is the composer (with the running feed above it); whole is the chat. */
+.quick-chat-card {
   display: flex;
+  flex-direction: column;
+  width: min(620px, calc(var(--page-width, 640px) - 2 * var(--quick-chat-margin)));
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--surface-card) 96%, transparent);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 10px 28px rgb(0 0 0 / 38%);
+}
+
+.quick-chat-card.is-whole {
+  width: min(720px, calc(var(--page-width, 760px) - 2 * var(--quick-chat-margin)));
+  height: min(660px, calc(var(--page-height, 700px) * 0.74));
+}
+
+.quick-chat-header {
+  display: flex;
+  flex: none;
   align-items: center;
   gap: 2px;
   min-width: 0;
-  padding: 0 4px 0 12px;
+  height: 34px;
+  padding: 0 6px 0 14px;
+  box-shadow: inset 0 -1px 0 var(--hairline);
 }
 
-.browser-quick-chat-header .browser-nav-button {
-  width: 26px;
-  height: 26px;
-}
-
-.browser-quick-chat-title {
+.quick-chat-title {
   flex: 1;
   min-width: 0;
   overflow: hidden;
-  color: color-mix(in srgb, var(--chrome-fg) 72%, transparent);
+  color: color-mix(in srgb, var(--chrome-fg) 80%, transparent);
   font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.browser-quick-chat-body {
-  min-width: 0;
-  min-height: 0;
-  overflow: hidden;
-  border-radius: 0 0 9px 9px;
+.quick-chat-icon-button {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--chrome-fg);
+  transition: background 110ms var(--ease-chrome), color 110ms var(--ease-chrome);
 }
 
-.browser-quick-chat-body[hidden] {
+.quick-chat-icon-button:hover {
+  background: color-mix(in srgb, var(--chrome-fg) 12%, transparent);
+  color: var(--chrome-fg-strong);
+}
+
+/* The running feed: the latest steps, newest last, then the reply once the task ends. */
+.quick-chat-feed {
+  display: flex;
+  flex: none;
+  gap: 6px;
+  align-items: flex-start;
+  padding: 10px 6px 2px 16px;
+  cursor: pointer;
+}
+
+.quick-chat-feed-lines {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.quick-chat-feed-line {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  min-width: 0;
+  color: color-mix(in srgb, var(--chrome-fg) 70%, transparent);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.quick-chat-feed-line > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quick-chat-feed-line > svg {
+  flex: none;
+}
+
+.quick-chat-feed-line.is-live {
+  color: var(--chrome-fg-strong);
+}
+
+.quick-chat-feed-line.is-live > svg {
+  color: var(--tab-accent, #8ab4f8);
+}
+
+.quick-chat-feed-line.is-failed > svg {
+  color: var(--danger, #f28b82);
+}
+
+.quick-chat-feed-reply {
+  display: -webkit-box;
+  margin: 3px 0 0;
+  overflow: hidden;
+  color: var(--chrome-fg-strong);
+  font-size: 13px;
+  line-height: 19px;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.quick-chat-feed-actions {
+  display: flex;
+  flex: none;
+  gap: 2px;
+  cursor: default;
+}
+
+.quick-chat-body {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.quick-chat-body .chat-pane {
+  border-right: 0;
+  background: transparent;
+}
+
+/* Compact: the chat's own composer without its transcript, sized by its content. */
+.quick-chat-card.is-compact .chat-pane,
+.quick-chat-card.is-compact .chat-zoom-surface {
+  height: auto;
+}
+
+.quick-chat-card.is-compact .chat-scroll-root {
   display: none;
 }
 
-.browser-quick-chat-body .chat-pane {
-  border-right: 0;
+.quick-chat-card.is-compact .chat-composer-dock {
+  position: relative;
+  top: auto;
+  transform: none;
 }

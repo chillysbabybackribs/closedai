@@ -147,7 +147,7 @@ export function useChatLayout(
       release()
     } else if (pending.current) return
     const next = getSnapshot().selectedPaneId
-    // The browser's quick chat is shown under the page; a selection never pulls it into a tile.
+    // The browser's quick chat floats over the page; a selection never pulls it into a tile.
     if (next === current.current.browserChat) return
     // Another window's chat is never opened twice. A chat no window holds yet (a new chat, one a
     // tool opened) goes to the window in front; the main window takes it when none is.

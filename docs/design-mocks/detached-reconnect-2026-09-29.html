@@ -1,0 +1,460 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Detached chat reconnect — wireframe 2026-09-29</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --font: "Inter Variable", Inter, ui-sans-serif, system-ui, sans-serif;
+    --bg: #1a1a1c;
+    --panel: #252528;
+    --chrome: #333338;
+    --card: #2e2e33;
+    --ink: #e8e6e3;
+    --muted: #9a9690;
+    --accent: #6ea8e8;
+    --join: #7bc89a;
+    --split-v: #e8a85c;
+    --split-h: #c78ee8;
+    --ghost: rgb(110 168 232 / 35%);
+    --edge: rgb(110 168 232 / 55%);
+    --ring: #6ea8e8;
+    --ease: cubic-bezier(.2, .7, .2, 1);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 20px 24px 40px;
+    background: #121214; color: var(--ink);
+    font-family: var(--font); font-size: 13px; line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1 { font-size: 16px; font-weight: 600; margin: 0 0 6px; }
+  .lede { color: var(--muted); max-width: 920px; margin: 0 0 20px; }
+  .layout { display: grid; grid-template-columns: 280px 1fr; gap: 20px; max-width: 1280px; }
+  @media (max-width: 960px) { .layout { grid-template-columns: 1fr; } }
+
+  .controls {
+    background: var(--panel); border-radius: 12px; padding: 14px 16px;
+    border: 1px solid rgb(255 255 255 / 8%);
+    position: sticky; top: 16px; align-self: start;
+  }
+  .controls h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 10px; font-weight: 600; }
+  .controls h2:not(:first-child) { margin-top: 18px; }
+  .seg { display: flex; flex-direction: column; gap: 6px; }
+  .seg label {
+    display: flex; align-items: flex-start; gap: 8px; padding: 8px 10px; border-radius: 8px;
+    cursor: pointer; border: 1px solid transparent; transition: background 120ms, border-color 120ms;
+  }
+  .seg label:hover { background: rgb(255 255 255 / 5%); }
+  .seg label:has(input:checked) { background: rgb(110 168 232 / 12%); border-color: rgb(110 168 232 / 35%); }
+  .seg input { margin-top: 3px; accent-color: var(--accent); }
+  .seg span.t { font-weight: 500; display: block; }
+  .seg span.d { font-size: 11.5px; color: var(--muted); display: block; margin-top: 2px; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .pill { font-size: 11px; padding: 3px 8px; border-radius: 999px; border: 1px solid rgb(255 255 255 / 12%); }
+  .pill.join { border-color: rgb(123 200 154 / 45%); color: var(--join); }
+  .pill.sv { border-color: rgb(232 168 92 / 45%); color: var(--split-v); }
+  .pill.sh { border-color: rgb(199 142 232 / 45%); color: var(--split-h); }
+
+  .stage { display: flex; flex-direction: column; gap: 16px; }
+  .row-label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+
+  /* Desktop: three OS windows */
+  .desktop {
+    position: relative; min-height: 340px;
+    background: radial-gradient(ellipse 80% 60% at 50% 40%, #2a2a30, #141416);
+    border-radius: 14px; border: 1px solid rgb(255 255 255 / 6%);
+    padding: 28px 20px 24px;
+  }
+  .os-win {
+    position: absolute; width: 220px; border-radius: 10px;
+    background: var(--bg); box-shadow: 0 12px 40px rgb(0 0 0 / 45%), 0 0 0 1px rgb(255 255 255 / 10%);
+    transition: transform 400ms var(--ease), opacity 300ms;
+  }
+  .os-win[data-role="source"] { z-index: 3; }
+  .os-win[data-role="target"] { z-index: 2; }
+  .os-win[data-role="other"] { z-index: 1; opacity: .55; }
+  .os-win[data-pos="a"] { left: 8%; top: 18%; }
+  .os-win[data-pos="b"] { left: 38%; top: 8%; }
+  .os-win[data-pos="c"] { left: 62%; top: 22%; }
+  .os-win .titlebar {
+    height: 28px; display: flex; align-items: center; gap: 6px; padding: 0 10px;
+    background: var(--chrome); border-radius: 10px 10px 0 0; font-size: 11px; color: var(--muted);
+  }
+  .os-win .dots { display: flex; gap: 4px; }
+  .os-win .dots i { width: 8px; height: 8px; border-radius: 50%; background: rgb(255 255 255 / 15%); }
+  .os-win .frame { padding: 6px; }
+  .chat-tile {
+    border-radius: 8px; overflow: hidden; background: var(--card);
+    border: 1px solid rgb(255 255 255 / 6%);
+  }
+  .chat-tile .hdr {
+    height: 32px; display: flex; align-items: stretch; background: var(--chrome);
+    font-size: 11px; position: relative;
+  }
+  .chat-tile .tab {
+    padding: 0 10px; display: flex; align-items: center; border-right: 1px solid rgb(255 255 255 / 8%);
+    max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .chat-tile .tab.active { background: rgb(255 255 255 / 6%); box-shadow: inset 0 -2px 0 var(--accent); }
+  .chat-tile .body { height: 72px; padding: 8px 10px; color: var(--muted); font-size: 11px; }
+  .ghost-win {
+    position: absolute; z-index: 5; pointer-events: none;
+    width: 200px; border-radius: 10px; border: 2px dashed var(--accent);
+    background: var(--ghost); box-shadow: 0 8px 24px rgb(0 0 0 / 35%);
+    transition: left 500ms var(--ease), top 500ms var(--ease), opacity 200ms;
+  }
+  .ghost-win .titlebar { height: 24px; background: rgb(110 168 232 / 25%); border-radius: 8px 8px 0 0; }
+  .ghost-win .frame { padding: 4px; opacity: .85; }
+
+  /* Target window with drop zones */
+  .focus-stage {
+    background: var(--panel); border-radius: 14px; padding: 16px;
+    border: 1px solid rgb(255 255 255 / 8%);
+  }
+  .target-wrap { position: relative; max-width: 640px; margin: 0 auto; }
+  .target-canvas {
+    position: relative; height: 280px; border-radius: 10px;
+    background: var(--bg); padding: 8px;
+    border: 1px solid rgb(255 255 255 / 10%);
+  }
+  .target-canvas[data-mode="single"] .pane-b { display: none; }
+  .target-canvas[data-mode="split-v"] { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .target-canvas[data-mode="split-v"] .pane-b { display: flex; }
+  .target-canvas[data-mode="split-h"] { display: grid; grid-template-rows: 1fr 1fr; gap: 8px; }
+  .target-canvas[data-mode="split-h"] .pane-b { display: flex; }
+  .target-canvas[data-mode="join"] .pane-b { display: none; }
+  .pane { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+  .pane .chat-tile { flex: 1; display: flex; flex-direction: column; }
+  .pane .chat-tile .body { flex: 1; min-height: 60px; }
+
+  /* Drop zone overlay on target B */
+  .zones {
+    position: absolute; inset: 8px; pointer-events: none; border-radius: 8px;
+    opacity: 0; transition: opacity 200ms;
+  }
+  .target-wrap[data-show-zones="true"] .zones { opacity: 1; }
+  .zone {
+    position: absolute; border-radius: 4px; transition: background 150ms, box-shadow 150ms;
+  }
+  .zone.strip {
+    left: 0; right: 0; top: 0; height: 36px;
+    background: rgb(123 200 154 / 0); border: 2px dashed transparent;
+  }
+  .zone.left { left: 0; top: 36px; bottom: 0; width: 56px; background: rgb(232 168 92 / 0); }
+  .zone.right { right: 0; top: 36px; bottom: 0; width: 56px; background: rgb(232 168 92 / 0); }
+  .zone.top { left: 56px; right: 56px; top: 36px; height: 56px; background: rgb(199 142 232 / 0); }
+  .zone.bottom { left: 56px; right: 56px; bottom: 0; height: 56px; background: rgb(199 142 232 / 0); }
+  .zone.body { left: 56px; right: 56px; top: 92px; bottom: 56px; background: rgb(255 255 255 / 0); }
+
+  .target-wrap[data-hover="join"] .zone.strip {
+    background: rgb(123 200 154 / 22%); border-color: var(--join);
+    box-shadow: inset 0 0 0 1px var(--join);
+  }
+  .target-wrap[data-hover="left"] .zone.left,
+  .target-wrap[data-hover="right"] .zone.right {
+    background: rgb(232 168 92 / 20%); box-shadow: inset 0 0 0 2px var(--split-v);
+  }
+  .target-wrap[data-hover="top"] .zone.top,
+  .target-wrap[data-hover="bottom"] .zone.bottom {
+    background: rgb(199 142 232 / 20%); box-shadow: inset 0 0 0 2px var(--split-h);
+  }
+  .target-wrap[data-hover="body"] .zone.body {
+    background: rgb(255 255 255 / 4%); outline: 2px dashed rgb(255 255 255 / 20%);
+  }
+
+  .preview-outline {
+    position: absolute; border: 2px solid var(--ring); border-radius: 6px;
+    pointer-events: none; opacity: 0; transition: opacity 200ms, inset 200ms;
+    box-shadow: 0 0 0 1px rgb(0 0 0 / 40%);
+  }
+  .target-wrap[data-hover="join"] .preview-outline {
+    opacity: 1; inset: 8px; border-color: var(--join);
+  }
+  .target-wrap[data-hover="left"] .preview-outline {
+    opacity: 1; left: 8px; top: 44px; bottom: 8px; width: calc(50% - 12px); right: auto;
+  }
+  .target-wrap[data-hover="right"] .preview-outline {
+    opacity: 1; right: 8px; top: 44px; bottom: 8px; width: calc(50% - 12px); left: auto;
+  }
+  .target-wrap[data-hover="top"] .preview-outline {
+    opacity: 1; left: 64px; right: 64px; top: 44px; height: calc(50% - 16px); bottom: auto;
+  }
+  .target-wrap[data-hover="bottom"] .preview-outline {
+    opacity: 1; left: 64px; right: 64px; bottom: 8px; height: calc(50% - 16px); top: auto;
+  }
+
+  .join-ghost-tab {
+    position: absolute; top: 14px; height: 22px; min-width: 88px; padding: 0 8px;
+    display: flex; align-items: center; font-size: 10px; border-radius: 4px;
+    background: rgb(123 200 154 / 35%); border: 1px dashed var(--join);
+    opacity: 0; transition: opacity 200ms; pointer-events: none;
+  }
+  .target-wrap[data-hover="join"] .join-ghost-tab { opacity: 1; left: 120px; }
+
+  .callout {
+    margin-top: 12px; padding: 10px 12px; border-radius: 8px;
+    background: rgb(110 168 232 / 10%); border: 1px solid rgb(110 168 232 / 25%);
+    font-size: 12.5px; min-height: 52px;
+  }
+  .callout strong { color: #fff; }
+  .callout em { color: var(--muted); font-style: normal; display: block; margin-top: 4px; font-size: 11.5px; }
+
+  .result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+  .result-card {
+    background: var(--bg); border-radius: 10px; padding: 10px;
+    border: 1px solid rgb(255 255 255 / 8%);
+  }
+  .result-card h3 { font-size: 12px; margin: 0 0 8px; font-weight: 600; }
+  .mini-canvas { height: 100px; border-radius: 6px; background: #222; padding: 4px; display: grid; gap: 3px; }
+  .mini-canvas.cols-2 { grid-template-columns: 1fr 1fr; }
+  .mini-canvas.rows-2 { grid-template-rows: 1fr 1fr; }
+  .mini-pane { background: var(--card); border-radius: 4px; font-size: 9px; padding: 4px; color: var(--muted); display: flex; align-items: center; justify-content: center; text-align: center; }
+  .mini-pane.new { outline: 1px solid var(--accent); color: var(--accent); }
+  .mini-tabs { display: flex; gap: 2px; margin-bottom: 4px; }
+  .mini-tabs i { font-size: 8px; padding: 2px 4px; background: var(--chrome); border-radius: 3px; font-style: normal; }
+  .mini-tabs i.new { outline: 1px solid var(--join); color: var(--join); }
+
+  .note-box {
+    margin-top: 20px; max-width: 920px; padding: 12px 14px; border-radius: 10px;
+    border: 1px dashed rgb(255 255 255 / 15%); color: var(--muted); font-size: 12px;
+  }
+</style>
+</head>
+<body>
+  <h1>Detached chats — reconnect wireframe</h1>
+  <p class="lede">
+    Same drop vocabulary as the main workspace: <b style="color:var(--join)">tab strip → merge tabs</b>,
+    <b style="color:var(--split-v)">left/right band → column split</b>,
+    <b style="color:var(--split-h)">top/bottom band → row split</b>.
+    Pick a scenario on the left; the target window shows zones and the outcome below.
+  </p>
+
+  <div class="layout">
+    <aside class="controls">
+      <h2>What you drag</h2>
+      <div class="seg" id="dragKind">
+        <label><input type="radio" name="kind" value="window" checked>
+          <span><span class="t">Whole detached window</span><span class="d">Title-bar drag — all tabs in that frame move together</span></span>
+        </label>
+        <label><input type="radio" name="kind" value="tab">
+          <span><span class="t">Single chat tab</span><span class="d">Tab drag — only that conversation moves</span></span>
+        </label>
+      </div>
+
+      <h2>Hover zone on target</h2>
+      <div class="seg" id="hoverZone">
+        <label><input type="radio" name="zone" value="join" checked>
+          <span><span class="t">Tab strip (header)</span><span class="d">Consolidate — new tab on target</span></span>
+        </label>
+        <label><input type="radio" name="zone" value="left">
+          <span><span class="t">Left edge band</span><span class="d">Split — incoming pane on the left (50/50)</span></span>
+        </label>
+        <label><input type="radio" name="zone" value="right">
+          <span><span class="t">Right edge band</span><span class="d">Split — incoming pane on the right</span></span>
+        </label>
+        <label><input type="radio" name="zone" value="top">
+          <span><span class="t">Top band</span><span class="d">Horizontal split — incoming pane above</span></span>
+        </label>
+        <label><input type="radio" name="zone" value="bottom">
+          <span><span class="t">Bottom band</span><span class="d">Horizontal split — incoming pane below</span></span>
+        </label>
+        <label><input type="radio" name="zone" value="body">
+          <span><span class="t">Window body (no band)</span><span class="d">Float — stack freely, no tree change</span></span>
+        </label>
+      </div>
+
+      <h2>Target already has</h2>
+      <div class="seg" id="targetLayout">
+        <label><input type="radio" name="layout" value="one" checked>
+          <span><span class="t">One chat pane</span><span class="d">Simplest — splits create two equal panes</span></span>
+        </label>
+        <label><input type="radio" name="layout" value="two-v">
+          <span><span class="t">Two panes (side by side)</span><span class="d">Edge hit chooses <em>which</em> pane to split beside (like today)</span></span>
+        </label>
+      </div>
+
+      <div class="legend">
+        <span class="pill join">Join tabs</span>
+        <span class="pill sv">Vertical split</span>
+        <span class="pill sh">Horizontal split</span>
+      </div>
+    </aside>
+
+    <div class="stage">
+      <div>
+        <div class="row-label">1 — Starting point (three OS windows)</div>
+        <div class="desktop" id="desktop">
+          <div class="os-win" data-role="source" data-pos="a">
+            <div class="titlebar"><div class="dots"><i></i><i></i><i></i></div> Chat A — detached</div>
+            <div class="frame">
+              <div class="chat-tile"><div class="hdr"><div class="tab active">Refactor plan</div></div><div class="body">Dragging me…</div></div>
+            </div>
+          </div>
+          <div class="os-win" data-role="target" data-pos="b">
+            <div class="titlebar"><div class="dots"><i></i><i></i><i></i></div> Chat B — drop target</div>
+            <div class="frame">
+              <div class="chat-tile"><div class="hdr"><div class="tab active">Composer dock</div><div class="tab">Notes</div></div><div class="body">Drop zones light up here</div></div>
+            </div>
+          </div>
+          <div class="os-win" data-role="other" data-pos="c">
+            <div class="titlebar"><div class="dots"><i></i><i></i><i></i></div> Chat C</div>
+            <div class="frame">
+              <div class="chat-tile"><div class="hdr"><div class="tab active">Layout PR</div></div><div class="body">Unchanged</div></div>
+            </div>
+          </div>
+          <div class="ghost-win" id="ghost" hidden>
+            <div class="titlebar"></div>
+            <div class="frame"><div class="chat-tile"><div class="hdr"><div class="tab active">Refactor plan</div></div><div class="body"></div></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="focus-stage">
+        <div class="row-label">2 — While dragging over target (inside one window after cross-window handoff)</div>
+        <div class="target-wrap" id="targetWrap" data-show-zones="true" data-hover="join">
+          <div class="target-canvas" id="targetCanvas" data-mode="single">
+            <div class="pane pane-a">
+              <div class="chat-tile">
+                <div class="hdr">
+                  <div class="tab active">Composer dock</div>
+                  <div class="tab">Notes</div>
+                </div>
+                <div class="body">Existing target content</div>
+              </div>
+            </div>
+            <div class="pane pane-b">
+              <div class="chat-tile">
+                <div class="hdr"><div class="tab active">Incoming chat</div></div>
+                <div class="body">Preview pane</div>
+              </div>
+            </div>
+          </div>
+          <div class="zones" aria-hidden="true">
+            <div class="zone strip" title="Join tabs"></div>
+            <div class="zone left"></div>
+            <div class="zone right"></div>
+            <div class="zone top"></div>
+            <div class="zone bottom"></div>
+            <div class="zone body"></div>
+          </div>
+          <div class="preview-outline"></div>
+          <div class="join-ghost-tab" id="ghostTab">+ Refactor plan</div>
+        </div>
+        <div class="callout" id="callout"></div>
+      </div>
+
+      <div>
+        <div class="row-label">3 — After release (same target window; source closes if empty)</div>
+        <div class="result-grid" id="results"></div>
+      </div>
+    </div>
+  </div>
+
+  <p class="note-box">
+    <strong>Cross-window (not drawn pixel-perfect above):</strong> OS window A’s drag is tracked by the main process;
+    window B’s canvas runs the same <code>windowTargetAt</code> math and previews you see in step 2.
+    Empty detached frames close automatically. Main window is the same target rules, with browser splits available again.
+  </p>
+
+<script>
+  const state = { kind: 'window', zone: 'join', layout: 'one' }
+  const targetWrap = document.getElementById('targetWrap')
+  const targetCanvas = document.getElementById('targetCanvas')
+  const callout = document.getElementById('callout')
+  const results = document.getElementById('results')
+  const ghost = document.getElementById('ghost')
+  const ghostTab = document.getElementById('ghostTab')
+
+  function readControls() {
+    state.kind = document.querySelector('input[name="kind"]:checked').value
+    state.zone = document.querySelector('input[name="zone"]:checked').value
+    state.layout = document.querySelector('input[name="layout"]:checked').value
+  }
+
+  const copy = {
+    join: {
+      title: 'Consolidate → one tab strip',
+      body: 'Incoming tab(s) join the target window’s header. Ghost tab shows where the new tab will land. Source detached OS window closes when it has no tabs left.',
+      mode: 'join'
+    },
+    left: { title: 'Vertical split — incoming on the left', body: 'Target tree gets a new column: dragged pane ~50% width. Matches main-window “split beside” on the left band.', mode: 'split-v' },
+    right: { title: 'Vertical split — incoming on the right', body: 'Same as left, mirrored. If target already has two columns, the band you hit picks which pane splits.', mode: 'split-v' },
+    top: { title: 'Horizontal split — incoming above', body: 'Row split: dragged pane in the top half. Useful when comparing two long threads vertically.', mode: 'split-h' },
+    bottom: { title: 'Horizontal split — incoming below', body: 'Row split: dragged pane in the bottom half.', mode: 'split-h' },
+    body: {
+      title: 'No snap — float in place',
+      body: 'Pointer over the body (not strip, not edge bands): window stays floating at drop position. Same as today when you miss a snap target.',
+      mode: 'single'
+    }
+  }
+
+  function render() {
+    readControls()
+    targetWrap.dataset.hover = state.zone
+    const c = copy[state.zone]
+    targetCanvas.dataset.mode = c.mode
+
+    const kindNote = state.kind === 'window'
+      ? 'Whole window: all tabs move together; strip join adds every tab to the target strip.'
+      : 'Single tab: only “Refactor plan” moves; other tabs stay in the source window.'
+    callout.innerHTML = `<strong>${c.title}</strong>${kindNote}<em>${c.body}</em>`
+
+    ghostTab.textContent = state.kind === 'window' ? '+ Refactor plan (+ all tabs)' : '+ Refactor plan'
+    ghost.hidden = state.zone === 'body'
+    if (!ghost.hidden) {
+      ghost.hidden = false
+      ghost.style.left = '42%'
+      ghost.style.top = '12%'
+      ghost.style.opacity = state.zone === 'join' ? '0.9' : '0.65'
+    }
+
+    results.innerHTML = outcomeHtml()
+  }
+
+  function outcomeHtml() {
+    const srcLabel = state.kind === 'window' ? 'Window A (closed)' : 'Window A (1 tab left)'
+    const cards = []
+
+    if (state.zone === 'join') {
+      cards.push({
+        h: 'Target window B',
+        html: `<div class="mini-tabs"><i>Composer</i><i>Notes</i><i class="new">Refactor plan</i></div>
+          <div class="mini-pane" style="height:70px">One pane, three tabs</div>`
+      })
+      cards.push({ h: srcLabel, html: `<div class="mini-pane" style="height:70px;opacity:.4">—</div>` })
+    } else if (state.zone === 'body') {
+      cards.push({
+        h: 'Target window B',
+        html: `<div class="mini-pane" style="height:40px;margin-bottom:4px">Composer (tiled)</div>
+          <div class="mini-pane new" style="height:40px;position:relative;top:-48px;margin-bottom:-40px;opacity:.85">Refactor plan floating on top</div>`
+      })
+    } else if (state.zone === 'left' || state.zone === 'right') {
+      const order = state.zone === 'left'
+        ? '<div class="mini-pane new">Refactor plan</div><div class="mini-pane">Composer + Notes</div>'
+        : '<div class="mini-pane">Composer + Notes</div><div class="mini-pane new">Refactor plan</div>'
+      cards.push({ h: 'Target window B', html: `<div class="mini-canvas cols-2">${order}</div>` })
+      cards.push({ h: srcLabel, html: `<div class="mini-pane" style="height:70px;opacity:.4">—</div>` })
+    } else {
+      const order = state.zone === 'top'
+        ? '<div class="mini-pane new">Refactor plan</div><div class="mini-pane">Composer + Notes</div>'
+        : '<div class="mini-pane">Composer + Notes</div><div class="mini-pane new">Refactor plan</div>'
+      cards.push({ h: 'Target window B', html: `<div class="mini-canvas rows-2">${order}</div>` })
+      cards.push({ h: srcLabel, html: `<div class="mini-pane" style="height:70px;opacity:.4">—</div>` })
+    }
+
+    cards.push({
+      h: 'Window C',
+      html: `<div class="mini-pane" style="height:70px">Unchanged — only B accepts the drop</div>`
+    })
+
+    return cards.map((c) => `<div class="result-card"><h3>${c.h}</h3>${c.html}</div>`).join('')
+  }
+
+  document.querySelectorAll('.controls input').forEach((el) => el.addEventListener('change', render))
+  render()
+</script>
+</body>
+</html>

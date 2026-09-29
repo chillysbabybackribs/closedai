@@ -176,7 +176,7 @@ export type SavedChatLayout = {
   focused?: string
   /** The maximized window (a tile or one of its tabs), which fills the canvas until Escape. */
   maximized?: string
-  /** The browser's quick chat: a real chat shown under the page instead of in a tile (main window only). */
+  /** The browser's quick chat: a real chat floating over the page instead of in a tile (main window only). */
   browserChat?: string
   browserChatOpen?: boolean
 }

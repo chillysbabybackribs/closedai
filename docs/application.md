@@ -1082,16 +1082,40 @@ renderer on `browser:permissionRequests` with the tab id, origin, and kind, `bro
 answers it, and an unanswered request is denied after 60 s. The policy is read per request, so a
 settings change applies to the next request without a restart. Nothing else is remembered per origin.
 
-The main window's browser has a quick chat under the page (`chat-layout/workspace-browser-chat.tsx`).
-Collapsed, it is a slim strip with one centered button (`browser.quick-chat`); expanded, it is a full
-`ChatPane` in its own grid row of `.browser-stage`, so the native page gets shorter rather than being
-covered. It is a real chat: `chat.newPeer(anchor, { select: false })` creates it with the focused
-tile's model and folder without changing the selection, and main skips its early wake so the blank
-chat is not discarded before the layout reports it. The layout saves it per space
-(`SavedChatLayout.browserChat`/`browserChatOpen`), adds it to the ids sent to `setVisiblePanes` so
-main keeps it attached and streaming while collapsed, and never pulls it into a tile when main
-selects it. **New quick chat** (`browser.quick-chat-new`) creates a fresh one and closes the previous
-one through `closePeer`, which leaves a used chat in history and discards a blank one.
+The main window's browser has a quick chat floating over the page. The live page is a native view
+that paints above everything the app shell draws, so the quick chat runs in a transparent native layer
+of its own: `QuickChatOverlay` (`src/main/quick-chat-overlay/`) adds a `WebContentsView` with a
+transparent background above the page views, loads the renderer with `?surface=quick-chat`
+(`src/renderer/quick-chat-overlay/`), and fits the view to the box the layer reports
+(`quickChat.setSize`), centred on the page's foot. `BrowserService` emits `page` with every bounds
+report and `pageViewAttached` whenever it adds a page view, so the layer follows the page and is
+re-stacked above it. While the page is covered (menus, dialogs, drags) or the browser is away, the
+layer is parked one pixel inside the window corner like a covered page; it is transparent there, stays
+loaded, and keeps following its chat. The layer is not a window: `AppWindowRegistry.attachSurface`
+routes it workspace-wide events and the transcript of the chat it shows, and it takes no window
+commands.
+
+Closed, the layer is a round button (`browser.quick-chat`, a spinner while the chat runs). Open, it is
+the chat's own `ChatPane` in a card. While the user types, the card is the whole chat (header with
+**New quick chat** `browser.quick-chat-new` and shrink `browser.quick-chat-compact`); when a turn
+starts it retracts to the compact composer with a running feed above it (`quick-chat-feed.ts`: the
+latest steps of the turn, newest last, then a two-line preview of the reply once it ends). Focusing
+the composer or clicking the feed brings the whole chat back (`browser.quick-chat-expand`); Escape
+shrinks it, and from the compact card closes it (`browser.quick-chat-collapse`). A click on the page
+retracts the card; an unused chat closes to the button. While a menu inside the layer is open, the
+layer grows upward so the menu is not clipped.
+
+The main window's layout owns which chat it is and whether it is open, and reports both with
+`quickChat.setState`; the layer's requests (`quickChat.request`: open, new, close) reach the layout as
+a `quickChat` window command (`chat-layout/use-quick-chat-overlay.ts`). It is a real chat:
+`chat.newPeer(anchor, { select: false })` creates it with the focused tile's model and folder without
+changing the selection, and main skips its early wake so the blank chat is not discarded before the
+layout reports it. The layout saves it per space (`SavedChatLayout.browserChat`/`browserChatOpen`),
+adds it to the ids sent to `setVisiblePanes` so main keeps it attached and streaming while closed, and
+never pulls it into a tile when main selects it. **New quick chat** creates a fresh one and closes the
+previous one through `closePeer`, which leaves a used chat in history and discards a blank one. The
+layer's controls live in its own page, so `closedai_app.ui` (which drives the main window's page) does
+not reach them.
 
 On Linux, startup disables accelerated video decode by default because affected driver stacks can
 accept and advance H.264 playback while compositing blank frames. This leaves GPU compositing and
