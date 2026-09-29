@@ -1205,7 +1205,12 @@ from tab metadata. Local image links and attachment thumbnails use this image vi
 other local file links open in app-owned text tabs so that source and text files get line
 highlighting instead of Chromium's plain-text rendering (Chromium's own PDF viewer still handles
 PDF URLs in web tabs). File tabs support copy path, copy content, show in folder, reload, duplication, and
-line highlighting; reopening a link updates its line target. In both cases, opening one
+line highlighting; reopening a link updates its line target. Local HTML and SVG files are the
+exception: a plain link opens them as a web tab at their `file:` URL, showing the page the markup
+builds, and a line or diff link opens their source. Either view carries a **Page | Code** toggle
+(`file.view`, in the web toolbar or the file tab's toolbar) that `localFiles:setView` answers by
+swapping the tab in place (`browser-service-special-tabs.ts`): the same tab id and strip slot, so
+a chat's claim survives, and the page reloads from disk each time it is shown. In both cases, opening one
 reveals a hidden browser pane and exits maximized chat layout. Reopening the same canonical
 file or attachment source selects its existing tab. Directories reveal in the system file
 manager. Closing an image returns to the previously selected tab when it is still open. Switching
