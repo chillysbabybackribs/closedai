@@ -749,7 +749,17 @@ turns off the tray's magnification. Both are saved in localStorage (`closedai.do
 reads the spaces it navigates through `SpacesStage`'s `dock` render prop, so it exists only where
 the overview does: in the main window, once a chat is selected.
 
-Left: **Overview** (`dock.overview`, pressed while zoomed out) toggles the workspace overview. Back
+Left: **Launcher** (`dock.launcher`) opens a fixed-width drawer flush with the top of the footer,
+using the existing popover surface, buttons, and menu styling. Home offers common actions;
+File, View, Agent, and Developer retain the former header menu actions and eligibility rules.
+The bottom search field (`dock.launcher-search`) searches commands across all categories;
+category controls use `dock.launcher-section`. Arrow keys and Enter navigate/select commands,
+Escape or an outside click dismisses the drawer, and selecting a command closes it before
+opening its destination. The drawer keeps the dock visible. The main-window header keeps chat
+search; detached windows and startup retain the header menus because no dock is available there.
+Menu definitions and disabled-state rules are shared in `application-menu-model.ts`.
+
+**Overview** (`dock.overview`, pressed while zoomed out) toggles the workspace overview. Back
 and forward (`dock.back`, `dock.forward`) step through the same zoom history as Alt+←/→ and are
 disabled at either end and while a zoom is moving. Next to them is where you are: the workspace
 and the selected chat, or "All workspaces". Right: Dock settings (`dock.settings`). Centre: the
@@ -789,7 +799,7 @@ either kind, so a new icon never changes the tray's size or spacing.
   contact shadow. Browser active tabs flow into a lighter (`#29292c`) toolbar,
   with a hairline beneath it and around the address field.
 - The window header has a soft charcoal (`#181819`) background in the dark theme.
-  It is 44 px tall, with a 30 px search field and a matching 30 px Radix menubar:
+  It is 44 px tall, with a 30 px search field. Detached windows and startup also show a 30 px Radix menubar:
   an 8 px rounded frame, theme-tinted fill, hairline border, and inset hover/open highlights.
   Menu labels are 12.5 px; search and compact dropdown rows use 13 px text. Menus retain
   Radix keyboard navigation, typeahead, hover switching while open, and Escape dismissal.

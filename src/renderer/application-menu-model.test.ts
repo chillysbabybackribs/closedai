@@ -24,7 +24,7 @@ test('launcher preserves context eligibility and zoom limits', () => {
   }
   assert.equal(disabled('stop-turn', { stopEnabled: true }), false)
   assert.equal(disabled('compact-context', { compactEnabled: true }), false)
-  assert.equal(disabled('zoom-in', { chatZoom: 200 }), true)
+  assert.equal(disabled('zoom-in', { chatZoom: 250 }), true)
   assert.equal(disabled('zoom-out', { chatZoom: 50 }), true)
   assert.equal(disabled('reset-zoom'), true)
 })

@@ -54,6 +54,7 @@ export function DockLauncher({ open, onOpenChange, menu }: {
             {tab.label}
           </Tabs.Trigger>)}
         </Tabs.List>
+        <Tabs.Content value={section} className="dock-launcher-command">
         <Command shouldFilter={false} loop className="dock-launcher-command" label="Application commands">
           <CommandList className="dock-launcher-list">
             <CommandEmpty>No commands found.</CommandEmpty>
@@ -81,6 +82,7 @@ export function DockLauncher({ open, onOpenChange, menu }: {
               data-ui="dock.launcher-search" placeholder="Search commands…" aria-label="Search launcher commands" />
           </div>
         </Command>
+        </Tabs.Content>
       </Tabs.Root>
     </PopoverContent>
   </Popover>
