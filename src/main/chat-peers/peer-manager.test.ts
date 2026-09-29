@@ -90,6 +90,14 @@ test('newPeer anchored to a tile inherits its model without selecting it first',
   assert.equal(manager.snapshot().chats.find((chat) => chat.paneId === paneC)?.modelId, 'claude:opus')
 })
 
+test('newPeer with select false leaves the selection and inherits the anchor', async () => {
+  const { manager } = harnessWith([chatRecord('pane-a', 'gpt'), chatRecord('pane-b', 'gpt')], 'pane-a')
+  await manager.selectModel('pane-b', 'claude:opus')
+  const quick = await manager.newPeer('pane-b', { select: false })
+  assert.equal(manager.snapshot().selectedPaneId, 'pane-a')
+  assert.equal(manager.snapshot().chats.find((chat) => chat.paneId === quick)?.modelId, 'claude:opus')
+})
+
 test('a new chat is announced before settings are written and inherits the model', async () => {
   const { manager, settings } = harness()
   const order: string[] = []

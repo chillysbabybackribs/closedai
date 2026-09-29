@@ -148,3 +148,13 @@ test('a saved layout keeps its focused chat and maximized window while they are 
   saveLayout(storage, '/p', { tree, browserVisible: true, focused: 'gone', maximized: BROWSER_PANE_ID })
   assert.deepEqual(readLayout(storage, '/p'), { tree, browserVisible: true, maximized: BROWSER_PANE_ID })
 })
+
+test('a saved layout keeps its browser quick chat unless that chat is also a tile', () => {
+  const values = new Map<string, string>()
+  const storage = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value) } }
+  const tree = withBrowser({ kind: 'pane', id: 'a' })
+  saveLayout(storage, '/p', { tree, browserVisible: true, browserChat: 'q', browserChatOpen: true })
+  assert.deepEqual(readLayout(storage, '/p'), { tree, browserVisible: true, browserChat: 'q', browserChatOpen: true })
+  saveLayout(storage, '/p', { tree, browserVisible: true, browserChat: 'a', browserChatOpen: false })
+  assert.deepEqual(readLayout(storage, '/p'), { tree, browserVisible: true })
+})
