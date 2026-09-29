@@ -47,10 +47,16 @@ quoted text cannot close its enclosing block. New chats without a continuation r
 historical digest.
 
 The session guide (`closedai.guide`, `kind: application`) is separate from handoffs: product
-routing, trust boundaries, and the default verification ladder. It is attached once per provider
-thread (including the first send after a handoff to a new thread), omitted on later turns in the
-same thread, and stripped from the user-visible transcript like other context blocks. Edit
-`scripts/agent-guide-outline.json` and run `npm run guide:generate`; `guide:check` guards drift.
+routing, trust boundaries, recency expectations for external facts, and the default verification
+ladder. It is attached once per provider thread (including the first send after a handoff to a new
+thread), omitted on later turns in the same thread, and stripped from the user-visible transcript
+like other context blocks. Edit `scripts/agent-guide-outline.json` and run `npm run guide:generate`;
+`guide:check` guards drift.
+
+`closedai.clock` (`kind: application`) is attached on **every** user turn with the host's calendar
+date, local timestamp, UTC ISO time, and IANA timezone. Models should treat it as authoritative
+"today" when deciding whether a question needs web lookup or freshness filters on `search.query`.
+It is not injected into the user-visible transcript.
 
 Saved credentials are never put into turn context. When enabled, the credential tools expose
 masked metadata and scoped field reads; the registry redacts sensitive results from the Turn

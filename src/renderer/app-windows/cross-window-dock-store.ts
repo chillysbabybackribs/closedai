@@ -14,7 +14,7 @@ export function useCrossWindowDockHover(): CrossWindowDockHover | null {
   return useSyncExternalStore((listener) => {
     listeners.add(listener)
     return () => listeners.delete(listener)
-  }, () => hover)
+  }, () => hover, () => null)
 }
 
 export function setCrossWindowDockCanvasSize(size: { width: number; height: number }): void {

@@ -31,9 +31,10 @@ export function searchTools(deps: SearchToolDeps = {}): ToolNamespace {
       name: 'query',
       deferLoading: true,
       description:
-        'Search Brave, Exa, Serper, Tavily, and You.com. Set intent for evidence shape; boost official docs with preferred_domains. ' +
-        'depth quick (default) uses one provider; balanced/deep wait for more. discoveredBy is index overlap, not confirmation. ' +
-        'Use search.run for parallel research. Returns JSON; parse in exec.',
+        'Search Brave, Exa, Serper, Tavily, and You.com for up-to-date public facts. Use for news, releases, regulations, and landscape questions; ' +
+        'read closedai.clock and include the current year or freshness (day/week/month or date range) when recency matters. ' +
+        'Set intent for evidence shape; boost official docs with preferred_domains. depth quick (default) uses one provider; balanced/deep wait for more. ' +
+        'live true bypasses the ten-minute cache. discoveredBy is index overlap, not confirmation. Use search.run for parallel research. Returns JSON; parse in exec.',
       timeoutMs: 45_000,
       inputSchema: {
         type: 'object',

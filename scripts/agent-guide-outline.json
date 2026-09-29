@@ -18,6 +18,15 @@
       ]
     },
     {
+      "heading": "Current information",
+      "lines": [
+        "Each user turn includes closedai.clock (application): the host's calendar date and timezone. Treat it as the reference \"today\" for this session.",
+        "For external facts — news, product versions, regulations, market landscape, \"what users want now\", competitor behavior, and anything that changes after training — use search.query or search.run (or the provider's native web search when available). Do not answer from memory alone unless the user asks for historical or timeless material.",
+        "Anchor queries to the clock year when recency matters; prefer intent news or research, depth balanced or deep for important lookups, freshness day/week/month or a YYYY-MM-DDtoYYYY-MM-DD range, and live true when a cached result could be stale.",
+        "Cite source dates in answers; say when evidence is undated. If search credentials fail, say so instead of guessing."
+      ]
+    },
+    {
       "heading": "Cold-start tool order",
       "lines": [
         "Start with closedai_app.state for pane, project, browser tabs, and layout before guessing.",

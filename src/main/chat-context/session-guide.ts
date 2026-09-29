@@ -1,6 +1,6 @@
 import { AGENT_GUIDE_TEXT } from './agent-guide.generated.js'
 import { handoffAdditionalContext } from './thread-handoff.js'
-import { mergeTurnAdditionalContext, type AdditionalContext } from './turn-context.js'
+import { buildClockAdditionalContext, mergeTurnAdditionalContext, type AdditionalContext } from './turn-context.js'
 
 export const SESSION_GUIDE_CONTEXT = 'closedai.guide'
 export const SESSION_GUIDE_MAX_CHARS = 8_000
@@ -59,6 +59,7 @@ export function buildTurnSendContext(input: {
     hasHandoff: Boolean(input.pendingHandoff)
   })
   const context = mergeTurnAdditionalContext(
+    buildClockAdditionalContext(),
     attachGuide ? agentGuideAdditionalContext() : undefined,
     input.pendingHandoff ? handoffAdditionalContext(input.pendingHandoff) : undefined,
     input.browserContext

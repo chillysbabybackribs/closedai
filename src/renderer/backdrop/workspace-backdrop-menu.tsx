@@ -1,6 +1,6 @@
 import { Check } from 'lucide-react'
 import { DropdownMenu } from 'radix-ui'
-import type { ReactNode } from 'react'
+import { useCallback, useState, type MouseEvent, type ReactNode } from 'react'
 import {
   BACKDROP_PRESET_IDS,
   BACKDROP_PRESET_LABELS,
@@ -32,6 +32,41 @@ export function WorkspaceBackdropMenuItems({ backdrop, onBackdropChange, onOpenW
     <BackdropMenuRow label="Change wallpaper…" checked={false} data-ui="workspace.wallpaper" data-ui-key="open"
       onSelect={onOpenWallpaper} />
   </>
+}
+
+/**
+ * Right-click on the empty canvas itself (not a tile inside it) opens the picker at the pointer.
+ * Returns the context-menu handler and the anchored menu to render beside the canvas.
+ */
+export function useWorkspaceBackdropContextMenu({ backdrop, onBackdropChange, onOpenWallpaper }: WorkspaceBackdropMenuProps): {
+  openBackdropMenu: (event: MouseEvent<HTMLElement>) => void
+  backdropMenu: ReactNode
+} {
+  const [open, setOpen] = useState(false)
+  const [point, setPoint] = useState({ x: 0, y: 0 })
+  const openBackdropMenu = useCallback((event: MouseEvent<HTMLElement>) => {
+    if (event.target !== event.currentTarget) return
+    event.preventDefault()
+    setPoint({ x: event.clientX, y: event.clientY })
+    setOpen(true)
+  }, [])
+  const backdropMenu = <DropdownMenu.Root open={open} onOpenChange={setOpen} modal>
+    <DropdownMenu.Trigger asChild>
+      <span className="workspace-backdrop-menu-anchor"
+        style={{ left: point.x, top: point.y }} aria-hidden="true" />
+    </DropdownMenu.Trigger>
+    <DropdownMenu.Portal>
+      <DropdownMenu.Content className="titlebar-menu-content chat-layout-context-menu"
+        side="bottom" align="start" sideOffset={0} collisionPadding={8}
+        onCloseAutoFocus={(event) => event.preventDefault()}>
+        <WorkspaceBackdropMenuItems backdrop={backdrop} onBackdropChange={(mode) => {
+          onBackdropChange(mode)
+          setOpen(false)
+        }} onOpenWallpaper={onOpenWallpaper} />
+      </DropdownMenu.Content>
+    </DropdownMenu.Portal>
+  </DropdownMenu.Root>
+  return { openBackdropMenu, backdropMenu }
 }
 
 function BackdropMenuRow({ label, checked, onSelect, ...rest }: {

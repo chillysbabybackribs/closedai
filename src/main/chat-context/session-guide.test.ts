@@ -71,7 +71,7 @@ test('unsaved thread key upgrades without a second guide', () => {
   assert.equal(state.lastDeliveredThreadKey, 'live-session')
 })
 
-test('buildTurnSendContext orders guide before handoff', () => {
+test('buildTurnSendContext orders clock before guide and handoff', () => {
   const state: SessionGuideDeliveryState = { lastDeliveredThreadKey: null }
   const { context, attachGuide } = buildTurnSendContext({
     threadKey: 't1',
@@ -83,6 +83,20 @@ test('buildTurnSendContext orders guide before handoff', () => {
   assert.equal(attachGuide, true)
   assert.ok(context)
   const keys = Object.keys(context!)
-  assert.equal(keys[0], SESSION_GUIDE_CONTEXT)
-  assert.equal(keys[1], 'closedai.chat.handoff')
+  assert.equal(keys[0], 'closedai.clock')
+  assert.equal(keys[1], SESSION_GUIDE_CONTEXT)
+  assert.equal(keys[2], 'closedai.chat.handoff')
+})
+
+test('buildTurnSendContext always attaches clock even without guide', () => {
+  const state: SessionGuideDeliveryState = { lastDeliveredThreadKey: 't1' }
+  const { context, attachGuide } = buildTurnSendContext({
+    threadKey: 't1',
+    state,
+    transcriptWasEmpty: false,
+    pendingHandoff: null,
+    browserContext: undefined
+  })
+  assert.equal(attachGuide, false)
+  assert.deepEqual(Object.keys(context!), ['closedai.clock'])
 })

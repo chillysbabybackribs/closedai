@@ -2,7 +2,9 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { resumeThreadParams, startThreadParams } from './thread-params.ts'
 import {
+  buildClockAdditionalContext,
   buildTurnAdditionalContext,
+  CLOCK_CONTEXT,
   contextBlockText,
   escapeContextEnvelope,
   mergeTurnAdditionalContext,
@@ -43,6 +45,15 @@ test('browser context is gated to browser and visible-page requests', () => {
 
 test('an unrelated turn carries no additional context', () => {
   assert.equal(buildTurnAdditionalContext('Run the unit tests', activeTab), undefined)
+})
+
+test('clock context is application JSON with a stable calendar date', () => {
+  const context = buildClockAdditionalContext(new Date('2026-09-29T22:00:00.000Z'))
+  assert.equal(context[CLOCK_CONTEXT]?.kind, 'application')
+  const payload = JSON.parse(context[CLOCK_CONTEXT]!.value)
+  assert.equal(payload.isoUtc, '2026-09-29T22:00:00.000Z')
+  assert.match(payload.calendarDate, /2026/)
+  assert.equal(typeof payload.timeZone, 'string')
 })
 
 test('active tab metadata is a timestamped untrusted fragment', () => {

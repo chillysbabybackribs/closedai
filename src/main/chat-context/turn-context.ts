@@ -11,6 +11,7 @@ export type AdditionalContext = Record<string, {
 }>
 
 const ACTIVE_BROWSER_CONTEXT = 'closedai.browser.active-tab'
+export const CLOCK_CONTEXT = 'closedai.clock'
 const CONTEXT_ENVELOPE_TAG = /<(\/?)closedai_context\b/gi
 
 /**
@@ -41,6 +42,24 @@ const BROWSER_CONTEXT_CUES = [
 
 export function needsActiveBrowserContext(text: string): boolean {
   return BROWSER_CONTEXT_CUES.some((cue) => cue.test(text))
+}
+
+/** Authoritative calendar time for the host running ClosedAI; attached every user turn. */
+export function buildClockAdditionalContext(now = new Date()): AdditionalContext {
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+  const localDate = now.toLocaleDateString('en-US', { timeZone, weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+  const localDateTime = now.toLocaleString('en-US', { timeZone, dateStyle: 'full', timeStyle: 'long' })
+  return {
+    [CLOCK_CONTEXT]: {
+      kind: 'application',
+      value: JSON.stringify({
+        calendarDate: localDate,
+        localDateTime,
+        isoUtc: now.toISOString(),
+        timeZone
+      })
+    }
+  }
 }
 
 /** Build an ephemeral app-server context fragment without altering the user's message. */

@@ -1,5 +1,5 @@
 import type { SerializedWindowTarget } from '../../../shared/cross-window-dock.js'
-import { BROWSER_PANE_ID, layoutGeometry, type ChatLayout, type Rect } from '../layout-tree.js'
+import { BROWSER_PANE_ID, layoutGeometry, type ChatLayout, type DockEdge, type Rect } from '../layout-tree.js'
 import { absorbCrossWindowDock } from './cross-window-absorb.js'
 import { canvasTiles, floatingFront } from './window-tiles.js'
 import { WINDOW_HEADER } from './window-layout.js'
@@ -41,7 +41,7 @@ function crossDockGapTarget(tile: WindowTile, pointer: { x: number; y: number })
   const midY = rect.y + rect.height / 2
   const dx = pointer.x - midX
   const dy = pointer.y - midY
-  const edge = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left' : 'right') as const : (dy < 0 ? 'top' : 'bottom') as const
+  const edge: DockEdge = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : (dy < 0 ? 'top' : 'bottom')
   return { kind: 'split', target: tile.id, edge }
 }
 

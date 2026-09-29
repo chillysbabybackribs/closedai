@@ -1,8 +1,7 @@
 import { expandedPaneIds } from './layout-docking.js'
-import { DropdownMenu } from 'radix-ui'
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type Dispatch, type SetStateAction, type DragEvent as ReactDragEvent, type MouseEvent, type ReactNode } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type Dispatch, type SetStateAction, type DragEvent as ReactDragEvent, type ReactNode } from 'react'
 import type { WorkspaceBackdrop } from '../../shared/backdrop-presets.js'
-import { WorkspaceBackdropMenuItems } from '../backdrop/workspace-backdrop-menu.js'
+import { useWorkspaceBackdropContextMenu } from '../backdrop/workspace-backdrop-menu.js'
 import type { ChatReviewQueue } from '../chat-history/review-queue.js'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import { BROWSER_PANE_ID, CHAT_DRAG_TYPE, isViewTabId, layoutGeometry, removePane, type ChatLayout, type DockEdge, type Rect, type SplitResizePhase } from './layout-tree.js'
@@ -93,14 +92,7 @@ type ChatCanvasProps = {
 
 function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, browserVisible, browserRevealVersion, maximized, renderBrowser, onDragActive, title, activity, reviewQueue, chatRow, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onTogglePin, onContinueChat: _onContinueChat, onPauseTab, onResumeTab, onOpenPresets, onSizeChange, onDock, onHide, onResize, windows, onBrowserCovered, backdrop, onBackdropChange, onOpenWallpaper }: ChatCanvasProps) {
   const viewport = useRef<HTMLDivElement>(null)
-  const [backdropMenuOpen, setBackdropMenuOpen] = useState(false)
-  const [backdropMenuPoint, setBackdropMenuPoint] = useState({ x: 0, y: 0 })
-  const openBackdropMenu = useCallback((event: MouseEvent<HTMLElement>) => {
-    if (event.target !== event.currentTarget) return
-    event.preventDefault()
-    setBackdropMenuPoint({ x: event.clientX, y: event.clientY })
-    setBackdropMenuOpen(true)
-  }, [])
+  const { openBackdropMenu, backdropMenu } = useWorkspaceBackdropContextMenu({ backdrop, onBackdropChange, onOpenWallpaper })
   const canvasRef = useRef<HTMLDivElement>(null)
   const layoutFrame = useRef<SplitResizeFrame>({ tree, browserVisible, width: 0, height: 0 })
   const splitResizeRef = useRef<ReturnType<typeof createSplitResizeSession> | null>(null)
@@ -417,22 +409,7 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
         divider={divider} splitResize={splitResize} onResize={onResize} />)}
     </div>
   </div>
-  <DropdownMenu.Root open={backdropMenuOpen} onOpenChange={setBackdropMenuOpen} modal>
-    <DropdownMenu.Trigger asChild>
-      <span className="workspace-backdrop-menu-anchor"
-        style={{ left: backdropMenuPoint.x, top: backdropMenuPoint.y }} aria-hidden="true" />
-    </DropdownMenu.Trigger>
-    <DropdownMenu.Portal>
-      <DropdownMenu.Content className="titlebar-menu-content chat-layout-context-menu"
-        side="bottom" align="start" sideOffset={0} collisionPadding={8}
-        onCloseAutoFocus={(event) => event.preventDefault()}>
-        <WorkspaceBackdropMenuItems backdrop={backdrop} onBackdropChange={(mode) => {
-          onBackdropChange(mode)
-          setBackdropMenuOpen(false)
-        }} onOpenWallpaper={onOpenWallpaper} />
-      </DropdownMenu.Content>
-    </DropdownMenu.Portal>
-  </DropdownMenu.Root>
+  {backdropMenu}
   </>
 }
 
