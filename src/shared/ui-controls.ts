@@ -7,6 +7,7 @@ export const UI_CONTROLS = {
   'file.copy-path': 'Copy the local file preview path',
   'file.copy-content': 'Copy the local file preview text',
   'file.reveal': 'Reveal the previewed local file in the system file manager',
+  'file.view': 'Local HTML or SVG tab: switch the same tab between the rendered page and its source; item is page or code',
   'titlebar.chat-search': 'Click or focus to browse running, paused, unread, open, and the 20 newest closed chats; type to search saved chat titles and previews across projects (older chats are reached by query or in the History view). Escape, opening a result, a click outside, or focus leaving hides suggestions',
   'titlebar.chat-search-clear': 'Clear chat title search',
   'titlebar.chat-search-result': 'Open a chat history suggestion (title-bar palette or Start\u2019s Search chats screen); item is the chat id',

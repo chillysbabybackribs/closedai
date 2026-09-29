@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AlertCircle, Check, Copy, FileCode, FolderOpen, Loader2 } from 'lucide-react'
-import type { FileTabContent } from '../../shared/local-files.js'
+import { isRenderableFile, type FileTabContent } from '../../shared/local-files.js'
 import { DiffViewer, highlightTokens } from '../diff-viewer.js'
 import { LocalFileMarkdown } from '../local-file-markdown.js'
+import { FileViewToggle } from './file-view-toggle.js'
 
 export function FileViewer({ id, active, revision, line, endLine, diff, cwd, fileName, path }: {
   id: string
@@ -117,6 +118,10 @@ export function FileViewer({ id, active, revision, line, endLine, diff, cwd, fil
           </span>
         ) : null}
         <div className="file-viewer-actions">
+          {!showDiff && isRenderableFile(displayPath ?? displayName) && (
+            <FileViewToggle tabId={id} view="code"
+              onError={(reason) => setError(reason instanceof Error ? reason.message : String(reason))} />
+          )}
           {!showDiff && (
             <button
               type="button"

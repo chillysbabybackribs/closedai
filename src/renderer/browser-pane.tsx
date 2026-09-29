@@ -16,6 +16,8 @@ import { BrowserTabMenu, BrowserTabRename, type BrowserTabMenuTarget } from './b
 import { securityRequests } from './security-requests.js'
 import { useWebPermissionRequests } from './use-security-requests.js'
 import { WebPermissionBar } from './web-permission-bar.js'
+import { FileViewToggle } from './file-viewer/file-view-toggle.js'
+import { renderableFilePath } from '../shared/local-files.js'
 
 // Memoized: the pane stays mounted, and its native-view host ref and ResizeObserver must
 // survive re-renders of the shell around it.
@@ -319,6 +321,7 @@ function BrowserToolbar({
           </div>
         ) : null}
       </div>
+      {activeTab && renderableFilePath(browser.url) ? <FileViewToggle tabId={activeTab.id} view="page" onError={onError} /> : null}
       <button
         type="button"
         className={`browser-nav-button ${pageIsSaved ? 'is-saved' : ''}`}

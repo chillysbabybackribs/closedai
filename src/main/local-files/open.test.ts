@@ -4,7 +4,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { openLocalFile } from './open.js'
-import { isWorkspaceFileHref, localFilePath, parseLocalFileTarget } from '../../shared/local-files.js'
+import { isRenderableFile, isWorkspaceFileHref, localFilePath, parseLocalFileTarget, renderableFilePath } from '../../shared/local-files.js'
 import { resolveLocalFileOpenTarget } from './resolve-target.js'
 
 test('line targets read ranges from #L anchors and a line, never a range, from compiler suffixes', () => {
@@ -62,4 +62,15 @@ test('images return preview bytes; files return path; directories reveal', async
     await writeFile(oversized, Buffer.alloc(32 * 1024 * 1024 + 1))
     await assert.rejects(openLocalFile(oversized, reveal), /32 MB/)
   } finally { await rm(root, { recursive: true, force: true }) }
+})
+
+test('only local HTML and SVG pages offer a page view beside their code', () => {
+  assert.equal(isRenderableFile('/tmp/mock.html'), true)
+  assert.equal(isRenderableFile('/tmp/MOCK.HTM'), true)
+  assert.equal(isRenderableFile('/tmp/icon.svg'), true)
+  assert.equal(isRenderableFile('/tmp/page.tsx'), false)
+  assert.equal(renderableFilePath('file:///tmp/design%20mocks/a.html#step-2'), '/tmp/design mocks/a.html')
+  assert.equal(renderableFilePath('file:///tmp/notes.md'), null)
+  assert.equal(renderableFilePath('file://host/share/a.html'), null)
+  assert.equal(renderableFilePath('https://example.com/a.html'), null)
 })
