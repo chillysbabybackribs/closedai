@@ -3,7 +3,7 @@ import test from 'node:test'
 
 import { parseToolSliceCatalog } from '../../shared/tool-slices.ts'
 import { needsActiveBrowserContext } from '../chat-context/turn-context.ts'
-import { needsBrowserToolSlice, needsResearchToolSlice, selectToolSliceId } from './tool-slice-select.ts'
+import { needsResearchToolSlice, selectToolSliceId } from './tool-slice-select.ts'
 
 const catalog = parseToolSliceCatalog({
   version: 1,

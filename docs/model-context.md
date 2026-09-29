@@ -76,8 +76,11 @@ HTTP MCP servers. File search and edits stay with each provider's native tools. 
 deferred where the provider supports discovery; see [Tools](tools.md#how-the-model-sees-it).
 On Codex, only a small eager set (typically `embedded_browser.page` and `closedai_app.state`)
 ships full schemas on every turn; tools such as `search.query`, `tool_batch.run`, and the browser
-CDP namespace load through discovery. `measureToolContextBudget()` in the main process guards
-that eager wire size in tests.
+CDP namespace load through discovery. When `chatToolSliceEnabled` is on, `ensureCodexThread`
+promotes a task slice from `scripts/tool-slices.json` (core, browser, research, or full) before
+`thread/start`; a slice change rotates the thread like any other catalog drift. Trace label
+`codex.tool_slice` records the slice id and promoted tool ids. `measureToolContextBudget()` in
+the main process guards eager wire size in tests.
 
 **Provider parity target:** Cursor Composer in ClosedAI is the reference stack — full enabled
 MCP tool schemas on the session plus the provider's native repository loop. Other lanes should
