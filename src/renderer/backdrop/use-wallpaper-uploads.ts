@@ -15,7 +15,8 @@ export type WallpaperUploads = {
   error: string | null
   /** Stores the file and resolves its id, or null when it was refused (the reason lands in `error`). */
   add: (file: File) => Promise<string | null>
-  remove: (id: string) => Promise<void>
+  /** False when main could not delete it (the reason lands in `error`). */
+  remove: (id: string) => Promise<boolean>
 }
 
 /** The picker's "Your uploads": listed from main while the dialog is mounted. */
@@ -73,13 +74,13 @@ export function useWallpaperUploads(): WallpaperUploads {
     }
   }, [tile])
 
-  const remove = useCallback(async (id: string): Promise<void> => {
+  const remove = useCallback(async (id: string): Promise<boolean> => {
     setError(null)
     try {
       await window.closedai.wallpapers.remove(id)
     } catch {
       setError('Could not remove that image')
-      return
+      return false
     }
     setUploads((current) => {
       const gone = current.find((upload) => upload.id === id)
@@ -89,6 +90,7 @@ export function useWallpaperUploads(): WallpaperUploads {
       }
       return current.filter((upload) => upload.id !== id)
     })
+    return true
   }, [])
 
   return { uploads, adding, error, add, remove }
