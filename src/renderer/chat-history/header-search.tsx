@@ -1,16 +1,12 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type JSX, type RefObject } from 'react'
-import { MessageSquareDashed, Search, SearchX, X } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState, type JSX, type RefObject } from 'react'
+import { Search, X } from 'lucide-react'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import type { HistoryController } from './history-controller.js'
-import { closesOnFocusOut, closesOnPointerDown, cursorIndex } from './header-search-dismiss.js'
-import { HeaderChatSearchRow } from './header-search-row.js'
-import { chatSearchFooter, chatSearchView, stepHighlight } from './history-search.js'
+import { closesOnFocusOut, closesOnPointerDown } from './header-search-dismiss.js'
+import { ChatSearchFooter, ChatSearchResults, useChatSearchList } from './chat-search-results.js'
 import { useChatSearchActions } from './use-chat-search-actions.js'
 
 const SHEET_EXIT_MS = 160
-/** Ranked title/preview matches shown for a query; the footer reports the full count. */
-export const QUERY_RESULT_LIMIT = 40
-const NO_CHATS: ChatRowSummary[] = []
 
 type Phase = 'closed' | 'open' | 'closing'
 
@@ -18,8 +14,7 @@ type Phase = 'closed' | 'open' | 'closing'
  * The palette has one state (`phase`) and closes only on discrete events: Escape, opening a
  * result, focus leaving the component, a press outside it, or the window losing focus (which is
  * what a click on the native browser view looks like from here). Nothing is inferred from pointer
- * position. The keyboard cursor is the highlighted chat's id, so a list that reorders under it
- * (a turn finishing, a refresh adopting threads) never changes which chat Enter opens.
+ * position. Ranking and the keyboard cursor live in `useChatSearchList`, shared with Start.
  */
 export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
   chats: ChatRowSummary[]
@@ -29,49 +24,29 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
 }): JSX.Element {
   const [query, setQuery] = useState('')
   const [phase, setPhase] = useState<Phase>('closed')
-  const [highlightId, setHighlightId] = useState<string | null>(null)
   // Synchronous mirror of `phase`: transitions triggered inside one event (open a result, then
   // blur the input) must see each other before React re-renders.
   const phaseRef = useRef<Phase>('closed')
-  const keyboardMoveRef = useRef(false)
   const rootRef = useRef<HTMLDivElement>(null)
-  const resultsRef = useRef<HTMLDivElement>(null)
-  const listId = useId()
 
   const transition = useCallback((next: Phase): void => {
     phaseRef.current = next
     setPhase(next)
   }, [])
+  const sheetOpen = phase !== 'closed'
+  const expanded = phase === 'open'
+  const list = useChatSearchList(chats, query, controller.reviewQueue, sheetOpen)
+  const { setHighlightId } = list
   const show = useCallback((): void => {
     if (phaseRef.current === 'closed') setHighlightId(null)
     if (phaseRef.current !== 'open') transition('open')
-  }, [transition])
+  }, [transition, setHighlightId])
   const hide = useCallback((): void => {
     if (phaseRef.current === 'open') transition('closing')
   }, [transition])
   const finish = useCallback((): void => {
     if (phaseRef.current !== 'closed') transition('closed')
   }, [transition])
-
-  const sheetOpen = phase !== 'closed'
-  const expanded = phase === 'open'
-  // Workspace rows update on every chat event; while the sheet is closed nothing reads the view,
-  // so a closed palette costs no ranking over a large history.
-  const view = useMemo(() => chatSearchView(sheetOpen ? chats : NO_CHATS, query, controller.reviewQueue,
-    { query: QUERY_RESULT_LIMIT }), [sheetOpen, chats, query, controller.reviewQueue])
-  const hits = useMemo(() => view.sections.flatMap(section => section.hits), [view])
-  const ids = useMemo(() => hits.map(hit => hit.row.paneId), [hits])
-  const indexOf = useMemo(() => new Map(ids.map((id, index) => [id, index])), [ids])
-  const cursor = cursorIndex(ids, highlightId)
-  const optionId = (index: number): string => `${listId}-${index}`
-
-  // Keyboard moves keep the cursor in view; hovering never scrolls, or a row scrolling under the
-  // pointer would re-highlight and scroll again.
-  useEffect(() => {
-    if (!expanded || !keyboardMoveRef.current) return
-    keyboardMoveRef.current = false
-    resultsRef.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest' })
-  }, [cursor, expanded])
 
   const refreshChats = controller.refreshChats
   useEffect(() => {
@@ -132,8 +107,8 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
       <Search size={15} aria-hidden="true" />
       <input ref={inputRef} type="text" value={query} placeholder="Search chats"
         aria-label="Search previous chat titles" role="combobox" aria-autocomplete="list" aria-haspopup="grid"
-        aria-expanded={expanded} aria-controls={sheetOpen ? listId : undefined}
-        aria-activedescendant={expanded && hits.length ? optionId(cursor) : undefined}
+        aria-expanded={expanded} aria-controls={sheetOpen ? list.listId : undefined}
+        aria-activedescendant={expanded ? list.activeDescendant : undefined}
         autoComplete="off" spellCheck={false} data-ui="titlebar.chat-search"
         onChange={event => { setQuery(event.target.value); setHighlightId(null); show() }}
         onFocus={show}
@@ -143,11 +118,10 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
           if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
             event.preventDefault()
             show()
-            keyboardMoveRef.current = true
-            setHighlightId(ids[stepHighlight(cursor, event.key === 'ArrowDown' ? 1 : -1, ids.length)] ?? null)
+            list.step(event.key === 'ArrowDown' ? 1 : -1)
           } else if (event.key === 'Enter') {
             event.preventDefault()
-            if (expanded) void open(hits[cursor])
+            if (expanded) void open(list.current)
           }
         }} />
       {query
@@ -164,37 +138,10 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
         if (event.currentTarget !== event.target || event.animationName !== 'header-chat-search-exit') return
         finish()
       }}>
-        <div ref={resultsRef} id={listId} role="grid" aria-label="Chat history suggestions" aria-busy={busy}
-          className="header-chat-search-list">
-          {view.sections.map(section => <div role="rowgroup" key={section.label}
-            className="header-chat-search-section" aria-label={section.label}>
-            <div role="row">
-              <div role="columnheader" aria-colspan={2} className="header-chat-search-caption">
-                {section.label}<span>{section.total > section.hits.length
-                  ? `${section.hits.length} of ${section.total}` : section.hits.length}</span>
-              </div>
-            </div>
-            {section.hits.map(hit => {
-              const index = indexOf.get(hit.row.paneId) ?? -1
-              return <HeaderChatSearchRow key={hit.row.paneId} hit={hit} id={optionId(index)}
-                selected={index === cursor} busy={busy} changingTurn={changingTurn === hit.row.paneId}
-                searching={searching} onHover={() => setHighlightId(hit.row.paneId)}
-                onOpen={() => { void open(hit) }} onToggleTurn={() => { void toggleTurn(hit) }}
-                onDelete={() => { void remove(hit) }} />
-            })}
-          </div>)}
-          {!hits.length && <div className="header-chat-search-empty" role="status">
-            {searching ? <SearchX size={20} aria-hidden="true" /> : <MessageSquareDashed size={20} aria-hidden="true" />}
-            <strong>{searching ? 'No matching chats' : 'No previous chats'}</strong>
-            <span>{searching ? `Nothing titled or saying “${query.trim()}”` : 'Chats appear here once they have a title'}</span>
-          </div>}
-        </div>
-        <div className="header-chat-search-footer">
-          <span aria-hidden="true"><kbd>↑</kbd><kbd>↓</kbd>Navigate</span>
-          <span aria-hidden="true"><kbd>↵</kbd>Open</span>
-          <span aria-hidden="true"><kbd>Esc</kbd>Close</span>
-          <span className="header-chat-search-count">{chatSearchFooter(hits.length, view.total, searching)}</span>
-        </div>
+        <ChatSearchResults list={list} query={query} busy={busy} changingTurn={changingTurn}
+          onOpen={(hit) => { void open(hit) }} onToggleTurn={(hit) => { void toggleTurn(hit) }}
+          onDelete={(hit) => { void remove(hit) }} />
+        <ChatSearchFooter list={list} searching={searching} escape="Close" />
       </div>
     </div>}
     {controller.error && <div className="header-chat-search-error" role="alert">{controller.error}</div>}

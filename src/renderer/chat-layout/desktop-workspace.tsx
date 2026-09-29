@@ -43,6 +43,10 @@ export type ChatLayoutHandle = {
   restoreWindow: (id: string) => void
   /** Tile windows: every floating window back into the last tiled layout (dock, View menu, Ctrl+Shift+L). */
   tileWindows: () => void
+  /** Put text in a chat's composer and bring that chat forward (Start's Tools view). */
+  sendToChat: (chatId: string, text: string) => void
+  /** Start a run in a new chat beside `chatId`'s tile (Start's Agents view). */
+  startAgent: (chatId: string, options: AgentRunStartOptions) => Promise<void>
 }
 
 export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, onBackdropChange, onOpenWallpaper, toolsPreset = null, browserHeld = false, spaceId, onRenameChat, onSavedSitesError, onBrowserVisibleChange, onMinimizedChange, onFloatingChange, archiveChat, ref }: {
@@ -160,6 +164,11 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, on
   const floating = hasFloatingWindows(layout.tree)
   useEffect(() => { onFloatingChange?.(floating) }, [floating, onFloatingChange])
   useEffect(() => () => onFloatingChange?.(false), [onFloatingChange])
+  // A repair draft from the Tools view lands in the scoped chat's composer and brings that chat forward.
+  const sendToChat = useCallback((chatId: string, text: string) => {
+    injectComposerDraft(chatId, text)
+    void layout.activateTab(chatId)
+  }, [layout.activateTab])
   useImperativeHandle(ref, () => ({
     splitChat: (chatId, edge) => layout.dock(chatId, chat.selectedPaneId, edge),
     activateChat: (chatId) => layout.activateTab(chatId),
@@ -181,8 +190,10 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, on
     tileWindows: () => {
       setBrowserRevealVersion((value) => value + 1)
       layout.windows.tileAll()
-    }
-  }), [layout.windows, layout.dock, layout.activateTab, layout.openView, layout.toggleView, toggleBrowserHere, revealBrowser, savedSites, layout.closeFocused, layout.focusedCloseTarget, layout.arrange, chat.selectedPaneId])
+    },
+    sendToChat,
+    startAgent: (chatId, options) => startAgentRef.current(chatId, options)
+  }), [layout.windows, layout.dock, layout.activateTab, layout.openView, layout.toggleView, toggleBrowserHere, revealBrowser, savedSites, layout.closeFocused, layout.focusedCloseTarget, layout.arrange, chat.selectedPaneId, sendToChat])
   const select = useCallback((id: string): void => { void layout.focusPane(id) }, [layout.focusPane])
   const onDock = useCallback((id: string | null, target: string, edge: import('./layout-tree.js').DockEdge | null, singleTab?: boolean) => {
     return layout.dock(id, target, edge, singleTab)
@@ -204,11 +215,6 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, on
   const onRename = useMemo(() => onRenameChat
     ? (id: string) => onRenameChat(id, chatsRef.current.find((row) => row.paneId === id)?.title ?? 'New chat')
     : undefined, [onRenameChat])
-  // A repair draft from the Tools view lands in the scoped chat's composer and brings that chat forward.
-  const sendToChat = useCallback((chatId: string, text: string) => {
-    injectComposerDraft(chatId, text)
-    void layout.activateTab(chatId)
-  }, [layout.activateTab])
   const startAgent = useCallback((chatId: string, options: AgentRunStartOptions) => startAgentRef.current(chatId, options), [])
   const openSavedSite = useCallback(async (url: string) => {
     revealBrowser()
