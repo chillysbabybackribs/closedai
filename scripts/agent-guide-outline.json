@@ -29,7 +29,7 @@
     {
       "heading": "Cold-start tool order",
       "lines": [
-        "Start with closedai_app.state for pane, project, browser tabs, and layout before guessing.",
+        "Start with closedai_app.state for pane, project, browser tabs, and layout before guessing. Workspace state is bounded and reports omittedPanes; if a chat is missing, use peer_chats.list or chat search instead of assuming it does not exist.",
         "Use native provider tools to read and search the repository; use ClosedAI browser tools for signed-in pages and session fetch.",
         "peer_chats.list (scope open or history) and peer_chats.recall when other panes or prior chats matter.",
         "Prefer deterministic closedai_app.command, and closedai_app.menu for any application menu row, over closedai_app.ui; ui requires fallback_reason.",
