@@ -31,6 +31,9 @@
 }
 
 .dock-start {
+  --composer-accent: var(--backdrop-accent, var(--tab-accent, #8ab4f8));
+  --capsule-sheen: color-mix(in srgb, var(--foreground) 7%, transparent);
+  --capsule-shadow: 0 1px 2px rgb(0 0 0 / 28%), 0 14px 34px rgb(0 0 0 / 32%);
   display: flex;
   flex-direction: column;
   min-height: 440px;
@@ -41,6 +44,18 @@
   flex: none;
   padding: 12px 14px 0;
   gap: 10px;
+}
+
+.dock-start .chat-history-search {
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.dock-start .chat-history-search:focus-within {
+  border-color: color-mix(in srgb, var(--composer-accent) 55%, transparent);
+  box-shadow:
+    inset 0 1px 0 var(--capsule-sheen),
+    0 0 0 3px color-mix(in srgb, var(--composer-accent) 16%, transparent),
+    var(--capsule-shadow);
 }
 
 .dock-start-scroll {
