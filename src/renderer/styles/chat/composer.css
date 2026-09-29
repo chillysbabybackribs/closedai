@@ -141,14 +141,15 @@
   line-height: 22px;
 }
 
+/* Like the placeholder, the suggestion stays one clipped line in the one-line draft slot, with Tab
+   pinned to the slot's right edge; accepting it fills the draft, which expands the capsule. */
 .composer-suggestion {
   position: absolute;
-  inset: 6px 0 auto 2px;
+  inset: 0 0 0 2px;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 8px;
   overflow: hidden;
-  max-height: calc(var(--composer-max-height, min(36vh, 240px)) - 8px);
   color: var(--muted-foreground);
   font-size: var(--composer-font-size, 15px);
   line-height: 22px;
@@ -157,13 +158,15 @@
 }
 
 .composer-suggestion > span {
+  flex: 1 1 auto;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .composer-suggestion kbd {
   flex: none;
-  align-self: flex-end;
-  margin-left: auto;
   padding: 1px 5px;
   border: 1px solid color-mix(in srgb, var(--muted-foreground) 30%, transparent);
   border-radius: 5px;
