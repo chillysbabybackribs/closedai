@@ -99,3 +99,24 @@ export type FileTabIdentity = {
   diff?: string
 }
 export type FileTabContent = { name: string; path: string; content: string; line?: number; endLine?: number; cwd?: string; diff?: string }
+
+/** A renderable file's tab shows either the page its markup builds or its source text. */
+export type FileView = 'page' | 'code'
+
+const RENDERABLE_FILE_EXT = /\.(html?|svg)$/i
+
+/** Files a browser tab can render as a page as well as show as code. */
+export function isRenderableFile(path: string): boolean {
+  return RENDERABLE_FILE_EXT.test(path)
+}
+
+/** The local path behind a `file:` page URL when that page can also be shown as code. */
+export function renderableFilePath(url: string): string | null {
+  if (!/^file:/i.test(url)) return null
+  try {
+    const parsed = new URL(url)
+    if (parsed.hostname) return null
+    const path = decodeURIComponent(parsed.pathname)
+    return isRenderableFile(path) ? path : null
+  } catch { return null }
+}
