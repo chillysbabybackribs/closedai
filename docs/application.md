@@ -21,7 +21,12 @@ delivery lives in [Model context](model-context.md); registry contracts live in
 
 Renderer UI changes are verified in Electron (`npm run build &&
 npm run preview`, or `npm run dev` for hot reload). There is no separate browser-only renderer
-entry or fixture bridge.
+entry or fixture bridge. A running checkout launch (unpackaged, not the dev server) polls
+`out/renderer/index.html`; about 1.5 s after a rebuild settles it reloads every app surface
+showing the built renderer (windows, detached windows, the quick chat layer), whoever ran the
+build. It skips the reload and logs `[renderer-build] … restart the app` once when `out/main`
+differs from the bundle the process launched with, because main-process changes still need a
+restart (`src/main/renderer-build-reload.ts`).
 
 ## Native instrumentation
 

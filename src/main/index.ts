@@ -17,6 +17,8 @@ import { BrowserDownloadService } from './browser-download-service.js'
 import { maintainBrowserCache, scheduleBrowserCacheMaintenance } from './browser-cache-maintenance.js'
 import { setAppCheckoutPath } from './app-checkout.js'
 import { scheduleVerifyJanitor } from './verify-janitor.js'
+import { watchRendererBuilds } from './renderer-build-reload.js'
+import { builtRendererIndex, reloadBuiltRenderers } from './main-window.js'
 import { importDefaultBrowserCookies } from './browser-cookie-import.js'
 import { CodexWorkspaceRuntime } from './codex-workspace-runtime.js'
 import { ChatPeerManager } from './chat-peers/peer-manager.js'
@@ -123,6 +125,7 @@ let appAutomationAccess: AppAutomationAccess | null = null
 let appCommandAccess: AppCommandAccess | null = null
 let stopBrowserCacheMaintenance: (() => void) | null = null
 let stopVerifyJanitor: (() => void) | null = null
+let stopRendererBuildWatch: (() => void) | null = null
 let browserReadyToLoad: Promise<unknown> | null = null
 /** A cookie import this slow is a broken one; the first page loads without it. */
 const COOKIE_IMPORT_LOAD_GATE_MS = 5000
@@ -389,6 +392,10 @@ async function main(): Promise<void> {
   agentRuns.start()
   stopBrowserCacheMaintenance = scheduleBrowserCacheMaintenance(userData())
   stopVerifyJanitor = scheduleVerifyJanitor(() => chatService!.runningPaneIds())
+  // A checkout launch shows a rebuilt renderer without a restart, whoever ran the build.
+  if (!app.isPackaged && !process.env.ELECTRON_RENDERER_URL) {
+    stopRendererBuildWatch = watchRendererBuilds({ rendererIndex: builtRendererIndex(), mainDir: import.meta.dirname, reload: reloadBuiltRenderers })
+  }
   const liveVerifyMode = process.env.CLOSEDAI_LIVE_VERIFY?.trim() || liveVerifyFromArgv()
   if (liveVerifyMode) requestLiveVerify(liveVerifyHandle, app, liveVerifyMode, true)
 }
@@ -501,6 +508,8 @@ app.on('before-quit', (event) => {
   stopBrowserCacheMaintenance = null
   stopVerifyJanitor?.()
   stopVerifyJanitor = null
+  stopRendererBuildWatch?.()
+  stopRendererBuildWatch = null
   agentRuns?.stop()
   chatService?.stop()
   for (const runtime of codexRuntimes.values()) runtime.stop()

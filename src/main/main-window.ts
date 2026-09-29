@@ -1,7 +1,7 @@
-import { app, BrowserWindow, dialog, Menu, nativeImage, type NativeImage, type WebContents } from 'electron'
+import { app, BrowserWindow, dialog, Menu, nativeImage, webContents, type NativeImage, type WebContents } from 'electron'
 import { existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { installAppContextMenu } from './app-context-menu.js'
 import { installRendererRecovery } from './main-window-recovery.js'
 import { APP_WINDOW_QUERY } from '../shared/app-windows.js'
@@ -96,12 +96,26 @@ export function loadAppSurface(contents: Pick<WebContents, 'loadURL' | 'loadFile
   loadRenderer(contents, { [APP_SURFACE_QUERY]: surface })
 }
 
+/** The built renderer a checkout or packaged launch loads; the dev server replaces it under `npm run dev`. */
+export function builtRendererIndex(): string {
+  return join(import.meta.dirname, '../renderer/index.html')
+}
+
+/** Reload every app surface (windows and layers) showing the built renderer; returns how many. */
+export function reloadBuiltRenderers(): number {
+  const entry = pathToFileURL(builtRendererIndex()).href
+  const surfaces = webContents.getAllWebContents()
+    .filter((contents) => !contents.isDestroyed() && contents.getURL().split(/[?#]/)[0] === entry)
+  for (const contents of surfaces) contents.reload()
+  return surfaces.length
+}
+
 function loadRenderer(target: Pick<WebContents, 'loadURL' | 'loadFile'>, query: Record<string, string> | undefined): void {
   if (process.env.ELECTRON_RENDERER_URL) {
     const url = new URL(process.env.ELECTRON_RENDERER_URL)
     if (query) url.search = new URLSearchParams(query).toString()
     void target.loadURL(url.toString())
   } else {
-    void target.loadFile(join(import.meta.dirname, '../renderer/index.html'), query ? { query } : undefined)
+    void target.loadFile(builtRendererIndex(), query ? { query } : undefined)
   }
 }
