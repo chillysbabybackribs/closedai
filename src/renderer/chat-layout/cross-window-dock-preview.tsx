@@ -1,10 +1,12 @@
-import { useEffect, useMemo, type JSX, type RefObject } from 'react'
+import { useEffect, useMemo, type CSSProperties, type JSX, type RefObject } from 'react'
+import type { Rect } from './layout-tree.js'
 import { crossWindowDockCanvasSize, setCrossWindowDockCanvasSize, useCrossWindowDockHover } from '../app-windows/cross-window-dock-store.js'
 import { JoinTabsPreview } from './floating/join-tabs-preview.js'
 import { resolveCrossDockTarget } from './floating/cross-window-dock-target.js'
 import { targetPreview } from './floating/window-targets.js'
 import type { WindowFrame } from './floating/use-window-drag.js'
-import { position } from './layout-geometry-dom.js'
+const position = (rect: Rect): CSSProperties => ({ left: rect.x, top: rect.y, width: rect.width, height: rect.height })
+
 export function CrossWindowDockPreview({ canvas, frame, browserVisible, title }: {
   canvas: RefObject<HTMLElement | null>
   frame: () => WindowFrame

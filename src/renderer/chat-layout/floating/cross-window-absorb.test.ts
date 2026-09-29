@@ -15,5 +15,5 @@ test('dockIncomingPane stacks a new chat below the target tile', () => {
 test('absorbCrossWindowDock joins tabs on the target strip', () => {
   const tree = { kind: 'pane' as const, id: 'a', tabs: ['a'] }
   const next = absorbCrossWindowDock(tree, 'b', ['b'], { kind: 'group', target: 'a' }, 's1')
-  assert.deepEqual(next.tabs, ['a', 'b'])
+  assert.deepEqual(next.kind === 'pane' ? next.tabs : null, ['a', 'b'])
 })

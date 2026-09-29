@@ -1,6 +1,7 @@
 import type { SerializedWindowTarget } from '../../../shared/cross-window-dock.js'
 import { layoutGeometry, type ChatLayout } from '../layout-tree.js'
 import { absorbCrossWindowDock } from './cross-window-absorb.js'
+import { canvasTiles, floatingFront } from './window-tiles.js'
 import { windowTargetAt, type WindowTarget, type WindowTile } from './window-targets.js'
 
 export function serializeWindowTarget(target: WindowTarget): SerializedWindowTarget {
@@ -15,13 +16,20 @@ export function resolveCrossDockTarget(sourcePaneId: string, pointer: { x: numbe
   return windowTargetAt(sourcePaneId, pointer.x, pointer.y, canvas, tiled, floating)
 }
 
+function tilesForTarget(tree: ChatLayout, browserVisible: boolean, canvas: { width: number; height: number }) {
+  const geometry = layoutGeometry(tree, canvas.width, canvas.height)
+  const tiles = canvasTiles(tree, geometry.panes, canvas, browserVisible)
+  return {
+    tiled: tiles.filter((tile) => tile.kind === 'tiled').map(({ id, rect }) => ({ id, rect })),
+    floating: floatingFront(tiles)
+  }
+}
+
 export function absorbCrossDockAtPointer(tree: ChatLayout, browserVisible: boolean, incomingPaneId: string, tabIds: readonly string[],
   pointer: { x: number; y: number }, canvas: { width: number; height: number }, splitId: string): ChatLayout {
-  const geometry = layoutGeometry(tree, canvas.width, canvas.height)
-  const tiled = geometry.panes.filter((pane) => !pane.float).map((pane) => ({ id: pane.id, rect: pane.rect }))
-  const floating = geometry.panes.filter((pane) => pane.float).map((pane) => ({ id: pane.id, rect: pane.rect }))
+  const { tiled, floating } = tilesForTarget(tree, browserVisible, canvas)
   const probe = tabIds[0] ?? incomingPaneId
   const target = resolveCrossDockTarget(probe, pointer, canvas, tiled, floating)
-  if (target.kind === 'free' || target.kind === 'maximize') return tree
-  return absorbCrossWindowDock(tree, incomingPaneId, tabIds, serializeWindowTarget(target), splitId)
+  if (target.kind === 'maximize') return tree
+  return absorbCrossWindowDock(tree, incomingPaneId, tabIds, serializeWindowTarget(target), splitId, pointer, canvas)
 }

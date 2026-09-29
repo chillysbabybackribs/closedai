@@ -2,9 +2,7 @@
 // windows each hold their own tab layout for chats the user moved out of it. A chat lives in one
 // window at a time; closing a detached window hands its chats back to the main window.
 
-import type {
-  AppWindowDockEvent, CrossWindowDockComplete, CrossWindowDockRouteRequest, CrossWindowDockRouteResult, SerializedWindowTarget
-} from './cross-window-dock.js'
+import type { AppWindowDockEvent, CrossWindowDockComplete, CrossWindowDockRouteRequest, CrossWindowDockRouteResult } from './cross-window-dock.js'
 import type { QuickChatOverlayRequest } from './quick-chat-overlay.js'
 
 export type AppWindowId = string
