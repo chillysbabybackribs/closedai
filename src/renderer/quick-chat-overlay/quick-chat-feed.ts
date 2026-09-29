@@ -4,9 +4,9 @@ import { chatRunning } from '../chat-state.js'
 import { isActivity } from '../transcript-rows.js'
 import { feedToolPhrase } from './feed-phrase.js'
 
-// The running feed the compact quick chat shows while a task drives the page: the latest turn's
-// steps as one-line updates, newest last, then its reply once the turn ends. Pure, so the words
-// are tested directly and the card only lays them out.
+// The status the compact quick chat shows while a task drives the page: the latest turn's steps as
+// one-line updates, newest last, then its reply once the turn ends. Pure, so the words are tested
+// directly and the card only lays them out.
 
 export type QuickChatFeedLine = { id: string; text: string; state: 'live' | 'done' | 'failed' }
 
@@ -19,6 +19,15 @@ export type QuickChatFeed = {
 }
 
 const REPLY_CHARS = 280
+
+const LEADS: Record<QuickChatFeed['status'], string> = {
+  idle: 'Ready on', working: 'Working on', done: 'Done on', failed: 'Stopped on', paused: 'Paused on'
+}
+
+/** The status line's words for a site: "Working on espn.com", or "this page" when it has no site. */
+export function feedLead(status: QuickChatFeed['status'], site: string | null): { lead: string; where: string } {
+  return { lead: LEADS[status], where: site ?? 'this page' }
+}
 
 export function quickChatFeed(snapshot: ChatSnapshot, limit = 3): QuickChatFeed {
   const items = snapshot.items

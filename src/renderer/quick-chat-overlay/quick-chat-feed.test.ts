@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { ChatSnapshot, ChatTranscriptItem } from '../../shared/chat.js'
 import { initialChatState } from '../chat-state.js'
-import { quickChatFeed } from './quick-chat-feed.js'
+import { feedLead, quickChatFeed } from './quick-chat-feed.js'
 
 function snapshot(items: ChatTranscriptItem[], activeTurnId: string | null = null): ChatSnapshot {
   return { ...initialChatState(), items, activeTurnId }
@@ -64,4 +64,9 @@ test('page steps read as plain words, whatever the lane calls the tool', () => {
   assert.deepEqual(feed.lines.map((line) => line.text), ['Loaded tools', 'Opened espn.com', 'Working in the page'])
   const other = quickChatFeed(snapshot([user('u1'), tool('s1', 'Some other tool', 'completed')]))
   assert.equal(other.lines[0]!.text.length > 0, true)
+})
+
+test('the status line names the site, or this page when there is none', () => {
+  assert.deepEqual(feedLead('working', 'espn.com'), { lead: 'Working on', where: 'espn.com' })
+  assert.deepEqual(feedLead('failed', null), { lead: 'Stopped on', where: 'this page' })
 })
