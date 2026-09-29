@@ -102,6 +102,17 @@ const api: ClosedaiApi = {
     remove: (id) => invoke(IPC.invoke.savedSites.remove, id),
     onChanged: (listener) => subscribe(IPC.event.savedSitesChanged, listener)
   },
+  notes: {
+    list: () => invoke(IPC.invoke.notes.list),
+    read: (id) => invoke(IPC.invoke.notes.read, id),
+    create: (text) => invoke(IPC.invoke.notes.create, text),
+    save: (id, text, baseRevision) => invoke(IPC.invoke.notes.save, id, text, baseRevision),
+    rename: (id, title) => invoke(IPC.invoke.notes.rename, id, title),
+    remove: (id) => invoke(IPC.invoke.notes.remove, id),
+    bind: (binding) => invoke(IPC.invoke.notes.bind, binding),
+    unbind: (chatPaneId) => invoke(IPC.invoke.notes.unbind, chatPaneId),
+    onChanged: (listener) => subscribe(IPC.event.notesChanged, listener)
+  },
   chat: {
     snapshot: () => invoke(IPC.invoke.chat.snapshot),
     historyPage: (paneId, threadId, beforeItemId) => invoke(IPC.invoke.chat.historyPage, paneId, threadId, beforeItemId),

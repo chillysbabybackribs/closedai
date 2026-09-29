@@ -11,6 +11,9 @@ import { BrowserService } from './browser-service.js'
 import type { QuickChatOverlay } from './quick-chat-overlay/quick-chat-overlay.js'
 import { BrowserHistoryStore } from './browser-history-store.js'
 import { SavedSitesStore } from './saved-sites-store.js'
+import { NotesStore } from './notes/notes-store.js'
+import { NotepadBindings } from './notes/notepad-bindings.js'
+import { notesTools } from './tools/notes/index.js'
 import { BrowserTabSessionStore } from './browser-tab-session-store.js'
 import { AppSettingsStore } from './app-settings-store.js'
 import { BrowserDownloadService } from './browser-download-service.js'
@@ -68,6 +71,7 @@ import type { SavedAgent } from '../shared/agent-library.js'
 import type { ChatWorkspaceEvent } from '../shared/chat-peers.js'
 import { IPC, type IpcEventChannel, type IpcEventChannels } from '../shared/ipc-channels.js'
 import type { SavedSite } from '../shared/saved-sites.js'
+import type { NoteChange } from '../shared/notes.js'
 import { liveVerifyFromArgv, requestLiveVerify, type LiveVerifyHandle } from './app-live-verify.js'
 import { createChatWorkspaceSelector } from './main-workspace-selector.js'
 import { createPaneChatHub } from './main-pane-chat-hub.js'
@@ -96,6 +100,8 @@ let quickChatOverlay: QuickChatOverlay | null = null
 let browserDownloads: BrowserDownloadService | null = null
 let browserHistory: BrowserHistoryStore | null = null
 let savedSites: SavedSitesStore | null = null
+let notes: NotesStore | null = null
+const notepadBindings = new NotepadBindings()
 let browserTabSession: BrowserTabSessionStore | null = null
 let settings: AppSettingsStore | null = null
 let chatStore: ChatStore | null = null
@@ -165,7 +171,7 @@ async function main(): Promise<void> {
   setAppCheckoutPath(app.getAppPath())
   logGpuFeatureStatus()
   await mkdir(userData(), { recursive: true })
-  ;[browserHistory, savedSites, browserTabSession, settings, chatStore, securitySettings, agentLibrary, windowStore] = await Promise.all([
+  ;[browserHistory, savedSites, browserTabSession, settings, chatStore, securitySettings, agentLibrary, windowStore, notes] = await Promise.all([
     BrowserHistoryStore.open(join(userData(), 'browser-history.json')),
     SavedSitesStore.open(join(userData(), 'saved-sites.json')),
     BrowserTabSessionStore.open(join(userData(), 'browser-tabs.json')),
@@ -173,9 +179,11 @@ async function main(): Promise<void> {
     ChatStore.open(join(userData(), 'chats.json')),
     SecuritySettingsStore.open(join(userData(), 'security-settings.json')),
     AgentLibraryStore.open(join(userData(), 'agent-library.json')),
-    AppWindowStore.open(join(userData(), 'app-windows.json'))
+    AppWindowStore.open(join(userData(), 'app-windows.json')),
+    NotesStore.open(join(userData(), 'notes'))
   ])
   savedSites.on('changed', (sites: SavedSite[]) => sendToWindows(IPC.event.savedSitesChanged, sites))
+  notes.on('changed', (change: NoteChange) => sendToWindows(IPC.event.notesChanged, change))
   agentLibrary.on('changed', (agents: SavedAgent[]) => sendToWindows(IPC.event.agentLibraryChanged, agents))
   credentialVault = new CredentialVault(join(userData(), 'credential-vault.json'), safeStorageEncryption(safeStorage, process.platform), {
     secretsRequireKeychain: () => securitySettings!.get().secretsRequireKeychain
@@ -307,6 +315,7 @@ async function main(): Promise<void> {
     captureTools(() => captureAccess, screenshots),
     research.namespace,
     peerChatTools(() => chatService),
+    notesTools({ store: () => notes, bindings: notepadBindings }),
     // Lazy self-reference: the batch dispatches into the registry it is registered in.
     batchTools(() => toolRegistry!, { maxCalls: settings.get().toolBatchMaxCalls })
   ])
@@ -345,6 +354,7 @@ async function main(): Promise<void> {
     toolRegistry: toolRegistry!,
     screenshots,
     activeBrowserContext,
+    notepadContext: (paneId) => notepadBindings.turnContext(paneId, (id) => notes?.read(id) ?? null),
     antigravityBridge: antigravityBridge!,
     antigravityStateDir,
     cursorBridge: cursorBridge!,
@@ -441,6 +451,8 @@ function mainIpcRegistration() {
     quickChatOverlay: () => quickChatOverlay,
     browserDownloads: () => browserDownloads,
     savedSites: () => savedSites,
+    notes: () => notes,
+    notepadBindings,
     chatService: () => chatService,
     agentRuns: () => agentRuns,
     agentLibrary: () => agentLibrary,
@@ -520,6 +532,7 @@ app.on('before-quit', (event) => {
   void settleWithin([
     browserHistory?.flush(),
     savedSites?.flush(),
+    notes?.flush(),
     agentLibrary?.flush(),
     windowStore?.flush(),
     browserTabSession?.close(),

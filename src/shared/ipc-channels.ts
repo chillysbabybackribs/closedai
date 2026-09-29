@@ -3,6 +3,7 @@ import type { SavedAgent, SavedAgentDraft, SavedAgentPatch } from './agent-libra
 import type { BrowserHistoryMatch } from './browser-history.js'
 import type { BrowserBounds, BrowserDownload, BrowserShot, BrowserState, BrowserTabInfo } from './types.js'
 import type { SavedSite, SavedSiteDraft, SavedSitePatch } from './saved-sites.js'
+import type { NoteChange, NoteDoc, NoteMeta, NoteSaveResult, NotepadBinding } from './notes.js'
 import type { ChatAttachment, ChatHistoryPage } from './chat.js'
 import type {
   ChatContinuationSource, ChatNewPeerOptions, ChatPaneId, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot
@@ -82,6 +83,14 @@ export type IpcInvokeChannels = {
   'savedSites:save': { args: [SavedSiteDraft]; result: SavedSite }
   'savedSites:update': { args: [string, SavedSitePatch]; result: SavedSite | null }
   'savedSites:remove': { args: [string]; result: void }
+  'notes:list': { args: []; result: NoteMeta[] }
+  'notes:read': { args: [string]; result: NoteDoc | null }
+  'notes:create': { args: [string]; result: NoteDoc }
+  'notes:save': { args: [string, string, number]; result: NoteSaveResult }
+  'notes:rename': { args: [string, string | null]; result: NoteMeta }
+  'notes:remove': { args: [string]; result: void }
+  'notes:bind': { args: [NotepadBinding]; result: void }
+  'notes:unbind': { args: [string]; result: void }
   'chat:snapshot': { args: []; result: ChatWorkspaceSnapshot }
   'chat:historyPage': { args: [ChatPaneId, string | null, string]; result: ChatHistoryPage }
   'chat:send': { args: [ChatPaneId, string, ChatAttachment[]]; result: void }
@@ -150,6 +159,7 @@ export type IpcEventChannels = {
   'browser:permissionRequests': WebPermissionRequest[]
   'browserDownloads:changed': BrowserDownload[]
   'savedSites:changed': SavedSite[]
+  'notes:changed': NoteChange
   'chat:event': ChatWorkspaceEvent
   'agentRuns:event': AgentRunsEvent
   'agentLibrary:changed': SavedAgent[]
@@ -241,6 +251,16 @@ export const IPC = {
       update: 'savedSites:update',
       remove: 'savedSites:remove'
     },
+    notes: {
+      list: 'notes:list',
+      read: 'notes:read',
+      create: 'notes:create',
+      save: 'notes:save',
+      rename: 'notes:rename',
+      remove: 'notes:remove',
+      bind: 'notes:bind',
+      unbind: 'notes:unbind'
+    },
     chat: {
       snapshot: 'chat:snapshot',
       historyPage: 'chat:historyPage',
@@ -321,6 +341,7 @@ export const IPC = {
     browserPermissionRequests: 'browser:permissionRequests',
     browserDownloadsChanged: 'browserDownloads:changed',
     savedSitesChanged: 'savedSites:changed',
+    notesChanged: 'notes:changed',
     chatEvent: 'chat:event',
     agentRunsEvent: 'agentRuns:event',
     agentLibraryChanged: 'agentLibrary:changed',

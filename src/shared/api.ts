@@ -3,6 +3,7 @@ import type { SavedAgent, SavedAgentDraft, SavedAgentPatch } from './agent-libra
 import type { BrowserHistoryMatch } from './browser-history.js'
 import type { BrowserBounds, BrowserDownload, BrowserShot, BrowserState, BrowserTabInfo } from './types.js'
 import type { SavedSite, SavedSiteDraft, SavedSitePatch } from './saved-sites.js'
+import type { NoteChange, NoteDoc, NoteMeta, NoteSaveResult, NotepadBinding } from './notes.js'
 import type { ChatAttachment, ChatHistoryPage } from './chat.js'
 import type {
   ChatContinuationSource, ChatNewPeerOptions, ChatPaneId, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot
@@ -128,6 +129,21 @@ export type ClosedaiApi = {
     remove: (id: string) => Promise<void>
     /** The full list, sent whenever it changes. */
     onChanged: (listener: (sites: SavedSite[]) => void) => Unsubscribe
+  }
+  /** Notepad buffers; see src/shared/notes.ts. */
+  notes: {
+    list: () => Promise<NoteMeta[]>
+    read: (id: string) => Promise<NoteDoc | null>
+    create: (text: string) => Promise<NoteDoc>
+    /** Refused, with the current note, when a model edit landed after `baseRevision`. */
+    save: (id: string, text: string, baseRevision: number) => Promise<NoteSaveResult>
+    rename: (id: string, title: string | null) => Promise<NoteMeta>
+    remove: (id: string) => Promise<void>
+    /** Tell main which notes a notepad window's chat is about. */
+    bind: (binding: NotepadBinding) => Promise<void>
+    unbind: (chatPaneId: string) => Promise<void>
+    /** Every accepted change, with the note's new text. */
+    onChanged: (listener: (change: NoteChange) => void) => Unsubscribe
   }
   chat: {
     snapshot: () => Promise<ChatWorkspaceSnapshot>

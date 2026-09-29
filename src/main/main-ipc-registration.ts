@@ -14,6 +14,7 @@ import { WallpaperUploadStore } from './wallpapers/upload-store.js'
 import { registerBrowserCoreIpc } from './browser-core-ipc.js'
 import { registerBrowserDownloadsIpc } from './browser-downloads-ipc.js'
 import { registerSavedSitesIpc } from './saved-sites-ipc.js'
+import { registerNotesIpc } from './notes/notes-ipc.js'
 import { registerLocalFilesIpc } from './local-files/ipc.js'
 import { registerChatIpc } from './chat-ipc.js'
 import { registerAgentRunsIpc } from './agent-runs/ipc.js'
@@ -30,6 +31,8 @@ import { traceLog } from './trace/trace-log.js'
 import type { BrowserService } from './browser-service.js'
 import type { BrowserDownloadService } from './browser-download-service.js'
 import type { SavedSitesStore } from './saved-sites-store.js'
+import type { NotesStore } from './notes/notes-store.js'
+import type { NotepadBindings } from './notes/notepad-bindings.js'
 import type { ChatPeerManager } from './chat-peers/peer-manager.js'
 import type { AgentRunService } from './agent-runs/agent-run-service.js'
 import type { AgentLibraryStore } from './agent-library/agent-library-store.js'
@@ -51,6 +54,8 @@ export type MainIpcRegistration = {
   quickChatOverlay: () => QuickChatOverlay | null
   browserDownloads: () => BrowserDownloadService | null
   savedSites: () => SavedSitesStore | null
+  notes: () => NotesStore | null
+  notepadBindings: NotepadBindings
   chatService: () => ChatPeerManager | null
   agentRuns: () => AgentRunService | null
   agentLibrary: () => AgentLibraryStore | null
@@ -81,6 +86,7 @@ export function registerMainProcessIpc(reg: MainIpcRegistration): void {
   registerBrowserCoreIpc(reg.ipcMain, reg.browserService, reg.savedSites, (sender) => reg.windows()?.isMain(sender) ?? true)
   registerBrowserDownloadsIpc(reg.ipcMain, reg.browserDownloads)
   registerSavedSitesIpc(reg.ipcMain, reg.savedSites)
+  registerNotesIpc(reg.ipcMain, reg.notes, reg.notepadBindings)
   registerLocalFilesIpc(reg.ipcMain, reg.browserService)
   registerChatIpc(reg.ipcMain, reg.chatService, reg.windows)
   registerAgentRunsIpc(reg.ipcMain, reg.agentRuns)
