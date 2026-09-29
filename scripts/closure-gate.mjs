@@ -32,7 +32,10 @@ const allowedPackages = new Set([
   // PDF research workers (electron-vite secondary entries).
   '@napi-rs/canvas', 'pdfjs-dist', 'tesseract.js',
   // Native instrumentation controller worker.
-  'frida'
+  'frida',
+  // The notepad's editor (renderer notepad/): CodeMirror 6 and the highlight tags its theme styles.
+  '@codemirror/commands', '@codemirror/lang-markdown', '@codemirror/language', '@codemirror/search',
+  '@codemirror/state', '@codemirror/view', '@lezer/highlight'
 ])
 // `tor-` is anchored to a path-segment or word boundary: unanchored it also matches the tail of
 // "inspector-modal", which rejected a sanctioned UI file for containing the letters t-o-r.
