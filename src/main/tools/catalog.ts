@@ -41,6 +41,7 @@ export const TOOL_CATALOG: Readonly<Record<string, ToolCatalogEntry>> = {
 
   'closedai_app.state': { group: 'controls-app', label: 'App state', summary: 'Read which chats, tabs, models, downloads, and dialogs are open.', offEffect: 'The model works blind to the app around it; commands become guesswork.' },
   'closedai_app.command': { group: 'controls-app', label: 'App commands', summary: 'Open chats, message other panes, switch models, manage browser tabs, switch project.', offEffect: 'The model cannot drive the app or other chats. Browser tools keep working in its own tab.' },
+  'closedai_app.menu': { group: 'controls-app', label: 'App menu', summary: 'Run any File, View, Agent, or Developer menu row: views, dialogs, layouts, zoom.', offEffect: 'Menu rows are reached only by clicking through the menu.' },
   'closedai_app.agent': { group: 'controls-app', label: 'Agent runs', summary: 'Start, pause, resume, or stop the standing agent loop on another chat pane.', offEffect: 'The model cannot drive multi-cycle agent runs on other panes.' },
   'closedai_app.ui': { group: 'controls-app', label: 'Click the app', summary: 'List real controls and press them when no command can do the job.', offEffect: 'No real clicks or typing in ClosedAI itself.' },
   'media.video': { group: 'controls-app', label: 'Render videos', summary: 'Record a workspace page to an MP4 with ffmpeg and play it in the browser pane.', offEffect: 'No videos are rendered; pages can still be previewed and captured.' },

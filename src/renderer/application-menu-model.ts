@@ -147,7 +147,7 @@ export function runMenuItem(row: MenuItem, menu: Pick<TitlebarMenuProps,
 }
 
 /**
- * A model's `closedai_app.command run`: the row by key, refused when it is disabled exactly as the
+ * A model's `closedai_app.menu`: the row by key, refused when it is disabled exactly as the
  * menu greys it out, and refused for rows that act on the selected chat while that is the caller.
  */
 export function runMenuKey(key: string, menu: TitlebarMenuProps,

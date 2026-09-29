@@ -101,11 +101,12 @@ function textOf(result: { content: Array<{ type: string; text?: string }> }): st
 
 test('namespace advertises state, deterministic commands, and control-level ui actions', () => {
   const { registry } = harness()
-  assert.deepEqual(registry.names(), ['closedai_app.state', 'closedai_app.command', 'closedai_app.agent', 'closedai_app.ui'])
-  const [state, command, agent, ui] = registry.namespaces[0]!.tools
+  assert.deepEqual(registry.names(), ['closedai_app.state', 'closedai_app.command', 'closedai_app.menu', 'closedai_app.agent', 'closedai_app.ui'])
+  const [state, command, menu, agent, ui] = registry.namespaces[0]!.tools
   assert.equal(state!.actions, undefined)
+  assert.equal(menu!.actions, undefined)
   assert.deepEqual(command!.actions?.map((action) => action.name), [
-    'project_switch', 'new_chat', 'run', 'send_message', 'stop_agent', 'open_chat', 'close_chat', 'select_model', 'browser_tab'
+    'project_switch', 'new_chat', 'send_message', 'stop_agent', 'open_chat', 'close_chat', 'select_model', 'browser_tab'
   ])
   assert.deepEqual(agent!.actions?.map((action) => action.name), ['start', 'pause', 'resume', 'finish', 'stop'])
   assert.deepEqual(ui!.actions?.map((action) => action.name), [
@@ -178,19 +179,19 @@ test('commands route to the host with the selected pane as the default target', 
   ])
 })
 
-test('run fires a menu row by key for the caller and reads ui state only after a row ran', async () => {
+test('menu runs a row by key for the caller and reads ui state only after a row ran', async () => {
   const { calls, call } = harness()
-  const ran = await call('command', { action: 'run', key: 'tools' })
+  const ran = await call('menu', { key: 'tools' })
   assert.equal(ran.isError, undefined)
   assert.match(textOf(ran), /"ran": true/)
   assert.match(textOf(ran), /"chatSearchOpen": true/)
   assert.deepEqual(calls, [['runMenu', 'tools', 'pane-caller'], ['uiState']])
   calls.length = 0
-  const greyed = await call('command', { action: 'run', key: 'tile-windows' })
+  const greyed = await call('menu', { key: 'tile-windows' })
   assert.match(textOf(greyed), /"disabled": true/)
   assert.deepEqual(calls, [['runMenu', 'tile-windows', 'pane-caller']])
   for (const key of ['reload-renderer', 'close-window', 'no-such-row']) {
-    const refused = await call('command', { action: 'run', key })
+    const refused = await call('menu', { key })
     assert.equal(refused.isError, true, key)
   }
 })

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { MENUS, launcherGroups, menuItemDisabled, type MenuItem } from './application-menu-model.ts'
+import { APP_MENU_KEYS } from '../shared/app-menu-run.ts'
+import { MENUS, launcherGroups, menuItemDisabled, runMenuKey, type MenuItem, type TitlebarMenuProps } from './application-menu-model.ts'
 
 const items = MENUS.flatMap(menu => menu.rows.filter((row): row is MenuItem => 'key' in row))
 const state = { chatZoom: 100, tileEnabled: false, layoutEnabled: false, compactEnabled: false, stopEnabled: false }
@@ -27,4 +28,31 @@ test('launcher preserves context eligibility and zoom limits', () => {
   assert.equal(disabled('zoom-in', { chatZoom: 250 }), true)
   assert.equal(disabled('zoom-out', { chatZoom: 50 }), true)
   assert.equal(disabled('reset-zoom'), true)
+})
+
+test('the shared model key list names every menu row and nothing else', () => {
+  assert.deepEqual(items.map(row => row.key).sort(), [...APP_MENU_KEYS].sort())
+  assert.equal(new Set(items.map(row => row.key)).size, items.length)
+})
+
+test('a model run fires the row handler only when the menu would allow the click', () => {
+  const fired: unknown[] = []
+  const menu: TitlebarMenuProps = {
+    ...state, chatZoom: 110, stopEnabled: true, selectedChatTitle: null,
+    onChatZoomChange: (command) => fired.push(['zoom', command]),
+    onAction: (action) => fired.push(['action', action]),
+    onSearchChats: () => fired.push(['search']),
+    onApplyLayoutPreset: (preset) => fired.push(['preset', preset])
+  }
+  const chat = { selectedPaneId: 'pane-a', callerPaneId: 'pane-b' }
+  assert.deepEqual(runMenuKey('tools', menu, chat), { key: 'tools', label: 'Tools & capabilities…', menu: 'Agent', ran: true })
+  assert.equal(runMenuKey('reset-zoom', menu, chat).ran, true)
+  assert.equal(runMenuKey('search-chats', menu, chat).ran, true)
+  assert.deepEqual(runMenuKey('tile-windows', menu, chat), { key: 'tile-windows', label: 'Tile windows', menu: 'View', ran: false, disabled: true })
+  assert.match(runMenuKey('missing', menu, chat).refused ?? '', /No menu row/)
+  assert.equal(runMenuKey('stop-turn', menu, chat).ran, true)
+  const self = runMenuKey('stop-turn', menu, { selectedPaneId: 'pane-b', callerPaneId: 'pane-b' })
+  assert.equal(self.ran, false)
+  assert.match(self.refused ?? '', /calling chat/)
+  assert.deepEqual(fired, [['action', 'tools'], ['zoom', 'reset'], ['search'], ['action', 'stop-turn']])
 })

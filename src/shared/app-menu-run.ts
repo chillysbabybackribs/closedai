@@ -1,5 +1,5 @@
 // The application menu (File, View, Agent, Developer; also the dock launcher) as models reach it:
-// `closedai_app.command run {key}` fires the same handler a click on the row fires. The renderer's
+// `closedai_app.menu {key}` fires the same handler a click on the row fires. The renderer's
 // menu model owns labels, shortcuts, and handlers; this list only names the stable row keys, and
 // the menu model's test keeps the two identical in both directions.
 

@@ -4,6 +4,7 @@ import { uiControlFamilies } from '../../../shared/ui-controls.js'
 import type { BrowserHostProvider } from '../browser/host.js'
 import { appAgentActions } from './agent.js'
 import { appCommandActions } from './command.js'
+import { appMenuTool } from './menu.js'
 import type { AppCommandHost, AppUiHost } from './host.js'
 import { appStateTool } from './state.js'
 import { appUiActions } from './ui.js'
@@ -27,9 +28,11 @@ export function appTools(
         deferLoading: true,
         description:
           'Deterministic app commands via main-process services — no DOM inspection. Operate panes, models, and ' +
-          'browser tabs; use closedai_app.state for facts. Use closedai_app.ui only when a real control must be exercised as a batched fallback.',
+          'browser tabs; use closedai_app.state for facts and closedai_app.menu for any application menu row. Use ' +
+          'closedai_app.ui only when a real control must be exercised as a batched fallback.',
         actions: appCommandActions(app, ui, page)
       }),
+      appMenuTool(ui),
       defineActionTool({
         name: 'agent',
         deferLoading: true,
@@ -46,8 +49,9 @@ export function appTools(
           'Drive the real ClosedAI renderer by stable control id. Start with controls (scoped by surface or ' +
           `query) to see ids, items, and state; families: ${uiControlFamilies().join(', ')}. Rows, tabs, and ` +
           'menu items repeat, so pass item or match with their control. Prefer state and command; real click/type/key ' +
-          'actions require fallback_reason and belong in one batch with inspection and verification. Menus and dialogs ' +
-          'must be opened first; never read renderer source to find a control.',
+          'actions require fallback_reason and belong in one batch with inspection and verification. Application menu ' +
+          'rows run directly through closedai_app.menu; other menus and dialogs must be opened first; never read renderer ' +
+          'source to find a control.',
         actions: appUiActions(ui)
       })
     ]

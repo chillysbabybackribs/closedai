@@ -3,7 +3,7 @@ import { APP_MENU_RUN_EVENT, type AppMenuRunDetail } from '../shared/app-menu-ru
 import { runMenuKey, type TitlebarMenuProps } from './application-menu-model.js'
 
 /**
- * `closedai_app.command run`: the main-process ui host dispatches the row key as a CustomEvent and
+ * `closedai_app.menu`: the main-process ui host dispatches the row key as a CustomEvent and
  * reads the result back from its detail, so a model runs the row through the menu's own handler
  * and eligibility without opening the menu.
  */

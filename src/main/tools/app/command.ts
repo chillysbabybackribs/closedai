@@ -4,7 +4,6 @@ import { booleanArg, numberArg, stringArg, type JsonObject, type ToolContext } f
 import type { BrowserHostProvider } from '../browser/host.js'
 import { requireHost, type AppBrowserTabRequest, type AppCommandHost, type AppUiHost } from './host.js'
 import { chatCwd, openWorkspacePreview, resolveHtmlPreview } from './preview-html.js'
-import { MODEL_MENU_KEYS } from '../../../shared/app-menu-run.js'
 
 const paneField: JsonObject = {
   type: 'string', minLength: 1,
@@ -47,24 +46,6 @@ export function appCommandActions(
         const host = requireHost(app, 'app commands')
         const created = await host.newChat()
         return jsonResult({ ...created, ...host.state(['workspace'], created.paneId, context.paneId ?? null) })
-      }
-    },
-    {
-      action: 'run',
-      description:
-        'Run an application menu row (File, View, Agent, Developer; the dock launcher lists the same rows) by key: ' +
-        'the same handler a click fires, in one call instead of opening the menu through closedai_app.ui. Opens views ' +
-        '(agents, tools, turn-trace, saved-sites, manage-chat-history), dialogs (settings, workspace-layout), the overview, ' +
-        'and applies layouts, zoom, tiling, and browser visibility. A row greyed out right now is not run and returns ' +
-        'disabled: true. close-tab and stop-turn act on the selected chat and are refused while that is the calling chat. ' +
-        'Returns the row, whether it ran, and the ui state (layout, dialogs, menus) after it.',
-      inputSchema: objectSchema({
-        key: { type: 'string', enum: [...MODEL_MENU_KEYS], description: 'Stable menu row key.' }
-      }, ['key']),
-      run: async (input, context) => {
-        const host = requireHost(ui, 'app ui')
-        const result = await host.runMenu(stringArg(input, 'key')!, context.paneId ?? null)
-        return jsonResult(result.ran ? { ...result, ui: await host.uiState() } : result)
       }
     },
     {

@@ -298,6 +298,7 @@ export function dynamicToolLabel(item: Record<string, unknown>): string {
   if (namespace === 'closedai_app') {
     if (tool === 'state') return 'Read app state'
     if (tool === 'command') return 'Run app command'
+    if (tool === 'menu') return 'Run app menu row'
     if (action === 'controls') return 'List app controls'
     if (action === 'click') return 'Click app element'
     if (action === 'type') return 'Type in app'
