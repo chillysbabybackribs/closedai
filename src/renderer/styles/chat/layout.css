@@ -178,7 +178,7 @@
   white-space: nowrap;
   cursor: default;
 }
-/* Dedicated pane grip: tab drags move one conversation; compact tab strips leave no empty header. */
+/* Pane grip plus empty tab-rail space move the window; tab drags move one conversation. */
 .chat-layout-header > button.chat-layout-drag {
   display: inline-flex;
   align-items: center;
@@ -223,6 +223,7 @@
   padding: 4px 1px;
   overflow-x: auto;
   scrollbar-width: none;
+  cursor: grab;
 }
 .chat-layout-tab {
   position: relative;

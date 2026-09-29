@@ -17,6 +17,7 @@ import { browserCovered, canvasTiles, floatingFront } from './floating/window-ti
 import { useWindowDrag, type WindowFrame } from './floating/use-window-drag.js'
 import { useMaximizedWindow } from './floating/use-maximized-window.js'
 import { BrowserWindowContext, WindowResizeHandles } from './floating/window-controls.js'
+import { pressesMoveHandle } from './floating/window-move-handle.js'
 
 const position = (rect: Rect): CSSProperties => ({ left: rect.x, top: rect.y, width: rect.width, height: rect.height })
 const contains = (rect: Rect, x: number, y: number): boolean =>
@@ -34,13 +35,6 @@ export type WindowActions = {
   raise: (id: string) => void
   minimize: (id: string) => void
   keepOnTop: (id: string, onTop: boolean) => void
-}
-
-/** Where a pointer press starts moving a window: its grip or its header's empty space. */
-const MOVE_HANDLE = '[data-window-grip], .chat-layout-header, .browser-tabstrip'
-const pressesMoveHandle = (event: { target: EventTarget }): boolean => {
-  const target = event.target as HTMLElement
-  return target.matches(MOVE_HANDLE) || Boolean(target.closest('[data-window-grip]'))
 }
 
 /** React keys follow the first tab in a tile so adding a tab does not remount the header strip. */
