@@ -56,12 +56,17 @@ export const QuickChatCard = memo(function QuickChatCard({ paneId, focused, disp
     else setExpanded(false)
   }, [focused, unused])
 
-  const onKeyDown = (event: KeyboardEvent): void => {
-    if (event.key !== 'Escape' || event.defaultPrevented) return
-    event.preventDefault()
-    if (expanded && hasTranscript) setExpanded(false)
-    else request('close')
-  }
+  // Escape shrinks the whole chat, then closes. The layer is its own page, so any focus in it counts.
+  useEffect(() => {
+    const onKeyDown = (event: globalThis.KeyboardEvent): void => {
+      if (event.key !== 'Escape' || event.defaultPrevented) return
+      event.preventDefault()
+      if (expanded && hasTranscript) setExpanded(false)
+      else request('close')
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [expanded, hasTranscript])
   // Typing brings the whole chat back. Focus alone does not: the composer takes focus back itself
   // after a send, which would undo the retract the send just caused.
   const onKeyDownCapture = (event: KeyboardEvent): void => {
@@ -79,7 +84,7 @@ export const QuickChatCard = memo(function QuickChatCard({ paneId, focused, disp
   const whole = expanded && hasTranscript
   return (
     <div ref={cardRef} className={`quick-chat-card${whole ? ' is-whole' : ' is-compact'}`}
-      onKeyDown={onKeyDown} onKeyDownCapture={onKeyDownCapture} onPointerDownCapture={onPointerDown}>
+      onKeyDownCapture={onKeyDownCapture} onPointerDownCapture={onPointerDown}>
       {whole ? (
         <div className="quick-chat-header">
           <span className="quick-chat-title" title={title}>{title}</span>
