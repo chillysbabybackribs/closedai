@@ -13,10 +13,13 @@ const request = (value: 'new' | 'close'): void => { void window.closedai.quickCh
 
 type Mode = 'full' | 'compact'
 
+// The shape the user last chose for each chat, so hiding and reopening it keeps that shape.
+const chosenMode = new Map<string, Mode>()
+
 /**
- * The open quick chat: the whole chat, or the compact composer under a one-line status while a
- * task drives the page. It changes shape only when the user asks (expand, shrink, ×, Esc, Ctrl+J)
- * or a task starts; clicks on the page and typing leave it as it is.
+ * The open quick chat: the whole chat, or the compact composer under a one-line status. It changes
+ * shape only when the user presses shrink or expand; sending, clicks on the page and typing leave
+ * it as it is.
  */
 export const QuickChatCard = memo(function QuickChatCard({ paneId, site, dispatch, appearance }: {
   paneId: string
@@ -31,8 +34,8 @@ export const QuickChatCard = memo(function QuickChatCard({ paneId, site, dispatc
   const hasTranscript = state.items.length > 0
   const title = slice.chats.find((row) => row.paneId === paneId)?.title ?? 'New chat'
   const feed = useMemo(() => quickChatFeed(state, 1), [state])
-  // Opening a chat whose task is running shows its status; anything else opens the whole chat.
-  const [mode, setMode] = useState<Mode>(() => running ? 'compact' : 'full')
+  const [mode, setModeState] = useState<Mode>(() => chosenMode.get(paneId) ?? 'full')
+  const setMode = (next: Mode): void => { chosenMode.set(paneId, next); setModeState(next) }
   const cardRef = useRef<HTMLDivElement>(null)
 
   // Opening lands in the composer.
@@ -40,26 +43,16 @@ export const QuickChatCard = memo(function QuickChatCard({ paneId, site, dispatc
     cardRef.current?.querySelector<HTMLTextAreaElement>('textarea')?.focus()
   }, [])
 
-  // A task starting shrinks the chat to its status, so the page it drives stays in view.
-  const turnId = state.activeTurnId
-  const previousTurn = useRef(turnId)
-  useEffect(() => {
-    if (turnId && turnId !== previousTurn.current) setMode('compact')
-    previousTurn.current = turnId
-  }, [turnId])
-
-  // Escape shrinks a running task's whole chat to its status; otherwise it hides the chat. Menus
-  // and panels inside the layer take their own Escape first.
+  // Escape hides the chat. Menus and panels inside the layer take their own Escape first.
   useEffect(() => {
     const onKeyDown = (event: globalThis.KeyboardEvent): void => {
       if (event.key !== 'Escape' || event.defaultPrevented) return
       event.preventDefault()
-      if (mode === 'full' && running) setMode('compact')
-      else request('close')
+      request('close')
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [mode, running])
+  }, [])
 
   const whole = mode === 'full' || !hasTranscript
   return (

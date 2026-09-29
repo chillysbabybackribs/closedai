@@ -1115,10 +1115,10 @@ chat under a header with shrink `browser.quick-chat-compact` (once there is a tr
 runs), and hide `browser.quick-chat-close`. Compact is the composer under one status line, such as
 "Working on espn.com · Opened espn.com" (`quick-chat-feed.ts`: the turn's latest step in plain words
 from `feed-phrase.ts`), with expand `browser.quick-chat-expand` and hide; once the turn ends the line
-reads "Done on …" with a two-line preview of the reply. Only the user's controls and a turn starting
-change the shape: a turn starting shrinks it to compact; expand, shrink and hide do what they say;
-Escape shrinks a running whole chat and otherwise hides it; opening shows compact while a task runs
-and whole otherwise. Clicks on the page, typing, and focus changes leave it alone. Ctrl+J (Cmd+J)
+reads "Done on …" with a two-line preview of the reply. Only shrink and expand change the shape;
+hide and Escape hide the card, and reopening a chat keeps the shape last chosen for it (whole at
+first). Sending a message, a turn starting, clicks on the page, typing, and focus changes leave it
+alone. Ctrl+J (Cmd+J)
 toggles it from the page, the layer, or the app window while the page is on screen: main catches it
 in `before-input-event` on each (`BrowserServiceOptions.pageKeys` for tabs, `isQuickChatShortcut`)
 and sends a `toggle` request, and opening focuses the layer so typing lands in the composer. While
