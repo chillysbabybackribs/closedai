@@ -21,6 +21,7 @@
 @import "./styles/browser.css";
 @import "./styles/browser-downloads.css";
 @import "./styles/saved-sites/panel.css";
+@import "./styles/notepad/notepad.css";
 @import "./styles/workspace.css";
 @import "./styles/chat/history-search.css";
 @import "./styles/texture.css";

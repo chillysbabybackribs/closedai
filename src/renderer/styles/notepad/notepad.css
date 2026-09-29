@@ -1,0 +1,143 @@
+/* Notepad windows (renderer notepad/): a tile whose tabs are notes. The editor fills the body,
+   a status line sits under it, and the window's chat floats over the notes' bottom-right corner
+   with the browser quick chat's button and card (styles/browser/quick-chat.css). */
+
+.notepad-view {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  background: var(--surface-card);
+  color: var(--chrome-fg-strong);
+}
+
+.notepad-body {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.notepad-editor {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.notepad-editor .cm-editor {
+  height: 100%;
+}
+
+.notepad-editor .cm-editor.cm-focused {
+  outline: none;
+}
+
+.notepad-missing {
+  margin: auto;
+  color: color-mix(in srgb, var(--chrome-fg) 60%, transparent);
+  font-size: 12.5px;
+}
+
+/* The chat layer sits inside the notes rather than fixed to the window like the page's layer. */
+.notepad-chat-layer.quick-chat-layer {
+  --quick-chat-margin: 14px;
+  position: absolute;
+  z-index: 3;
+  gap: 8px;
+  max-width: 100%;
+  max-height: 100%;
+  pointer-events: none;
+}
+
+.notepad-chat-layer > * {
+  pointer-events: auto;
+}
+
+.notepad-chat-elsewhere {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 6px 4px 11px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: var(--surface-raised);
+  box-shadow: 0 4px 14px rgb(0 0 0 / 28%);
+  color: color-mix(in srgb, var(--chrome-fg) 85%, transparent);
+  font-size: 11.5px;
+}
+
+.notepad-chat-elsewhere b {
+  color: var(--chrome-fg-strong);
+  font-weight: 500;
+}
+
+.notepad-chat-elsewhere button {
+  padding: 2px 8px;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--tab-accent, #8ab4f8) 18%, transparent);
+  color: var(--tab-accent, #8ab4f8);
+  font-size: 11.5px;
+}
+
+.notepad-chat-elsewhere button:hover {
+  background: color-mix(in srgb, var(--tab-accent, #8ab4f8) 28%, transparent);
+}
+
+/* The status line: where the caret is, then New and the notes menu at the right. */
+.notepad-status {
+  display: flex;
+  flex: none;
+  gap: 14px;
+  align-items: center;
+  height: 26px;
+  padding: 0 6px 0 12px;
+  border-top: 1px solid var(--hairline);
+  color: color-mix(in srgb, var(--chrome-fg) 62%, transparent);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.notepad-status-spacer {
+  flex: 1;
+}
+
+.notepad-status-saved {
+  color: color-mix(in srgb, var(--chrome-fg) 45%, transparent);
+}
+
+.notepad-status-button {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  height: 20px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: color-mix(in srgb, var(--chrome-fg) 80%, transparent);
+  font-size: 11.5px;
+}
+
+.notepad-status-button:hover,
+.notepad-status-button[data-state="open"] {
+  background: color-mix(in srgb, var(--chrome-fg) 12%, transparent);
+  color: var(--chrome-fg-strong);
+}
+
+.notepad-menu-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notepad-menu-meta {
+  flex: none;
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
