@@ -52,7 +52,7 @@
 
 .prompt-tool-activity-lines .diff-stat-add,
 .prompt-tool-activity-lines .diff-stat-del {
-  font-size: 11.5px;
+  font-size: 13px;
   font-variant-numeric: tabular-nums;
 }
 
