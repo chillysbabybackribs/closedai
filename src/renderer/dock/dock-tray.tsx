@@ -1,6 +1,5 @@
 import type { JSX, ReactNode } from 'react'
 import { Grid2X2 } from 'lucide-react'
-import { cn } from '../../lib/utils.js'
 import { Dock, DockIcon } from '../../components/ui/dock.js'
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar.js'
 import { Button } from '../../components/ui/button.js'
@@ -36,28 +35,35 @@ export type DockTrayProps = {
 }
 
 /**
- * The app tray: Magic UI's Dock holding one rounded-square tile per ClosedAI surface. Every tile is
- * the same shape whatever it holds (a line icon today, a full-colour picture later), so a new icon
- * never changes the tray's size or spacing. The dot, tooltip and lists stay neutral.
+ * The app tray: Magic UI's Dock holding one rounded-square tile per ClosedAI surface. Start sits in
+ * a fixed slot between two dock groups so pointer magnification does not keep it larger than its neighbours.
  */
 export function DockTray(props: DockTrayProps): JSX.Element {
   const { startTrigger, apps, magnify, openStack, onOpenStack, onLaunch, minimized, onRestoreWindow } = props
   const split = Math.floor(apps.length / 2)
   const leftApps = apps.slice(0, split)
   const rightApps = apps.slice(split)
-  return <Dock data-slot="app-dock-tray" direction="bottom" iconSize={TRAY_ICON} iconMagnification={TRAY_MAGNIFIED}
-    disableMagnification={!magnify}
-    // The tab behind it is DockSurface, so the tray itself draws nothing. It fills the tab above the
-    // strip: height TRAY_ICON + TAB_PADDING, and p-2.5 is TAB_PADDING at the sides and top.
-    className="mx-0 mt-0 h-[58px] gap-2 rounded-none border-0 bg-transparent p-2.5 pb-0 backdrop-blur-none">
-    {leftApps.map((app) => <TrayAppIcon key={app.id} {...props} app={app} />)}
-    <DockIcon padding={0} className="relative rounded-[22%]">{startTrigger}</DockIcon>
-    {rightApps.map((app) => <TrayAppIcon key={app.id} {...props} app={app} />)}
+  const dockClass = 'mx-0 mt-0 h-[48px] gap-2 rounded-none border-0 bg-transparent p-0 pb-0 backdrop-blur-none'
+  const dockProps = {
+    direction: 'bottom' as const,
+    iconSize: TRAY_ICON,
+    iconMagnification: TRAY_MAGNIFIED,
+    disableMagnification: !magnify,
+    className: dockClass
+  }
+  return <div data-slot="app-dock-tray"
+    className="mx-0 mt-0 flex h-[58px] w-max items-end gap-2 rounded-none border-0 bg-transparent p-2.5 pb-0">
+    <Dock {...dockProps}>{leftApps.map((app) => <TrayAppIcon key={app.id} {...props} app={app} />)}</Dock>
+    <div className="relative flex shrink-0 items-center justify-center rounded-[22%]"
+      style={{ width: TRAY_ICON, height: TRAY_ICON }}>{startTrigger}</div>
+    <Dock {...dockProps}>{rightApps.map((app) => <TrayAppIcon key={app.id} {...props} app={app} />)}</Dock>
     {minimized.length > 0 && <Separator orientation="vertical" className="mx-1 h-9 self-center" />}
-    {minimized.map((entry) => <DockIcon key={entry.id} padding={0} className="relative rounded-[22%]">
-      <MinimizedButton entry={entry} onRestore={onRestoreWindow} />
-    </DockIcon>)}
-  </Dock>
+    {minimized.length > 0 && <Dock {...dockProps}>
+      {minimized.map((entry) => <DockIcon key={entry.id} padding={0} className="relative rounded-[22%]">
+        <MinimizedButton entry={entry} onRestore={onRestoreWindow} />
+      </DockIcon>)}
+    </Dock>}
+  </div>
 }
 
 function TrayAppIcon(props: DockTrayProps & { app: TrayApp }): JSX.Element {
@@ -75,14 +81,14 @@ function TrayAppIcon(props: DockTrayProps & { app: TrayApp }): JSX.Element {
 }
 
 export function StartTrayButton({ open, overviewActive }: { open: boolean; overviewActive: boolean }): JSX.Element {
-  const button = <button type="button" className={cn('relative size-full rounded-[22%] outline-none focus-visible:ring-2 focus-visible:ring-ring',
-    overviewActive && 'ring-2 ring-ring ring-offset-2 ring-offset-background')}
+  const button = <button type="button" className="relative size-full rounded-[22%] outline-none focus-visible:ring-2 focus-visible:ring-ring"
     data-ui="dock.start" aria-expanded={open} aria-haspopup="dialog" aria-label="Open Start">
     <Avatar className="size-full rounded-[22%] border border-border">
       <AvatarFallback className="rounded-[22%] bg-secondary text-foreground">
-        <Grid2X2 className="size-[50%]" aria-hidden="true" />
+        <Grid2X2 size={TRAY_ICON / 2} aria-hidden="true" />
       </AvatarFallback>
     </Avatar>
+    {overviewActive && <span className="absolute -bottom-[5px] left-1/2 size-1 -translate-x-1/2 rounded-full bg-foreground/70" aria-hidden="true" />}
   </button>
   return <Tooltip>
     <TooltipTrigger asChild>
