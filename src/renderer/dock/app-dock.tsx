@@ -13,6 +13,8 @@ import type { SpacesDockNav } from '../spaces/spaces-stage.js'
 import { DOCK_HEIGHT, DOCK_REACH, TRAY_LIFT, dockLocation, dockLocationLabel, trayApps, type DockPrefs, type TrayAppId } from './dock-model.js'
 import { DockSurface } from './dock-surface.js'
 import { DockStartPanel } from './dock-start-panel.js'
+import type { StartView } from './dock-start-model.js'
+import type { StartServices } from './dock-start-views.js'
 import { DockTray, StartTrayButton } from './dock-tray.js'
 import type { TitlebarMenuProps } from '../application-menu-model.js'
 import { DockLayoutMenu } from './dock-layout-menu.js'
@@ -41,6 +43,8 @@ export type AppDockProps = {
   onApplyPreset: (preset: LayoutPreset) => void
   onOpenLayouts: () => void
   onOpenChat: (paneId: string) => void
+  /** What Start's own screens (Search chats, History, Agents, Tools, Settings) act on. */
+  startServices: StartServices
 }
 
 /**
@@ -48,9 +52,12 @@ export type AppDockProps = {
  * Centre: Start and the app tray. Right: layout and dock settings. It hides until the pointer
  * reaches the bottom edge unless Keep visible is on.
  */
-export function AppDock({ menu, nav, chats, chatTitle, browserVisible, prefs, onPrefsChange, onLaunch, onOpenSite, onAllSavedSites, minimized, onRestoreWindow, canTile, onTileWindows, onApplyPreset, onOpenLayouts, onOpenChat }: AppDockProps): JSX.Element {
+export function AppDock({ menu, nav, chats, chatTitle, browserVisible, prefs, onPrefsChange, onLaunch, onOpenSite, onAllSavedSites, minimized, onRestoreWindow, canTile, onTileWindows, onApplyPreset, onOpenLayouts, onOpenChat, startServices }: AppDockProps): JSX.Element {
   const [openList, setOpenList] = useState<TrayAppId | 'settings' | 'layout' | 'start' | null>(null)
   const [keyboard, setKeyboard] = useState(false)
+  // Start opens on its home every time; a screen is where one visit went, not a preference.
+  const [startView, setStartView] = useState<StartView>('home')
+  useEffect(() => { if (openList !== 'start') setStartView('home') }, [openList])
   const { shown, show } = useDockReveal({ pinned: prefs.keepVisible, held: openList !== null || keyboard })
   // The freeze reads data-state: the page stays a still until the dock has slid fully away.
   const [down, setDown] = useState(!shown)
@@ -119,11 +126,16 @@ export function AppDock({ menu, nav, chats, chatTitle, browserVisible, prefs, on
               minimized={minimized} onRestoreWindow={onRestoreWindow} />
           </div>
           <PopoverContent side="top" align="center" sideOffset={16} collisionPadding={12}
-            className="dock-start-shell z-[100] border p-0 shadow-none motion-reduce:animate-none"
-            onCloseAutoFocus={(event) => event.preventDefault()}>
+            className="dock-start-shell z-[100] border p-0 shadow-none motion-reduce:animate-none" data-start-view={startView}
+            onCloseAutoFocus={(event) => event.preventDefault()}
+            onEscapeKeyDown={(event) => {
+              if (startView === 'home') return
+              event.preventDefault()
+              setStartView('home')
+            }}>
             <DockStartPanel menu={menu} chats={chats} spaceName={nav.spaceName} overviewActive={nav.overview}
               overviewDisabled={nav.moving} onToggleOverview={nav.toggleOverview} onOpenChat={onOpenChat}
-              onClose={() => setOpenList(null)} />
+              onClose={() => setOpenList(null)} view={startView} onViewChange={setStartView} services={startServices} />
           </PopoverContent>
         </Popover>
         <div className="flex items-center gap-0.5">

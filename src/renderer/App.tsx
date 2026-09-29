@@ -26,7 +26,8 @@ import { SpacesStage, type SpacesHandle } from './spaces/spaces-stage.js'
 import { AppDock } from './dock/app-dock.js'
 import { TitlebarRail } from './rail/titlebar-rail.js'
 import { DOCK_RESERVE, readDockPrefs, saveDockPrefs, type DockPrefs } from './dock/dock-model.js'
-import type { SettingsTab } from './settings/settings-dialog.js'
+import type { SettingsTab } from './settings/settings-sections.js'
+import type { StartServices } from './dock/dock-start-views.js'
 
 const SettingsDialog = lazy(async () => {
   const module = await import('./settings/settings-dialog.js')
@@ -247,6 +248,18 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
     tileEnabled: windowsFloating,
     onApplyLayoutPreset: (preset) => workspaceRef.current?.applyPreset(preset)
   }
+  const startServices: StartServices = {
+    chats: chat.chats,
+    history,
+    selectedPaneId: chat.selectedPaneId,
+    selectedBusy: selectedRow?.running ?? false,
+    listChats: chat.listChats,
+    archiveChat: history.deleteRow,
+    openChat: openHistoryChat,
+    sendToChat: (chatId, text) => workspaceRef.current?.sendToChat(chatId, text),
+    startAgent: async (chatId, options) => { await workspaceRef.current?.startAgent(chatId, options) },
+    settings: { appearance, onAppearanceChange: updateAppearance, backdropStatus, onOpenWallpaper: openWallpaper }
+  }
   useMenuRunBridge(applicationMenu, chat.selectedPaneId, () => workspaceRef.current?.focusedCloseTarget() ?? chat.selectedPaneId)
 
   return (
@@ -284,7 +297,8 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
             canTile={windowsFloating} onTileWindows={() => workspaceRef.current?.tileWindows()}
             onApplyPreset={(preset) => workspaceRef.current?.applyPreset(preset)}
             onOpenLayouts={() => workspaceRef.current?.openLayoutPresets()}
-            onOpenChat={(paneId) => { void workspaceRef.current?.activateChat(paneId) }} />}>
+            onOpenChat={(paneId) => { void workspaceRef.current?.activateChat(paneId) }}
+            startServices={startServices} />}>
           {({ browserHeld, spaceId }) => <DesktopWorkspace
             key={spaceId ?? chat.workspace?.cwd ?? chat.state.cwd}
             spaceId={spaceId}
