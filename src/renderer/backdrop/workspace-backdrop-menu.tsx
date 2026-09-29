@@ -1,5 +1,5 @@
 import { Check } from 'lucide-react'
-import { ContextMenu } from 'radix-ui'
+import { DropdownMenu } from 'radix-ui'
 import type { ReactNode } from 'react'
 import {
   BACKDROP_PRESET_IDS,
@@ -12,14 +12,14 @@ export type WorkspaceBackdropMenuProps = {
   onBackdropChange: (mode: WorkspaceBackdrop) => void
 }
 
-/** Shared menu body for Settings and the workspace background context menu. */
+/** Menu body for the workspace background picker (right-click on empty canvas). */
 export function WorkspaceBackdropMenuItems({ backdrop, onBackdropChange }: WorkspaceBackdropMenuProps): ReactNode {
   return <>
     <BackdropMenuRow label="Off" checked={backdrop === 'off'} data-ui="workspace.backdrop" data-ui-key="off"
       onSelect={() => onBackdropChange('off')} />
     <BackdropMenuRow label="Desktop wallpaper" checked={backdrop === 'desktop'} data-ui="workspace.backdrop" data-ui-key="desktop"
       onSelect={() => onBackdropChange('desktop')} />
-    <ContextMenu.Separator className="titlebar-menu-separator" />
+    <DropdownMenu.Separator className="titlebar-menu-separator" />
     {BACKDROP_PRESET_IDS.map((id) => {
       const value = `preset:${id}` as const
       return <BackdropMenuRow key={id} label={BACKDROP_PRESET_LABELS[id]} checked={backdrop === value}
@@ -36,12 +36,12 @@ function BackdropMenuRow({ label, checked, onSelect, ...rest }: {
   'data-ui': string
   'data-ui-key': string
 }): ReactNode {
-  return <ContextMenu.Item className="titlebar-menu-item chat-layout-menu-item" onSelect={onSelect} {...rest}>
+  return <DropdownMenu.Item className="titlebar-menu-item chat-layout-menu-item" onSelect={onSelect} {...rest}>
     <div className="chat-layout-menu-item-main">
       <div className="chat-layout-menu-item-left">
         <span>{label}</span>
       </div>
     </div>
     {checked && <span className="titlebar-menu-shortcut"><Check size={14} aria-hidden="true" /></span>}
-  </ContextMenu.Item>
+  </DropdownMenu.Item>
 }

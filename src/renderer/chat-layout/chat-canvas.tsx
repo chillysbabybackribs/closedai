@@ -1,5 +1,5 @@
 import { expandedPaneIds } from './layout-docking.js'
-import { ContextMenu } from 'radix-ui'
+import { DropdownMenu } from 'radix-ui'
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent as ReactDragEvent, type MouseEvent, type ReactNode } from 'react'
 import type { WorkspaceBackdrop } from '../../shared/backdrop-presets.js'
 import { WorkspaceBackdropMenuItems } from '../backdrop/workspace-backdrop-menu.js'
@@ -391,20 +391,22 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
         divider={divider} splitResize={splitResize} onResize={onResize} />)}
     </div>
   </div>
-  <ContextMenu.Root open={backdropMenuOpen} onOpenChange={setBackdropMenuOpen}>
-    <ContextMenu.Trigger asChild>
-      <span className="workspace-backdrop-menu-anchor" style={{ left: backdropMenuPoint.x, top: backdropMenuPoint.y }} aria-hidden="true" />
-    </ContextMenu.Trigger>
-    <ContextMenu.Portal>
-      <ContextMenu.Content className="titlebar-menu-content chat-layout-context-menu" loop
+  <DropdownMenu.Root open={backdropMenuOpen} onOpenChange={setBackdropMenuOpen} modal>
+    <DropdownMenu.Trigger asChild>
+      <span className="workspace-backdrop-menu-anchor"
+        style={{ left: backdropMenuPoint.x, top: backdropMenuPoint.y }} aria-hidden="true" />
+    </DropdownMenu.Trigger>
+    <DropdownMenu.Portal>
+      <DropdownMenu.Content className="titlebar-menu-content chat-layout-context-menu"
+        side="bottom" align="start" sideOffset={0} collisionPadding={8}
         onCloseAutoFocus={(event) => event.preventDefault()}>
         <WorkspaceBackdropMenuItems backdrop={backdrop} onBackdropChange={(mode) => {
           onBackdropChange(mode)
           setBackdropMenuOpen(false)
         }} />
-      </ContextMenu.Content>
-    </ContextMenu.Portal>
-  </ContextMenu.Root>
+      </DropdownMenu.Content>
+    </DropdownMenu.Portal>
+  </DropdownMenu.Root>
   </>
 }
 
