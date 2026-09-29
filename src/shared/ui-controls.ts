@@ -55,7 +55,7 @@ export const UI_CONTROLS = {
   'dock.bar': 'The dock along the bottom of the main window; hidden until the pointer reaches the bottom edge unless Keep visible is on',
   'dock.launcher': 'Open the application launcher attached to the footer',
   'dock.launcher-section': 'Launcher submenu category; hover or click to open; item is home, file, view, agent, or developer',
-  'dock.overview': 'Dock: zoom out to the workspace overview, or back into the current workspace (same as Ctrl+Shift+O)',
+  'dock.overview': 'Dock tray: zoom out to the workspace overview, or back into the current workspace (same as Ctrl+Shift+O)',
   'dock.back': 'Dock: step back through where you have zoomed this session (same as Alt+Left)',
   'dock.forward': 'Dock: step forward through where you have zoomed this session (same as Alt+Right)',
   'dock.app': 'Dock tray icon; item is chats (chat history), browser (show or hide), agents (Agents view), saved-sites or downloads (open a list above the icon)',

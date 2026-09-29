@@ -779,10 +779,11 @@ its destination. The launcher keeps the dock visible. The main-window header kee
 search; detached windows and startup retain the header menus because no dock is available there.
 Menu definitions and disabled-state rules are shared in `application-menu-model.ts`.
 
-**Overview** (`dock.overview`, pressed while zoomed out) toggles the workspace overview. Back
-and forward (`dock.back`, `dock.forward`) step through the same zoom history as Alt+←/→ and are
-disabled at either end and while a zoom is moving. Next to them is where you are: the workspace
-and the selected chat, or "All workspaces". Right: Dock settings (`dock.settings`). Centre: the
+**Workspace overview** (`dock.overview`, first tile in the app tray, pressed while zoomed out)
+toggles the workspace overview. Back and forward (`dock.back`, `dock.forward`) step through the same
+zoom history as Alt+←/→ and are disabled at either end and while a zoom is moving; their tooltips
+name where you are (workspace and selected chat, or "All workspaces"). Right: Layout and dock
+settings (`dock.settings`). Centre: the
 **app tray**, Magic UI's `Dock` (`src/components/ui/dock.tsx`, `@magicui/dock`), with one
 rounded-square tile per ClosedAI surface (`dock.app`, item is the surface), 48 px and growing to 64 px
 under the pointer. Each tile holds the surface's icon from the shared list in

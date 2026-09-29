@@ -1,17 +1,16 @@
 import { useEffect, useMemo, useRef, useState, type JSX } from 'react'
-import { ChevronLeft, ChevronRight, LayoutGrid, SlidersHorizontal } from 'lucide-react'
+import { ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-react'
 import { Button } from '../../components/ui/button.js'
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover.js'
 import { Switch } from '../../components/ui/switch.js'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../components/ui/tooltip.js'
-import { cn } from '../../lib/utils.js'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import { useAgentRuns } from '../agent-runs/agent-runs-store.js'
 import { dockSummary, dockTiles } from '../agent-runs/agent-run-overview-model.js'
 import { useBrowserDownloadsController } from '../browser-downloads-controller.js'
 import { useSavedSitesList } from '../browser-saved-sites-controller.js'
 import type { SpacesDockNav } from '../spaces/spaces-stage.js'
-import { DOCK_HEIGHT, DOCK_REACH, TRAY_LIFT, dockLocation, trayApps, type DockPrefs, type TrayAppId } from './dock-model.js'
+import { DOCK_HEIGHT, DOCK_REACH, TRAY_LIFT, dockLocation, dockLocationLabel, trayApps, type DockPrefs, type TrayAppId } from './dock-model.js'
 import { DockSurface } from './dock-surface.js'
 import { DockTray } from './dock-tray.js'
 import { DockLauncher } from './dock-launcher.js'
@@ -44,9 +43,9 @@ export type AppDockProps = {
 }
 
 /**
- * The dock along the bottom of the main window. Left: the overview, back/forward through where you
- * have zoomed, and where you are. Centre: the app tray. Right: dock settings. It hides until the
- * pointer reaches the bottom edge unless Keep visible is on.
+ * The dock along the bottom of the main window. Left: launcher and back/forward through where you
+ * have zoomed. Centre: workspace overview and the app tray. Right: layout and dock settings. It
+ * hides until the pointer reaches the bottom edge unless Keep visible is on.
  */
 export function AppDock({ menu, nav, chats, chatTitle, browserVisible, prefs, onPrefsChange, onLaunch, onOpenSite, onAllSavedSites, minimized, onRestoreWindow, canTile, onTileWindows, onApplyPreset, onOpenLayouts }: AppDockProps): JSX.Element {
   const [openList, setOpenList] = useState<TrayAppId | 'settings' | 'layout' | 'launcher' | null>(null)
@@ -81,6 +80,7 @@ export function AppDock({ menu, nav, chats, chatTitle, browserVisible, prefs, on
     })
   }, [runs, chats, browserVisible, savedSites.length, downloads])
   const location = dockLocation({ overview: nav.overview, space: nav.spaceName, chat: chatTitle })
+  const where = dockLocationLabel(location)
 
   return <TooltipProvider>
     <div ref={root} data-slot="app-dock" data-ui="dock.bar" data-state={shown || !down ? 'open' : 'closed'}
@@ -92,27 +92,17 @@ export function AppDock({ menu, nav, chats, chatTitle, browserVisible, prefs, on
         className="pointer-events-auto absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 px-3 transition-transform duration-200 ease-out motion-reduce:transition-none">
         {/* Behind the strip's controls: the strip's transform keeps -z-10 inside the dock. */}
         <DockSurface tray={tray} />
-        <div className="flex max-w-[calc(50%-190px)] min-w-0 items-center gap-0.5">
+        <div className="flex items-center gap-0.5">
           <DockLauncher menu={menu} open={openList === 'launcher'} onOpenChange={(open) => setOpenList(open ? 'launcher' : null)} />
-          <Button variant="ghost" size="sm" data-ui="dock.overview" aria-pressed={nav.overview} disabled={nav.moving}
-            className={cn(nav.overview && 'bg-accent text-accent-foreground')} onClick={nav.toggleOverview}>
-            <LayoutGrid aria-hidden="true" />Overview
-          </Button>
-          <DockIconButton control="dock.back" label="Back (Alt+Left)" disabled={!nav.canBack || nav.moving} onClick={() => nav.step(-1)}>
+          <DockIconButton control="dock.back" label="Back (Alt+Left)" detail={where} disabled={!nav.canBack || nav.moving} onClick={() => nav.step(-1)}>
             <ChevronLeft aria-hidden="true" />
           </DockIconButton>
-          <DockIconButton control="dock.forward" label="Forward (Alt+Right)" disabled={!nav.canForward || nav.moving} onClick={() => nav.step(1)}>
+          <DockIconButton control="dock.forward" label="Forward (Alt+Right)" detail={where} disabled={!nav.canForward || nav.moving} onClick={() => nav.step(1)}>
             <ChevronRight aria-hidden="true" />
           </DockIconButton>
-          <span className="ml-1.5 flex min-w-0 items-center gap-1 text-xs text-muted-foreground" aria-label={`You are in ${location.join(', ')}`}>
-            {location.map((part, index) => <span key={index} className="flex min-w-0 items-center gap-1">
-              {index > 0 && <ChevronRight className="size-3 shrink-0" aria-hidden="true" />}
-              <span className={cn('truncate', index === location.length - 1 && 'text-foreground')}>{part}</span>
-            </span>)}
-          </span>
         </div>
         <div ref={setTray} className="absolute left-1/2 -translate-x-1/2" style={{ bottom: TRAY_LIFT }}>
-          <DockTray apps={apps} magnify={prefs.magnify}
+          <DockTray overview={{ active: nav.overview, disabled: nav.moving, onToggle: nav.toggleOverview }} apps={apps} magnify={prefs.magnify}
             openStack={openList === 'saved-sites' || openList === 'downloads' ? openList : null}
             onOpenStack={setOpenList}
             onLaunch={(id) => { if (id !== 'saved-sites' && id !== 'downloads') onLaunch(id) }}
@@ -151,14 +141,18 @@ export function AppDock({ menu, nav, chats, chatTitle, browserVisible, prefs, on
   </TooltipProvider>
 }
 
-function DockIconButton({ control, label, disabled, onClick, children }: {
-  control: string; label: string; disabled: boolean; onClick: () => void; children: JSX.Element
+function DockIconButton({ control, label, detail, disabled, onClick, children }: {
+  control: string; label: string; detail?: string; disabled: boolean; onClick: () => void; children: JSX.Element
 }): JSX.Element {
+  const aria = detail ? `${label}. ${detail}` : label
   return <Tooltip>
     <TooltipTrigger asChild>
-      <Button variant="ghost" size="icon-sm" data-ui={control} aria-label={label} disabled={disabled} onClick={onClick}>{children}</Button>
+      <Button variant="ghost" size="icon-sm" data-ui={control} aria-label={aria} disabled={disabled} onClick={onClick}>{children}</Button>
     </TooltipTrigger>
-    <TooltipContent side="top">{label}</TooltipContent>
+    <TooltipContent side="top" className={detail ? 'flex flex-col gap-0.5' : undefined}>
+      <span>{label}</span>
+      {detail && <span className="text-muted-foreground">{detail}</span>}
+    </TooltipContent>
   </Tooltip>
 }
 

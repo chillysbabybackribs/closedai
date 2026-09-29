@@ -119,6 +119,11 @@ export function dockLocation(input: { overview: boolean; space: string; chat: st
   return input.chat ? [input.space, input.chat] : [input.space]
 }
 
+/** Breadcrumb text for tooltips and screen readers. */
+export function dockLocationLabel(parts: readonly string[]): string {
+  return parts.join(' › ')
+}
+
 export type DockOutline = TabOutlineBox
 
 export const DOCK_TAB: TabShape = { strip: DOCK_HEIGHT, radius: TAB_RADIUS, fillet: TAB_FILLET, opens: 'up' }

@@ -1,4 +1,6 @@
 import type { JSX, ReactNode } from 'react'
+import { LayoutGrid } from 'lucide-react'
+import { cn } from '../../lib/utils.js'
 import { Dock, DockIcon } from '../../components/ui/dock.js'
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar.js'
 import { Button } from '../../components/ui/button.js'
@@ -15,7 +17,14 @@ import { TRAY_ICON, TRAY_MAGNIFIED, type TrayApp, type TrayAppId } from './dock-
 
 const STACK_ROWS = 8
 
+export type DockTrayOverview = {
+  active: boolean
+  disabled: boolean
+  onToggle: () => void
+}
+
 export type DockTrayProps = {
+  overview: DockTrayOverview
   apps: readonly TrayApp[]
   magnify: boolean
   /** The stack whose list is open above its icon. */
@@ -38,12 +47,15 @@ export type DockTrayProps = {
  * never changes the tray's size or spacing. The dot, tooltip and lists stay neutral.
  */
 export function DockTray(props: DockTrayProps): JSX.Element {
-  const { apps, magnify, openStack, onOpenStack, onLaunch, minimized, onRestoreWindow } = props
+  const { overview, apps, magnify, openStack, onOpenStack, onLaunch, minimized, onRestoreWindow } = props
   return <Dock data-slot="app-dock-tray" direction="bottom" iconSize={TRAY_ICON} iconMagnification={TRAY_MAGNIFIED}
     disableMagnification={!magnify}
     // The tab behind it is DockSurface, so the tray itself draws nothing. It fills the tab above the
     // strip: height TRAY_ICON + TAB_PADDING, and p-2.5 is TAB_PADDING at the sides and top.
     className="mx-0 mt-0 h-[58px] gap-2 rounded-none border-0 bg-transparent p-2.5 pb-0 backdrop-blur-none">
+    <DockIcon padding={0} className="relative rounded-[22%]">
+      <OverviewTrayButton {...overview} />
+    </DockIcon>
     {apps.map((app) => <DockIcon key={app.id} padding={0} className="relative rounded-[22%]">
       {app.stack
         ? <Popover open={openStack === app.id} onOpenChange={(open) => onOpenStack(open ? app.id : null)}>
@@ -59,6 +71,27 @@ export function DockTray(props: DockTrayProps): JSX.Element {
       <MinimizedButton entry={entry} onRestore={onRestoreWindow} />
     </DockIcon>)}
   </Dock>
+}
+
+function OverviewTrayButton({ active, disabled, onToggle }: DockTrayOverview): JSX.Element {
+  const note = active ? 'Showing all workspaces · click to zoom in' : 'Zoom out to all workspaces'
+  return <Tooltip>
+    <TooltipTrigger asChild>
+      <button type="button" className={cn('relative size-full rounded-[22%] outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        active && 'ring-2 ring-ring ring-offset-2 ring-offset-background')}
+        data-ui="dock.overview" aria-pressed={active} aria-label={`Workspace overview: ${note}`} disabled={disabled} onClick={onToggle}>
+        <Avatar className="size-full rounded-[22%] border border-border">
+          <AvatarFallback className={cn('rounded-[22%] bg-secondary text-foreground', active && 'bg-accent text-accent-foreground')}>
+            <LayoutGrid className="size-[50%]" aria-hidden="true" />
+          </AvatarFallback>
+        </Avatar>
+      </button>
+    </TooltipTrigger>
+    <TooltipContent side="top" sideOffset={10} className="flex flex-col gap-0.5">
+      <span className="font-medium">Workspace overview</span>
+      <span className="text-muted-foreground">{note}</span>
+    </TooltipContent>
+  </Tooltip>
 }
 
 /** A tray icon with its tooltip; a stack's icon is also the trigger of its list. */

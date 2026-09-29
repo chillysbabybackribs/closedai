@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  DEFAULT_DOCK_PREFS, DOCK_REACH, DOCK_RESERVE, DOCK_HEIGHT, TAB_RISE, TRAY_ICON, TRAY_LIFT, TRAY_MAGNIFIED, HOLD_BAND, REVEAL_EDGE, dockLocation, dockOutlinePath, pointerReveal, readDockPrefs,
+  DEFAULT_DOCK_PREFS, DOCK_REACH, DOCK_RESERVE, DOCK_HEIGHT, TAB_RISE, TRAY_ICON, TRAY_LIFT, TRAY_MAGNIFIED, HOLD_BAND, REVEAL_EDGE, dockLocation, dockLocationLabel, dockOutlinePath, pointerReveal, readDockPrefs,
   saveDockPrefs, trayApps, type TrayInput
 } from './dock-model.js'
 
@@ -125,5 +125,10 @@ describe('dockLocation', () => {
     assert.deepEqual(dockLocation({ overview: false, space: 'closedai', chat: 'Dock work' }), ['closedai', 'Dock work'])
     assert.deepEqual(dockLocation({ overview: false, space: 'closedai', chat: null }), ['closedai'])
     assert.deepEqual(dockLocation({ overview: true, space: 'closedai', chat: 'Dock work' }), ['All workspaces'])
+  })
+
+  it('joins breadcrumb parts for tooltips', () => {
+    assert.equal(dockLocationLabel(['closedai', 'Dock work']), 'closedai › Dock work')
+    assert.equal(dockLocationLabel(['All workspaces']), 'All workspaces')
   })
 })
