@@ -1,10 +1,13 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
+import { JsonRpcPeerError } from '../stdio-json-rpc.js'
+import { isAcpSessionNotFound } from './cursor-acp.js'
 import { CursorSession, type CursorSessionDeps } from './cursor-session.js'
 
-function session(overrides: Partial<CursorSessionDeps> = {}): { session: CursorSession; adopted: string[] } {
+function session(overrides: Partial<CursorSessionDeps> = {}): { session: CursorSession; adopted: string[]; saved: string[] } {
   const adopted: string[] = []
+  const saved: string[] = []
   const deps: CursorSessionDeps = {
     cwd: '/workspace',
     mcpServers: async () => [],
@@ -12,12 +15,13 @@ function session(overrides: Partial<CursorSessionDeps> = {}): { session: CursorS
     apply: () => {},
     onTurn: () => {},
     onSessionId: (sessionId) => adopted.push(sessionId),
+    onSessionSaved: (sessionId) => saved.push(sessionId),
     onSetup: () => {},
     onTitle: () => {},
     onTurnEnd: () => {},
     ...overrides
   }
-  return { session: new CursorSession(deps), adopted }
+  return { session: new CursorSession(deps), adopted, saved }
 }
 
 test('a pane opens on the session it saved rather than minting one beside it', () => {
@@ -197,4 +201,80 @@ test('a new chat warming while its first message is sent opens one session and p
   assert.deepEqual(prompted, ['new-1'])
   assert.equal(thread.sessionId, 'new-1')
   assert.deepEqual(adopted, ['new-1'])
+})
+
+function setupFor(sessionId: string) {
+  return { sessionId, models: [], modes: [], currentModelId: null, currentModeId: null, modelConfigId: null, modeConfigId: null }
+}
+
+function notFound(id: string): Error {
+  return new JsonRpcPeerError('Invalid params', -32602, { message: `Session "${id}" not found` })
+}
+
+test('a new session is saved only once it has taken a turn, since the agent drops unprompted ones', async () => {
+  const { session: thread, adopted, saved } = session()
+  let finish!: (reason: string) => void
+  let notify!: (params: unknown) => void
+  Object.assign(thread, { client: {
+    connected: true, capabilities: { loadSession: true },
+    async newSession() { return setupFor('fresh') },
+    prompt() { return new Promise((resolve) => { finish = resolve }) }
+  } })
+  await thread.warm()
+  assert.deepEqual(adopted, ['fresh'])
+  assert.deepEqual(saved, [])
+  thread.beginTurn('turn-1')
+  await thread.send([{ type: 'text', text: 'hi' }], 'turn-1')
+  notify = (params) => (thread as unknown as { onUpdate(params: unknown): void }).onUpdate(params)
+  notify({ sessionId: 'fresh', update: { sessionUpdate: 'available_commands_update' } })
+  assert.deepEqual(saved, [])
+  notify({ sessionId: 'fresh', update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'ok' } } })
+  assert.deepEqual(saved, ['fresh'])
+  finish('end_turn')
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.deepEqual(saved, ['fresh'])
+})
+
+test('a saved session the agent no longer holds is replaced and reported, with the reason', async () => {
+  const lost: Array<{ id: string; reason: string }> = []
+  const { session: thread, saved } = session({ onSessionLost: (id, reason) => { lost.push({ id, reason }) } })
+  thread.adoptSaved('gone')
+  Object.assign(thread, { client: {
+    connected: true, capabilities: { loadSession: true },
+    async loadSession(id: string) { throw notFound(id) },
+    async newSession() { return setupFor('replacement') }
+  } })
+  const warn = console.warn
+  const warnings: unknown[][] = []
+  console.warn = (...args: unknown[]) => { warnings.push(args) }
+  try {
+    assert.equal((await thread.warm()).sessionId, 'replacement')
+  } finally {
+    console.warn = warn
+  }
+  assert.equal(thread.sessionId, 'replacement')
+  assert.deepEqual(lost.map((entry) => entry.id), ['gone'])
+  assert.equal(warnings.length, 1)
+  assert.deepEqual(saved, [])
+  assert.ok(isAcpSessionNotFound(notFound('gone')))
+})
+
+test('a reserved id that was never saved is replaced without reporting a lost conversation', async () => {
+  const lost: string[] = []
+  const { session: thread, saved } = session({ onSessionLost: (id) => { lost.push(id) } })
+  const created: string[] = []
+  Object.assign(thread, { client: {
+    connected: true, capabilities: { loadSession: true },
+    async loadSession(id: string) { throw notFound(id) },
+    async newSession() {
+      created.push(`new-${created.length + 1}`)
+      return setupFor(created.at(-1)!)
+    }
+  } })
+  await thread.warm()
+  // A later process no longer holds the reserved id; that is expected, not a lost conversation.
+  Object.assign(thread, { loadedSessionId: null })
+  assert.equal((await thread.warm()).sessionId, 'new-2')
+  assert.deepEqual(lost, [])
+  assert.deepEqual(saved, [])
 })
