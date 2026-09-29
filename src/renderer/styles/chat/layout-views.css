@@ -57,11 +57,13 @@
 .workspace-view-scope-check { display: inline-flex; width: 15px; justify-content: center; flex-shrink: 0; }
 .workspace-view-scope-option { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 260px; }
 
-/* Panels that were dialog contents fill the view instead of sizing to the viewport. */
+/* Panels that were dialog contents fill the view (or Start's screen) instead of sizing to the viewport. */
 .workspace-view .trace-panel,
 .workspace-view .tools-panel,
 .workspace-view .agent-library-view,
-.workspace-view .saved-sites-panel {
+.workspace-view .saved-sites-panel,
+.dock-start-screen .tools-panel,
+.dock-start-screen .agent-library-view {
   width: auto;
   height: auto;
   max-width: none;
