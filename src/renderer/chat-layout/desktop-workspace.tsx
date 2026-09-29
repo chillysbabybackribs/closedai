@@ -6,7 +6,7 @@ import { WorkspaceBrowser } from './workspace-browser.js'
 import type { AgentRunStartOptions } from '../../shared/agent-runs.js'
 import { type useChatController } from '../chat-controller.js'
 import { injectComposerDraft } from '../composer-drafts.js'
-import type { AppearanceSettings } from '../settings/appearance-settings.js'
+import type { AppearanceSettings, WorkspaceBackdrop } from '../settings/appearance-settings.js'
 import { ChatCanvas } from './chat-canvas.js'
 import { ChatLayoutActions } from './layout-context-menu.js'
 import { useChatLayout } from './layout-controller.js'
@@ -44,11 +44,12 @@ export type ChatLayoutHandle = {
   tileWindows: () => void
 }
 
-export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, toolsPreset = null, browserHeld = false, spaceId, onRenameChat, onSavedSitesError, onBrowserVisibleChange, onMinimizedChange, onFloatingChange, archiveChat, ref }: {
+export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, onBackdropChange, toolsPreset = null, browserHeld = false, spaceId, onRenameChat, onSavedSitesError, onBrowserVisibleChange, onMinimizedChange, onFloatingChange, archiveChat, ref }: {
   chat: ReturnType<typeof useChatController>
   savedSites: BrowserSavedSitesController
   reviewQueue: ChatReviewQueue
   appearance: AppearanceSettings
+  onBackdropChange: (mode: WorkspaceBackdrop) => void
   toolsPreset?: 'full' | 'read-only' | 'custom' | null
   /** Zoomed out to the spaces overview: the browser shows its still and the page keeps its bounds. */
   browserHeld?: boolean
@@ -251,6 +252,7 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, to
         onRenameChat={onRename} onTogglePin={onTogglePin} onContinueChat={(id) => { void continueChatRef.current(id) }}
         onPauseTab={onPauseTab} onResumeTab={onResumeTab} onOpenPresets={onOpenPresets} onSizeChange={onSizeChange}
         onHide={onHide} onResize={layout.resize} windows={layout.windows} onBrowserCovered={setBrowserCovered}
+        backdrop={appearance.backdrop} onBackdropChange={onBackdropChange}
         renderPane={renderPane}
       renderBrowser={renderBrowser}
     />

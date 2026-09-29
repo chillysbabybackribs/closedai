@@ -285,6 +285,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
             onBrowserVisibleChange={setBrowserVisible}
             onMinimizedChange={setMinimizedWindows}
             onFloatingChange={setWindowsFloating}
+            onBackdropChange={(mode) => updateAppearance({ backdrop: mode })}
             archiveChat={history.deleteRow}
           />}
         </SpacesStage>}

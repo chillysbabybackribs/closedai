@@ -1,4 +1,12 @@
 import { CHAT_ZOOM_DEFAULT, clampChatZoom } from '../chat-zoom.js'
+import {
+  normalizeWorkspaceBackdrop,
+  WORKSPACE_BACKDROP_DEFAULT,
+  type WorkspaceBackdrop
+} from '../../shared/backdrop-presets.js'
+
+export type { WorkspaceBackdrop }
+export { WORKSPACE_BACKDROP_DEFAULT }
 
 export const CHAT_FONT_SIZE_DEFAULT = 14
 export const CHAT_FONT_SIZE_MIN = 13
@@ -9,10 +17,6 @@ export const COMPOSER_FONT_SIZE_DEFAULT = 15
 export const COMPOSER_FONT_SIZE_MIN = 13
 export const COMPOSER_FONT_SIZE_MAX = 22
 export const APPEARANCE_STORAGE_KEY = 'closedai.appearance.v1'
-
-/* What paints behind the tiles. Off keeps the flat chassis; desktop mirrors the OS wallpaper. Opt-in. */
-export type WorkspaceBackdrop = 'off' | 'desktop'
-export const WORKSPACE_BACKDROP_DEFAULT: WorkspaceBackdrop = 'off'
 
 export type AppearanceSettings = {
   chatFontSize: number
@@ -41,7 +45,7 @@ export function normalizeAppearanceSettings(value: unknown): AppearanceSettings 
       COMPOSER_FONT_SIZE_DEFAULT
     ),
     chatZoom: clampChatZoom(typeof record.chatZoom === 'number' ? record.chatZoom : CHAT_ZOOM_DEFAULT),
-    backdrop: record.backdrop === 'desktop' ? 'desktop' : WORKSPACE_BACKDROP_DEFAULT
+    backdrop: normalizeWorkspaceBackdrop(record.backdrop)
   }
 }
 

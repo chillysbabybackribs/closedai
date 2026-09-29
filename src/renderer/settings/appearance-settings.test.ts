@@ -59,5 +59,7 @@ test('appearance settings persist their normalized value', () => {
 test('the workspace backdrop is opt-in and ignores unknown values', () => {
   assert.equal(DEFAULT_APPEARANCE_SETTINGS.backdrop, 'off')
   assert.equal(normalizeAppearanceSettings({ backdrop: 'desktop' }).backdrop, 'desktop')
+  assert.equal(normalizeAppearanceSettings({ backdrop: 'preset:aurora' }).backdrop, 'preset:aurora')
+  assert.equal(normalizeAppearanceSettings({ backdrop: 'preset:nope' }).backdrop, 'off')
   assert.equal(normalizeAppearanceSettings({ backdrop: 'sunset' }).backdrop, 'off')
 })

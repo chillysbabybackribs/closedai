@@ -6,4 +6,9 @@ declare global {
   }
 }
 
+declare module '*.jpg' {
+  const url: string
+  export default url
+}
+
 export {}

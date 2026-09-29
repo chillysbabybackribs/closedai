@@ -114,3 +114,8 @@
   width: 100%;
   font-size: 12px;
 }
+
+.appearance-backdrop-options-wrap {
+  flex-wrap: wrap;
+  height: auto;
+}

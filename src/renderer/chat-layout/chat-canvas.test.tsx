@@ -6,6 +6,7 @@ import { ChatCanvas } from './chat-canvas.tsx'
 import type { ChatLayout } from './layout-tree.ts'
 
 const windows = { change: () => {}, group: () => {}, raise: () => {}, minimize: () => {}, keepOnTop: () => {} }
+const backdropProps = { backdrop: 'off' as const, onBackdropChange: () => {} }
 
 const multiPaneTree: ChatLayout = {
   kind: 'split',
@@ -38,7 +39,8 @@ test('ChatCanvas renders multi-pane split with context menu trigger and dividers
     onDock: () => {},
     onHide: () => {},
     onResize: () => {},
-    windows
+    windows,
+    ...backdropProps
   }))
 
   // Both panes rendered as tiles
@@ -75,7 +77,8 @@ test('ChatCanvas renders single pane with disabled pane-hide and no dividers', (
     onDock: () => {},
     onHide: () => {},
     onResize: () => {},
-    windows
+    windows,
+    ...backdropProps
   }))
 
   assert.match(html, /data-pane-id="pane-single"/)
@@ -109,7 +112,8 @@ test('ChatCanvas renders tabbed pane with single tile, persistent header, and hi
     onDock: () => {},
     onHide: () => {},
     onResize: () => {},
-    windows
+    windows,
+    ...backdropProps
   }))
 
   // Only one section tile rendered for the tabbed group
@@ -161,7 +165,8 @@ test('ChatCanvas names running close/hide actions and overlays a pane status not
     onDock: () => {},
     onHide: () => {},
     onResize: () => {},
-    windows
+    windows,
+    ...backdropProps
   }))
 
   assert.match(html, /title="Close tab · Task keeps running"/)
@@ -191,7 +196,8 @@ test('ChatCanvas renders a view tab with its kind glyph, no chat status, and a n
     onDock: () => {},
     onHide: () => {},
     onResize: () => {},
-    windows
+    windows,
+    ...backdropProps
   }))
 
   // The tile is named by its active view, so it carries no chat pane id for automation.
@@ -215,7 +221,7 @@ test('ChatCanvas lifts a floating window above the tiles, with resize grips, and
     onDragActive: () => {}, title: (id: string) => `Chat ${id}`,
     renderPane: (id: string) => createElement('div', { id: `content-${id}` }, `Content ${id}`),
     onSelect: () => {}, onSelectTab: () => {}, onCloseTab: () => {}, onNewChat: () => {},
-    onDock: () => {}, onHide: () => {}, onResize: () => {}, windows
+    onDock: () => {}, onHide: () => {}, onResize: () => {}, windows, ...backdropProps
   }
   const html = renderToStaticMarkup(createElement(ChatCanvas, { ...props, tree }))
   assert.match(html, /style="left:40px;top:30px;width:320px;height:300px;z-index:12" data-pane-id="pane-b" data-window="floating"/)

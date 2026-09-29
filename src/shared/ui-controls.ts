@@ -232,7 +232,8 @@ export const UI_CONTROLS = {
   'credentials.delete': 'Delete a stored credential; item is the credential id',
   'credentials.agent-access': 'Switch whether agents may read a stored credential through the credential_vault tools; item is the credential id',
   'settings.reset': 'Reset appearance settings',
-  'settings.backdrop': 'Workspace background behind the chat and browser tiles; item is off or desktop (the OS desktop wallpaper under see-through tiles)',
+  'settings.backdrop': 'Workspace background behind the chat and browser tiles; item is off, desktop, or a bundled preset id (aurora, dusk, ocean, ember)',
+  'workspace.backdrop': 'Change the workspace background from empty canvas space; item is off, desktop, or a preset id',
   'settings.decrease': 'Decrease an appearance value; item is chat-font-size, composer-font-size, or chat-zoom',
   'settings.range': 'Appearance slider; item is chat-font-size, composer-font-size, or chat-zoom',
   'settings.increase': 'Increase an appearance value; item is chat-font-size, composer-font-size, or chat-zoom'

@@ -4,6 +4,11 @@ import { Button } from '../../components/ui/button.js'
 import { ToggleGroup, ToggleGroupItem } from '../../components/ui/toggle-group.js'
 import type { BackdropStatus } from '../backdrop/use-workspace-backdrop.js'
 import {
+  BACKDROP_PRESET_IDS,
+  BACKDROP_PRESET_LABELS,
+  BACKDROP_PRESET_PREFIX
+} from '../../shared/backdrop-presets.js'
+import {
   CHAT_FONT_SIZE_DEFAULT,
   CHAT_FONT_SIZE_MAX,
   CHAT_FONT_SIZE_MIN,
@@ -29,7 +34,11 @@ export type AppearancePanelProps = AppearanceSettings & {
 
 const BACKDROP_OPTIONS: Array<{ value: WorkspaceBackdrop; label: string }> = [
   { value: 'off', label: 'Off' },
-  { value: 'desktop', label: 'Desktop wallpaper' }
+  { value: 'desktop', label: 'Desktop wallpaper' },
+  ...BACKDROP_PRESET_IDS.map((id) => ({
+    value: `${BACKDROP_PRESET_PREFIX}${id}` as WorkspaceBackdrop,
+    label: BACKDROP_PRESET_LABELS[id]
+  }))
 ]
 
 /** The Appearance tab of Settings: the workspace background, three sliders and a reset. Persistence belongs to the caller. */
@@ -52,7 +61,7 @@ export function AppearancePanel({
           <div className="appearance-control">
             <div className="appearance-control-copy">
               <label id="workspace-backdrop">Background</label>
-              <span>{backdropHint(backdropStatus)}</span>
+              <span>{backdropHint(backdropStatus, backdrop)}</span>
             </div>
             <ToggleGroup
               type="single"
@@ -61,7 +70,7 @@ export function AppearancePanel({
               value={backdrop}
               onValueChange={(next) => { if (next) onChange({ backdrop: next as WorkspaceBackdrop }) }}
               aria-labelledby="workspace-backdrop"
-              className="appearance-backdrop-options"
+              className="appearance-backdrop-options appearance-backdrop-options-wrap"
             >
               {BACKDROP_OPTIONS.map((option) => (
                 <ToggleGroupItem
@@ -129,12 +138,12 @@ export function AppearancePanel({
   )
 }
 
-function backdropHint(status: BackdropStatus): string {
+function backdropHint(status: BackdropStatus, mode: WorkspaceBackdrop): string {
   switch (status.state) {
     case 'off': return 'Flat, behind every tile'
-    case 'loading': return 'Reading your desktop wallpaper'
+    case 'loading': return mode === 'desktop' ? 'Reading your desktop wallpaper' : 'Loading background'
     case 'ready': return status.name
-    case 'unavailable': return 'No desktop wallpaper found'
+    case 'unavailable': return mode === 'desktop' ? 'No desktop wallpaper found' : 'Background unavailable'
   }
 }
 

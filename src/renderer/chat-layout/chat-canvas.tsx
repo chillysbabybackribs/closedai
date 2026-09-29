@@ -1,5 +1,8 @@
 import { expandedPaneIds } from './layout-docking.js'
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent as ReactDragEvent, type ReactNode } from 'react'
+import { ContextMenu } from 'radix-ui'
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent as ReactDragEvent, type MouseEvent, type ReactNode } from 'react'
+import type { WorkspaceBackdrop } from '../../shared/backdrop-presets.js'
+import { WorkspaceBackdropMenuItems } from '../backdrop/workspace-backdrop-menu.js'
 import type { ChatReviewQueue } from '../chat-history/review-queue.js'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import { BROWSER_PANE_ID, CHAT_DRAG_TYPE, isViewTabId, layoutGeometry, removePane, type ChatLayout, type DockEdge, type Rect, type SplitResizePhase } from './layout-tree.js'
@@ -77,10 +80,20 @@ type ChatCanvasProps = {
   windows: WindowActions
   /** A floating window above the browser overlaps it, so the page shows its still. */
   onBrowserCovered?: (covered: boolean) => void
+  backdrop: WorkspaceBackdrop
+  onBackdropChange: (mode: WorkspaceBackdrop) => void
 }
 
-function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, browserVisible, browserRevealVersion, renderBrowser, onDragActive, title, activity, reviewQueue, chatRow, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onTogglePin, onContinueChat: _onContinueChat, onPauseTab, onResumeTab, onOpenPresets, onSizeChange, onDock, onHide, onResize, windows, onBrowserCovered }: ChatCanvasProps) {
+function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, browserVisible, browserRevealVersion, renderBrowser, onDragActive, title, activity, reviewQueue, chatRow, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onTogglePin, onContinueChat: _onContinueChat, onPauseTab, onResumeTab, onOpenPresets, onSizeChange, onDock, onHide, onResize, windows, onBrowserCovered, backdrop, onBackdropChange }: ChatCanvasProps) {
   const viewport = useRef<HTMLDivElement>(null)
+  const [backdropMenuOpen, setBackdropMenuOpen] = useState(false)
+  const [backdropMenuPoint, setBackdropMenuPoint] = useState({ x: 0, y: 0 })
+  const openBackdropMenu = useCallback((event: MouseEvent<HTMLElement>) => {
+    if (event.target !== event.currentTarget) return
+    event.preventDefault()
+    setBackdropMenuPoint({ x: event.clientX, y: event.clientY })
+    setBackdropMenuOpen(true)
+  }, [])
   const canvasRef = useRef<HTMLDivElement>(null)
   const layoutFrame = useRef<SplitResizeFrame>({ tree, browserVisible, width: 0, height: 0 })
   const splitResizeRef = useRef<ReturnType<typeof createSplitResizeSession> | null>(null)
@@ -287,8 +300,10 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
     }
   }
 
-  return <div className="chat-layout-viewport" ref={viewport}>
+  return <>
+  <div className="chat-layout-viewport" ref={viewport} onContextMenu={openBackdropMenu}>
     <div className="chat-layout-canvas" ref={canvasRef} style={{ minWidth: minimum.width, minHeight: minimum.height }}
+      onContextMenu={openBackdropMenu}
       // The shell's Escape handler leaves a drag in progress to the cancel listener above.
       data-layout-drag={dragging ? 'true' : undefined}
       data-layout-busy={busy ? 'true' : undefined}
@@ -376,6 +391,21 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
         divider={divider} splitResize={splitResize} onResize={onResize} />)}
     </div>
   </div>
+  <ContextMenu.Root open={backdropMenuOpen} onOpenChange={setBackdropMenuOpen}>
+    <ContextMenu.Trigger asChild>
+      <span className="workspace-backdrop-menu-anchor" style={{ left: backdropMenuPoint.x, top: backdropMenuPoint.y }} aria-hidden="true" />
+    </ContextMenu.Trigger>
+    <ContextMenu.Portal>
+      <ContextMenu.Content className="titlebar-menu-content chat-layout-context-menu" loop
+        onCloseAutoFocus={(event) => event.preventDefault()}>
+        <WorkspaceBackdropMenuItems backdrop={backdrop} onBackdropChange={(mode) => {
+          onBackdropChange(mode)
+          setBackdropMenuOpen(false)
+        }} />
+      </ContextMenu.Content>
+    </ContextMenu.Portal>
+  </ContextMenu.Root>
+  </>
 }
 
 function chatCanvasPropsEqual(previous: ChatCanvasProps, next: ChatCanvasProps): boolean {
@@ -391,6 +421,7 @@ function chatCanvasPropsEqual(previous: ChatCanvasProps, next: ChatCanvasProps):
     && previous.onOpenPresets === next.onOpenPresets && previous.onSizeChange === next.onSizeChange
     && previous.onDock === next.onDock && previous.onHide === next.onHide && previous.onResize === next.onResize
     && previous.windows === next.windows && previous.onBrowserCovered === next.onBrowserCovered
+    && previous.backdrop === next.backdrop && previous.onBackdropChange === next.onBackdropChange
 }
 
 export const ChatCanvas = memo(ChatCanvasInner, chatCanvasPropsEqual)

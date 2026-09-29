@@ -58,6 +58,13 @@
 /* The padding is the chassis gutter around the tile cards; the canvas measures its
    content box, so tiles never overlap it. */
 .chat-layout-viewport { flex: 1; min-height: 0; min-width: 0; padding: 2px 8px 8px; overflow: auto; }
+
+.workspace-backdrop-menu-anchor {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
 .chat-layout-browser-frame { position: relative; display: flex; flex: 1; min-height: 0; min-width: 0; }
 .chat-layout-browser-frame > .workspace-right { flex: 1; }
 /* Inside a tile the tile is the card, so the browser drops its own gutter and shell edge. */

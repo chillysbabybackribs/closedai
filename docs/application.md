@@ -947,8 +947,12 @@ either kind, so a new icon never changes the tray's size or spacing.
   conversation pane across tab switching and unmounting, clearing them only on submission.
   Appearance settings separate message and composer font sizes
   (defaults 14 and 15 px, range 13–22) from chat zoom. Appearance → Background is opt-in
-  (default Off): Desktop wallpaper paints the OS wallpaper (GNOME `picture-uri`/`picture-uri-dark`,
-  read by main via `window:desktopWallpaper` in `main/desktop-wallpaper.ts`) behind the shell,
+  (default Off): Off keeps the flat chassis; Desktop wallpaper paints the OS wallpaper (GNOME
+  `picture-uri`/`picture-uri-dark`, read by main via `window:desktopWallpaper` in
+  `main/desktop-wallpaper.ts`); bundled presets (`preset:aurora`, `preset:dusk`, `preset:ocean`,
+  `preset:ember` in `shared/backdrop-presets.ts`, assets under `renderer/backdrop/presets/`) load in
+  the renderer and use the same prepare path. Right-click empty workspace canvas (gaps between tiles)
+  opens the same background menu. Custom uploads are not wired yet. Every non-off source sits
   dimmed by its measured brightness; it shows in the gaps between tiles. The title bar and the dock
   are full-width rails of one glass, each tinted from the wallpaper band behind it
   (`--backdrop-rail-top`/`--backdrop-rail-bottom`, `railTint`) so both land at the same darkness over a bright sky or a dark
