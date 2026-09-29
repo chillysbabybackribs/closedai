@@ -171,3 +171,30 @@ test('send announces the turn before opening the agent session', async () => {
   await send
   assert.equal(thread.activeTurnId, null)
 })
+
+test('a new chat warming while its first message is sent opens one session and prompts it', async () => {
+  const { session: thread, adopted } = session()
+  const created: string[] = []
+  const prompted: string[] = []
+  Object.assign(thread, { client: {
+    connected: true, capabilities: { loadSession: true },
+    async newSession() {
+      const sessionId = `new-${created.length + 1}`
+      created.push(sessionId)
+      await new Promise((resolve) => setTimeout(resolve, 5))
+      return { sessionId, models: [], modes: [], currentModelId: null, currentModeId: null, modelConfigId: null, modeConfigId: null }
+    },
+    async loadSession(id: string) {
+      return { sessionId: id, models: [], modes: [], currentModelId: null, currentModeId: null, modelConfigId: null, modeConfigId: null }
+    },
+    prompt(sessionId: string) { prompted.push(sessionId); return new Promise(() => {}) }
+  } })
+  const warming = thread.warm()
+  thread.beginTurn('turn-1')
+  await thread.send([{ type: 'text', text: 'hello' }], 'turn-1')
+  await warming
+  assert.deepEqual(created, ['new-1'])
+  assert.deepEqual(prompted, ['new-1'])
+  assert.equal(thread.sessionId, 'new-1')
+  assert.deepEqual(adopted, ['new-1'])
+})

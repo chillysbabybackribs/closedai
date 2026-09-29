@@ -52,6 +52,7 @@ export class CursorSession {
   private translator: CursorTurnTranslator | null = null
   private readonly idleGuard: IdleProcessGuard
   private opening: Promise<CursorAcpClient> | null = null
+  private sessionOpening: Promise<AcpSessionSetup> | null = null
   /** The last setup the agent reported, reused while its session stays open on this process. */
   private setup: AcpSessionSetup | null = null
   /**
@@ -266,9 +267,22 @@ export class CursorSession {
   /**
    * Open the thread's session on this process. A session id the agent no longer holds — a stale
    * id from a previous run, or one `loadSession` cannot serve — falls back to a fresh session
-   * rather than failing the turn.
+   * rather than failing the turn. One open at a time: a new chat's warm-up and its first send
+   * would otherwise each create a session, and the turn would stream into the one the thread is
+   * not listening to. A caller that waited reuses the session the open before it settled.
    */
   private async ensureSession(client: CursorAcpClient): Promise<AcpSessionSetup> {
+    while (this.sessionOpening) await this.sessionOpening.catch(() => undefined)
+    const opening = this.openSession(client)
+    this.sessionOpening = opening
+    try {
+      return await opening
+    } finally {
+      if (this.sessionOpening === opening) this.sessionOpening = null
+    }
+  }
+
+  private async openSession(client: CursorAcpClient): Promise<AcpSessionSetup> {
     const mcpServers = await this.deps.mcpServers()
     const attaching = serverSignature(mcpServers)
     // Already open on this process with the tools it would be given now — a replay loaded it, or
