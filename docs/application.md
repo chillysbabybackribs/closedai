@@ -349,8 +349,10 @@ over that half of the workspace, and when a floating window already fills the ot
 its side, the two become a tiled pair sharing a divider at that window's width (`snapToSide`). At the
 top edge it maximizes; over a window's tab strip its tabs join that window (never the browser's);
 within the outer band of a tiled window (up to 56 px) it splits beside it; anywhere else it floats
-where it was dropped. An outline shows the landing place, or rings the window it would join.
-Escape puts the window back. A floating window resizes from any edge or corner
+where it was dropped. An outline shows the landing place. A join instead rings the target window
+above the one in hand, which fades back, and lights its tab strip with a ghost tab naming the chat
+(or "+ N more") where it will land (`JoinTabsPreview`, `joinTabsTarget`); a tab dragged onto another
+window's strip shows the same. Escape puts the window back. A floating window resizes from any edge or corner
 (`layout.window-resize`) and comes to the front when pressed. Tab drags keep their own behaviour:
 onto a tab strip or a tiled window's edge as before, and onto a floating window's tab strip to join
 its tabs. Released on free space, or on a floating window's body, a tab tears off into its own
