@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "codexEagerWireCap": 3600,
+  "slices": {
+    "core": {
+      "label": "Default workspace",
+      "description": "Operate the app, recall context, single-shot search — no browser/CDP/native.",
+      "resetEager": true,
+      "promotePriority": [
+        "closedai_app.state",
+        "peer_chats.recall",
+        "search.query",
+        "peer_chats.list",
+        "closedai_app.command",
+        "tool_batch.run"
+      ]
+    },
+    "browser": {
+      "label": "Embedded browser",
+      "description": "Read and script the shared browser tab plus app state.",
+      "resetEager": true,
+      "promotePriority": [
+        "embedded_browser.page",
+        "closedai_app.state",
+        "embedded_browser.script",
+        "search.query"
+      ]
+    },
+    "research": {
+      "label": "Web research",
+      "description": "Search APIs and research runs; app state for layout.",
+      "resetEager": true,
+      "promotePriority": [
+        "closedai_app.state",
+        "search.query",
+        "search.run",
+        "search.read",
+        "tool_batch.run"
+      ]
+    },
+    "full": {
+      "label": "Discovery fallback",
+      "description": "Registry default eager/defer flags; deferred tools load through provider discovery.",
+      "resetEager": false,
+      "promotePriority": []
+    }
+  },
+  "signals": {
+    "browser": { "slice": "browser", "when": "turn_has_browser_subject_or_active_tab" },
+    "research": { "slice": "research", "when": "user_intent_research_heuristic" },
+    "default": { "slice": "core" }
+  }
+}

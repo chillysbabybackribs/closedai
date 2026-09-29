@@ -353,7 +353,7 @@ function assertWellFormed(namespaces: ToolNamespace[]): void {
   }
 }
 
-function assertToolInputSchema(label: string, tool: { inputSchema: JsonObject; actions?: { name: string }[] }): void {
+function assertToolInputSchema(label: string, tool: ToolDefinition): void {
   const schema = tool.inputSchema
   if (schema.type === 'object') return
   const branches = schema.oneOf

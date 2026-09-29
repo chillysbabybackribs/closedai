@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { defineActionTool, type ToolAction } from './action-tool.js'
 import { ToolRegistry } from './registry.js'
-import { textResult, type ToolContext } from './tool.js'
+import { textResult, type JsonObject, type ToolContext } from './tool.js'
 
 const context: ToolContext = { threadId: 't', turnId: 'u', callId: 'c', signal: new AbortController().signal }
 
