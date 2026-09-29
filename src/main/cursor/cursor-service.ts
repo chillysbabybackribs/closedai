@@ -38,6 +38,9 @@ import { buildChatInput } from '../chat-input.js'
 import { messageOf } from '../chat-normalizers.js'
 import { ChatTranscript } from '../chat-transcript.js'
 import type { ScreenshotStore } from '../tools/capture/screenshot-store.js'
+import { resolveCursorToolCatalog } from '../tools/cursor-tool-catalog.js'
+import type { ToolRegistry } from '../tools/registry.js'
+import { traceLog } from '../trace/trace-log.js'
 import { PROVIDER_CATALOG_TTL_MS, type WorkspaceCatalogs } from '../chat-context/provider-catalog-cache.js'
 import type { AcpSessionSetup } from './cursor-acp.js'
 import { CursorArchive } from './cursor-archive.js'
@@ -83,10 +86,13 @@ export class CursorChatService extends EventEmitter {
   private promptSuggestion: string | null = null
   private suggestionGeneration = 0
   private readonly rotator: SessionRotator
+  /** When set, only these MCP namespaces are passed at the next session open (task tool slices). */
+  private cursorAttachNamespaces: readonly string[] | null = null
 
   constructor(
     readonly cwd: string,
     private readonly settings: RotationSettingsAccess,
+    private readonly tools: ToolRegistry,
     private readonly bridge: CursorToolBridge,
     stateDir: string,
     private readonly surfaceContext: () => TurnSurfaceContext | null = () => null,
@@ -161,6 +167,7 @@ export class CursorChatService extends EventEmitter {
       turnId = cursorTurnId()
       this.setTurn(turnId)
       session.beginTurn(turnId)
+      await this.prepareCursorToolAttach(text)
       // Open the session before the prompt is assembled: a saved session the agent no longer holds
       // is replaced here, and the conversation it carried has to reach this turn's context.
       await session.warm()
@@ -426,6 +433,24 @@ export class CursorChatService extends EventEmitter {
     return true
   }
 
+  private async prepareCursorToolAttach(prompt: string): Promise<void> {
+    const bundle = await resolveCursorToolCatalog(this.tools, this.settings.get(), {
+      prompt,
+      surface: this.surfaceContext()
+    })
+    this.cursorAttachNamespaces = bundle.namespaces
+    if (!bundle.sliceId) return
+    traceLog.record({ paneId: this.paneId, provider: 'cursor', turnId: this.activeTurnId }, {
+      kind: 'tool',
+      label: 'cursor.tool_slice',
+      summary: bundle.namespaces
+        ? `${bundle.sliceId} (${bundle.namespaces.length} namespaces)`
+        : `${bundle.sliceId} (full catalog)`,
+      detail: { sliceId: bundle.sliceId, namespaces: bundle.namespaces ?? 'all' },
+      ok: true
+    })
+  }
+
   private createSession(): CursorSession {
     return new CursorSession({
       cwd: this.cwd,
@@ -439,7 +464,8 @@ export class CursorChatService extends EventEmitter {
         await this.bridge.start().catch((error: unknown) => {
           console.warn('[cursor] tool bridge unavailable; this session opens without ClosedAI tools:', messageOf(error))
         })
-        return this.bridge.servers(this.bridgeKey)
+        const namespaces = this.cursorAttachNamespaces
+        return this.bridge.servers(this.bridgeKey, namespaces?.length ? { namespaces } : undefined)
       },
       modelId: () => cursorAcpModelId(this.modelState.selectedModel),
       apply: (op) => this.applyOp(op),

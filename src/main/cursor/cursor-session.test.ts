@@ -3,6 +3,7 @@ import test from 'node:test'
 
 import { JsonRpcPeerError } from '../stdio-json-rpc.js'
 import { isAcpSessionNotFound } from './cursor-acp.js'
+import type { AcpMcpServer } from './cursor-acp.js'
 import { CursorSession, type CursorSessionDeps } from './cursor-session.js'
 
 function session(overrides: Partial<CursorSessionDeps> = {}): { session: CursorSession; adopted: string[]; saved: string[] } {
@@ -173,6 +174,31 @@ test('send announces the turn before opening the agent session', async () => {
   releaseSession()
   await send
   assert.equal(thread.activeTurnId, null)
+})
+
+test('a session reopens when the MCP server list changes', async () => {
+  let servers: readonly AcpMcpServer[] = [{
+    type: 'http', name: 'closedai_app', url: 'http://127.0.0.1:1/a', headers: []
+  }]
+  const { session: thread } = session({ mcpServers: async () => servers })
+  const loads: string[] = []
+  Object.assign(thread, { client: {
+    connected: true,
+    capabilities: { loadSession: true },
+    async loadSession(id: string, _cwd: string, mcp: readonly AcpMcpServer[]) {
+      loads.push(`${id}:${mcp.map((server) => server.name).join(',')}`)
+      return setupFor(id)
+    },
+    async newSession(_cwd: string, mcp: readonly AcpMcpServer[]) {
+      loads.push(`new:${mcp.map((server) => server.name).join(',')}`)
+      return setupFor('fresh')
+    }
+  } })
+  await thread.warm()
+  servers = [{ type: 'http', name: 'search', url: 'http://127.0.0.1:1/b', headers: [] }]
+  await thread.warm()
+  assert.equal(loads.length, 2)
+  assert.notEqual(loads[0], loads[1])
 })
 
 test('a new chat warming while its first message is sent opens one session and prompts it', async () => {

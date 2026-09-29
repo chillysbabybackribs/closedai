@@ -6,6 +6,9 @@ import type { AcpMcpServer } from './cursor-acp.js'
 import { JsonRpcPeerError } from '../stdio-json-rpc.js'
 import type { CursorSession } from './cursor-session.js'
 import type { CursorToolBridge } from './cursor-mcp.js'
+import { createToolRegistry } from '../tools/index.ts'
+
+const emptyTools = createToolRegistry([])
 
 /**
  * The real bridge serves no endpoints until its listener has a port (`endpoints()` returns `[]`
@@ -44,7 +47,7 @@ test('cold catalog startup loads saved history once and obtains its models from 
     set: async (patch) => { saved = { ...saved, ...patch }; return saved },
     checkpoint: () => null,
     sessionRotations: () => saved.chatSessionRotations ?? []
-  }, toolBridge(), '/unused')
+  }, emptyTools, toolBridge(), '/unused')
   const session = (service as unknown as { createSession(): CursorSession }).createSession()
   const loads: string[] = []
   Object.assign(session, { client: {
@@ -87,7 +90,7 @@ test('a rejected live model change leaves the accepted selection in settings and
     set: async (patch) => { saved = { ...saved, ...patch }; return saved },
     checkpoint: () => null,
     sessionRotations: () => []
-  }, toolBridge(), '/unused')
+  }, emptyTools, toolBridge(), '/unused')
   const session = (service as unknown as { createSession(): CursorSession }).createSession()
   const target = 'claude-opus-5[thinking=true,effort=high]'
   Object.assign(session, { client: {
@@ -127,7 +130,7 @@ test('a session opens with the ClosedAI tool endpoints, whatever opened it first
     set: async (patch) => { saved = { ...saved, ...patch }; return saved },
     checkpoint: () => null,
     sessionRotations: () => saved.chatSessionRotations ?? []
-  }, bridge, '/unused')
+  }, emptyTools, bridge, '/unused')
   const session = (service as unknown as { createSession(): CursorSession }).createSession()
   const attached: Array<readonly AcpMcpServer[]> = []
   Object.assign(session, { client: {
@@ -157,7 +160,7 @@ test('a session already open without tools is reopened once they exist', async (
     set: async () => DEFAULT_APP_SETTINGS,
     checkpoint: () => null,
     sessionRotations: () => []
-  }, bridge, '/unused')
+  }, emptyTools, bridge, '/unused')
   const session = (service as unknown as { createSession(): CursorSession }).createSession()
   const attached: string[][] = []
   Object.assign(session, { client: {
@@ -213,7 +216,7 @@ function serviceWith(chatCursorSessionId: string) {
     set: async (patch) => { state.saved = { ...state.saved, ...patch }; return state.saved },
     checkpoint: () => null,
     sessionRotations: () => []
-  }, toolBridge(), '/unused')
+  }, emptyTools, toolBridge(), '/unused')
   const session = (service as unknown as { createSession(): CursorSession }).createSession()
   Object.assign(service, { session, readAccount: async () => {}, refreshPlanUsage: async () => {} })
   return { service, session, state }

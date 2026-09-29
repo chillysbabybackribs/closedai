@@ -6,6 +6,12 @@
       "label": "Default workspace",
       "description": "Operate the app, recall context, single-shot search — no browser/CDP/native.",
       "resetEager": true,
+      "cursorNamespaces": [
+        "closedai_app",
+        "search",
+        "peer_chats",
+        "tool_batch"
+      ],
       "promotePriority": [
         "closedai_app.state",
         "peer_chats.recall",
@@ -19,6 +25,13 @@
       "label": "Embedded browser",
       "description": "Read and script the shared browser tab plus app state.",
       "resetEager": true,
+      "cursorNamespaces": [
+        "embedded_browser",
+        "closedai_app",
+        "search",
+        "closedai_ui",
+        "tool_batch"
+      ],
       "promotePriority": [
         "embedded_browser.page",
         "closedai_app.state",
@@ -30,6 +43,12 @@
       "label": "Web research",
       "description": "Search APIs and research runs; app state for layout.",
       "resetEager": true,
+      "cursorNamespaces": [
+        "closedai_app",
+        "search",
+        "tool_batch",
+        "peer_chats"
+      ],
       "promotePriority": [
         "closedai_app.state",
         "search.query",

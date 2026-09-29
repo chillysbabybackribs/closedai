@@ -20,8 +20,12 @@ export class CursorToolBridge extends McpHttpBridge {
   }
 
   /** The `session/new` server list for one pane, addressed by that pane's bridge key. */
-  servers(key: string): AcpMcpServer[] {
-    return this.endpoints(key).map((endpoint) => ({
+  servers(key: string, options?: { namespaces?: readonly string[] | null }): AcpMcpServer[] {
+    const allow = options?.namespaces
+    const endpoints = allow?.length
+      ? this.endpoints(key).filter((endpoint) => allow.includes(endpoint.namespace))
+      : this.endpoints(key)
+    return endpoints.map((endpoint) => ({
       type: 'http',
       name: endpoint.namespace,
       url: endpoint.url,

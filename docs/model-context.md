@@ -80,8 +80,10 @@ CDP namespace load through discovery. Toggle **Task tool slices** in Tools & cap
 When it is on, `ensureCodexThread`
 promotes a task slice from `scripts/tool-slices.json` (core, browser, research, or full) before
 `thread/start`; a slice change rotates the thread like any other catalog drift. Trace label
-`codex.tool_slice` records the slice id and promoted tool ids. `measureToolContextBudget()` in
-the main process guards eager wire size in tests.
+`codex.tool_slice` records the slice id and promoted tool ids. On Cursor, the same flag selects a
+slice and passes only that slice's `cursorNamespaces` at `session/new`; a slice change reopens the
+ACP session with the new list. Trace label `cursor.tool_slice` records the slice id and namespace
+set. `measureToolContextBudget()` in the main process guards eager wire size in tests.
 
 **Provider parity target:** Cursor Composer in ClosedAI is the reference stack — full enabled
 MCP tool schemas on the session plus the provider's native repository loop. Other lanes should

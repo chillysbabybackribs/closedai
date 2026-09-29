@@ -706,9 +706,10 @@ summary and master switch in the head, then one ledger row per tool (switch, nam
 status dot). Clicking a row opens its overview inline: technical id and verbs, summary and off
 effect, effect, cost, last use, runs, recent failure notes, the exact text the model reads, and
 the advertised schema. A **Task tool slices** switch under the rail toggles `chatToolSliceEnabled`
-(Codex only): when on, each send advertises the eager set from `scripts/tool-slices.json` instead
-of the legacy pair (`closedai_app.state` + `embedded_browser.page`); execution still uses the full
-registry. Presets (Full, Read-only, Custom) sit under that switch; the footer resets telemetry
+when on, Codex each send advertises the eager set from `scripts/tool-slices.json` instead of the
+legacy pair (`closedai_app.state` + `embedded_browser.page`), and Cursor passes only that slice's
+`cursorNamespaces` at `session/new` (execution still uses the full registry for Codex discovery).
+Presets (Full, Read-only, Custom) sit under that switch; the footer resets telemetry
 counts. Full turns everything on; Read-only keeps `READ_ONLY_TOOL_IDS` (the reads-only
 group plus app state, screenshots, and chat reading) and turns the rest off; Custom is the
 detected state of any other combination.
@@ -719,8 +720,8 @@ registry still supports per-verb restriction (`restrictActions`) for callers tha
 the view does not expose verbs. Bulk changes (a row of an action tool, a group, a preset) go
 through `tools:setEnabledMany`, one persisted write, after which the renderer re-reads the
 manifest. Enable/disable state is stored in `app-settings.json` and applied before each `ChatService`
-starts or resumes a thread. The slice switch uses the same store and applies on the next Codex send
-without restarting the app.
+starts or resumes a thread. The slice switch uses the same store and applies on the next Codex or
+Cursor send without restarting the app.
 
 ## Telemetry
 

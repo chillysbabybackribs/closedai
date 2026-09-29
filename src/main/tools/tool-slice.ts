@@ -109,9 +109,22 @@ function promoteTool(namespace: string, tool: ToolDefinition, promote: Set<strin
 export function validateToolSliceCatalog(catalog: ToolSliceCatalog, registry: ToolRegistryType): string[] {
   const problems: string[] = []
   const known = new Set(registry.names())
+  const knownNamespaces = new Set(registry.namespaces.map((namespace) => namespace.name))
   for (const [id, slice] of Object.entries(catalog.slices)) {
     for (const toolId of slice.promotePriority) {
       if (!known.has(toolId)) problems.push(`slice "${id}": unknown tool "${toolId}"`)
+    }
+    if (slice.cursorNamespaces?.length) {
+      for (const namespace of slice.cursorNamespaces) {
+        if (!knownNamespaces.has(namespace)) problems.push(`slice "${id}": unknown cursor namespace "${namespace}"`)
+      }
+      const allowed = new Set(slice.cursorNamespaces)
+      for (const toolId of slice.promotePriority) {
+        const namespace = toolId.split('.')[0]
+        if (namespace && !allowed.has(namespace)) {
+          problems.push(`slice "${id}": promoted tool "${toolId}" namespace not in cursorNamespaces`)
+        }
+      }
     }
     const applied = applyToolSlice(registry, slice, catalog.codexEagerWireCap)
     if (applied.eagerWireChars > catalog.codexEagerWireCap) {

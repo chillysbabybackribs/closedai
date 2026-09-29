@@ -1,6 +1,6 @@
 # Task-scoped tool slices (design)
 
-Status: **Phase 1 (Codex) landed** — slice manifest + `applyToolSlice()`, Codex `thread/start` catalog via `resolveCodexToolCatalog()` when `chatToolSliceEnabled` is true. Cursor/Claude adapters remain Phase 2–3.
+Status: **Phase 1 (Codex) and Phase 2 (Cursor) landed** — slice manifest + `applyToolSlice()`, Codex `thread/start` via `resolveCodexToolCatalog()`, Cursor `session/new` namespace allowlists via `resolveCursorToolCatalog()` when `chatToolSliceEnabled` is true. Claude/Antigravity remain Phase 3.
 
 ## Problem
 
@@ -79,7 +79,7 @@ All user-enabled tools remain **callable** after discovery / ToolSearch / loadin
 - [x] Wire slice selection into `ensureCodexThread` / turn build (`chatToolSliceEnabled`)
 - [x] Telemetry: trace `codex.tool_slice` with slice id and promoted ids
 - [ ] Guide outline: one line on slice + discovery fallback
-- [ ] Cursor namespace filter + session reload tests
+- [x] Cursor namespace filter + session reload tests
 - [ ] Property: promoted ⊆ enabled switchable ids
 
 ## Experimental track: hyper-reduced “template” tools (lab only)

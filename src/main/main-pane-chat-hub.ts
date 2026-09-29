@@ -52,7 +52,7 @@ export function createPaneChatHub(deps: {
       deps.record.cwd, deps.peerSettings, deps.antigravityBridge, deps.antigravityStateDir, surfaceContext, deps.screenshots, deps.peerSettings.paneId, deps.catalogs
     ),
     cursor: new CursorChatService(
-      deps.record.cwd, deps.peerSettings, deps.cursorBridge, deps.cursorStateDir, surfaceContext, deps.screenshots, deps.peerSettings.paneId, deps.catalogs
+      deps.record.cwd, deps.peerSettings, deps.toolRegistry, deps.cursorBridge, deps.cursorStateDir, surfaceContext, deps.screenshots, deps.peerSettings.paneId, deps.catalogs
     )
   }, deps.record.modelId, deps.peerSettings, {
     provider: deps.record.provider,

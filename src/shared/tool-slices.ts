@@ -5,6 +5,8 @@ export type ToolSliceDefinition = {
   description: string
   /** When true, defer every tool then promote (task-scoped eager set). When false, keep registry defaults and only add promotions. */
   resetEager?: boolean
+  /** Cursor ACP: namespaces attached at `session/new` for this slice (omit on `full`). */
+  cursorNamespaces?: readonly string[]
   /** Tool ids in descending priority; greedy promotion stops at `codexEagerWireCap`. */
   promotePriority: readonly string[]
 }
@@ -31,7 +33,14 @@ export function parseToolSliceCatalog(raw: unknown): ToolSliceCatalog {
     const description = stringField(slice.description)
     const promotePriority = stringArray(slice.promotePriority)
     const resetEager = slice.resetEager === true
-    slices[id] = { label, description, promotePriority, ...(resetEager ? { resetEager: true } : {}) }
+    const cursorNamespaces = slice.cursorNamespaces === undefined ? undefined : stringArray(slice.cursorNamespaces)
+    slices[id] = {
+      label,
+      description,
+      promotePriority,
+      ...(resetEager ? { resetEager: true } : {}),
+      ...(cursorNamespaces ? { cursorNamespaces } : {})
+    }
   }
   return { version, codexEagerWireCap, slices, signals: parseSignals(record.signals) }
 }
