@@ -93,6 +93,7 @@
     position: absolute; right: 48px; white-space: nowrap; font-size: 11px; padding: 3px 8px; border-radius: 999px;
     background: var(--raised); color: var(--muted); box-shadow: 0 0 0 1px var(--hairline);
   }
+  .fab .badge.done { color: var(--ok-ink); }
   @keyframes spin { to { transform: rotate(1turn); } }
 
   .card {
@@ -285,7 +286,8 @@
     card.hidden = !open
     fab.hidden = open
     fab.dataset.running = s.running
-    fab.innerHTML = I.chat + (s.running ? `<span class="badge">${esc(notes[s.taskNote].name)}</span>` : '')
+    fab.innerHTML = I.chat + (s.running ? `<span class="badge">${esc(notes[s.taskNote].name)}</span>`
+      : s.unseenDone ? `<span class="badge done">Done in ${esc(notes[s.lastDone].name)}</span>` : '')
     if (!open) return
     card.dataset.mode = s.overlay
     if (s.overlay === 'full') {
@@ -320,6 +322,7 @@
   function setOverlay(mode, why) {
     if (s.overlay === mode) return
     s.overlay = mode; s.menu = false
+    if (mode !== 'closed') s.unseenDone = false
     log(`overlay → ${mode}${why ? ` (${why})` : ''}`)
     render(true)
     if (mode !== 'closed') $('draft')?.focus()
@@ -365,7 +368,7 @@
       }
     }
     if (!await step('checking the result', 1000)) return
-    s.running = false; s.lastDone = noteId
+    s.running = false; s.lastDone = noteId; s.unseenDone = s.overlay === 'closed'
     const summary = targets.length ? `Turned the ${targets.length} steps in ${n.name} into a checklist.` : `Added a short summary to the end of ${n.name}.`
     s.messages.push({ role: 'ai', text: summary, steps: `Edited ${n.edited.size} lines in ${n.name}` })
     log(`task done in ${n.name}`)
