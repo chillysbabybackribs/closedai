@@ -64,14 +64,19 @@ export function setBrowserActiveTab(host: BrowserServiceTabOpsHost, id: string):
   host.emitTabs()
 }
 
+/** Release everything a tab holds once it is out of the strip; choosing a successor is the caller's. */
+export function retireBrowserTab(host: BrowserServiceTabOpsHost, tab: BrowserTab | ImageTab | FileTab): void {
+  host.unregisterRendering(tab.id)
+  host.forgetCadence(tab.id)
+  host.detachBrowserView(tab)
+  tab.dispose()
+}
+
 export function closeBrowserTab(host: BrowserServiceTabOpsHost, id: string): void {
   const index = host.tabs.findIndex((tab) => tab.id === id)
   if (index === -1) return
   const [tab] = host.tabs.splice(index, 1)
-  host.unregisterRendering(id)
-  host.forgetCadence(id)
-  host.detachBrowserView(tab)
-  tab.dispose()
+  retireBrowserTab(host, tab)
   if (host.getActiveId() === id) {
     host.setActiveId(null)
     const previous = (tab instanceof ImageTab || tab instanceof FileTab)

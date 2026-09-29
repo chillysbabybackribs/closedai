@@ -7,7 +7,7 @@ import type { TabPersistRecord } from './browser-tab-session-store.js'
 import { BrowserTab, HOME_URL, PARTITION } from './browser-tab.js'
 import { ImageTab } from './local-files/image-tab.js'
 import { FileTab } from './local-files/file-tab.js'
-import type { FileTabContent, ImageTabContent } from '../shared/local-files.js'
+import type { FileTabContent, FileView, ImageTabContent } from '../shared/local-files.js'
 import { PersistentSessionCookies } from './persistent-session-cookies.js'
 import { BrowserObservers } from './browser-network/observers.js'
 import { describeMissingTab } from '../shared/browser-tabs.js'
@@ -16,7 +16,9 @@ import { TabRenderingPolicy } from './browser-tab-rendering.js'
 import { TabCadencePolicy, webContentsCadence } from './browser-tab-cadence.js'
 import type { RestoredTabSession } from './browser-tab-session-store.js'
 import { restoreBrowserTabs } from './browser-service-restore.js'
-import { duplicateSpecialTab, openFileViewerTab, openImageTab } from './browser-service-special-tabs.js'
+import {
+  duplicateSpecialTab, openFilePageTab, openFileViewerTab, openImageTab, pageTabShowing, swapFileView, type FileViewHost
+} from './browser-service-special-tabs.js'
 import { prepareBrowserTabForTool } from './browser-tab-surface-prep.js'
 import { browserPaneBounds, browserSurfaceVisibility } from './browser-surface-visibility.js'
 import { settleFrames } from './browser-frame-settle.js'
@@ -26,6 +28,7 @@ import {
   closeBrowserTabsToRight,
   closeOtherBrowserTabs,
   parkWebBrowserTabs,
+  retireBrowserTab,
   setBrowserActiveTab,
   type BrowserServiceTabOpsHost
 } from './browser-service-tab-ops.js'
@@ -238,8 +241,36 @@ export class BrowserService extends EventEmitter {
   }
 
   openFileTab(content: { path: string; name: string; line?: number; endLine?: number; cwd?: string; diff?: string }): string {
+    // A line or diff link into a file shown as its page turns that tab to code rather than adding one.
+    const page = pageTabShowing(this.tabs, content.path)
+    if (page) this.setFileView(page.id, 'code')
     return openFileViewerTab(this.tabs, this.activeId, content, (tab, index) => { this.registerTab(tab, index) },
       (id) => { this.setActive(id) }, (state) => { this.emit('state', state) })
+  }
+
+  openFilePage(path: string): string {
+    return openFilePageTab(this.fileViewHost(), path)
+  }
+
+  /** Show a local HTML or SVG tab as its rendered page or as its source, keeping its id and slot. */
+  setFileView(id: string, view: FileView): void {
+    swapFileView(this.fileViewHost(), id, view)
+  }
+
+  private fileViewHost(): FileViewHost {
+    return {
+      tabs: this.tabs,
+      activeId: this.activeId,
+      retire: (tab) => { retireBrowserTab(this.tabOpsHost(), tab) },
+      register: (tab, index) => { this.registerTab(tab, index) },
+      openPage: (url, activate, index, id) => {
+        const tab = this.createTab(activate, index, id)
+        tab.start(url).catch((error: unknown) => this.emit('error', error))
+        return tab
+      },
+      setActive: (id) => { this.setActive(id) },
+      emitTabs: () => { this.emitTabs() }
+    }
   }
 
   fileContent(id: string): Promise<FileTabContent> {

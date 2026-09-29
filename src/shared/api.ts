@@ -28,6 +28,8 @@ export type ClosedaiApi = {
     revealImage: (id: string) => Promise<void>
     file: (id: string) => Promise<import('./local-files.js').FileTabContent>
     revealFile: (id: string) => Promise<void>
+    /** Show a local HTML or SVG tab as its rendered page or its source, in place. */
+    setView: (id: string, view: import('./local-files.js').FileView) => Promise<void>
   }
   window: {
     minimize: () => Promise<void>

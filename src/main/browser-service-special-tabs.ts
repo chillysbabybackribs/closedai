@@ -1,8 +1,9 @@
-import { allocateTabId } from './browser-tab.js'
+import { basename } from 'node:path'
+import { pathToFileURL } from 'node:url'
+import { allocateTabId, BrowserTab } from './browser-tab.js'
 import { ImageTab, imageKey } from './local-files/image-tab.js'
 import { FileTab } from './local-files/file-tab.js'
-import type { ImageTabContent } from '../shared/local-files.js'
-import type { BrowserTab } from './browser-tab.js'
+import { isRenderableFile, renderableFilePath, type FileView, type ImageTabContent } from '../shared/local-files.js'
 
 type TabStrip = (BrowserTab | ImageTab | FileTab)[]
 
@@ -79,4 +80,64 @@ export function duplicateSpecialTab(
     return true
   }
   return false
+}
+
+export type FileViewHost = {
+  tabs: TabStrip
+  activeId: string | null
+  /** Tear down a tab already spliced out of the strip, without choosing a successor. */
+  retire: (tab: BrowserTab | FileTab) => void
+  register: (tab: FileTab, index: number) => void
+  openPage: (url: string, activate: boolean, index: number, id?: string) => BrowserTab
+  setActive: (id: string) => void
+  emitTabs: () => void
+}
+
+/** The web tab currently rendering the local file at `path`, if any. */
+export function pageTabShowing(tabs: TabStrip, path: string): BrowserTab | null {
+  return tabs.find((tab): tab is BrowserTab => tab instanceof BrowserTab && renderableFilePath(tab.getState().url) === path) ?? null
+}
+
+/** A clicked HTML or SVG file opens as its page; a tab already holding the file, in either view, is reused. */
+export function openFilePageTab(host: FileViewHost, path: string): string {
+  const existing = pageTabShowing(host.tabs, path) ?? host.tabs.find((tab) => tab instanceof FileTab && tab.key === path)
+  if (existing) {
+    host.setActive(existing.id)
+    return existing.id
+  }
+  const index = host.tabs.findIndex((tab) => tab.id === host.activeId)
+  return host.openPage(pathToFileURL(path).href, true, index + 1).id
+}
+
+/**
+ * Show a renderable file's tab as its page or its code, in place: the same id and strip slot,
+ * so the tab the user toggled (and any chat's claim on it) stays the same tab. The page is
+ * loaded fresh from disk each time it is shown, so edits made while reading code appear.
+ */
+export function swapFileView(host: FileViewHost, id: string, view: FileView): void {
+  const index = host.tabs.findIndex((tab) => tab.id === id)
+  const tab = host.tabs[index]
+  if (!tab) throw new Error('This tab is no longer open.')
+  const active = host.activeId === id
+  const title = tab.getCustomTitle()
+  if (view === 'page') {
+    if (tab instanceof BrowserTab) return
+    if (!(tab instanceof FileTab) || tab.info.diff || !isRenderableFile(tab.info.path)) {
+      throw new Error('Only local HTML and SVG files have a page view.')
+    }
+    host.tabs.splice(index, 1)
+    host.retire(tab)
+    host.openPage(pathToFileURL(tab.info.path).href, active, index, id).rename(title)
+    return
+  }
+  if (tab instanceof FileTab) return
+  const path = tab instanceof BrowserTab ? renderableFilePath(tab.getState().url) : null
+  if (!(tab instanceof BrowserTab) || !path) throw new Error('Only local HTML and SVG pages have a code view.')
+  host.tabs.splice(index, 1)
+  host.retire(tab)
+  const file = new FileTab(id, path, { path, name: basename(path) }, null)
+  file.rename(title)
+  host.register(file, index)
+  if (active) host.setActive(id)
+  else host.emitTabs()
 }

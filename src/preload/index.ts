@@ -23,7 +23,8 @@ const api: ClosedaiApi = {
     image: (id) => invoke(IPC.invoke.localFiles.image, id),
     revealImage: (id) => invoke(IPC.invoke.localFiles.revealImage, id),
     file: (id) => invoke(IPC.invoke.localFiles.file, id),
-    revealFile: (id) => invoke(IPC.invoke.localFiles.revealFile, id)
+    revealFile: (id) => invoke(IPC.invoke.localFiles.revealFile, id),
+    setView: (id, view) => invoke(IPC.invoke.localFiles.setView, id, view)
   },
   window: {
     minimize: () => invoke(IPC.invoke.window.minimize),

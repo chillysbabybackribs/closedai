@@ -4,7 +4,7 @@ import { registerInvoke } from '../ipc-register.js'
 import { openLocalFile } from './open.js'
 import { realpath } from 'node:fs/promises'
 import { basename } from 'node:path'
-import type { LocalFileOpenOptions } from '../../shared/local-files.js'
+import { isRenderableFile, type LocalFileOpenOptions } from '../../shared/local-files.js'
 import type { BrowserService } from '../browser-service.js'
 import { validateImageSource } from './image-tab.js'
 
@@ -22,6 +22,8 @@ export function registerLocalFilesIpc(ipcMain: Pick<IpcMain, 'handle'>, getBrows
     }
     if (result.kind === 'file') {
       const path = await realpath(result.path)
+      // Markup opens as the page it builds; a line or diff target asks for the source.
+      if (!result.line && !result.diff && isRenderableFile(path)) return { kind: 'file', tabId: browser().openFilePage(path) }
       const tabId = browser().openFileTab({
         path,
         name: basename(path),
@@ -46,5 +48,9 @@ export function registerLocalFilesIpc(ipcMain: Pick<IpcMain, 'handle'>, getBrows
   registerInvoke(ipcMain, IPC.invoke.localFiles.revealFile, async (_event, id) => {
     const { path } = await browser().fileContent(id)
     shell.showItemInFolder(path)
+  })
+  registerInvoke(ipcMain, IPC.invoke.localFiles.setView, (_event, id, view) => {
+    if (view !== 'page' && view !== 'code') throw new Error('view must be page or code')
+    browser().setFileView(id, view)
   })
 }

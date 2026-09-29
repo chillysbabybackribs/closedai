@@ -68,6 +68,7 @@ test('IPC invoke constants cover the typed invoke registry', () => {
     'localFiles:revealImage',
     'localFiles:file',
     'localFiles:revealFile',
+    'localFiles:setView',
     'savedSites:list',
     'savedSites:save',
     'savedSites:update',
