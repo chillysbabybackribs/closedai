@@ -17,7 +17,6 @@ function session(overrides: Partial<CursorSessionDeps> = {}): { session: CursorS
     onSessionId: (sessionId) => adopted.push(sessionId),
     onSessionSaved: (sessionId) => saved.push(sessionId),
     onSetup: () => {},
-    onTitle: () => {},
     onTurnEnd: () => {},
     ...overrides
   }
