@@ -8,6 +8,7 @@ import { installCrashGuard, runBootstrap } from './app-crash-guard.js'
 import { QUIT_SETTLE_TIMEOUT_MS, settleWithin } from './app-quit.js'
 import { browserUserAgentFallback } from './browser-identity.js'
 import { BrowserService } from './browser-service.js'
+import type { QuickChatOverlay } from './quick-chat-overlay/quick-chat-overlay.js'
 import { BrowserHistoryStore } from './browser-history-store.js'
 import { SavedSitesStore } from './saved-sites-store.js'
 import { BrowserTabSessionStore } from './browser-tab-session-store.js'
@@ -89,6 +90,7 @@ let mainWindow: BrowserWindow | null = null
 let windows: AppWindowRegistry | null = null
 let windowStore: AppWindowStore | null = null
 let browserService: BrowserService | null = null
+let quickChatOverlay: QuickChatOverlay | null = null
 let browserDownloads: BrowserDownloadService | null = null
 let browserHistory: BrowserHistoryStore | null = null
 let savedSites: SavedSitesStore | null = null
@@ -429,6 +431,7 @@ function mainIpcRegistration() {
     sendToWindows,
     windows: () => windows,
     browserService: () => browserService,
+    quickChatOverlay: () => quickChatOverlay,
     browserDownloads: () => browserDownloads,
     savedSites: () => savedSites,
     chatService: () => chatService,
@@ -468,7 +471,10 @@ function mainWindowHost(): MainWindowHost {
     disposeResearch,
     appAutomationAccess,
     cdpAccess,
-    setCdpAccess: (access) => { cdpAccess = access }
+    setCdpAccess: (access) => { cdpAccess = access },
+    attachSurface: (contents) => windows?.attachSurface(contents) ?? null,
+    setQuickChatOverlay: (overlay) => { quickChatOverlay = overlay },
+    getQuickChatOverlay: () => quickChatOverlay
   }
 }
 

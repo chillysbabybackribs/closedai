@@ -127,7 +127,7 @@
 }
 .chat-join-preview-tab > svg { flex: none; color: var(--focus-ink); }
 .chat-join-preview-tab > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.chat-layout-canvas:has(> .chat-join-preview) > .chat-layout-tile[data-moving] { opacity: 0.45; }
+.chat-layout-canvas:has(> .chat-join-preview) > .chat-layout-tile[data-moving] { opacity: 0.25; }
 .chat-layout-canvas > .chat-layout-tile[data-moving] { transition: opacity 120ms ease-out; }
 @keyframes chat-join-in { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {

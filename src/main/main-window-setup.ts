@@ -1,7 +1,7 @@
 import type { BrowserWindow } from 'electron'
 import { session } from 'electron'
 import { IPC, type IpcEventChannel, type IpcEventChannels } from '../shared/ipc-channels.js'
-import type { BrowserDownload, BrowserState, BrowserTabInfo } from '../shared/types.js'
+import type { BrowserBounds, BrowserDownload, BrowserState, BrowserTabInfo } from '../shared/types.js'
 import type { TraceEvent } from '../shared/trace.js'
 import type { ToolsEvent } from '../shared/tools.js'
 import type { ChatWorkspaceEvent } from '../shared/chat-peers.js'
@@ -22,6 +22,8 @@ import type { ToolTelemetry } from './tools/telemetry.js'
 import type { BrowserCdpAccess } from './cdp/browser-cdp-access.js'
 import type { AppAutomationAccess } from './app-automation-access.js'
 import type { NativeInstrumentService } from './native-instrument/service.js'
+import { QuickChatOverlay } from './quick-chat-overlay/quick-chat-overlay.js'
+import type { AppSurfaceHandle, SurfaceContents } from './windows/app-window-registry.js'
 export type MainWindowHost = {
   downloadsRoot: () => string
   /** Every window, except browser channels, which only the main window renders. */
@@ -48,6 +50,10 @@ export type MainWindowHost = {
   appAutomationAccess: AppAutomationAccess | null
   cdpAccess: BrowserCdpAccess | null
   setCdpAccess: (access: BrowserCdpAccess | null) => void
+  /** Routes events to a layer inside the main window; null before the window registry exists. */
+  attachSurface: (contents: SurfaceContents) => AppSurfaceHandle | null
+  setQuickChatOverlay: (overlay: QuickChatOverlay | null) => void
+  getQuickChatOverlay: () => QuickChatOverlay | null
 }
 
 export function openMainWindow(host: MainWindowHost): BrowserWindow {
@@ -64,6 +70,15 @@ export function openMainWindow(host: MainWindowHost): BrowserWindow {
   host.setBrowserService(browserService)
   browserService.on('popup', (opener: string, child: string) => host.toolRegistry?.browserCoordination?.inherit(opener, child))
   wireBrowserEvents(host, browserService)
+  const quickChat = new QuickChatOverlay({
+    window,
+    attachSurface: (contents) => host.attachSurface(contents),
+    openLinkInNewTab: (url) => host.getBrowserService()?.openNewTab(url, false)
+  })
+  host.setQuickChatOverlay(quickChat)
+  // The quick chat floats over the page: it follows the page's box and stays stacked above it.
+  browserService.on('page', (bounds: BrowserBounds, visible: boolean) => quickChat.setPage(bounds, visible))
+  browserService.on('pageViewAttached', () => quickChat.raise())
   const browserDownloads = new BrowserDownloadService({ workspaceRoot: host.downloadsRoot })
   host.setBrowserDownloads(browserDownloads)
   browserDownloads.install(session.fromPartition(PARTITION))
@@ -108,6 +123,8 @@ export function disposeMainWindowServices(host: MainWindowHost): void {
   host.appAutomationAccess?.dispose()
   host.cdpAccess?.dispose()
   host.setCdpAccess(null)
+  host.getQuickChatOverlay()?.dispose()
+  host.setQuickChatOverlay(null)
   host.getBrowserService()?.dispose()
   host.setBrowserService(null)
   host.setMainWindow(null)

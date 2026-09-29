@@ -7,6 +7,8 @@ import type { ToolsEvent } from '../shared/tools.js'
 import { IPC, type IpcEventChannel, type IpcEventChannels } from '../shared/ipc-channels.js'
 import { registerWindowIpc } from './window-ipc.js'
 import { registerAppWindowsIpc } from './windows/ipc.js'
+import { registerQuickChatIpc } from './quick-chat-overlay/ipc.js'
+import type { QuickChatOverlay } from './quick-chat-overlay/quick-chat-overlay.js'
 import { registerWallpaperIpc } from './wallpapers/ipc.js'
 import { WallpaperUploadStore } from './wallpapers/upload-store.js'
 import { registerBrowserCoreIpc } from './browser-core-ipc.js'
@@ -46,6 +48,7 @@ export type MainIpcRegistration = {
   sendToWindows: <C extends IpcEventChannel>(channel: C, payload: IpcEventChannels[C]) => void
   windows: () => AppWindowRegistry | null
   browserService: () => BrowserService | null
+  quickChatOverlay: () => QuickChatOverlay | null
   browserDownloads: () => BrowserDownloadService | null
   savedSites: () => SavedSitesStore | null
   chatService: () => ChatPeerManager | null
@@ -74,6 +77,7 @@ export function registerMainProcessIpc(reg: MainIpcRegistration): void {
   let wallpapers: WallpaperUploadStore | null = null
   registerWallpaperIpc(reg.ipcMain, () => wallpapers ??= new WallpaperUploadStore(join(app.getPath('userData'), 'wallpapers')))
   registerAppWindowsIpc(reg.ipcMain, reg.windows)
+  registerQuickChatIpc(reg.ipcMain, reg.quickChatOverlay, reg.windows)
   registerBrowserCoreIpc(reg.ipcMain, reg.browserService, reg.savedSites, (sender) => reg.windows()?.isMain(sender) ?? true)
   registerBrowserDownloadsIpc(reg.ipcMain, reg.browserDownloads)
   registerSavedSitesIpc(reg.ipcMain, reg.savedSites)

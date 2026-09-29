@@ -203,7 +203,9 @@ export class BrowserService extends EventEmitter {
 
   private attachTabView(tabId: string): void {
     const tab = this.tabs.find((candidate) => candidate.id === tabId)
-    if (tab instanceof BrowserTab) this.window.contentView.addChildView(tab.view)
+    if (!(tab instanceof BrowserTab)) return
+    this.window.contentView.addChildView(tab.view)
+    this.emit('pageViewAttached')
   }
 
   private detachTabView(tabId: string): void {
@@ -331,6 +333,7 @@ export class BrowserService extends EventEmitter {
     this.pageVisible = pageVisible
     const active = this.active
     this.rendering.setPaneVisible(paneVisible)
+    this.emit('page', this.bounds, pageVisible)
     if (active instanceof ImageTab || active instanceof FileTab) {
       parkWebBrowserTabs(this.tabOpsHost())
       return
