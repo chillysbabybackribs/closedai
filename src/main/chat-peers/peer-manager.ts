@@ -400,7 +400,8 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     this.emitWorkspace()
     await this.persistOpenChats()
     await this.trimAttached()
-    this.wakeLater(record.id, 'start the new chat')
+    // An unselected chat is woken by the caller's visibility report; waking it first would discard it as blank.
+    if (options?.selectPane !== false) this.wakeLater(record.id, 'start the new chat')
     return record.id
   }
   async closePeer(paneId: ChatPaneId, options?: { keepRecord?: boolean }): Promise<void> {
