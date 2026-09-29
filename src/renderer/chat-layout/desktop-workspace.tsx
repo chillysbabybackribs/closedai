@@ -24,6 +24,11 @@ import { useQuickChatOverlay } from './use-quick-chat-overlay.js'
 import { WorkspacePaneActionsContext, type WorkspacePaneActions } from './workspace-pane-actions.js'
 import { WorkspaceViewContext, WorkspaceViewHost, type WorkspaceViewContextValue } from './workspace-view-host.js'
 import { chatLayoutRevision } from './layout-revision.js'
+import { NotepadView } from '../notepad/notepad-view.js'
+import { NotepadHostContext } from '../notepad/notepad-host.js'
+import { noteIdOfTab } from '../notepad/notepad-layout.js'
+import { useNotes } from '../notepad/notes-client.js'
+import { useNotepadHost } from '../notepad/use-notepad-host.js'
 
 export type ChatLayoutHandle = {
   splitChat: (chatId: string, edge: 'right' | 'bottom') => Promise<void>
@@ -48,9 +53,11 @@ export type ChatLayoutHandle = {
   sendToChat: (chatId: string, text: string) => void
   /** Start a run in a new chat beside `chatId`'s tile (Start's Agents view). */
   startAgent: (chatId: string, options: AgentRunStartOptions) => Promise<void>
+  /** The notepad: its open window in front, else the latest note, else a new note (dock, menu). */
+  openNotepad: () => Promise<void>
 }
 
-export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, onBackdropChange, onOpenWallpaper, toolsPreset = null, browserHeld = false, spaceId, onRenameChat, onSavedSitesError, onBrowserVisibleChange, onMinimizedChange, onFloatingChange, archiveChat, ref }: {
+export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, onBackdropChange, onOpenWallpaper, toolsPreset = null, browserHeld = false, spaceId, onRenameChat, onSavedSitesError, onNotepadError, onBrowserVisibleChange, onMinimizedChange, onFloatingChange, archiveChat, ref }: {
   chat: ReturnType<typeof useChatController>
   savedSites: BrowserSavedSitesController
   reviewQueue: ChatReviewQueue
@@ -65,6 +72,7 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, on
   spaceId?: string
   onRenameChat?: (id: string, title: string) => void
   onSavedSitesError?: (reason: unknown) => void
+  onNotepadError?: (reason: unknown) => void
   /** Whether this workspace shows its browser, for controls outside it (the dock). */
   onBrowserVisibleChange?: (visible: boolean) => void
   /** Windows minimized to the dock, for the dock outside this workspace. */
@@ -94,14 +102,18 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, on
   chatsRef.current = chat.chats
   const dispatch = chat.dispatch
   const chatTitle = useCallback((id: string) => chatsRef.current.find((row) => row.paneId === id)?.title ?? 'New chat', [])
+  const notes = useNotes()
   const title = useCallback((id: string) => {
     const view = parseViewTab(id)
+    const noteId = view?.kind === 'note' ? noteIdOfTab(id) : null
+    if (noteId) return notes.find((note) => note.id === noteId)?.title ?? VIEW_LABELS.note
     return view ? VIEW_LABELS[view.kind] : chatTitle(id)
-  }, [chatTitle])
+  }, [chatTitle, notes])
   const chatRow = useCallback((id: string) => chatsRef.current.find((row) => row.paneId === id), [])
   const renderPaneRef = useRef<(id: string, visible: boolean) => ReactElement>(() => null as unknown as ReactElement)
   renderPaneRef.current = (id: string, visible: boolean) => {
     const view = parseViewTab(id)
+    if (view?.kind === 'note') return <NotepadView tabId={view.id} />
     if (view) return <WorkspaceViewHost viewId={view.id} kind={view.kind} />
     return <WorkspaceChat paneId={id} dispatch={dispatch} appearance={appearance} panelVisible={visible}
       onContinueInNewChat={() => continueChatRef.current(id)}
@@ -139,6 +151,8 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, on
   // Minimizing the browser hides it; the dock's Browser icon brings it back.
   const browserControls = useMemo(() => <BrowserWindowControls busy={layout.busy} onMinimize={layout.toggleBrowser} />,
     [layout.busy, layout.toggleBrowser])
+  const reportNotepadError = useCallback((reason: unknown) => { onNotepadError?.(reason) }, [onNotepadError])
+  const notepad = useNotepadHost({ layout, chats: chat.chats, dispatch, appearance, onError: reportNotepadError })
   useQuickChatOverlay({ enabled: !layout.detached, paneId: layout.browserChat, open: layout.browserChatOpen,
     openChat: layout.openBrowserChat, setOpen: layout.setBrowserChatOpen })
   const renderBrowser = useMemo(() => layout.detached ? null : <WorkspaceBrowser
@@ -196,8 +210,9 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, on
       layout.windows.tileAll()
     },
     sendToChat,
-    startAgent: (chatId, options) => startAgentRef.current(chatId, options)
-  }), [layout.windows, layout.dock, layout.activateTab, layout.openView, layout.toggleView, toggleBrowserHere, revealBrowser, savedSites, layout.closeFocused, layout.focusedCloseTarget, layout.arrange, chat.selectedPaneId, sendToChat])
+    startAgent: (chatId, options) => startAgentRef.current(chatId, options),
+    openNotepad: notepad.openNotepad
+  }), [notepad.openNotepad, layout.windows, layout.dock, layout.activateTab, layout.openView, layout.toggleView, toggleBrowserHere, revealBrowser, savedSites, layout.closeFocused, layout.focusedCloseTarget, layout.arrange, chat.selectedPaneId, sendToChat])
   const select = useCallback((id: string): void => { void layout.focusPane(id) }, [layout.focusPane])
   const onDock = useCallback((id: string | null, target: string, edge: import('./layout-tree.js').DockEdge | null, singleTab?: boolean) => {
     return layout.dock(id, target, edge, singleTab)
@@ -255,6 +270,7 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, on
     <ChatLayoutActions.Provider value={actions}>
     <WorkspacePaneActionsContext.Provider value={paneActions}>
     <WorkspaceViewContext.Provider value={viewContext}>
+    <NotepadHostContext.Provider value={notepad}>
     <ChatCanvas tree={layout.tree} selectedId={chat.selectedPaneId} busy={layout.busy}
         notice={layout.notice} toolsPreset={toolsPreset}
         browserRevealVersion={browserRevealVersion} maximized={maximized}
@@ -271,6 +287,7 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, on
         renderPane={renderPane}
       renderBrowser={renderBrowser}
     />
+    </NotepadHostContext.Provider>
     </WorkspaceViewContext.Provider>
     </WorkspacePaneActionsContext.Provider>
     </ChatLayoutActions.Provider>

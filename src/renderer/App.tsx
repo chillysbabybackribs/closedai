@@ -311,6 +311,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
             browserHeld={browserHeld}
             onRenameChat={(id, title) => setRenamingChat({ id, title })}
             onSavedSitesError={report('Could not update saved sites')}
+            onNotepadError={report('Could not update the note')}
             onBrowserVisibleChange={setBrowserVisible}
             onMinimizedChange={setMinimizedWindows}
             onFloatingChange={setWindowsFloating}
