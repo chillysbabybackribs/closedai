@@ -30,7 +30,7 @@ export function DockLauncher({ open, onOpenChange, menu }: {
     onOpenChange(next)
   }}>
     {/* Align to the strip's upper left edge, independent of the button's padding. */}
-    <PopoverAnchor className="pointer-events-none absolute left-0 top-0 h-0 w-0" />
+    <PopoverAnchor className="pointer-events-none absolute left-0 top-0 h-px w-px" />
     <PopoverTrigger asChild>
       <Button variant="ghost" size="icon-sm" data-ui="dock.launcher" aria-label="Open launcher">
         <Grid2X2 aria-hidden="true" />
@@ -55,33 +55,33 @@ export function DockLauncher({ open, onOpenChange, menu }: {
           </Tabs.Trigger>)}
         </Tabs.List>
         <Tabs.Content value={section} className="dock-launcher-command">
-        <Command shouldFilter={false} loop className="dock-launcher-command" label="Application commands">
-          <CommandList className="dock-launcher-list">
-            <CommandEmpty>No commands found.</CommandEmpty>
-            {groups.map(group => <CommandGroup key={group.key} heading={group.label}>
-              {group.rows.map(row => {
-                if (!('key' in row)) return null
-                return <CommandItem key={row.key} value={row.key}
-                  data-ui={row.ui?.control ?? 'titlebar.menu-item'} data-ui-key={row.ui?.item ?? row.key}
-                  disabled={menuItemDisabled(row, menu)}
-                  onSelect={() => { pending.current = row; onOpenChange(false) }}>
-                  <span>{row.label}</span>
-                  {row.shortcut && <span className="titlebar-menu-shortcut">
-                    {row.command === 'reset' ? `${menu.chatZoom}%  ` : ''}{row.shortcut}
-                  </span>}
-                </CommandItem>
-              })}
-            </CommandGroup>)}
-          </CommandList>
-          {section === 'agent' && !query && <p className="dock-launcher-context">
-            Selected chat: {menu.selectedChatTitle ?? 'No chat selected'}
-          </p>}
-          <div className="dock-launcher-search">
-            <Search size={15} aria-hidden="true" />
-            <CommandPrimitive.Input ref={input} value={query} onValueChange={setQuery}
-              data-ui="dock.launcher-search" placeholder="Search commands…" aria-label="Search launcher commands" />
-          </div>
-        </Command>
+          <Command shouldFilter={false} loop className="dock-launcher-command" label="Application commands">
+            <CommandList className="dock-launcher-list">
+              <CommandEmpty>No commands found.</CommandEmpty>
+              {groups.map(group => <CommandGroup key={group.key} heading={group.label}>
+                {group.rows.map(row => {
+                  if (!('key' in row)) return null
+                  return <CommandItem key={row.key} value={row.key}
+                    data-ui={row.ui?.control ?? 'titlebar.menu-item'} data-ui-key={row.ui?.item ?? row.key}
+                    disabled={menuItemDisabled(row, menu)}
+                    onSelect={() => { pending.current = row; onOpenChange(false) }}>
+                    <span>{row.label}</span>
+                    {row.shortcut && <span className="titlebar-menu-shortcut">
+                      {row.command === 'reset' ? `${menu.chatZoom}%  ` : ''}{row.shortcut}
+                    </span>}
+                  </CommandItem>
+                })}
+              </CommandGroup>)}
+            </CommandList>
+            {section === 'agent' && !query && <p className="dock-launcher-context">
+              Selected chat: {menu.selectedChatTitle ?? 'No chat selected'}
+            </p>}
+            <div className="dock-launcher-search">
+              <Search size={15} aria-hidden="true" />
+              <CommandPrimitive.Input ref={input} value={query} onValueChange={setQuery}
+                data-ui="dock.launcher-search" placeholder="Search commands…" aria-label="Search launcher commands" />
+            </div>
+          </Command>
         </Tabs.Content>
       </Tabs.Root>
     </PopoverContent>
