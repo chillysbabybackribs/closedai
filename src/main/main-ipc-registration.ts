@@ -104,7 +104,9 @@ export function registerMainProcessIpc(reg: MainIpcRegistration): void {
   registerToolsIpc(reg.ipcMain, {
     registry: reg.toolRegistry,
     telemetry: reg.toolTelemetry,
+    settings: reg.settings,
     providers: () => [...CHAT_PROVIDERS],
+    notifyEvent: (event) => { reg.sendToWindows(IPC.event.toolsEvent, event) },
     onEnabledChanged: async (toolId, enabled, disabledIds) => {
       await reg.settings()?.set({ disabledTools: disabledIds })
       reg.sendToWindows(IPC.event.toolsEvent, { type: 'enabled', toolId, enabled } satisfies ToolsEvent)

@@ -130,6 +130,28 @@
   border-top: 1px solid var(--border);
 }
 
+.tools-rail-slice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgb(255 255 255 / 6%);
+}
+
+.tools-rail-slice-label {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.tools-rail-slice-note {
+  margin-top: 2px;
+  font-size: 11px;
+  line-height: 1.25;
+  color: var(--muted-foreground);
+}
+
 .tools-rail-foot .settings-tabs {
   width: 100%;
   justify-content: stretch;

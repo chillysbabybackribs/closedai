@@ -22,7 +22,8 @@ const manifest = (tools: ToolInfo[]): ToolManifest => ({
     { id: 'runs-native', label: 'This machine', effect: 'Runs native code', summary: '' }
   ],
   advertisedTokens: 0,
-  readOnlyIds: ['embedded_browser.page', 'search.query']
+  readOnlyIds: ['embedded_browser.page', 'search.query'],
+  chatToolSliceEnabled: false
 })
 
 test('groups follow manifest order, drop empty groups, and report mixed state and cost', () => {

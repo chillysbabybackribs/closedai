@@ -153,6 +153,19 @@ export function ToolsPanel({ active: open, onSendToChat }: ToolsPanelProps): JSX
               })}
             </div>
             <div className="tools-rail-foot">
+              <div className="tools-rail-slice">
+                <div className="min-w-0">
+                  <p className="tools-rail-slice-label" id="tools-task-slice-label">Task tool slices</p>
+                  <p className="tools-rail-slice-note">Codex eager set per turn</p>
+                </div>
+                <Switch
+                  checked={tools.chatToolSliceEnabled}
+                  disabled={!tools.manifest}
+                  aria-labelledby="tools-task-slice-label"
+                  data-ui="tools.task-slice"
+                  onCheckedChange={(checked) => void tools.setChatToolSliceEnabled(checked)}
+                />
+              </div>
               <div className="settings-tabs" role="radiogroup" aria-label="Preset">
                 {PRESETS.map((entry) => (
                   <button
@@ -219,7 +232,9 @@ export function ToolsPanel({ active: open, onSendToChat }: ToolsPanelProps): JSX
         </div>
 
         <footer className="flex shrink-0 items-center gap-4 border-t px-6 py-2.5 text-xs text-muted-foreground">
-          <span className="min-w-0 flex-1">Off takes effect now. Open chats keep their list until their next thread.</span>
+          <span className="min-w-0 flex-1">
+            Off takes effect now. Open Codex chats pick up slice and enable changes on the next send or thread rotation.
+          </span>
           <button type="button" className="whitespace-nowrap hover:enabled:text-foreground disabled:text-muted-foreground/50" disabled={totalCalls === 0} data-ui="tools.clear"
             onClick={() => void tools.clearTelemetry()}>
             Reset counts

@@ -11,6 +11,8 @@ export type ToolsController = {
   setEnabled: (toolId: string, enabled: boolean) => Promise<void>
   /** One row, one group, or a preset: applied optimistically, persisted once, then re-read. */
   setEnabledMany: (switches: ToolSwitch[]) => Promise<void>
+  chatToolSliceEnabled: boolean
+  setChatToolSliceEnabled: (enabled: boolean) => Promise<void>
 }
 
 /** Loads the manifest and telemetry while `active`, and keeps telemetry live via push events. */
@@ -93,7 +95,27 @@ export function useToolsController(active: boolean): ToolsController {
     await refresh()
   }, [refresh])
 
-  return { manifest, telemetry, error, refresh, clearTelemetry, setEnabled, setEnabledMany }
+  const setChatToolSliceEnabled = useCallback(async (enabled: boolean) => {
+    setManifest((current) => current ? { ...current, chatToolSliceEnabled: enabled } : current)
+    try {
+      await window.closedai.tools.setChatToolSliceEnabled(enabled)
+    } catch (caught) {
+      setError(errorMessage(caught))
+      await refresh()
+    }
+  }, [refresh])
+
+  return {
+    manifest,
+    telemetry,
+    error,
+    refresh,
+    clearTelemetry,
+    setEnabled,
+    setEnabledMany,
+    chatToolSliceEnabled: manifest?.chatToolSliceEnabled === true,
+    setChatToolSliceEnabled
+  }
 }
 
 /** Apply a switch to a plain tool (`ns.tool`) or one action (`ns.tool.action`). */

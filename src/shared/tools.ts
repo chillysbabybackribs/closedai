@@ -83,6 +83,11 @@ export type ToolManifest = {
   advertisedTokens: number
   /** Tool ids the Read-only preset keeps on: they observe and never act for the user. */
   readOnlyIds: string[]
+  /**
+   * When true, Codex advertises a task slice's eager set instead of the legacy pair
+   * (`closedai_app.state` + `embedded_browser.page`). Execution still uses the full registry.
+   */
+  chatToolSliceEnabled: boolean
 }
 
 /** One switch change; a batch of these is one persisted write and one refresh. */

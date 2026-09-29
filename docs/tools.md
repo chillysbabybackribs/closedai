@@ -705,8 +705,11 @@ a failing count when any enabled tool in the group has errors. Selecting a group
 summary and master switch in the head, then one ledger row per tool (switch, name, summary, cost,
 status dot). Clicking a row opens its overview inline: technical id and verbs, summary and off
 effect, effect, cost, last use, runs, recent failure notes, the exact text the model reads, and
-the advertised schema. Presets (Full, Read-only, Custom) sit under the rail; the footer resets
-telemetry counts. Full turns everything on; Read-only keeps `READ_ONLY_TOOL_IDS` (the reads-only
+the advertised schema. A **Task tool slices** switch under the rail toggles `chatToolSliceEnabled`
+(Codex only): when on, each send advertises the eager set from `scripts/tool-slices.json` instead
+of the legacy pair (`closedai_app.state` + `embedded_browser.page`); execution still uses the full
+registry. Presets (Full, Read-only, Custom) sit under that switch; the footer resets telemetry
+counts. Full turns everything on; Read-only keeps `READ_ONLY_TOOL_IDS` (the reads-only
 group plus app state, screenshots, and chat reading) and turns the rest off; Custom is the
 detected state of any other combination.
 
@@ -715,8 +718,9 @@ providers and calls are refused. Switching a row off disables every verb of an a
 registry still supports per-verb restriction (`restrictActions`) for callers that need it, but
 the view does not expose verbs. Bulk changes (a row of an action tool, a group, a preset) go
 through `tools:setEnabledMany`, one persisted write, after which the renderer re-reads the
-manifest. Toggle state is stored in `app-settings.json` and applied before each `ChatService`
-starts or resumes a thread.
+manifest. Enable/disable state is stored in `app-settings.json` and applied before each `ChatService`
+starts or resumes a thread. The slice switch uses the same store and applies on the next Codex send
+without restarting the app.
 
 ## Telemetry
 

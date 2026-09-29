@@ -76,7 +76,8 @@ HTTP MCP servers. File search and edits stay with each provider's native tools. 
 deferred where the provider supports discovery; see [Tools](tools.md#how-the-model-sees-it).
 On Codex, only a small eager set (typically `embedded_browser.page` and `closedai_app.state`)
 ships full schemas on every turn; tools such as `search.query`, `tool_batch.run`, and the browser
-CDP namespace load through discovery. When `chatToolSliceEnabled` is on, `ensureCodexThread`
+CDP namespace load through discovery. Toggle **Task tool slices** in Tools & capabilities, or set `chatToolSliceEnabled` in app settings.
+When it is on, `ensureCodexThread`
 promotes a task slice from `scripts/tool-slices.json` (core, browser, research, or full) before
 `thread/start`; a slice change rotates the thread like any other catalog drift. Trace label
 `codex.tool_slice` records the slice id and promoted tool ids. `measureToolContextBudget()` in
