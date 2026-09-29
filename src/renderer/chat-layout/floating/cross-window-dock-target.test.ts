@@ -14,6 +14,22 @@ test('cross-window body center stacks below the target tile', () => {
   )
 })
 
+test('cross-window body over a floating chat tile still shows a split target', () => {
+  const floating = [{ id: 'a', rect: { x: 80, y: 60, width: 520, height: 640 } }]
+  assert.deepEqual(
+    resolveCrossDockTarget('incoming', { x: 300, y: 400 }, canvas, [], floating),
+    { kind: 'split', target: 'a', edge: 'bottom' }
+  )
+})
+
+test('cross-window pointer in canvas gap snaps to the nearest chat tile', () => {
+  const floating = [{ id: 'a', rect: { x: 80, y: 60, width: 520, height: 640 } }]
+  assert.deepEqual(
+    resolveCrossDockTarget('incoming', { x: 700, y: 400 }, canvas, [], floating),
+    { kind: 'split', target: 'a', edge: 'right' }
+  )
+})
+
 test('split preview uses the incoming pane id before it exists on the tree', () => {
   const tree: ChatLayout = { kind: 'pane', id: 'a', tabs: ['a'] }
   const target = { kind: 'split' as const, target: 'a', edge: 'bottom' as const }
