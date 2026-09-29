@@ -5,6 +5,7 @@ import { WorkspaceChat } from '../chat-layout/workspace-chat.js'
 import { useWorkspacePaneSlice } from '../chat-layout/workspace-pane-subscription.js'
 import type { AppearanceSettings } from '../settings/appearance-settings.js'
 import { quickChatFeed, type QuickChatFeed } from './quick-chat-feed.js'
+import { layerMenuOpen } from './layer-menu.js'
 
 const request = (value: 'new' | 'close'): void => { void window.closedai.quickChat.request(value) }
 
@@ -51,7 +52,7 @@ export const QuickChatCard = memo(function QuickChatCard({ paneId, focused, disp
   useEffect(() => {
     const left = wasFocused.current && !focused
     wasFocused.current = focused
-    if (!left || document.querySelector('[data-radix-popper-content-wrapper]')) return
+    if (!left || layerMenuOpen()) return
     if (unused) request('close')
     else setExpanded(false)
   }, [focused, unused])

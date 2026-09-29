@@ -6,6 +6,7 @@ import { chatRunning } from '../chat-state.js'
 import { useWorkspacePaneSlice } from '../chat-layout/workspace-pane-subscription.js'
 import { readAppearanceSettings, type AppearanceSettings } from '../settings/appearance-settings.js'
 import { QuickChatCard } from './quick-chat-card.js'
+import { layerMenuOpen } from './layer-menu.js'
 import '../styles.css'
 
 // While a menu inside the layer is open, the layer grows upward to this height so the menu is not
@@ -88,7 +89,7 @@ function useLayerSize(rootRef: RefObject<HTMLDivElement | null>, pageHeight: num
     let last = ''
     const report = (): void => {
       const box = root.getBoundingClientRect()
-      const menu = document.querySelector('[data-radix-popper-content-wrapper]') !== null
+      const menu = layerMenuOpen()
       const height = Math.ceil(menu ? Math.max(box.height, Math.min(MENU_ROOM, pageHeight)) : box.height)
       const size = { width: Math.ceil(box.width), height }
       const key = `${size.width}x${size.height}`
@@ -100,6 +101,7 @@ function useLayerSize(rootRef: RefObject<HTMLDivElement | null>, pageHeight: num
     const resize = new ResizeObserver(report)
     resize.observe(root)
     const menus = new MutationObserver(report)
+    // Panels portal into <body> and leave it when they close.
     menus.observe(document.body, { childList: true })
     return () => {
       resize.disconnect()
