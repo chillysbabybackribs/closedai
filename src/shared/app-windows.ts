@@ -2,6 +2,9 @@
 // windows each hold their own tab layout for chats the user moved out of it. A chat lives in one
 // window at a time; closing a detached window hands its chats back to the main window.
 
+import type {
+  AppWindowDockEvent, CrossWindowDockComplete, CrossWindowDockRouteRequest, CrossWindowDockRouteResult, SerializedWindowTarget
+} from './cross-window-dock.js'
 import type { QuickChatOverlayRequest } from './quick-chat-overlay.js'
 
 export type AppWindowId = string
@@ -37,10 +40,17 @@ export type AppWindowCommand =
   | { type: 'showBrowser' }
   /** Open, renew or close the browser's quick chat; sent to the main window from the quick chat layer. */
   | { type: 'quickChat'; request: QuickChatOverlayRequest }
+  /** Remove a pane another window absorbed; close this window when the layout empties. */
+  | { type: 'removeCrossDockSource'; paneId: string; tabIds: string[] }
+  /** Merge chats dropped from another window using the agreed target zones. */
+  | { type: 'absorbCrossDock'; paneId: string; tabIds: string[]; pointer: { x: number; y: number } }
 
 export type AppWindowsEvent =
   | { type: 'windows'; windows: AppWindowInfo[] }
   | { type: 'command'; command: AppWindowCommand }
+  | { type: 'dock'; dock: AppWindowDockEvent }
+
+export type { CrossWindowDockComplete, CrossWindowDockRouteRequest, CrossWindowDockRouteResult }
 
 /** A box in a window's page, in CSS pixels; main converts it to the window's own coordinates. */
 export type AppWindowRegion = { x: number; y: number; width: number; height: number }

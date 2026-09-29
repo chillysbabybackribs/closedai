@@ -62,6 +62,9 @@ export type ClosedaiApi = {
     showBrowser: () => Promise<void>
     /** A still of this window's own page within `region` (JPEG data URL); null when nothing painted. */
     capture: (region: AppWindowRegion) => Promise<string | null>
+    reportDockSurface: (region: AppWindowRegion | null) => Promise<void>
+    routeCrossDock: (request: import('./cross-window-dock.js').CrossWindowDockRouteRequest) => Promise<import('./cross-window-dock.js').CrossWindowDockRouteResult>
+    completeCrossDock: (payload: import('./cross-window-dock.js').CrossWindowDockComplete) => Promise<void>
     onEvent: (listener: (event: AppWindowsEvent) => void) => Unsubscribe
   }
   /** The browser's quick chat layer (shared/quick-chat-overlay.ts). */

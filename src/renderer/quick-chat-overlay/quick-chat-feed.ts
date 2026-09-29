@@ -2,6 +2,7 @@ import type { ChatSnapshot } from '../../shared/chat.js'
 import { activitySteps } from '../activity-steps.js'
 import { chatRunning } from '../chat-state.js'
 import { isActivity } from '../transcript-rows.js'
+import { feedToolPhrase } from './feed-phrase.js'
 
 // The running feed the compact quick chat shows while a task drives the page: the latest turn's
 // steps as one-line updates, newest last, then its reply once the turn ends. Pure, so the words
@@ -28,12 +29,12 @@ export function quickChatFeed(snapshot: ChatSnapshot, limit = 3): QuickChatFeed 
   if (start < 0) return { status: snapshot.pausedTurnId ? 'paused' : 'idle', lines: [], reply: null }
   const turn = items.slice(start + 1)
   const running = chatRunning(snapshot)
-  const steps = activitySteps(turn.filter(isActivity), Date.now())
-  const lines: QuickChatFeedLine[] = steps.map((step) => ({
-    id: step.id,
-    text: [step.verb, step.label].filter(Boolean).join(' '),
-    state: step.phase === 'failed' ? 'failed' : step.phase === 'running' || step.phase === 'pending' ? 'live' : 'done'
-  }))
+  const activity = turn.filter(isActivity)
+  const lines: QuickChatFeedLine[] = activitySteps(activity, Date.now()).map((step, index) => {
+    const state = step.phase === 'failed' ? 'failed' : step.phase === 'running' || step.phase === 'pending' ? 'live' : 'done'
+    const text = feedToolPhrase(activity[index]!, state === 'live') ?? [step.verb, step.label].filter(Boolean).join(' ')
+    return { id: step.id, text, state }
+  })
   const thinking = running && turn.at(-1)?.type === 'reasoning'
   if (thinking) lines.push({ id: 'thinking', text: 'Thinking', state: 'live' })
   if (running && !lines.some((line) => line.state === 'live')) lines.push({ id: 'working', text: 'Working', state: 'live' })

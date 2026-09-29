@@ -47,6 +47,9 @@ const api: ClosedaiApi = {
     revealTab: (tabId) => invoke(IPC.invoke.windows.revealTab, tabId),
     showBrowser: () => invoke(IPC.invoke.windows.showBrowser),
     capture: (region) => invoke(IPC.invoke.windows.capture, region),
+    reportDockSurface: (region) => invoke(IPC.invoke.windows.reportDockSurface, region),
+    routeCrossDock: (request) => invoke(IPC.invoke.windows.routeCrossDock, request),
+    completeCrossDock: (payload) => invoke(IPC.invoke.windows.completeCrossDock, payload),
     onEvent: (listener) => subscribe(IPC.event.windowsEvent, listener)
   },
   quickChat: {

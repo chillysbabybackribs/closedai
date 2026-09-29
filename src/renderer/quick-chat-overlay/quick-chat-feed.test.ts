@@ -53,3 +53,15 @@ test('an error notice fails the turn and becomes its reply', () => {
   assert.equal(feed.status, 'failed')
   assert.equal(feed.reply, 'The provider stopped')
 })
+
+test('page steps read as plain words, whatever the lane calls the tool', () => {
+  const feed = quickChatFeed(snapshot([
+    user('u1'),
+    { type: 'tool', id: 's1', turnId: 't', label: 'Tool search', detail: 'select:mcp__embedded_browser__script', status: 'completed' },
+    { type: 'tool', id: 's2', turnId: 't', label: 'embedded_browser · page', detail: '{\n  "action": "navigate",\n  "url": "https://www.espn.com/mlb/scoreboard"', status: 'completed' },
+    { type: 'tool', id: 's3', turnId: 't', label: 'mcp__embedded_browser__script', detail: '{"action":"evaluate","expression":"(() => {', status: 'inProgress' }
+  ], 't'), 5)
+  assert.deepEqual(feed.lines.map((line) => line.text), ['Loaded tools', 'Opened espn.com', 'Working in the page'])
+  const other = quickChatFeed(snapshot([user('u1'), tool('s1', 'Some other tool', 'completed')]))
+  assert.equal(other.lines[0]!.text.length > 0, true)
+})

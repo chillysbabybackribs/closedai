@@ -10,6 +10,8 @@ import { adoptTabs, initialWindowTree } from './layout-windows.js'
 import { adoptsUnheldChats, appWindow, isFrontWindow, onAppWindowCommand, tabsHeldElsewhere, useAppWindows } from '../app-windows/app-window-store.js'
 import { floatBeside, groupWindow, minimizeWindow, raiseWindow, restoreWindow } from './floating/window-layout.js'
 import { setWindowOnTop, tileWindows } from './floating/window-arrange.js'
+import { absorbCrossDockAtPointer } from './floating/cross-window-dock-target.js'
+import { crossWindowDockCanvasSize } from '../app-windows/cross-window-dock-store.js'
 import { assignGroups, presetLayout, presetSlots, singleGroup, type CanvasSize, type LayoutPreset } from './layout-presets.js'
 const ERROR_TTL_MS = 8000
 /** Main announces a selection within one workspace event; past this the layout resyncs instead of staying locked. */
@@ -470,6 +472,21 @@ export function useChatLayout(
     if (command.type === 'activateTab') void activateTabRef.current(command.tabId)
     else if (command.type === 'adoptTabs') {
       setLayout((value) => ({ ...value, tree: adoptTabs(value.tree, command.tabIds, tabOwner(value.tree, selected.current)) }))
+    } else if (command.type === 'absorbCrossDock') {
+      const size = crossWindowDockCanvasSize()
+      setLayout((value) => ({
+        ...value,
+        tree: absorbCrossDockAtPointer(value.tree, value.browserVisible, command.paneId, command.tabIds, command.pointer, size, crypto.randomUUID())
+      }))
+      const focus = command.tabIds[0]
+      if (focus) selected.current = focus
+    } else if (command.type === 'removeCrossDockSource') {
+      setLayout((value) => {
+        let tree = value.tree
+        for (const tab of command.tabIds) tree = removeTab(tree, tab) ?? tree
+        if (!paneIds(tree).length) void window.closedai.window.close()
+        return { ...value, tree }
+      })
     }
   }), [])
 

@@ -688,6 +688,12 @@ bring the main window forward with the browser shown. In a detached window **Mov
 window returns its chats to the main window's focused tile; hiding or closing is never stopping a
 chat. Closing the main window quits the app.
 
+Dragging a detached window by its header onto another app window uses the same drop zones as the
+main canvas: the **tab strip** previews joining tabs, **left/right bands** preview a side-by-side
+split, and **top/bottom bands** preview a stacked split. The target window shows the preview; on
+release the chats move into that window and the source closes when it is empty. The main window is
+a valid drop target and keeps the browser rules above.
+
 A chat lives in one window. Opening a chat another window holds (header search, History, a
 split) raises that window and selects the tab there instead of adding a second tab. A chat no
 window holds yet (a new chat, one a tool opened) goes to the window in front, or to the main

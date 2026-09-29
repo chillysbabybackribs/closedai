@@ -1,6 +1,10 @@
 import { randomUUID } from 'node:crypto'
 import type { BrowserWindow, Rectangle, WebContents } from 'electron'
-import { MAIN_WINDOW_ID, type AppWindowCommand, type AppWindowContext, type AppWindowId, type AppWindowInfo } from '../../shared/app-windows.js'
+import {
+  MAIN_WINDOW_ID, type AppWindowCommand, type AppWindowContext, type AppWindowId, type AppWindowInfo, type AppWindowRegion
+} from '../../shared/app-windows.js'
+import type { AppWindowDockEvent, CrossWindowDockComplete, CrossWindowDockRouteRequest, CrossWindowDockRouteResult } from '../../shared/cross-window-dock.js'
+import { routeCrossDock, screenToCanvas, tabsForComplete, type DockWindowFrame } from './cross-window-dock.js'
 import type { ChatWorkspaceEvent } from '../../shared/chat-peers.js'
 import type { QuickChatOverlayRequest } from '../../shared/quick-chat-overlay.js'
 import { IPC, type IpcEventChannel, type IpcEventChannels } from '../../shared/ipc-channels.js'
@@ -13,7 +17,7 @@ import type { AppWindowStore } from './app-window-store.js'
 // quitting or switching projects keeps it so it reopens with its chats.
 
 export type RegistryWindow = Pick<BrowserWindow,
-  'isDestroyed' | 'close' | 'show' | 'focus' | 'isMinimized' | 'restore' | 'isFocused' | 'isMaximized' | 'getBounds' | 'on'
+  'isDestroyed' | 'close' | 'show' | 'focus' | 'isMinimized' | 'restore' | 'isFocused' | 'isMaximized' | 'getBounds' | 'getContentBounds' | 'on'
 > & { webContents: Pick<WebContents, 'id' | 'isDestroyed' | 'send'> }
 
 export type AppWindowRegistryDeps = {
@@ -66,6 +70,9 @@ const MAIN_ONLY_CHANNELS = new Set<IpcEventChannel>([
 export class AppWindowRegistry {
   private readonly entries = new Map<AppWindowId, Entry>()
   private readonly surfaces = new Set<{ contents: SurfaceContents; paneIds: Set<string> }>()
+  private readonly dockSurfaces = new Map<AppWindowId, AppWindowRegion>()
+  private dockHoverTarget: AppWindowId | null = null
+  private lastForeignHover: { targetId: AppWindowId; x: number; y: number } | null = null
   private shuttingDown = false
   private observedCwd: string | null = null
 
@@ -213,6 +220,86 @@ export class AppWindowRegistry {
     if (!main) return
     this.raise(main)
     this.command(main, { type: 'showBrowser' })
+  }
+
+  reportDockSurface(contents: Pick<WebContents, 'id'>, region: AppWindowRegion | null): void {
+    const id = this.idOf(contents)
+    if (!id) return
+    if (!region || region.width <= 0 || region.height <= 0) this.dockSurfaces.delete(id)
+    else this.dockSurfaces.set(id, region)
+  }
+
+  routeCrossDock(source: Pick<WebContents, 'id'>, request: CrossWindowDockRouteRequest): CrossWindowDockRouteResult {
+    const sourceId = this.idOf(source)
+    if (!sourceId) return { targetWindowId: null, local: null }
+    const result = routeCrossDock(sourceId, this.dockFrames(), request)
+    const foreignId = result.targetWindowId
+    if (foreignId !== this.dockHoverTarget) {
+      this.clearDockHover()
+      this.dockHoverTarget = foreignId
+    }
+    if (foreignId) {
+      const target = this.entries.get(foreignId)
+      const frame = this.dockFrames().find((entry) => entry.id === foreignId)
+      if (target && frame) {
+        const mapped = screenToCanvas(frame, request.screenX, request.screenY)
+        if (mapped) {
+          this.lastForeignHover = { targetId: foreignId, x: mapped.x, y: mapped.y }
+          this.deliverDock(target, { type: 'hover', hover: {
+            sourceWindowId: sourceId, sourcePaneId: request.source.paneId, tabIds: request.source.tabIds,
+            ghostTabLabel: request.source.ghostTabLabel, x: mapped.x, y: mapped.y
+          } })
+        }
+      }
+    } else {
+      this.lastForeignHover = null
+      this.clearDockHover()
+    }
+    return result
+  }
+
+  completeCrossDock(source: Pick<WebContents, 'id'>, payload: CrossWindowDockComplete): void {
+    const sourceId = this.idOf(source)
+    const target = this.entries.get(payload.targetWindowId)
+    const from = sourceId ? this.entries.get(sourceId) : undefined
+    if (!sourceId || !from || !target) return
+    const hover = this.lastForeignHover?.targetId === payload.targetWindowId ? this.lastForeignHover : null
+    if (!hover) return
+    const tabs = tabsForComplete(from.tabIds, payload)
+    if (!tabs.length) return
+    from.tabIds = from.tabIds.filter((id) => !tabs.includes(id))
+    for (const id of tabs) from.visible.delete(id)
+    target.tabIds = [...new Set([...target.tabIds, ...tabs])]
+    if (!from.main && from.cwd) this.deps.store.put({ id: from.id, cwd: from.cwd, tabIds: from.tabIds })
+    if (!target.main && target.cwd) this.deps.store.put({ id: target.id, cwd: target.cwd, tabIds: target.tabIds })
+    this.command(target, { type: 'absorbCrossDock', paneId: payload.source.paneId, tabIds: tabs, pointer: { x: hover.x, y: hover.y } })
+    this.command(from, { type: 'removeCrossDockSource', paneId: payload.source.paneId, tabIds: tabs })
+    this.lastForeignHover = null
+    this.clearDockHover()
+    this.broadcastWindows()
+    if (!from.main && !from.tabIds.length && !from.window.isDestroyed()) from.window.close()
+  }
+
+  private dockFrames(): DockWindowFrame[] {
+    const frames = [...this.entries.values()].filter((entry) => !entry.window.isDestroyed()).map((entry) => ({
+      id: entry.id,
+      content: entry.window.getContentBounds(),
+      surface: this.dockSurfaces.get(entry.id) ?? null,
+      focused: entry.window.isFocused()
+    }))
+    frames.sort((a, b) => Number(a.focused) - Number(b.focused))
+    return frames.map(({ id, content, surface }) => ({ id, content, surface }))
+  }
+
+  private clearDockHover(): void {
+    if (!this.dockHoverTarget) return
+    const previous = this.entries.get(this.dockHoverTarget)
+    this.dockHoverTarget = null
+    if (previous) this.deliverDock(previous, { type: 'hover', hover: null })
+  }
+
+  private deliverDock(entry: Entry, dock: AppWindowDockEvent): void {
+    deliver(entry, IPC.event.windowsEvent, { type: 'dock', dock })
   }
 
   send<C extends IpcEventChannel>(channel: C, payload: IpcEventChannels[C]): void {

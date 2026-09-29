@@ -99,7 +99,6 @@ export const QuickChatCard = memo(function QuickChatCard({ paneId, focused, disp
 })
 
 function QuickChatFeedView({ feed, onExpand }: { feed: QuickChatFeed; onExpand: () => void }): JSX.Element {
-  const settled = feed.status !== 'working'
   return (
     <div className={`quick-chat-feed is-${feed.status}`} aria-live="polite">
       <div className="quick-chat-feed-lines">
@@ -111,7 +110,7 @@ function QuickChatFeedView({ feed, onExpand }: { feed: QuickChatFeed; onExpand: 
             <span>{line.text}</span>
           </div>
         ))}
-        {settled && feed.reply ? <p className="quick-chat-feed-reply">{feed.reply}</p> : null}
+        {feed.reply ? <p className="quick-chat-feed-reply">{feed.reply}</p> : null}
       </div>
       <div className="quick-chat-feed-actions">
         <button type="button" className="quick-chat-icon-button" data-ui="browser.quick-chat-expand"

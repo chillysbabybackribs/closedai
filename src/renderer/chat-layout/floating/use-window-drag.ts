@@ -23,7 +23,7 @@ export type WindowGesture = { id: string; kind: 'move' | ResizeEdge; target: Win
 
 const START_DISTANCE = 5
 
-export function useWindowDrag({ canvas, frame, onActive, onPainted, onFloat, onSnap, onGroup, onMaximize }: {
+export function useWindowDrag({ canvas, frame, onActive, onPainted, onFloat, onSnap, onGroup, onMaximize, dockSource }: {
   canvas: RefObject<HTMLElement | null>
   frame: () => WindowFrame
   /** A gesture started: occlude the native browser and let the release glide. */
@@ -35,6 +35,8 @@ export function useWindowDrag({ canvas, frame, onActive, onPainted, onFloat, onS
   onSnap: (id: string, target: WindowTarget & { kind: 'split' }) => void
   onGroup: (id: string, target: string) => void
   onMaximize: (id: string) => void
+  /** Tabs and label for cross-window dock previews while this window moves. */
+  dockSource?: (id: string) => { tabIds: string[]; ghostTabLabel: string }
 }) {
   const [gesture, setGesture] = useState<WindowGesture | null>(null)
   const stop = useRef<(() => void) | null>(null)
@@ -55,7 +57,7 @@ export function useWindowDrag({ canvas, frame, onActive, onPainted, onFloat, onS
   }
 
   const track = (event: ReactPointerEvent, id: string, kind: WindowGesture['kind'], start: Rect,
-    update: (dx: number, dy: number, pointer: { x: number; y: number }) => void, release: () => void): void => {
+    update: (dx: number, dy: number, pointer: { x: number; y: number }, screen: { x: number; y: number }) => void, release: () => void): void => {
     const host = canvas.current
     if (event.button !== 0 || stop.current || !host) return
     event.preventDefault()
@@ -83,7 +85,7 @@ export function useWindowDrag({ canvas, frame, onActive, onPainted, onFloat, onS
         onActive()
         setGesture({ id, kind, target: { kind: 'free' }, preview: null })
       }
-      update(e.clientX - x0, e.clientY - y0, local(e))
+      update(e.clientX - x0, e.clientY - y0, local(e), { x: e.screenX, y: e.screenY })
     }
     const up = (e: PointerEvent): void => {
       if (e.pointerId !== pointerId) return
@@ -124,7 +126,9 @@ export function useWindowDrag({ canvas, frame, onActive, onPainted, onFloat, onS
     let base: Rect | null = floating ?? null
     let rect = start
     let target: WindowTarget = { kind: 'free' }
-    track(event, id, 'move', start, (dx, dy, pointer) => {
+    let lastScreen = { x: event.nativeEvent.screenX, y: event.nativeEvent.screenY }
+    track(event, id, 'move', start, (dx, dy, pointer, screen) => {
+      lastScreen = screen
       const now = frame()
       if (!base) {
         const grab = { x: pointer.x - dx, y: pointer.y - dy }
@@ -132,21 +136,56 @@ export function useWindowDrag({ canvas, frame, onActive, onPainted, onFloat, onS
       }
       rect = clampWindow({ ...base, x: base.x + dx, y: base.y + dy }, now.size, minimum)
       paint(id, rect)
+      if (dockSource) {
+        const payload = dockSource(id)
+        void window.closedai.windows.routeCrossDock({
+          screenX: screen.x, screenY: screen.y,
+          source: { paneId: id, tabIds: payload.tabIds, ghostTabLabel: payload.ghostTabLabel }
+        }).then((routed) => {
+          if (routed.targetWindowId) {
+            setGesture((current) => current?.id === id ? { id, kind: 'move', target: { kind: 'free' }, preview: null } : current)
+            return
+          }
+          const next = windowTargetAt(id, pointer.x, pointer.y, now.size, now.tiled, now.floating)
+          if (sameTarget(next, target)) return
+          target = next
+          const preview = targetPreview(now.tree, id, next, now.size, now.browserVisible, now.tiled, now.floating)
+          setGesture({ id, kind: 'move', target: next, preview })
+        })
+        return
+      }
       const next = windowTargetAt(id, pointer.x, pointer.y, now.size, now.tiled, now.floating)
       if (sameTarget(next, target)) return
       target = next
       const preview = targetPreview(now.tree, id, next, now.size, now.browserVisible, now.tiled, now.floating)
       setGesture({ id, kind: 'move', target: next, preview })
     }, () => {
-      if (target.kind === 'split') onSnap(id, target)
-      else if (target.kind === 'group') onGroup(id, target.target)
-      else if (target.kind === 'maximize') {
-        // Restoring puts the window back where it was before the drag: its float, or its slot.
-        paint(id, start)
-        onMaximize(id)
-      } else onFloat(id, rect, !floating)
+      const finishLocal = (): void => {
+        if (target.kind === 'split') onSnap(id, target)
+        else if (target.kind === 'group') onGroup(id, target.target)
+        else if (target.kind === 'maximize') {
+          paint(id, start)
+          onMaximize(id)
+        } else onFloat(id, rect, !floating)
+      }
+      if (!dockSource) { finishLocal(); return }
+      const payload = dockSource(id)
+      void window.closedai.windows.routeCrossDock({
+        screenX: lastScreen.x, screenY: lastScreen.y,
+        source: { paneId: id, tabIds: payload.tabIds, ghostTabLabel: payload.ghostTabLabel }
+      }).then(async (routed) => {
+        if (routed.targetWindowId) {
+          write(id, start)
+          await window.closedai.windows.completeCrossDock({
+            targetWindowId: routed.targetWindowId,
+            source: { paneId: id, tabIds: payload.tabIds }
+          })
+          return
+        }
+        finishLocal()
+      })
     })
-  }, [frame, onFloat, onSnap, onGroup, onMaximize])
+  }, [frame, onFloat, onSnap, onGroup, onMaximize, dockSource])
 
   /** Resize a floating window from one of its edges or corners. */
   const startResize = useCallback((event: ReactPointerEvent, id: string, edge: ResizeEdge): void => {
@@ -155,7 +194,7 @@ export function useWindowDrag({ canvas, frame, onActive, onPainted, onFloat, onS
     if (!start) return
     const minimum = windowMinimum(id)
     let rect = start
-    track(event, id, edge, start, (dx, dy) => {
+    track(event, id, edge, start, (dx, dy, _pointer, _screen) => {
       rect = resizeRect(start, edge, dx, dy, minimum)
       paint(id, rect)
     }, () => onFloat(id, rect, false))

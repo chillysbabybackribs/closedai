@@ -17,4 +17,7 @@ export function registerAppWindowsIpc(ipcMain: Pick<IpcMain, 'handle'>, registry
   registerInvoke(ipcMain, IPC.invoke.windows.revealTab, (event, tabId) => require().revealTab(event.sender, tabId))
   registerInvoke(ipcMain, IPC.invoke.windows.showBrowser, () => require().showBrowser())
   registerInvoke(ipcMain, IPC.invoke.windows.capture, (event, region) => captureWindowRegion(event.sender, region))
+  registerInvoke(ipcMain, IPC.invoke.windows.reportDockSurface, (event, region) => { require().reportDockSurface(event.sender, region) })
+  registerInvoke(ipcMain, IPC.invoke.windows.routeCrossDock, (event, request) => require().routeCrossDock(event.sender, request))
+  registerInvoke(ipcMain, IPC.invoke.windows.completeCrossDock, (event, payload) => { require().completeCrossDock(event.sender, payload) })
 }

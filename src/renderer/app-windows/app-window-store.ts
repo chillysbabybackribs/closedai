@@ -1,7 +1,8 @@
 import { useSyncExternalStore } from 'react'
 import {
-  APP_WINDOW_QUERY, MAIN_WINDOW_ID, type AppWindowCommand, type AppWindowContext, type AppWindowInfo
+  APP_WINDOW_QUERY, MAIN_WINDOW_ID, type AppWindowCommand, type AppWindowContext, type AppWindowInfo, type AppWindowsEvent
 } from '../../shared/app-windows.js'
+import { setCrossWindowDockHover } from './cross-window-dock-store.js'
 
 // Which app window this renderer is, and what the other windows hold. Loaded once before the
 // app renders, so the first layout already knows which chats live elsewhere and are not its own.
@@ -25,8 +26,9 @@ function publish(next: Snapshot): void {
 
 /** Read this window's identity and the window list, then follow changes. Never rejects. */
 export async function loadAppWindows(): Promise<void> {
-  window.closedai.windows.onEvent((event) => {
+  window.closedai.windows.onEvent((event: AppWindowsEvent) => {
     if (event.type === 'windows') publish({ ...snapshot, windows: event.windows })
+    else if (event.type === 'dock') setCrossWindowDockHover(event.dock.type === 'hover' ? event.dock.hover : null)
     else if (commandListeners.size) for (const listener of commandListeners) listener(event.command)
     else pendingCommands.push(event.command)
   })

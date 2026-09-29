@@ -43,6 +43,9 @@ export type IpcInvokeChannels = {
   'windows:revealTab': { args: [string]; result: boolean }
   'windows:showBrowser': { args: []; result: void }
   'windows:capture': { args: [AppWindowRegion]; result: string | null }
+  'windows:reportDockSurface': { args: [AppWindowRegion | null]; result: void }
+  'windows:routeCrossDock': { args: [import('./cross-window-dock.js').CrossWindowDockRouteRequest]; result: import('./cross-window-dock.js').CrossWindowDockRouteResult }
+  'windows:completeCrossDock': { args: [import('./cross-window-dock.js').CrossWindowDockComplete]; result: void }
   'quickChat:setState': { args: [QuickChatOverlayState]; result: void }
   'quickChat:view': { args: []; result: QuickChatOverlayView | null }
   'quickChat:setSize': { args: [QuickChatOverlaySize]; result: void }
@@ -188,7 +191,10 @@ export const IPC = {
       returnTabs: 'windows:returnTabs',
       revealTab: 'windows:revealTab',
       showBrowser: 'windows:showBrowser',
-      capture: 'windows:capture'
+      capture: 'windows:capture',
+      reportDockSurface: 'windows:reportDockSurface',
+      routeCrossDock: 'windows:routeCrossDock',
+      completeCrossDock: 'windows:completeCrossDock'
     },
     quickChat: {
       setState: 'quickChat:setState',

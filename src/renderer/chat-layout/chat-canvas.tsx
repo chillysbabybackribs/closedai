@@ -23,6 +23,8 @@ import { useMaximizedWindow } from './floating/use-maximized-window.js'
 import { BrowserWindowContext, WindowResizeHandles } from './floating/window-controls.js'
 import { pressesMoveHandle } from './floating/window-move-handle.js'
 import { TEAR_OFF_TARGET, useTabTearOff } from './floating/use-tab-tear-off.js'
+import { CrossWindowDockPreview } from './cross-window-dock-preview.js'
+import { useReportDockSurface } from './use-report-dock-surface.js'
 
 const position = (rect: Rect): CSSProperties => ({ left: rect.x, top: rect.y, width: rect.width, height: rect.height })
 const contains = (rect: Rect, x: number, y: number): boolean =>
@@ -249,6 +251,12 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
     const { size, tiled, floating } = frame.current()
     windows.change((tree) => snapTarget(tree, id, target, size, tiled, floating, crypto.randomUUID()))
   }, [windows])
+  const dockSource = useCallback((id: string) => {
+    const pane = findWindow(tree, id)
+    const tabIds = pane?.tabs ?? [id]
+    return { tabIds, ghostTabLabel: title(tabIds[0] ?? id) }
+  }, [tree, title])
+  useReportDockSurface(canvasRef)
   const { gesture, startMove, startResize } = useWindowDrag({
     canvas: canvasRef, frame: windowFrame, onPainted: settle,
     onActive: useCallback(() => {
@@ -256,7 +264,8 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
       dragActiveListener.current(true)
     }, []),
     onFloat: floatAt, onSnap: snapAt, onGroup: windows.group,
-    onMaximize: useCallback((id: string) => setSoloPaneId(id), [setSoloPaneId])
+    onMaximize: useCallback((id: string) => setSoloPaneId(id), [setSoloPaneId]),
+    dockSource
   })
   useEffect(() => {
     if (dragging || settling || gesture || !glideArmed.current) return
@@ -401,6 +410,7 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
       {gesture?.preview && gesture.target.kind !== 'group' && <div className="chat-layout-snap-preview" data-kind={gesture.target.kind}
         style={position(gesture.preview)} aria-hidden="true" />}
       <JoinTabsPreview canvas={canvasRef} title={title} join={joinTabsTarget(shown, gesture, dragging && { id: dragging.id, drop })} />
+      <CrossWindowDockPreview canvas={canvasRef} frame={windowFrame} browserVisible={browserVisible} title={title} />
       {drop?.target === TEAR_OFF_TARGET && tearOff.rect.current && <div ref={tearOff.outline} className="chat-layout-snap-preview"
         data-kind="tear-off" style={position(tearOff.rect.current)} aria-hidden="true" />}
       {!soloTile && layoutDividers.map((divider) => <LayoutDivider key={divider.id}
