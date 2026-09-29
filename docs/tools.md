@@ -492,9 +492,10 @@ Those calls are counted as misuse, so a description that keeps failing this way 
 ## How the model sees it
 
 One tool per verb tool. Its description is the preamble followed by one section per action,
-and its schema is flat: an `action` enum plus every action's fields, each annotated with which
-actions require or use it. At call time the registry validates against the chosen action's
-schema, so errors are precise even though the advertised schema is the union.
+and its advertised schema is either a compact flat union (`action` enum plus shared fields,
+with short `(verb|…)` required hints) or a `oneOf` of per-action branches — whichever
+serializes smaller for provider wire budgets. At call time the registry validates against the
+chosen action's schema, so errors stay precise regardless of the advertised shape.
 
 Codex integration is in `app-server-tools.ts`. The registry is converted to app-server
 `dynamicTools` for `thread/start`, and calls arrive as `item/tool/call`.

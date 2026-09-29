@@ -26,7 +26,7 @@ import { WorkspaceViewContext, WorkspaceViewHost, type WorkspaceViewContextValue
 import { chatLayoutRevision } from './layout-revision.js'
 import { NotepadView } from '../notepad/notepad-view.js'
 import { NotepadHostContext } from '../notepad/notepad-host.js'
-import { noteIdOfTab } from '../notepad/notepad-layout.js'
+import { isNoteTab, noteIdOfTab } from '../notepad/notepad-layout.js'
 import { useNotes } from '../notepad/notes-client.js'
 import { useNotepadHost } from '../notepad/use-notepad-host.js'
 
@@ -219,7 +219,10 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, on
   }, [layout.dock])
   const onSelectTab = useCallback((id: string) => { void layout.activateTab(id) }, [layout.activateTab])
   const onCloseTab = useCallback((id: string) => { void layout.closeTab(id) }, [layout.closeTab])
-  const onNewChat = useCallback((id: string) => { void layout.newChat(id) }, [layout.newChat])
+  const onNewChat = useCallback((id: string) => {
+    if (isNoteTab(id)) void notepad.newNote(id)
+    else void layout.newChat(id)
+  }, [layout.newChat, notepad.newNote])
   const onTogglePin = useCallback((id: string, pinned: boolean) => { void chat.sidebar.setChatPinned(id, pinned).catch(() => {}) }, [chat.sidebar])
   const onPauseTab = useCallback((id: string) => { void chat.interruptPane(id) }, [chat.interruptPane])
   const onResumeTab = useCallback((id: string) => { void chat.resumePane(id) }, [chat.resumePane])

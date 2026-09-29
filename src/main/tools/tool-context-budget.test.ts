@@ -59,6 +59,7 @@ test('eager Codex tool wire stays within the regression budget', () => {
   assert.equal(budget.toolCount, 29)
   assert.ok(budget.deferredWireChars > budget.eagerWireChars, 'most schema weight should stay deferred')
   assert.ok(budget.eagerWireChars <= 3_600, `eager wire grew to ${budget.eagerWireChars}`)
+  assert.ok(budget.deferredWireChars <= 65_500, `deferred full wire grew to ${budget.deferredWireChars}`)
   assert.ok(budget.advertisedTokens <= 1_850, `advertised tokens grew to ${budget.advertisedTokens}`)
   assert.deepEqual(budget.eagerTools.map((row) => row.id), ['embedded_browser.page', 'closedai_app.state'])
   assert.ok(budget.deferredTools.some((row) => row.id === 'search.query'), 'search.query stays available via deferral')

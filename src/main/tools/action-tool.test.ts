@@ -43,14 +43,19 @@ test('defineActionTool assembles one description with a section per action', () 
   assert.equal(tool.timeoutMs, 5_000)
 })
 
-test('defineActionTool advertises a flat schema with an action enum and field notes', () => {
+test('defineActionTool advertises the smaller of flat union or oneOf schemas', () => {
   const tool = defineActionTool({ name: 'web', description: 'Web lookups.', actions: [search, fetch] })
-  const properties = tool.inputSchema.properties as Record<string, Record<string, unknown>>
-  assert.deepEqual(tool.inputSchema.required, ['action'])
-  assert.deepEqual(properties.action.enum, ['search', 'fetch'])
-  assert.equal(properties.query.description, 'Search terms. Required for: search.')
-  assert.equal(properties.id.description, 'Required for: fetch.')
-  assert.equal(properties.limit.description, undefined)
+  const hasOneOf = Array.isArray(tool.inputSchema.oneOf)
+  const hasFlat = tool.inputSchema.type === 'object'
+  assert.ok(hasOneOf || hasFlat)
+  if (hasFlat) {
+    const properties = tool.inputSchema.properties as Record<string, Record<string, unknown>>
+    assert.deepEqual(properties.action.enum, ['search', 'fetch'])
+    assert.equal(properties.query.description, 'Search terms. (search)')
+  } else {
+    const branches = tool.inputSchema.oneOf as JsonObject[]
+    assert.equal(branches.length, 2)
+  }
 })
 
 test('action tool validates against the chosen action only', async () => {

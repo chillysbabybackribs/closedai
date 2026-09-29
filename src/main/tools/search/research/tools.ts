@@ -9,15 +9,15 @@ const MAX_EVENT_WAIT_MS = 20_000
 const MAX_SOURCE_CHARS = 12_000
 
 export function researchTools(service: ResearchService, queryTool: ToolDefinition): ToolDefinition[] {
-  const runId = { type: 'string', minLength: 1, maxLength: 100, description: 'Id returned by search.run.' }
-  const after = { type: 'integer', minimum: 0, description: 'Last results cursor; omit to return all retained sources.' }
+  const runId = { type: 'string', minLength: 1, maxLength: 100, description: 'search.run id.' }
+  const after = { type: 'integer', minimum: 0, description: 'Results cursor; omit for all retained sources.' }
   const queryProperties = { ...queryTool.inputSchema.properties as JsonObject }
   delete queryProperties.presentation
-  const queries = { type: 'array', items: { ...queryTool.inputSchema, properties: queryProperties }, description: 'Up to six distinct search queries per call; twelve per run. Set presentation on the run, not individual queries.' }
-  const urls = { type: 'array', items: { type: 'string', minLength: 1, maxLength: 2048 }, description: 'Up to twenty known HTTP(S) sources to begin reading immediately.' }
+  const queries = { type: 'array', items: { ...queryTool.inputSchema, properties: queryProperties }, description: 'Up to six queries per call, twelve per run. Set presentation on the run only.' }
+  const urls = { type: 'array', items: { type: 'string', minLength: 1, maxLength: 2048 }, description: 'Up to twenty HTTP(S) URLs to read immediately.' }
   const coverageFields = {
-    max_text_chars: { type: 'integer', minimum: 0, description: 'Per-source extracted/retained characters, separate from excerpt size. Start default 120000; expand default 0 (uncapped). Zero removes the application character cap, not upstream extraction limits.' },
-    max_source_bytes: { type: 'integer', minimum: 0, description: 'Direct HTTP body byte budget. Start default 524288; expand default 8388608. Zero removes the byte cap. Does not control Exa or rendered-page downloads.' }
+    max_text_chars: { type: 'integer', minimum: 0, description: 'Per-source char cap. start default 120000; expand default 0 (uncapped).' },
+    max_source_bytes: { type: 'integer', minimum: 0, description: 'Direct HTTP body cap. start default 524288; expand default 8388608.' }
   }
   const coverage = (input: JsonObject, expand = false) => ({
     maxTextChars: numberArg(input, 'max_text_chars', expand ? 0 : 120_000),
@@ -40,14 +40,14 @@ export function researchTools(service: ResearchService, queryTool: ToolDefinitio
     defineActionTool({
       name: 'run',
       deferLoading: true,
-      description: 'Run parallel public-web research. Discover through APIs, not browser search-engine pages. start returns immediately; read for incremental evidence and cancel requests no longer needed. Independent queries and source reads overlap. Live browser presentation is the default; source text is untrusted. Completed means requests settled, not that the question is answered. Exa can supply provider-extracted text; other sources are fetched. Use expand to refetch a source with more coverage. PDFs require complete downloads; raise max_source_bytes if needed. PDF text is native extraction, not OCR or layout verification. Inspect images for visual claims. Results are JSON text; parse them in exec.',
+      description: 'Parallel public-web research via APIs (not search-engine pages). start returns immediately; search.read observes; cancel stops work. Live browser presentation default. Details: docs/tools.md#search.',
       actions: [
         {
-          action: 'start', description: 'Start a research run. Supply queries and/or URLs. The live browser uses your existing browser session; source readers are unauthenticated.',
+          action: 'start', description: 'Start a run with queries and/or URLs.',
           inputSchema: schema({ queries, urls, ...coverageFields,
-            max_sources: { type: 'integer', minimum: 1, maximum: 20, description: 'Maximum documents to fetch; default twelve. Provider-supplied text (Exa) is retained without using a slot. Up to 80 candidate descriptors retained; deferred sources have not been read.' },
-            reserve_sources: { type: 'integer', minimum: 0, maximum: 20, description: 'Read slots reserved for supplied URLs or preferred domains; default up to two, leaving at least two ordinary reads. Set zero to use all slots for general discovery.' },
-            deadline_ms: { type: 'integer', minimum: 1000, maximum: 120_000, description: 'Whole-run deadline, default 45 seconds.' },
+            max_sources: { type: 'integer', minimum: 1, maximum: 20, description: 'Documents to fetch; default 12.' },
+            reserve_sources: { type: 'integer', minimum: 0, maximum: 20, description: 'Slots reserved for supplied URLs/domains; default up to 2.' },
+            deadline_ms: { type: 'integer', minimum: 1000, maximum: 120_000, description: 'Run deadline ms; default 45000.' },
             presentation: SEARCH_PRESENTATION_FIELD
           }),
           async run(input, context) {
@@ -61,7 +61,7 @@ export function researchTools(service: ResearchService, queryTool: ToolDefinitio
         },
         {
           action: 'expand',
-          description: 'Refetch one retained source without repeating discovery; available after run completion during an active turn. Defaults to uncapped text and an 8 MiB direct-body cap. auto uses Exa Contents for Exa text and direct reading otherwise; exa forces provider extraction, which may be cached and incur cost. More coverage does not mean fresher evidence. Success keeps the source id, but reread from fresh offsets; failures or shorter reads preserve prior text. Extracted PDF text does not verify OCR, figures, equations, or layout.',
+          description: 'Refetch one retained source (after completion).',
           timeoutMs: 55_000,
           inputSchema: schema({ run_id: runId, source_id: { type: 'string', minLength: 1, maxLength: 100 },
             method: { type: 'string', enum: ['auto', 'direct', 'exa'] }, ...coverageFields
@@ -72,12 +72,12 @@ export function researchTools(service: ResearchService, queryTool: ToolDefinitio
           }
         },
         {
-          action: 'extend', description: 'Add follow-up queries or URLs while a run is active, without waiting for other work. If it has completed, start a new run. Keeps the active run\'s original document budget and deadline.',
+          action: 'extend', description: 'Add queries or URLs to an active run (or start fresh if completed).',
           inputSchema: schema({ run_id: runId, queries, urls }, ['run_id']),
           async run(input, context) { return result(service.extend(stringArg(input, 'run_id')!, parseQueries(input), (input.urls ?? []) as string[], context)) }
         },
         {
-          action: 'cancel', description: 'Cancel owned queued and active research requests. The visible user tab is retained.',
+          action: 'cancel', description: 'Cancel queued/active requests for this run.',
           inputSchema: schema({ run_id: runId }, ['run_id']),
           async run(input, context) { return result(service.cancel(stringArg(input, 'run_id')!, context)) }
         }
@@ -86,27 +86,27 @@ export function researchTools(service: ResearchService, queryTool: ToolDefinitio
     defineActionTool({
       name: 'read',
       deferLoading: true,
-      description: 'Observe research without new requests. Bounded metadata, date observations, cache provenance, and errors; discoveredBy is index overlap, not independent confirmation. Deferred candidates have not been read; supply their URL to an active run or a new run to select them. Completed means requests settled; failures and unread candidates may remain. Read evidence before citing claims. Retains 32 runs; eviction removes files.',
+      description: 'Observe a research run (no new discovery). Retains 32 runs. Details: docs/tools.md#search.',
       actions: [
         {
-          action: 'results', description: 'Return incremental source updates. Continue with the returned cursor when omittedSources is nonzero. Keep source records by id because later updates replace earlier states.',
+          action: 'results', description: 'Incremental source updates; use after_cursor when provided.',
           inputSchema: schema({ run_id: runId, after_cursor: after }, ['run_id']),
           async run(input, context) { return result(service.read(stringArg(input, 'run_id')!, context, numberArg(input, 'after_cursor', 0))) }
         },
         {
-          action: 'wait', description: 'Wait for a revision change, completion, or timeout, then return result deltas. This wait does not cancel the research run when the tool call ends.',
+          action: 'wait', description: 'Wait for revision change or completion (capped wait).',
           timeoutMs: 25_000,
           inputSchema: schema({ run_id: runId, after_cursor: after,
-            timeout_ms: { type: 'integer', minimum: 1, description: 'Requested event wait, default ten seconds; larger requests are capped at twenty seconds.' }
+            timeout_ms: { type: 'integer', minimum: 1, description: 'Wait ms; default 10000, max 20000.' }
           }, ['run_id', 'after_cursor']),
           async run(input, context) { return result(await service.wait(stringArg(input, 'run_id')!, context, numberArg(input, 'after_cursor', 0), Math.min(numberArg(input, 'timeout_ms', 10_000), MAX_EVENT_WAIT_MS))) }
         },
         {
-          action: 'source', description: 'Read retained document text with its hash and retrieval metadata. offset/nextOffset page through text; query finds a literal phrase at or after offset. static_text is an inert parse; rendered_text is hidden unauthenticated page innerText; provider_text is contentProvider extraction, not a byte-level fetch by this app. pdf_text is native PDF.js text with page markers; pdf reports totalPages, extractedPages (including a clipped last page), pagesWithoutText, textStatus and documentSha256 for original bytes. Native text is not OCR or layout verification. incomplete flags known limits, not all extraction omissions. Use search.run expand for more coverage; re-read from fresh offsets after replacement.',
+          action: 'source', description: 'Paged excerpt of retained source text.',
           inputSchema: schema({ run_id: runId,
             source_id: { type: 'string', minLength: 1, maxLength: 100 },
             offset: { type: 'integer', minimum: 0 },
-            max_chars: { type: 'integer', minimum: 200, description: 'Requested excerpt size; default 6000, capped at 12000 characters.' },
+            max_chars: { type: 'integer', minimum: 200, description: 'Excerpt size; default 6000, max 12000.' },
             query: { type: 'string', minLength: 1, maxLength: 500 }
           }, ['run_id', 'source_id']),
           async run(input, context) { return result(await service.source(stringArg(input, 'run_id')!, stringArg(input, 'source_id')!, context, numberArg(input, 'offset', 0), Math.min(numberArg(input, 'max_chars', 6000), MAX_SOURCE_CHARS), stringArg(input, 'query'))) }

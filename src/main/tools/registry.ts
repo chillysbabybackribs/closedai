@@ -348,7 +348,23 @@ function assertWellFormed(namespaces: ToolNamespace[]): void {
       if (seenTools.has(tool.name)) throw new Error(`Duplicate tool "${label}"`)
       seenTools.add(tool.name)
       if (!tool.description.trim()) throw new Error(`Tool "${label}" needs a description`)
-      if (tool.inputSchema.type !== 'object') throw new Error(`Tool "${label}" inputSchema must have type "object"`)
+      assertToolInputSchema(label, tool)
     }
   }
+}
+
+function assertToolInputSchema(label: string, tool: { inputSchema: JsonObject; actions?: { name: string }[] }): void {
+  const schema = tool.inputSchema
+  if (schema.type === 'object') return
+  const branches = schema.oneOf
+  if (Array.isArray(branches) && branches.length > 0 && (tool.actions?.length ?? 0) > 0) {
+    for (const [index, branch] of branches.entries()) {
+      const object = branch !== null && typeof branch === 'object' ? branch as JsonObject : null
+      if (object?.type !== 'object') {
+        throw new Error(`Tool "${label}" inputSchema.oneOf[${index}] must have type "object"`)
+      }
+    }
+    return
+  }
+  throw new Error(`Tool "${label}" inputSchema must have type "object" or action-tool oneOf`)
 }

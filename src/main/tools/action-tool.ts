@@ -10,8 +10,8 @@ import {
 // An action tool is one tool to the model and many files to us. Each action is a verb with
 // its own description section, its own input schema, and its own run function; the helper
 // assembles them into a single ToolDefinition whose `action` field selects the verb.
-// Validation at call time is against the chosen action's schema, not the union, so the
-// model gets precise errors even though the advertised schema is flat.
+// Validation at call time is against the chosen action's schema, not the advertised oneOf union,
+// so the model gets precise errors even though discovery sees compact per-action branches.
 
 export type ToolAction = {
   /** snake_case verb the model passes as `action`. */
@@ -79,19 +79,24 @@ function assembleDescription(preamble: string, actions: ToolAction[]): string {
 }
 
 /**
- * The advertised schema is flat: `action` plus the union of every action's properties.
- * A property shared by two actions must have an identical schema; otherwise it's a design
- * smell (same name, different meaning) and we refuse at startup instead of confusing the model.
+ * Pick flat union or oneOf branches — whichever serializes smaller for provider wire budgets.
+ * Call-time validation still uses the chosen action's schema only.
  */
 function assembleSchema(name: string, actions: ToolAction[]): JsonObject {
+  assertCompatibleFieldSchemas(name, actions)
+  const flat = assembleFlatSchema(name, actions)
+  const oneOf = { oneOf: actions.map((action) => branchSchema(action)) }
+  return JSON.stringify(oneOf).length < JSON.stringify(flat).length ? oneOf : flat
+}
+
+function assembleFlatSchema(name: string, actions: ToolAction[]): JsonObject {
   const properties: Record<string, JsonObject> = {
     action: {
       type: 'string',
       enum: actions.map((action) => action.action),
-      description: 'Which operation to perform.'
+      description: 'Operation.'
     }
   }
-  const usedBy = new Map<string, string[]>()
   const sources = new Map<string, JsonObject>()
   for (const action of actions) {
     const own = recordOf(action.inputSchema.properties) ?? {}
@@ -103,18 +108,51 @@ function assembleSchema(name: string, actions: ToolAction[]): JsonObject {
         throw new Error(`Action tool "${name}": field "${key}" has different schemas across actions`)
       }
       sources.set(key, schema)
-      usedBy.set(key, [...(usedBy.get(key) ?? []), action.action])
     }
   }
   for (const [key, schema] of sources) {
     const requiredBy = actions
       .filter((action) => Array.isArray(action.inputSchema.required) && action.inputSchema.required.includes(key))
       .map((action) => action.action)
-    const note = requiredBy.length ? ` Required for: ${requiredBy.join(', ')}.` : ''
     const base = typeof schema.description === 'string' ? schema.description.trim() : ''
+    const note = requiredBy.length && requiredBy.length < actions.length ? ` (${requiredBy.join('|')})` : ''
     properties[key] = { ...schema, description: base ? `${base}${note}` : note.trim() || undefined }
   }
   return { type: 'object', properties, required: ['action'] }
+}
+
+function branchSchema(action: ToolAction): JsonObject {
+  const own = recordOf(action.inputSchema.properties) ?? {}
+  const required = Array.isArray(action.inputSchema.required)
+    ? action.inputSchema.required.filter((key): key is string => typeof key === 'string')
+    : []
+  const branch: JsonObject = {
+    type: 'object',
+    properties: {
+      action: { type: 'string', const: action.action, description: 'Operation.' },
+      ...own
+    },
+    required: ['action', ...required]
+  }
+  if (action.inputSchema.additionalProperties === false) branch.additionalProperties = false
+  return branch
+}
+
+/** Same field name across actions must mean the same schema (flat union used to enforce this). */
+function assertCompatibleFieldSchemas(name: string, actions: ToolAction[]): void {
+  const sources = new Map<string, JsonObject>()
+  for (const action of actions) {
+    const own = recordOf(action.inputSchema.properties) ?? {}
+    for (const [key, raw] of Object.entries(own)) {
+      const schema = recordOf(raw)
+      if (!schema) continue
+      const previous = sources.get(key)
+      if (previous && JSON.stringify(previous) !== JSON.stringify(schema)) {
+        throw new Error(`Action tool "${name}": field "${key}" has different schemas across actions`)
+      }
+      sources.set(key, schema)
+    }
+  }
 }
 
 function assertActionsWellFormed(name: string, actions: ToolAction[], maxActions: number): void {

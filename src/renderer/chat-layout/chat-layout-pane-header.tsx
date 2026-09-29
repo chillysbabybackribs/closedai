@@ -7,6 +7,7 @@ import { ChatLayoutContextMenu } from './layout-context-menu.js'
 import { ChatLayoutPaneHints } from './chat-layout-pane-hints.js'
 import { ChatTabs } from './chat-tabs.js'
 import { isViewTabId } from './layout-tree.js'
+import { isNoteTab } from '../notepad/notepad-layout.js'
 import { WindowControls } from './floating/window-controls.js'
 import { paneHideHint, tabCloseHint } from './layout-copy.js'
 import type { TabActivity } from './tab-activity.js'
@@ -49,6 +50,7 @@ function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset
 }) {
   // A view in front has no chat actions: rename, pin, pause belong to the chat it follows, not the tab.
   const view = isViewTabId(activeId)
+  const noteTile = isNoteTab(activeId)
   return <ContextMenu.Root>
     <ContextMenu.Trigger asChild>
       <header className="chat-layout-header"
@@ -74,7 +76,7 @@ function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset
           title="Tools are in Read-only: the model can look but not act. Change it in Agent → Tools & capabilities.">Read-only</span>}
         <button type="button" className="chat-layout-new-chat"
           data-ui="layout.new-chat" data-ui-key={activeId} disabled={busy}
-          title="New chat tab" aria-label="New chat tab"
+          title={noteTile ? 'New note tab' : 'New chat tab'} aria-label={noteTile ? 'New note tab' : 'New chat tab'}
           onClick={() => onNewChat(activeId)}>
           <Plus size={14} aria-hidden="true" />
         </button>

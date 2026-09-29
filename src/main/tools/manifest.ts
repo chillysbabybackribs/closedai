@@ -55,6 +55,19 @@ function toolInfo(namespace: string, tool: ToolDefinition, actionEnabled: (id: s
 }
 
 export function schemaFields(schema: JsonObject): ToolFieldInfo[] {
+  if (Array.isArray(schema.oneOf)) {
+    const merged = new Map<string, ToolFieldInfo>()
+    for (const branch of schema.oneOf) {
+      if (branch === null || typeof branch !== 'object') continue
+      for (const field of schemaFields(branch as JsonObject)) {
+        const previous = merged.get(field.name)
+        merged.set(field.name, previous
+          ? { ...previous, required: previous.required || field.required, description: previous.description || field.description }
+          : field)
+      }
+    }
+    return [...merged.values()]
+  }
   const properties = recordOf(schema.properties) ?? {}
   const required = new Set(Array.isArray(schema.required) ? schema.required.filter((key): key is string => typeof key === 'string') : [])
   return Object.entries(properties).flatMap(([name, raw]) => {
