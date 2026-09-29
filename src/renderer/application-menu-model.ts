@@ -9,7 +9,7 @@ import { MENU_KEYS_ON_SELECTED_CHAT, type AppMenuKey, type AppMenuRunResult } fr
 
 /** Everything a menu row can do besides zoom. */
 export type MenuAction =
-  | 'new-chat' | 'history' | 'settings' | 'close-tab' | 'close-window' | 'search-chats'
+  | 'new-chat' | 'history' | 'settings' | 'sign-out' | 'close-tab' | 'close-window' | 'search-chats'
   | 'toggle-browser' | 'saved-sites' | 'layout' | 'toggle-fullscreen'
   | 'agents' | 'tools' | 'compact' | 'stop-turn'
   | 'trace' | 'reload' | 'devtools' | 'overview' | 'tile-windows' | 'notepad'
@@ -61,6 +61,7 @@ export const MENUS: Menu[] = [
       { key: 'manage-chat-history', label: 'Manage chat history', action: 'history' },
       SEP,
       { key: 'settings', label: 'Settings', shortcut: 'Ctrl+,', action: 'settings' },
+      { key: 'sign-out', label: 'Sign out…', action: 'sign-out' },
       SEP,
       { key: 'close-tab', label: 'Close tab', shortcut: 'Ctrl+W', action: 'close-tab' },
       { key: 'close-window', label: 'Close window', shortcut: 'Ctrl+Shift+W', action: 'close-window' }

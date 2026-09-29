@@ -227,6 +227,11 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
     switch (action) {
       case 'new-chat': history.newChat(); break
       case 'settings': setSettingsTab('appearance'); setSettingsOpen(true); break
+      case 'sign-out':
+        setSettingsOpen(false)
+        setWallpaperOpen(false)
+        onboarding.signOut()
+        break
       // Trace, Agents, History, Tools and Saved sites are view tabs, not dialogs.
       case 'history': workspaceRef.current?.toggleView('history').catch(report('Could not open chat history')); break
       case 'toggle-browser': workspaceRef.current?.toggleBrowser(); break
@@ -243,7 +248,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
       case 'reload': window.location.reload(); break
       case 'devtools': window.closedai.window.toggleDevTools().catch(report('Could not open developer tools')); break
     }
-  }, [history.newChat, report])
+  }, [history.newChat, onboarding.signOut, report])
 
   const applicationMenu: TitlebarMenuProps = {
     chatZoom: appearance.chatZoom,

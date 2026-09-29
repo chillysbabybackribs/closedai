@@ -5,6 +5,7 @@ import {
   createLocalUser,
   normalizeOnboardingSettings,
   readOnboardingSettings,
+  signOutSession,
   writeOnboardingSettings
 } from './onboarding-settings.js'
 import { ONBOARDING_STORAGE_KEY } from '../../shared/onboarding.js'
@@ -29,6 +30,25 @@ test('normalizeOnboardingSettings drops unknown providers and invalid active use
   assert.equal(normalized.activeUserId, null)
   assert.deepEqual(normalized.connectedProviders, ['codex'])
   assert.equal(normalized.keepSignedIn, false)
+})
+
+test('signOutSession returns to the gate without deleting profiles', () => {
+  const signedIn = {
+    phase: 'done' as const,
+    users: [createLocalUser('Ada', 'id-1')],
+    activeUserId: 'id-1',
+    keepSignedIn: true,
+    sessionUnlocked: true,
+    connectedProviders: ['codex' as const],
+    providerSetupComplete: true
+  }
+  const signedOut = signOutSession(signedIn)
+  assert.equal(signedOut.phase, 'gate')
+  assert.equal(signedOut.sessionUnlocked, false)
+  assert.equal(signedOut.activeUserId, null)
+  assert.equal(signedOut.keepSignedIn, false)
+  assert.equal(signedOut.users.length, 1)
+  assert.equal(signedOut.providerSetupComplete, true)
 })
 
 test('read and write round-trip onboarding settings', () => {

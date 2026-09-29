@@ -7,6 +7,7 @@ import {
   completedOnboardingSettings,
   createLocalUser,
   readOnboardingSettings,
+  signOutSession,
   writeOnboardingSettings
 } from './onboarding-settings.js'
 
@@ -22,6 +23,7 @@ export type OnboardingController = {
   markProviderConnected: (provider: ChatProvider) => void
   clearProviderConnected: (provider: ChatProvider) => void
   reopenProviderSetup: () => void
+  signOut: () => void
 }
 
 function unlockSession(settings: OnboardingSettings, userId: string, keepSignedIn: boolean): OnboardingSettings {
@@ -143,7 +145,15 @@ export function useOnboarding(chatSnapshot: ChatSnapshot, legacyBypass: boolean)
 
   const reopenProviderSetup = useCallback(() => {
     setSettings((current) => {
-      const next: OnboardingSettings = { ...current, phase: 'providers', providerSetupComplete: false }
+      const next: OnboardingSettings = { ...current, phase: 'providers', providerSetupComplete: false, sessionUnlocked: true }
+      writeOnboardingSettings(window.localStorage, next)
+      return next
+    })
+  }, [])
+
+  const signOut = useCallback(() => {
+    setSettings((current) => {
+      const next = signOutSession(current)
       writeOnboardingSettings(window.localStorage, next)
       return next
     })
@@ -174,6 +184,7 @@ export function useOnboarding(chatSnapshot: ChatSnapshot, legacyBypass: boolean)
     skipProviderSetup,
     markProviderConnected,
     clearProviderConnected,
-    reopenProviderSetup
+    reopenProviderSetup,
+    signOut
   }
 }

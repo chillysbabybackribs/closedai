@@ -99,3 +99,14 @@ export function completedOnboardingSettings(): OnboardingSettings {
     providerSetupComplete: true
   }
 }
+
+/** End the local session and return to the sign-in gate; profiles and provider progress stay on disk. */
+export function signOutSession(settings: OnboardingSettings): OnboardingSettings {
+  return {
+    ...settings,
+    phase: 'gate',
+    sessionUnlocked: false,
+    activeUserId: null,
+    keepSignedIn: false
+  }
+}

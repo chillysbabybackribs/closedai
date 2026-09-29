@@ -79,7 +79,9 @@ in `localStorage` under `closedai.onboarding.v1` (`src/shared/onboarding.ts`). E
 with chat history skip the flow automatically. After the gate, the normal title bar, workspace,
 and dock stay visible while a **provider setup** modal lists all four providers with install hints,
 Codex in-app connect, and CLI confirmation for the other lanes. Per-pane empty states still show
-connection guidance when a lane later drifts out of `ready`.
+connection guidance when a lane later drifts out of `ready`. **File → Sign out…** clears the
+local session (`sessionUnlocked`, `activeUserId`, `keepSignedIn`) and returns to the gate without
+deleting saved profiles or provider-setup progress.
 
 Launch resilience. A bootstrap failure is shown in a native error box and ends the app; an
 uncaught exception or unhandled rejection after the window exists is logged with a `[main]`
