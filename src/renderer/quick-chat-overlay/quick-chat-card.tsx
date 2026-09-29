@@ -8,6 +8,7 @@ import { WorkspaceChat } from '../chat-layout/workspace-chat.js'
 import { useWorkspacePaneSlice } from '../chat-layout/workspace-pane-subscription.js'
 import type { AppearanceSettings } from '../settings/appearance-settings.js'
 import { feedLead, quickChatFeed, type QuickChatFeed } from './quick-chat-feed.js'
+import { formatRunSeconds, useRunSeconds } from './run-clock.js'
 
 const request = (value: 'new' | 'close'): void => { void window.closedai.quickChat.request(value) }
 
@@ -34,6 +35,7 @@ export const QuickChatCard = memo(function QuickChatCard({ paneId, site, dispatc
   const hasTranscript = state.items.length > 0
   const title = slice.chats.find((row) => row.paneId === paneId)?.title ?? 'New chat'
   const feed = useMemo(() => quickChatFeed(state, 1), [state])
+  const seconds = useRunSeconds(paneId, running)
   const [mode, setModeState] = useState<Mode>(() => chosenMode.get(paneId) ?? 'full')
   const setMode = (next: Mode): void => { chosenMode.set(paneId, next); setModeState(next) }
   const cardRef = useRef<HTMLDivElement>(null)
@@ -58,8 +60,10 @@ export const QuickChatCard = memo(function QuickChatCard({ paneId, site, dispatc
   return (
     <div ref={cardRef} className={`quick-chat-card${whole ? ' is-whole' : ' is-compact'}`}>
       {whole ? (
-        <div className="quick-chat-header">
+        <div className={`quick-chat-header${running ? ' is-running' : ''}`}>
+          {running ? <Loader2 className="quick-chat-working-icon spin" size={14} aria-hidden="true" /> : null}
           <span className="quick-chat-title" title={title}>{title}</span>
+          {running ? <WorkingText feed={feed} seconds={seconds} /> : null}
           {hasTranscript ? (
             <IconButton control="browser.quick-chat-compact" label="Shrink to the status line"
               onClick={() => setMode('compact')}><Minimize2 size={14} aria-hidden="true" /></IconButton>
@@ -68,7 +72,7 @@ export const QuickChatCard = memo(function QuickChatCard({ paneId, site, dispatc
           <CloseButton />
         </div>
       ) : (
-        <QuickChatStatus feed={feed} site={site} onExpand={() => setMode('full')} />
+        <QuickChatStatus feed={feed} site={site} seconds={seconds} onExpand={() => setMode('full')} />
       )}
       <div className="quick-chat-body">
         <WorkspaceChat paneId={paneId} dispatch={dispatch} appearance={appearance} panelVisible={whole}
@@ -78,8 +82,27 @@ export const QuickChatCard = memo(function QuickChatCard({ paneId, site, dispatc
   )
 })
 
+/**
+ * The whole card's header while its task runs: the step under way ("Thinking", "Opening espn.com")
+ * and how long the task has run, so a quiet stretch still reads as working.
+ */
+function WorkingText({ feed, seconds }: { feed: QuickChatFeed; seconds: number | null }): JSX.Element {
+  const step = feed.lines.at(-1)?.text ?? 'Working'
+  return (
+    <span className="quick-chat-working" role="status" title={step}>
+      <span className="quick-chat-working-step">{step}</span>
+      {seconds !== null ? <span className="quick-chat-working-time" aria-hidden="true">{formatRunSeconds(seconds)}</span> : null}
+    </span>
+  )
+}
+
 /** One line: what the task is doing and where, with the reply under it once the task ends. */
-function QuickChatStatus({ feed, site, onExpand }: { feed: QuickChatFeed; site: string | null; onExpand: () => void }): JSX.Element {
+function QuickChatStatus({ feed, site, seconds, onExpand }: {
+  feed: QuickChatFeed
+  site: string | null
+  seconds: number | null
+  onExpand: () => void
+}): JSX.Element {
   const { lead, where } = feedLead(feed.status, site)
   const step = feed.status === 'working' ? feed.lines.at(-1) : undefined
   const detail = step && step.id !== 'working' ? ` · ${step.text}` : ''
@@ -92,6 +115,9 @@ function QuickChatStatus({ feed, site, onExpand }: { feed: QuickChatFeed; site: 
       <div className="quick-chat-status-line">
         <span className="quick-chat-status-icon">{icon}</span>
         <span className="quick-chat-status-text">{lead} <b>{where}</b>{detail}</span>
+        {feed.status === 'working' && seconds !== null ? (
+          <span className="quick-chat-working-time" aria-hidden="true">{formatRunSeconds(seconds)}</span>
+        ) : null}
         <IconButton control="browser.quick-chat-expand" label="Show the whole chat" onClick={onExpand}>
           <Maximize2 size={14} aria-hidden="true" />
         </IconButton>

@@ -1115,7 +1115,10 @@ chat under a header with shrink `browser.quick-chat-compact` (once there is a tr
 runs), and hide `browser.quick-chat-close`. Compact is the composer under one status line, such as
 "Working on espn.com · Opened espn.com" (`quick-chat-feed.ts`: the turn's latest step in plain words
 from `feed-phrase.ts`), with expand `browser.quick-chat-expand` and hide; once the turn ends the line
-reads "Done on …" with a two-line preview of the reply. Only shrink and expand change the shape;
+reads "Done on …" with a two-line preview of the reply. While the task runs, the whole card's header
+carries a turning mark before the title and the step under way ("Thinking", "Opening espn.com") with
+how long the task has run (`run-clock.ts`); the compact line carries the same clock, so a quiet stretch
+still reads as working. Only shrink and expand change the shape;
 hide and Escape hide the card, and reopening a chat keeps the shape last chosen for it (whole at
 first). Sending a message, a turn starting, clicks on the page, typing, and focus changes leave it
 alone. Ctrl+J (Cmd+J)
@@ -1129,8 +1132,10 @@ collision boundary (`composerPanelBoundary`).
 The main window's layout owns which chat it is and whether it is open, and reports both with
 `quickChat.setState`; the layer's requests (`quickChat.request`: open, new, close, toggle) reach the layout as
 a `quickChat` window command (`chat-layout/use-quick-chat-overlay.ts`). It is a real chat:
-`chat.newPeer(anchor, { select: false })` creates it with the focused tile's model and folder without
-changing the selection, and main skips its early wake so the blank chat is not discarded before the
+`chat.newPeer(anchor, { select: false, modelId })` creates it in the focused tile's folder without
+changing the selection. It starts on the model the quick chat last used (`chat-layout/quick-chat-model.ts`,
+remembered in localStorage whenever the quick chat's model changes), and on the focused tile's model
+only before any quick chat has had one, and main skips its early wake so the blank chat is not discarded before the
 layout reports it. The layout saves it per space (`SavedChatLayout.browserChat`/`browserChatOpen`),
 adds it to the ids sent to `setVisiblePanes` so main keeps it attached and streaming while closed, and
 never pulls it into a tile: main selecting it leaves the tree alone, and opening it from History,

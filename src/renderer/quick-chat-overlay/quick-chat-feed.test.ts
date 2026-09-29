@@ -3,6 +3,7 @@ import test from 'node:test'
 import type { ChatSnapshot, ChatTranscriptItem } from '../../shared/chat.js'
 import { initialChatState } from '../chat-state.js'
 import { feedLead, quickChatFeed } from './quick-chat-feed.js'
+import { formatRunSeconds } from './run-clock.js'
 
 function snapshot(items: ChatTranscriptItem[], activeTurnId: string | null = null): ChatSnapshot {
   return { ...initialChatState(), items, activeTurnId }
@@ -69,4 +70,11 @@ test('page steps read as plain words, whatever the lane calls the tool', () => {
 test('the status line names the site, or this page when there is none', () => {
   assert.deepEqual(feedLead('working', 'espn.com'), { lead: 'Working on', where: 'espn.com' })
   assert.deepEqual(feedLead('failed', null), { lead: 'Stopped on', where: 'this page' })
+})
+
+test('the run clock reads minutes and zero-padded seconds', () => {
+  assert.equal(formatRunSeconds(0), '0:00')
+  assert.equal(formatRunSeconds(7), '0:07')
+  assert.equal(formatRunSeconds(102), '1:42')
+  assert.equal(formatRunSeconds(725), '12:05')
 })
