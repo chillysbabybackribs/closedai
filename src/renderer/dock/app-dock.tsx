@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type JSX } from 'react'
 import { ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-react'
 import { Button } from '../../components/ui/button.js'
-import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from '../../components/ui/popover.js'
+import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover.js'
 import { Switch } from '../../components/ui/switch.js'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../components/ui/tooltip.js'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
@@ -106,9 +106,6 @@ export function AppDock({ menu, nav, chats, chatTitle, browserVisible, prefs, on
         </div>
         <Popover open={openList === 'start'} onOpenChange={(open) => setOpenList(open ? 'start' : null)}>
           <div ref={setTray} className="absolute left-1/2 flex -translate-x-1/2 flex-col items-center" style={{ bottom: TRAY_LIFT }}>
-            <PopoverAnchor asChild>
-              <div className="h-0 w-full self-stretch" aria-hidden="true" />
-            </PopoverAnchor>
             <DockTray startTrigger={
               <StartTrayButton open={openList === 'start'} overviewActive={nav.overview} />
             } apps={apps} magnify={prefs.magnify}
@@ -121,7 +118,8 @@ export function AppDock({ menu, nav, chats, chatTitle, browserVisible, prefs, on
               onRevealDownload={(id) => { void window.closedai.browserDownloads.reveal(id) }}
               minimized={minimized} onRestoreWindow={onRestoreWindow} />
           </div>
-          <PopoverContent side="top" align="center" sideOffset={20} className="dock-start-shell border p-0 shadow-none"
+          <PopoverContent side="top" align="center" sideOffset={16} collisionPadding={12}
+            className="dock-start-shell z-[100] border p-0 shadow-none motion-reduce:animate-none"
             onCloseAutoFocus={(event) => event.preventDefault()}>
             <DockStartPanel menu={menu} chats={chats} spaceName={nav.spaceName} overviewActive={nav.overview}
               overviewDisabled={nav.moving} onToggleOverview={nav.toggleOverview} onOpenChat={onOpenChat}
