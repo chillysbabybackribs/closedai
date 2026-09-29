@@ -12,7 +12,7 @@ import { useAgentRuns } from './agent-runs/agent-runs-store.js'
 import { dockTiles, DOCK_STATE_LABEL, type DockTileState } from './agent-runs/agent-run-overview-model.js'
 import { queueAgentsViewIntent } from './agent-library/agents-view-intent.js'
 import { useAgentRunAction } from './agent-runs/use-agent-run-action.js'
-import { CAPSULE_PANEL_OFFSET } from './composer-layout.js'
+import { CAPSULE_PANEL_OFFSET, composerPanelBoundary } from './composer-layout.js'
 
 export type ComposerAgentsMenuProps = {
   paneId: string
@@ -44,7 +44,7 @@ export function ComposerAgentsMenu({ paneId, startEnabled, runningTurn, onStart,
   const setOpen = useCallback((next: boolean): void => {
     if (!workspace) return
     workspace.setAgentsMenuPaneId(next ? paneId : workspace.agentsMenuPaneId === paneId ? null : workspace.agentsMenuPaneId)
-    if (next) paneRef.current = triggerRef.current?.closest('.chat-pane') ?? null
+    if (next) paneRef.current = composerPanelBoundary(triggerRef.current) as HTMLElement | null
   }, [paneId, workspace])
 
   const closeMenu = useCallback((): void => setOpen(false), [setOpen])

@@ -14,7 +14,7 @@ import {
   modelTriggerLabel,
   recentModels
 } from './model-menu-state.js'
-import { CAPSULE_PANEL_OFFSET } from './composer-layout.js'
+import { CAPSULE_PANEL_OFFSET, composerPanelBoundary } from './composer-layout.js'
 
 /** Opens the panel from outside its trigger, e.g. the empty pane's "Choose model" hint. */
 export type ComposerSetupHandle = { open: () => void }
@@ -73,7 +73,7 @@ export function ComposerSetupMenu({
   const setOpen = useCallback((next: boolean): void => {
     setOpenState(next)
     if (next) {
-      setBoundary(triggerRef.current?.closest('.chat-pane') ?? null)
+      setBoundary(composerPanelBoundary(triggerRef.current))
       // Other panes add to the same history, so Recent is read fresh on every open.
       reloadRecent()
       // The plan windows are asked for fresh each time the panel opens, mid-turn included.

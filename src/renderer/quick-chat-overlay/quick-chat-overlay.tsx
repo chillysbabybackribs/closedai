@@ -29,7 +29,7 @@ export function QuickChatOverlay(): JSX.Element {
   const paneId = view?.paneId && chat.snapshot.chats.some((row) => row.paneId === view.paneId) ? view.paneId : null
   const style = view ? { '--page-width': `${view.page.width}px`, '--page-height': `${view.page.height}px` } as CSSProperties : undefined
   return (
-    <div ref={rootRef} className="quick-chat-layer" style={style} data-ui-surface="browser-quick-chat">
+    <div ref={rootRef} className="quick-chat-layer" style={style} data-ui-surface="browser-quick-chat" data-composer-panels="viewport">
       {!view ? null : view.open && paneId ? (
         <QuickChatCard key={paneId} paneId={paneId} focused={view.focused} dispatch={chat.dispatch} appearance={appearance} />
       ) : (

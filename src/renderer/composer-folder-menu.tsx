@@ -3,7 +3,7 @@ import { FolderOpen } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover.js'
 
 import { FolderSection, folderName } from './composer-setup-sections.js'
-import { CAPSULE_PANEL_OFFSET } from './composer-layout.js'
+import { CAPSULE_PANEL_OFFSET, composerPanelBoundary } from './composer-layout.js'
 
 export type ComposerFolderMenuProps = {
   busy: boolean
@@ -34,7 +34,7 @@ export function ComposerFolderMenu({
   const [open, setOpen] = useState(false)
   const setOpenState = useCallback((next: boolean): void => {
     setOpen(next)
-    if (next) setBoundary(triggerRef.current?.closest('.chat-pane') ?? null)
+    if (next) setBoundary(composerPanelBoundary(triggerRef.current))
   }, [])
 
   const folder = projectPath ? folderName(projectPath) : folderName(cwd)
