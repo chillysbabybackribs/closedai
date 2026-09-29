@@ -104,8 +104,10 @@ test("a window's only tab moves the whole window; the browser never tears", () =
 
 test('a torn-off tab keeps a floating window\'s size, takes a share of a tiled one, and sits under the pointer', () => {
   const source = { x: 0, y: 0, width: 1000, height: 800 }
-  assert.deepEqual(tabTearOffRect(source, true, size, { x: 600, y: 300 }, 'a'), { x: 504, y: 281, width: 1000, height: 800 })
-  assert.deepEqual(tabTearOffRect(source, false, size, { x: 600, y: 300 }, 'a'), { x: 504, y: 281, width: 540, height: 600 })
+  assert.deepEqual(tabTearOffRect(source, true, size, { x: 600, y: 300 }, 'a'), { x: 200, y: 0, width: 1000, height: 800 })
+  assert.deepEqual(tabTearOffRect(source, false, size, { x: 600, y: 300 }, 'a'), { x: 504, y: 200, width: 540, height: 600 })
   assert.deepEqual(tabTearOffRect({ ...source, width: 100, height: 100 }, true, size, { x: 100, y: 100 }, 'a'),
     { x: 25, y: 81, width: 300, height: 280 }, 'never below the window floor')
+  assert.deepEqual(tabTearOffRect({ ...source, width: 500, height: 500 }, true, size, { x: 20, y: 700 }, 'a'),
+    { x: 0, y: 300, width: 500, height: 500 }, 'moved in to stay whole on the canvas')
 })

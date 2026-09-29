@@ -151,6 +151,9 @@ export const UI_CONTROLS = {
   'browser.suggestion-remove': 'Remove a saved browser history entry; item is its URL',
   'browser.address': 'Address bar',
   'browser.downloads': 'Show or hide the downloads shelf',
+  'browser.quick-chat': 'Centered button in the strip under the browser page: expand the quick chat, a full chat about the page (created on first open)',
+  'browser.quick-chat-new': 'Quick chat header: start a fresh quick chat; the previous one stays in chat history',
+  'browser.quick-chat-collapse': 'Quick chat header: collapse the quick chat back to the strip under the page',
   'browser.saved-sites': 'Star left of Downloads: save or unsave the active web page (gold when saved). Disabled on non-web pages',
 
   'saved-sites.open': 'Navigate the active tab to a saved site; item is the saved-site id',

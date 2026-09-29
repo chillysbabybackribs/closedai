@@ -50,14 +50,16 @@ export function tearOffTab(tree: ChatLayout, id: string, rect: Rect, tiled: read
 
 /**
  * Where a torn-off tab's window opens: the size of the window it left (a tiled one's comfortable
- * share of the canvas), with the new window's tab under the pointer.
+ * share of the canvas), with the new window's tab under the pointer, moved in to stay whole on the
+ * canvas where it fits.
  */
 export function tabTearOffRect(source: Rect, floating: boolean, canvas: WindowSize, pointer: { x: number; y: number }, id: string): Rect {
   const minimum = windowMinimum(id)
-  const width = Math.max(minimum.width, floating ? source.width : Math.min(source.width, canvas.width * 0.45))
-  const height = Math.max(minimum.height, floating ? source.height : Math.min(source.height, canvas.height * 0.75))
-  return { x: Math.round(pointer.x - Math.min(96, width / 4)), y: Math.round(pointer.y - WINDOW_HEADER / 2),
-    width: Math.round(width), height: Math.round(height) }
+  const width = Math.round(Math.max(minimum.width, floating ? source.width : Math.min(source.width, canvas.width * 0.45)))
+  const height = Math.round(Math.max(minimum.height, floating ? source.height : Math.min(source.height, canvas.height * 0.75)))
+  const fit = (value: number, size: number, room: number): number => Math.max(0, Math.min(value, room - size))
+  return { x: fit(Math.round(pointer.x - Math.min(96, width / 4)), width, canvas.width),
+    y: fit(Math.round(pointer.y - WINDOW_HEADER / 2), height, canvas.height), width, height }
 }
 
 /** Every window back into its slot of the tiled layout, minimized ones included for when they return. */

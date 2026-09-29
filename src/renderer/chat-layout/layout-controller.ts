@@ -72,7 +72,10 @@ export function useChatLayout(
   const current = useRef(layout)
   current.current = layout
   // Main hears about chats only: a tile showing a view has no visible chat, its chats are retained.
-  const idsKey = JSON.stringify([...new Set(chatPaneIds(layout.tree))])
+  // The browser's quick chat is visible too, so main keeps it attached and streams it.
+  const browserChat = self.main && layout.browserChat && snapshot.chats.some((chat) => chat.paneId === layout.browserChat)
+    ? layout.browserChat : null
+  const idsKey = JSON.stringify([...new Set([...chatPaneIds(layout.tree), ...(browserChat ? [browserChat] : [])])])
   const tabsKey = JSON.stringify(chatTabIds(layout.tree))
   const hasTiles = paneIds(layout.tree).length > 0
   const release = useCallback(() => {
@@ -122,7 +125,10 @@ export function useChatLayout(
     setLayout((value) => {
       const pruned = pruneTabs(value.tree, available)
       const tree = pruned ? ensureExpandedGroup(pruned) : pruned
-      return tree === value.tree ? value : { ...value, tree: tree! }
+      const staleBrowserChat = value.browserChat !== undefined && !available.has(value.browserChat)
+      if (tree === value.tree && !staleBrowserChat) return value
+      const { browserChat: _stale, ...rest } = value
+      return { ...(staleBrowserChat ? rest : value), tree: tree! }
     })
   }, [chatIdsKey, cwd])
 
@@ -141,6 +147,8 @@ export function useChatLayout(
       release()
     } else if (pending.current) return
     const next = getSnapshot().selectedPaneId
+    // The browser's quick chat is shown under the page; a selection never pulls it into a tile.
+    if (next === current.current.browserChat) return
     // Another window's chat is never opened twice. A chat no window holds yet (a new chat, one a
     // tool opened) goes to the window in front; the main window takes it when none is.
     if (!tabIds(current.current.tree).includes(next) && (tabsHeldElsewhere().has(next) || !adoptsUnheldChats())) return
@@ -514,13 +522,38 @@ export function useChatLayout(
     return maximized === current ? value : { ...value, maximized: maximized ?? undefined }
   }), [])
   const toggleBrowser = useCallback(() => setLayout((value) => ({ ...value, browserVisible: !value.browserVisible })), [])
+  // The quick chat is created unselected and reported visible before main could discard it as blank.
+  // A fresh one replaces it: the previous chat goes back to history (or away, when blank).
+  const openBrowserChat = useCallback(async (fresh = false): Promise<void> => {
+    const previous = current.current.browserChat
+    const available = latestSnapshot.current().chats.some((chat) => chat.paneId === previous)
+    if (previous && available && !fresh) {
+      setLayout((value) => ({ ...value, browserChatOpen: true }))
+      return
+    }
+    if (pending.current) return
+    pending.current = true
+    try {
+      const anchor = chatPaneIds(current.current.tree).includes(selected.current) ? selected.current : undefined
+      const id = await window.closedai.chat.newPeer(anchor, { select: false })
+      await window.closedai.chat.setVisiblePanes(cwd, [...new Set([...chatPaneIds(current.current.tree), id])], chatTabIds(current.current.tree))
+      setLayout((value) => ({ ...value, browserChat: id, browserChatOpen: true }))
+      if (previous && available) await window.closedai.chat.closePeer(previous)
+    } catch (reason) {
+      fail(reason)
+    } finally {
+      pending.current = false
+    }
+  }, [cwd, fail])
+  const setBrowserChatOpen = useCallback((open: boolean) => setLayout((value) => ({ ...value, browserChatOpen: open })), [])
   const showBrowser = useCallback(() => setLayout((value) => value.browserVisible ? value : { ...value, browserVisible: true }), [])
   return {
     ...layout, browserVisible: self.main && layout.browserVisible, detached: !self.main,
     error: error?.text ?? '', notice: notice?.text ?? '', busy, dock, newChat, continueChat, focusPane,
     activateTab, openView, toggleView, pinView, moveTabToTile, closeTab, hide, closeFocused, focusedCloseTarget, resize, arrange,
     toggleBrowser, showBrowser, detachTab, returnTab, windows: windowActions,
-    maximized: layout.maximized ?? null, setMaximized
+    maximized: layout.maximized ?? null, setMaximized,
+    browserChat, browserChatOpen: Boolean(browserChat && layout.browserChatOpen), openBrowserChat, setBrowserChatOpen
   }
 }
 

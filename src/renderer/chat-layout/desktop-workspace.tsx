@@ -20,6 +20,7 @@ import { LayoutPresetsDialog } from './layout-presets-dialog.js'
 import type { CanvasSize, LayoutPreset } from './layout-presets.js'
 import type { ChatReviewQueue } from '../chat-history/review-queue.js'
 import { WorkspaceChat } from './workspace-chat.js'
+import { WorkspaceBrowserChat } from './workspace-browser-chat.js'
 import { WorkspacePaneActionsContext, type WorkspacePaneActions } from './workspace-pane-actions.js'
 import { WorkspaceViewContext, WorkspaceViewHost, type WorkspaceViewContextValue } from './workspace-view-host.js'
 import { chatLayoutRevision } from './layout-revision.js'
@@ -138,12 +139,18 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, on
   // Minimizing the browser hides it; the dock's Browser icon brings it back.
   const browserControls = useMemo(() => <BrowserWindowControls busy={layout.busy} onMinimize={layout.toggleBrowser} />,
     [layout.busy, layout.toggleBrowser])
+  const { browserChat, browserChatOpen, openBrowserChat, setBrowserChatOpen } = layout
+  const browserQuickChat = useMemo(() => <WorkspaceBrowserChat paneId={browserChat} open={browserChatOpen}
+    dispatch={dispatch} appearance={appearance} onOpen={() => { void openBrowserChat() }}
+    onNew={() => { void openBrowserChat(true) }} onCollapse={() => setBrowserChatOpen(false)} />,
+  [browserChat, browserChatOpen, dispatch, appearance, openBrowserChat, setBrowserChatOpen])
   const renderBrowser = useMemo(() => layout.detached ? null : <WorkspaceBrowser
     layoutKey={`${layoutRevision}\0${layout.browserVisible ? '1' : '0'}`} visible={layout.browserVisible}
     occluded={layoutDragging || browserHeld || browserCovered}
-    savedSites={savedSites} dragHandle={browserDragHandle} windowControls={browserControls} onReveal={revealBrowser} onShow={layout.showBrowser} />,
+    savedSites={savedSites} dragHandle={browserDragHandle} windowControls={browserControls} quickChat={browserQuickChat}
+    onReveal={revealBrowser} onShow={layout.showBrowser} />,
   [layout.detached, layoutRevision, layout.browserVisible, layoutDragging, browserHeld, browserCovered, savedSites, browserDragHandle,
-    browserControls, revealBrowser, layout.showBrowser])
+    browserControls, browserQuickChat, revealBrowser, layout.showBrowser])
   // The browser lives in the main window: a detached window's Browser control brings that forward.
   const toggleBrowserHere = useCallback(() => {
     if (layout.detached) { void window.closedai.windows.showBrowser(); return }

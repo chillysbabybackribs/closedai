@@ -20,13 +20,15 @@ import { WebPermissionBar } from './web-permission-bar.js'
 // Memoized: the pane stays mounted, and its native-view host ref and ResizeObserver must
 // survive re-renders of the shell around it.
 export const BrowserPane = memo(function BrowserPane({
-  controller, savedSites, dragHandle, windowControls
+  controller, savedSites, dragHandle, windowControls, quickChat
 }: {
   controller: BrowserController
   savedSites: BrowserSavedSitesController
   dragHandle?: ReactNode
   /** A window's minimize and maximize buttons, beside the tab strip rather than scrolling in it. */
   windowControls?: ReactNode
+  /** The quick chat strip under the page; the page shrinks above it rather than being covered. */
+  quickChat?: ReactNode
 }): JSX.Element {
   const downloads = useBrowserDownloadsController()
   // Whichever panel opens last wins. Keep the callbacks current without treating their changing
@@ -67,31 +69,34 @@ export const BrowserPane = memo(function BrowserPane({
         </div>
         {!controller.browser.image && !controller.browser.file && <BrowserToolbar controller={controller} downloads={downloads} savedSites={savedSites} onError={report} />}
         {downloads.isOpen && !controller.browser.image && !controller.browser.file ? <BrowserDownloadsShelf controller={downloads} /> : null}
-        <div className={`browser-frame ${controller.browser.navigationError ? 'has-navigation-error' : ''}`}>
-          <div
-            className={`browser-view-host ${controller.browser.image ? 'is-image-viewer' : controller.browser.file ? 'is-file-viewer' : controller.browser.navigationError ? 'is-navigation-error' : ''}`}
-            id="browser-page"
-            role="tabpanel"
-            aria-label="Browser page"
-            aria-hidden={controller.browser.image || controller.browser.file || controller.browser.navigationError ? 'true' : undefined}
-            ref={controller.browserHostRef}
-          />
-          {controller.titlebarFreeze && !controller.browser.image && !controller.browser.file ? (
-            <img className="browser-view-freeze" src={controller.titlebarFreeze.imageUrl} alt="" aria-hidden="true" />
-          ) : null}
-          {controller.tabs.filter((tab) => tab.image).map((tab) =>
-            <ImageViewer key={tab.id} id={tab.id} active={controller.browser.image?.tabId === tab.id} />)}
-          {controller.tabs.filter((tab) => tab.file).map((tab) =>
-            <FileViewer key={tab.id} id={tab.id} revision={tab.file!.revision} line={tab.file!.line} endLine={tab.file!.endLine}
-              diff={tab.file!.diff} cwd={tab.file!.cwd} fileName={tab.file!.name} path={tab.file!.path}
-              active={controller.browser.file?.tabId === tab.id} />)}
-          {controller.browser.navigationError ? (
-            <BrowserNavigationError
-              error={controller.browser.navigationError}
-              onRetry={() => { void window.closedai.browser.navigate(controller.browser.navigationError?.url ?? controller.browser.url).catch(report) }}
-              onReturn={() => { void window.closedai.browser.navigate(controller.browser.navigationError?.previousUrl ?? controller.browser.url).catch(report) }}
+        <div className="browser-stage">
+          <div className={`browser-frame ${controller.browser.navigationError ? 'has-navigation-error' : ''}`}>
+            <div
+              className={`browser-view-host ${controller.browser.image ? 'is-image-viewer' : controller.browser.file ? 'is-file-viewer' : controller.browser.navigationError ? 'is-navigation-error' : ''}`}
+              id="browser-page"
+              role="tabpanel"
+              aria-label="Browser page"
+              aria-hidden={controller.browser.image || controller.browser.file || controller.browser.navigationError ? 'true' : undefined}
+              ref={controller.browserHostRef}
             />
-          ) : null}
+            {controller.titlebarFreeze && !controller.browser.image && !controller.browser.file ? (
+              <img className="browser-view-freeze" src={controller.titlebarFreeze.imageUrl} alt="" aria-hidden="true" />
+            ) : null}
+            {controller.tabs.filter((tab) => tab.image).map((tab) =>
+              <ImageViewer key={tab.id} id={tab.id} active={controller.browser.image?.tabId === tab.id} />)}
+            {controller.tabs.filter((tab) => tab.file).map((tab) =>
+              <FileViewer key={tab.id} id={tab.id} revision={tab.file!.revision} line={tab.file!.line} endLine={tab.file!.endLine}
+                diff={tab.file!.diff} cwd={tab.file!.cwd} fileName={tab.file!.name} path={tab.file!.path}
+                active={controller.browser.file?.tabId === tab.id} />)}
+            {controller.browser.navigationError ? (
+              <BrowserNavigationError
+                error={controller.browser.navigationError}
+                onRetry={() => { void window.closedai.browser.navigate(controller.browser.navigationError?.url ?? controller.browser.url).catch(report) }}
+                onReturn={() => { void window.closedai.browser.navigate(controller.browser.navigationError?.previousUrl ?? controller.browser.url).catch(report) }}
+              />
+            ) : null}
+          </div>
+          {quickChat}
         </div>
       </div>
     </section>

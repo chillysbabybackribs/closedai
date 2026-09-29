@@ -176,6 +176,9 @@ export type SavedChatLayout = {
   focused?: string
   /** The maximized window (a tile or one of its tabs), which fills the canvas until Escape. */
   maximized?: string
+  /** The browser's quick chat: a real chat shown under the page instead of in a tile (main window only). */
+  browserChat?: string
+  browserChatOpen?: boolean
 }
 // Keyed by the main window's space (a project folder for spaces made before space ids); a detached
 // window keeps its own layout for the project beside the main window's.
@@ -233,11 +236,15 @@ export function readLayout(storage: Pick<Storage, 'getItem'>, key: string, windo
     const views = validViewScopes(raw.views, chats)
     const focused = typeof raw.focused === 'string' && chats.has(raw.focused) && !isViewTabId(raw.focused) ? raw.focused : null
     const maximized = typeof raw.maximized === 'string' && (chats.has(raw.maximized) || raw.maximized === BROWSER_PANE_ID) ? raw.maximized : null
+    const browserChat = typeof raw.browserChat === 'string' && raw.browserChat && !chats.has(raw.browserChat)
+      && !isReservedPaneId(raw.browserChat) && !isViewTabId(raw.browserChat) ? raw.browserChat : null
     return {
       tree: raw.tree, browserVisible: raw.browserVisible,
       ...(Object.keys(views).length ? { views } : {}),
       ...(focused ? { focused } : {}),
-      ...(maximized ? { maximized } : {})
+      ...(maximized ? { maximized } : {}),
+      ...(browserChat ? { browserChat } : {}),
+      ...(raw.browserChatOpen === true ? { browserChatOpen: true } : {})
     }
   } catch { return fallback }
 }
