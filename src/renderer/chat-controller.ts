@@ -43,14 +43,17 @@ export type ChatController = {
 }
 
 export function useChatController(enabled = true) {
+  // Only the controller that hears events owns the shared store. A disabled one (every pane handed
+  // its parent's controller still calls this hook) never leaves its initial state, and writing it
+  // blanked the store for every pane subscribed to it until the next event arrived.
   const [{ workspace, sidebar: sidebarState }, dispatch] = useReducer(reduceChatRendererEvent, undefined, () => {
     const initial = initialChatRendererState()
-    setWorkspaceSnapshot(initial.workspace)
+    if (enabled) setWorkspaceSnapshot(initial.workspace)
     return initial
   })
   useLayoutEffect(() => {
-    setWorkspaceSnapshot(workspace)
-  }, [workspace])
+    if (enabled) setWorkspaceSnapshot(workspace)
+  }, [enabled, workspace])
   // Bumped by Retry after the first snapshot failed; the effect below re-requests it.
   const [startupAttempt, setStartupAttempt] = useState(0)
 
