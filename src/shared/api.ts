@@ -9,6 +9,7 @@ import type {
 } from './chat-peers.js'
 import type { ProviderAvailability } from './provider-availability.js'
 import type { AppWindowContext, AppWindowId, AppWindowInfo, AppWindowRegion, AppWindowsEvent } from './app-windows.js'
+import type { QuickChatOverlayRequest, QuickChatOverlaySize, QuickChatOverlayState, QuickChatOverlayView } from './quick-chat-overlay.js'
 import type { CredentialDraft, CredentialSummary, CredentialVaultStatus } from './credentials.js'
 import type { ModelManifest, ModelSwitch, ModelsEvent } from './model-settings.js'
 import type { ToolManifest, ToolTelemetrySnapshot, ToolsEvent } from './tools.js'
@@ -62,6 +63,18 @@ export type ClosedaiApi = {
     /** A still of this window's own page within `region` (JPEG data URL); null when nothing painted. */
     capture: (region: AppWindowRegion) => Promise<string | null>
     onEvent: (listener: (event: AppWindowsEvent) => void) => Unsubscribe
+  }
+  /** The browser's quick chat layer (shared/quick-chat-overlay.ts). */
+  quickChat: {
+    /** Main window: which chat the layer shows and whether it is open. */
+    setState: (state: QuickChatOverlayState) => Promise<void>
+    /** The layer: what to render now; null before the main window reported any state. */
+    view: () => Promise<QuickChatOverlayView | null>
+    /** The layer: its content box, which main anchors to the foot of the page. */
+    setSize: (size: QuickChatOverlaySize) => Promise<void>
+    /** The layer: ask the main window's layout to open, renew or close the quick chat. */
+    request: (request: QuickChatOverlayRequest) => Promise<void>
+    onView: (listener: (view: QuickChatOverlayView) => void) => Unsubscribe
   }
   browser: {
     setBounds: (bounds: BrowserBounds) => Promise<void>

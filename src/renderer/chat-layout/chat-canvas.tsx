@@ -15,7 +15,8 @@ import { ChatLayoutPaneHeader } from './chat-layout-pane-header.js'
 import { GLIDE_MS, miniature, useLayoutGlide } from './layout-motion.js'
 import { WINDOW_HEADER, findWindow, floatWindow, minimizeWindow } from './floating/window-layout.js'
 import { tearOffWindow, tileWindow } from './floating/window-arrange.js'
-import { snapTarget } from './floating/window-targets.js'
+import { joinTabsTarget, snapTarget } from './floating/window-targets.js'
+import { JoinTabsPreview } from './floating/join-tabs-preview.js'
 import { browserCovered, canvasTiles, floatingFront } from './floating/window-tiles.js'
 import { useWindowDrag, type WindowFrame } from './floating/use-window-drag.js'
 import { useMaximizedWindow } from './floating/use-maximized-window.js'
@@ -397,8 +398,9 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
           {floats && !busy && <WindowResizeHandles id={activeId} onStart={startResize} />}
         </section>
       })}
-      {gesture?.preview && <div className="chat-layout-snap-preview" data-kind={gesture.target.kind}
+      {gesture?.preview && gesture.target.kind !== 'group' && <div className="chat-layout-snap-preview" data-kind={gesture.target.kind}
         style={position(gesture.preview)} aria-hidden="true" />}
+      <JoinTabsPreview canvas={canvasRef} title={title} join={joinTabsTarget(shown, gesture, dragging && { id: dragging.id, drop })} />
       {drop?.target === TEAR_OFF_TARGET && tearOff.rect.current && <div ref={tearOff.outline} className="chat-layout-snap-preview"
         data-kind="tear-off" style={position(tearOff.rect.current)} aria-hidden="true" />}
       {!soloTile && layoutDividers.map((divider) => <LayoutDivider key={divider.id}

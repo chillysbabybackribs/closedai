@@ -13,6 +13,7 @@ import type { ToolManifest, ToolSwitch, ToolTelemetrySnapshot, ToolsEvent } from
 import type { TraceEvent, TraceSnapshot, TraceSnapshotOptions } from './trace.js'
 import type { ProviderAvailability } from './provider-availability.js'
 import type { AppWindowContext, AppWindowId, AppWindowInfo, AppWindowRegion, AppWindowsEvent } from './app-windows.js'
+import type { QuickChatOverlayRequest, QuickChatOverlaySize, QuickChatOverlayState, QuickChatOverlayView } from './quick-chat-overlay.js'
 import type {
   BrowserCookieImportResult, CredentialApprovalRequest, SecurityDecision, SecuritySettings, WebPermissionRequest
 } from './security.js'
@@ -42,6 +43,10 @@ export type IpcInvokeChannels = {
   'windows:revealTab': { args: [string]; result: boolean }
   'windows:showBrowser': { args: []; result: void }
   'windows:capture': { args: [AppWindowRegion]; result: string | null }
+  'quickChat:setState': { args: [QuickChatOverlayState]; result: void }
+  'quickChat:view': { args: []; result: QuickChatOverlayView | null }
+  'quickChat:setSize': { args: [QuickChatOverlaySize]; result: void }
+  'quickChat:request': { args: [QuickChatOverlayRequest]; result: void }
   'browser:setBounds': { args: [BrowserBounds]; result: void }
   'browser:navigate': { args: [string]; result: void }
   'browser:back': { args: []; result: void }
@@ -149,6 +154,7 @@ export type IpcEventChannels = {
   'models:event': ModelsEvent
   'trace:event': TraceEvent
   'windows:event': AppWindowsEvent
+  'quickChat:view': QuickChatOverlayView
 }
 
 export type IpcEventChannel = keyof IpcEventChannels
@@ -183,6 +189,12 @@ export const IPC = {
       revealTab: 'windows:revealTab',
       showBrowser: 'windows:showBrowser',
       capture: 'windows:capture'
+    },
+    quickChat: {
+      setState: 'quickChat:setState',
+      view: 'quickChat:view',
+      setSize: 'quickChat:setSize',
+      request: 'quickChat:request'
     },
     browser: {
       setBounds: 'browser:setBounds',
@@ -308,7 +320,8 @@ export const IPC = {
     toolsEvent: 'tools:event',
     modelsEvent: 'models:event',
     traceEvent: 'trace:event',
-    windowsEvent: 'windows:event'
+    windowsEvent: 'windows:event',
+    quickChatView: 'quickChat:view'
   }
 } as const satisfies {
   invoke: Record<string, Record<string, IpcInvokeChannel>>

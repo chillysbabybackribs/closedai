@@ -49,6 +49,13 @@ const api: ClosedaiApi = {
     capture: (region) => invoke(IPC.invoke.windows.capture, region),
     onEvent: (listener) => subscribe(IPC.event.windowsEvent, listener)
   },
+  quickChat: {
+    setState: (state) => invoke(IPC.invoke.quickChat.setState, state),
+    view: () => invoke(IPC.invoke.quickChat.view),
+    setSize: (size) => invoke(IPC.invoke.quickChat.setSize, size),
+    request: (request) => invoke(IPC.invoke.quickChat.request, request),
+    onView: (listener) => subscribe(IPC.event.quickChatView, listener)
+  },
   browser: {
     setBounds: (bounds: BrowserBounds) => invoke(IPC.invoke.browser.setBounds, bounds),
     navigate: (input: string) => invoke(IPC.invoke.browser.navigate, input),

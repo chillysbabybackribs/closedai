@@ -1,9 +1,4 @@
 import type { JSX } from 'react'
-import { LayoutPanelLeft } from 'lucide-react'
-import { Button } from '../../components/ui/button.js'
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuShortcut, DropdownMenuTrigger
-} from '../../components/ui/dropdown-menu.js'
 import type { LayoutPreset } from '../chat-layout/layout-presets.js'
 
 type Cell = 'chat' | 'browser' | 'restore'
@@ -15,6 +10,9 @@ const ARRANGEMENTS: Array<{ key: string; label: string; detail: string; preset: 
   { key: 'browser-between', label: 'Chat, browser, chat', detail: 'The browser in the middle',
     preset: { kind: 'browser-between' }, cells: ['chat', 'browser', 'chat'] }
 ]
+
+const itemClass =
+  'relative flex w-full cursor-default select-none items-center gap-2.5 rounded-md px-2 py-2 text-left text-[13px] leading-none outline-none hover:bg-[var(--menu-highlight)] focus-visible:bg-[var(--menu-highlight)] disabled:pointer-events-none disabled:text-[var(--menu-quiet)]'
 
 /** A small plan of the arrangement: chats outlined, the browser filled. */
 function LayoutGlyph({ cells }: { cells: Cell[] }): JSX.Element {
@@ -37,43 +35,35 @@ function Row({ cells, label, detail }: { cells: Cell[]; label: string; detail: s
 }
 
 /**
- * The dock's Layout menu: always clickable, so there is one obvious place to put windows back
- * together. Tile windows returns floating windows to the last tiled layout; the arrangements
- * rebuild the layout from every window and tab, floating and minimized ones included.
+ * Layout actions shown inside the dock settings popover: put windows back together, tile floats,
+ * or open the workspace layout dialog.
  */
-export function DockLayoutMenu({ open, onOpenChange, canTile, onTileWindows, onApplyPreset, onOpenLayouts }: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+export function DockLayoutSection({ canTile, onTileWindows, onApplyPreset, onOpenLayouts, onClose }: {
   canTile: boolean
   onTileWindows: () => void
   onApplyPreset: (preset: LayoutPreset) => void
   onOpenLayouts: () => void
+  onClose: () => void
 }): JSX.Element {
-  return <DropdownMenu open={open} onOpenChange={onOpenChange} modal={false}>
-    <DropdownMenuTrigger asChild>
-      <Button variant="ghost" size="sm" data-ui="dock.layout" aria-pressed={open}>
-        <LayoutPanelLeft aria-hidden="true" />Layout
-      </Button>
-    </DropdownMenuTrigger>
-    <DropdownMenuContent side="top" align="end" sideOffset={10} className="w-72"
-      onCloseAutoFocus={(event) => event.preventDefault()}>
-      <DropdownMenuLabel>Put windows back together</DropdownMenuLabel>
-      {ARRANGEMENTS.map(({ key, label, detail, preset, cells }) => (
-        <DropdownMenuItem key={key} data-ui="dock.layout-item" data-ui-key={key} className="h-auto py-2"
-          onSelect={() => onApplyPreset(preset)}>
-          <Row cells={cells} label={label} detail={detail} />
-        </DropdownMenuItem>
-      ))}
-      <DropdownMenuItem data-ui="dock.layout-item" data-ui-key="tile-windows" className="h-auto py-2"
-        disabled={!canTile} onSelect={onTileWindows}>
-        <Row cells={['restore', 'restore']} label="Tile windows"
-          detail={canTile ? 'Back where they were' : 'Nothing is floating'} />
-        <DropdownMenuShortcut>Ctrl+Shift+L</DropdownMenuShortcut>
-      </DropdownMenuItem>
-      <DropdownMenuSeparator />
-      <DropdownMenuItem data-ui="dock.layout-item" data-ui-key="workspace-layout" className="pl-12" onSelect={onOpenLayouts}>
-        Workspace layout…
-      </DropdownMenuItem>
-    </DropdownMenuContent>
-  </DropdownMenu>
+  const done = (action: () => void) => () => { action(); onClose() }
+
+  return <div className="flex flex-col gap-0.5" role="group" aria-label="Put windows back together">
+    {ARRANGEMENTS.map(({ key, label, detail, preset, cells }) => (
+      <button key={key} type="button" className={itemClass} data-ui="dock.layout-item" data-ui-key={key}
+        onClick={done(() => onApplyPreset(preset))}>
+        <Row cells={cells} label={label} detail={detail} />
+      </button>
+    ))}
+    <button type="button" className={itemClass} data-ui="dock.layout-item" data-ui-key="tile-windows"
+      disabled={!canTile} onClick={done(onTileWindows)}>
+      <Row cells={['restore', 'restore']} label="Tile windows"
+        detail={canTile ? 'Back where they were' : 'Nothing is floating'} />
+      <span className="ml-auto pl-4 text-[11px] whitespace-nowrap text-[var(--menu-quiet)]">Ctrl+Shift+L</span>
+    </button>
+    <div className="-mx-1 my-1 h-px bg-[var(--menu-edge)]" role="separator" />
+    <button type="button" className={`${itemClass} pl-12`} data-ui="dock.layout-item" data-ui-key="workspace-layout"
+      onClick={done(onOpenLayouts)}>
+      Workspace layout…
+    </button>
+  </div>
 }

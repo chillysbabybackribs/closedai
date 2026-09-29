@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import type { BrowserWindow, Rectangle, WebContents } from 'electron'
 import { MAIN_WINDOW_ID, type AppWindowCommand, type AppWindowContext, type AppWindowId, type AppWindowInfo } from '../../shared/app-windows.js'
 import type { ChatWorkspaceEvent } from '../../shared/chat-peers.js'
+import type { QuickChatOverlayRequest } from '../../shared/quick-chat-overlay.js'
 import { IPC, type IpcEventChannel, type IpcEventChannels } from '../../shared/ipc-channels.js'
 import type { AppWindowStore } from './app-window-store.js'
 
@@ -27,6 +28,15 @@ export type AppWindowRegistryDeps = {
   /** The chat selected when the app last quit; the window holding it is the one that takes focus. */
   selectedChat?: () => string | null
   display?: (bounds: Rectangle) => { id: number; label: string } | null
+}
+
+/** A layer inside a window that renders chats outside its tiles (the browser's quick chat). */
+export type SurfaceContents = Pick<WebContents, 'id' | 'isDestroyed' | 'send'>
+
+export type AppSurfaceHandle = {
+  /** The chats the layer shows; their transcript streams reach it as well as their window. */
+  show: (paneIds: string[]) => void
+  detach: () => void
 }
 
 /** A window as the app-state tool reports it. */
@@ -55,6 +65,7 @@ const MAIN_ONLY_CHANNELS = new Set<IpcEventChannel>([
 
 export class AppWindowRegistry {
   private readonly entries = new Map<AppWindowId, Entry>()
+  private readonly surfaces = new Set<{ contents: SurfaceContents; paneIds: Set<string> }>()
   private shuttingDown = false
   private observedCwd: string | null = null
 
@@ -92,6 +103,19 @@ export class AppWindowRegistry {
       entry.window.close()
     }
     this.restore(cwd)
+  }
+
+  /**
+   * Route events to a layer that is not a window: it hears workspace-wide events and the chats it
+   * shows, but holds no tabs, takes no window commands, and is not listed.
+   */
+  attachSurface(contents: SurfaceContents): AppSurfaceHandle {
+    const surface = { contents, paneIds: new Set<string>() }
+    this.surfaces.add(surface)
+    return {
+      show: (paneIds) => { surface.paneIds = new Set(paneIds) },
+      detach: () => { this.surfaces.delete(surface) }
+    }
   }
 
   shutdown(): void {
@@ -178,6 +202,12 @@ export class AppWindowRegistry {
     return true
   }
 
+  /** The quick chat layer asks the main window's layout, which owns the quick chat, to act. */
+  quickChat(request: QuickChatOverlayRequest): void {
+    const main = this.entries.get(MAIN_WINDOW_ID)
+    if (main) this.command(main, { type: 'quickChat', request })
+  }
+
   showBrowser(): void {
     const main = this.entries.get(MAIN_WINDOW_ID)
     if (!main) return
@@ -188,6 +218,7 @@ export class AppWindowRegistry {
   send<C extends IpcEventChannel>(channel: C, payload: IpcEventChannels[C]): void {
     const mainOnly = MAIN_ONLY_CHANNELS.has(channel)
     for (const entry of this.entries.values()) if (entry.main || !mainOnly) deliver(entry, channel, payload)
+    if (!mainOnly) for (const surface of this.surfaces) deliverTo(surface.contents, channel, payload)
   }
 
   /** Transcript traffic goes to the window showing the chat; the main window hears the rest. */
@@ -199,6 +230,7 @@ export class AppWindowRegistry {
     const showing = [...this.entries.values()].filter((entry) => entry.visible.has(event.paneId))
     const targets = showing.length ? showing : [this.entries.get(MAIN_WINDOW_ID)].filter((entry) => !!entry)
     for (const entry of targets) deliver(entry, IPC.event.chatEvent, event)
+    for (const surface of this.surfaces) if (surface.paneIds.has(event.paneId)) deliverTo(surface.contents, IPC.event.chatEvent, event)
   }
 
   private open(id: AppWindowId, cwd: string, tabs: string[], activate: boolean): void {
@@ -254,6 +286,9 @@ export class AppWindowRegistry {
 
 // The BrowserWindow can outlive its WebContents during shutdown; late events are harmless.
 function deliver<C extends IpcEventChannel>(entry: Entry, channel: C, payload: IpcEventChannels[C]): void {
-  if (entry.window.isDestroyed() || entry.window.webContents.isDestroyed()) return
-  entry.window.webContents.send(channel, payload)
+  if (!entry.window.isDestroyed()) deliverTo(entry.window.webContents, channel, payload)
+}
+
+function deliverTo<C extends IpcEventChannel>(contents: SurfaceContents, channel: C, payload: IpcEventChannels[C]): void {
+  if (!contents.isDestroyed()) contents.send(channel, payload)
 }

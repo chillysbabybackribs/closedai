@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { BROWSER_PANE_ID, WORKSPACE_DOCK_ID, type ChatLayout } from '../layout-tree.ts'
 import { floatWindow } from './window-layout.ts'
-import { sameTarget, targetPreview, windowTargetAt } from './window-targets.ts'
+import { joinTabsTarget, sameTarget, targetPreview, windowTargetAt } from './window-targets.ts'
 
 const canvas = { width: 1200, height: 800 }
 const tiled = [{ id: 'a', rect: { x: 0, y: 0, width: 600, height: 800 } }, { id: BROWSER_PANE_ID, rect: { x: 614, y: 0, width: 586, height: 800 } }]
@@ -39,4 +39,16 @@ test('previews show the landing rect or the window joined', () => {
   assert.equal(targetPreview(tree, 'm', { kind: 'free' }, canvas, false, tiled, []), null)
   assert.ok(sameTarget({ kind: 'group', target: 'a' }, { kind: 'group', target: 'a' }))
   assert.ok(!sameTarget({ kind: 'split', target: 'a', edge: 'left' }, { kind: 'split', target: 'a', edge: 'right' }))
+})
+
+test('a join names the window and the tabs it gains', () => {
+  const windows = [{ id: 'a', tabs: ['a', 'b'] }, { id: 'c', tabs: ['c'] }]
+  assert.deepEqual(joinTabsTarget(windows, { id: 'a', target: { kind: 'group', target: 'c' } }, null), { target: 'c', incoming: ['a', 'b'] })
+  assert.equal(joinTabsTarget(windows, { id: 'a', target: { kind: 'free' } }, null), null)
+  assert.deepEqual(joinTabsTarget(windows, null, { id: 'b', drop: { target: 'c', edge: null } }), { target: 'c', incoming: ['b'] })
+  // Its own strip, a split edge, the browser and a tear-off never read as a join.
+  assert.equal(joinTabsTarget(windows, null, { id: 'b', drop: { target: 'a', edge: null } }), null)
+  assert.equal(joinTabsTarget(windows, null, { id: 'b', drop: { target: 'c', edge: 'left' } }), null)
+  assert.equal(joinTabsTarget(windows, null, { id: 'b', drop: { target: BROWSER_PANE_ID, edge: null } }), null)
+  assert.equal(joinTabsTarget(windows, null, { id: 'b', drop: { target: 'window:tear-off', edge: null } }), null)
 })

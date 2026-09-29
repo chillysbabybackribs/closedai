@@ -2,6 +2,8 @@
 // windows each hold their own tab layout for chats the user moved out of it. A chat lives in one
 // window at a time; closing a detached window hands its chats back to the main window.
 
+import type { QuickChatOverlayRequest } from './quick-chat-overlay.js'
+
 export type AppWindowId = string
 
 export const MAIN_WINDOW_ID: AppWindowId = 'main'
@@ -33,6 +35,8 @@ export type AppWindowCommand =
   | { type: 'adoptTabs'; tabIds: string[] }
   /** Show the browser; sent to the main window from a detached window's Browser control. */
   | { type: 'showBrowser' }
+  /** Open, renew or close the browser's quick chat; sent to the main window from the quick chat layer. */
+  | { type: 'quickChat'; request: QuickChatOverlayRequest }
 
 export type AppWindowsEvent =
   | { type: 'windows'; windows: AppWindowInfo[] }

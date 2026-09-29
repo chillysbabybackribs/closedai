@@ -79,3 +79,24 @@ export function targetPreview(tree: ChatLayout, source: string, target: WindowTa
   if (!visible) return null
   return layoutGeometry(visible, canvas.width, canvas.height).panes.find((pane) => pane.id === source)?.rect ?? null
 }
+
+export type JoinTabs = { target: string; incoming: string[] }
+
+/**
+ * The window a release would join and the tabs it would gain: a moving window over a tab strip
+ * brings all its tabs, a dragged chat over another window's strip brings itself. `windows` are the
+ * tiles on screen with their tabs.
+ */
+export function joinTabsTarget(windows: readonly { id: string; tabs: string[] }[],
+  moving: { id: string; target: WindowTarget } | null,
+  dragged: { id: string; drop: { target: string; edge: DockEdge | null } | null } | null): JoinTabs | null {
+  const holding = (id: string) => windows.find((tile) => tile.id === id || tile.tabs.includes(id))
+  if (moving?.target.kind === 'group') {
+    const tabs = holding(moving.id)?.tabs
+    return { target: moving.target.target, incoming: tabs?.length ? tabs : [moving.id] }
+  }
+  const drop = dragged?.drop
+  if (!dragged || !drop || drop.edge !== null || drop.target === BROWSER_PANE_ID) return null
+  const into = windows.find((tile) => tile.id === drop.target)
+  return into && into !== holding(dragged.id) ? { target: into.id, incoming: [dragged.id] } : null
+}

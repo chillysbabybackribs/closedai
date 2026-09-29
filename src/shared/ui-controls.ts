@@ -69,9 +69,8 @@ export const UI_CONTROLS = {
   'dock.all-saved-sites': 'Dock Saved sites list: open the Saved sites view',
   'dock.download': 'Dock Downloads list: show a finished file in its folder; item is the download id',
   'dock.window': 'Dock tile for a minimized window: restore it where it was and select it; item is the window\u2019s front tab id',
-  'dock.layout': 'Dock: open the Layout menu, always available, for putting windows back together',
-  'dock.layout-item': 'Dock Layout menu row; item is browser-side (every window and tab gathered into one chat window left of the browser), browser-between (a chat either side of the browser), tile-windows (floating windows back into the last tiled layout, also View \u2192 Tile windows and Ctrl+Shift+L; disabled while nothing floats) or workspace-layout (the layout dialog)',
-  'dock.settings': 'Dock settings popover',
+  'dock.layout-item': 'Dock settings popover layout row; open via dock.settings first; item is browser-side (every window and tab gathered into one chat window left of the browser), browser-between (a chat either side of the browser), tile-windows (floating windows back into the last tiled layout, also View \u2192 Tile windows and Ctrl+Shift+L; disabled while nothing floats) or workspace-layout (the layout dialog)',
+  'dock.settings': 'Dock settings popover: layout actions and dock preferences (keep visible, magnify icons)',
   'dock.keep-visible': 'Dock settings: keep the dock on screen in its own row instead of showing it at the bottom edge',
   'dock.magnify': 'Dock settings: grow tray icons under the pointer',
 

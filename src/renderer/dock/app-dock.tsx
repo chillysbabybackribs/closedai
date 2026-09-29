@@ -17,7 +17,7 @@ import type { StartView } from './dock-start-model.js'
 import type { StartServices } from './dock-start-views.js'
 import { DockTray, StartTrayButton } from './dock-tray.js'
 import type { TitlebarMenuProps } from '../application-menu-model.js'
-import { DockLayoutMenu } from './dock-layout-menu.js'
+import { DockLayoutSection } from './dock-layout-menu.js'
 import type { LayoutPreset } from '../chat-layout/layout-presets.js'
 import type { MinimizedWindow } from '../chat-layout/floating/minimized-windows.js'
 import { useDockReveal } from './use-dock-reveal.js'
@@ -49,11 +49,11 @@ export type AppDockProps = {
 
 /**
  * The dock along the bottom of the main window. Left: back/forward through where you have zoomed.
- * Centre: Start and the app tray. Right: layout and dock settings. It hides until the pointer
+ * Centre: Start and the app tray. Right: dock settings (layout options live in that popover). It hides until the pointer
  * reaches the bottom edge unless Keep visible is on.
  */
 export function AppDock({ menu, nav, chats, chatTitle, browserVisible, prefs, onPrefsChange, onLaunch, onOpenSite, onAllSavedSites, minimized, onRestoreWindow, canTile, onTileWindows, onApplyPreset, onOpenLayouts, onOpenChat, startServices }: AppDockProps): JSX.Element {
-  const [openList, setOpenList] = useState<TrayAppId | 'settings' | 'layout' | 'start' | null>(null)
+  const [openList, setOpenList] = useState<TrayAppId | 'settings' | 'start' | null>(null)
   const [keyboard, setKeyboard] = useState(false)
   // Start opens on its home every time; a screen is where one visit went, not a preference.
   const [startView, setStartView] = useState<StartView>('home')
@@ -139,20 +139,22 @@ export function AppDock({ menu, nav, chats, chatTitle, browserVisible, prefs, on
           </PopoverContent>
         </Popover>
         <div className="flex items-center gap-0.5">
-          <DockLayoutMenu open={openList === 'layout'} onOpenChange={(open) => setOpenList(open ? 'layout' : null)}
-            canTile={canTile} onTileWindows={onTileWindows} onApplyPreset={onApplyPreset} onOpenLayouts={onOpenLayouts} />
           {/* Dock lists do not hand focus back on close: the button's tooltip would reopen over the page. */}
           <Popover open={openList === 'settings'} onOpenChange={(open) => setOpenList(open ? 'settings' : null)}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <PopoverTrigger asChild>
-                  <Button variant="ghost" size="icon-sm" data-ui="dock.settings" aria-label="Dock settings"><SlidersHorizontal aria-hidden="true" /></Button>
+                  <Button variant="ghost" size="icon-sm" data-ui="dock.settings" aria-label="Dock and layout"><SlidersHorizontal aria-hidden="true" /></Button>
                 </PopoverTrigger>
               </TooltipTrigger>
-              {openList !== 'settings' && <TooltipContent side="top">Dock settings</TooltipContent>}
+              {openList !== 'settings' && <TooltipContent side="top">Dock and layout</TooltipContent>}
             </Tooltip>
             <PopoverContent side="top" align="end" sideOffset={10} className="flex w-72 flex-col gap-3 p-3"
               onCloseAutoFocus={(event) => event.preventDefault()}>
+              <div className="text-xs font-medium text-muted-foreground">Layout</div>
+              <DockLayoutSection canTile={canTile} onTileWindows={onTileWindows} onApplyPreset={onApplyPreset}
+                onOpenLayouts={onOpenLayouts} onClose={() => setOpenList(null)} />
+              <div className="h-px bg-border" role="separator" />
               <div className="text-xs font-medium text-muted-foreground">Dock</div>
               <DockSetting control="dock.keep-visible" title="Keep visible"
                 detail="Off: the dock shows when the pointer reaches the bottom edge."

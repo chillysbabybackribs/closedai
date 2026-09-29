@@ -366,8 +366,8 @@ chat cannot be minimized or closed. Minimizing the browser hides it; the dock's 
 it back. The selected window keeps full-strength buttons; the others dim theirs until hovered.
 Double-clicking a floating window's header puts that window alone back into its slot.
 
-The dock's **Layout** menu (`dock.layout`, right side beside Dock settings, always clickable) is the
-one place to put windows back together (`dock-layout-menu.tsx`, rows `dock.layout-item`):
+The dock's **Layout** section lives in the dock settings popover (`dock.settings`, sliders icon on
+the right; `dock-layout-menu.tsx`, rows `dock.layout-item`) and is the one place to put windows back together:
 **Chats left, browser right** gathers every window and tab, floating and minimized ones included,
 into one chat window left of the browser (the `browser-side` preset); **Chat, browser, chat** puts a
 chat either side of the browser (`browser-between`: the extra windows' tabs join the right-hand

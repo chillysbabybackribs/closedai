@@ -173,3 +173,30 @@ test('an unknown sender has no window context', () => {
   const { registry } = harness()
   assert.throws(() => registry.context({ id: 9999 }), /not registered/)
 })
+
+test('a surface hears the chats it shows and workspace-wide events, never browser state', () => {
+  const { registry, main } = harness()
+  registry.claim('main', ['a', 'q'], ['a'])
+  const sent: Sent[] = []
+  let destroyed = false
+  const surface = registry.attachSurface({ id: 9001, isDestroyed: () => destroyed, send: (channel: string, payload: unknown) => { sent.push({ channel, payload }) } })
+  surface.show(['q'])
+  main.sent.length = 0
+  registry.sendChatEvent(paneEvent('q'))
+  registry.sendChatEvent(paneEvent('a'))
+  registry.send('browser:tabs', [])
+  registry.send('savedSites:changed', [])
+  assert.deepEqual(sent.map((entry) => (entry.payload as { paneId?: string }).paneId ?? entry.channel), ['q', 'savedSites:changed'])
+  assert.deepEqual(main.sent.map((entry) => (entry.payload as { paneId?: string }).paneId ?? entry.channel), ['q', 'a', 'browser:tabs', 'savedSites:changed'])
+  assert.equal(registry.list().length, 1)
+  destroyed = true
+  registry.sendChatEvent(paneEvent('q'))
+  surface.detach()
+  assert.equal(sent.length, 2)
+})
+
+test('the quick chat layer’s requests go to the main window', () => {
+  const { registry, main } = harness()
+  registry.quickChat('open')
+  assert.deepEqual(main.commands(), [{ type: 'quickChat', request: 'open' }])
+})
