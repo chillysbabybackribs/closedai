@@ -34,10 +34,7 @@ function harness(overrides: { ui?: Partial<AppUiHost>; app?: Partial<AppCommandH
     },
     revealChatTab: async (paneId) => { calls.push(['revealChatTab', paneId]) },
     revealBrowser: async () => { calls.push(['revealBrowser']) },
-    runMenu: async (key, callerPaneId) => {
-      calls.push(['runMenu', key, callerPaneId])
-      return key === 'tile-windows' ? { key, label: 'Tile windows', menu: 'View', ran: false, disabled: true } : { key, label: 'Tools', menu: 'Agent', ran: true }
-    },
+    runMenu: async (key, callerPaneId) => { calls.push(['runMenu', key, callerPaneId]); return { key, ran: true } },
     ...overrides.ui
   }
   const app: AppCommandHost = {
@@ -179,17 +176,31 @@ test('commands route to the host with the selected pane as the default target', 
   ])
 })
 
-test('menu runs a row by key for the caller and reads ui state only after a row ran', async () => {
-  const { calls, call } = harness()
-  const ran = await call('menu', { key: 'tools' })
+test('menu runs a row by key for the caller and returns the ui state once it changes', async () => {
+  let dialogs: string[] = []
+  const { calls, call } = harness({ ui: {
+    uiState: async () => {
+      calls.push(['uiState'])
+      return { chatSearchOpen: false, historyOpen: false, downloadsOpen: false, dialogs, menus: [], composer: null, focused: null, viewport: { width: 1, height: 1 } }
+    },
+    runMenu: async (key, callerPaneId) => {
+      calls.push(['runMenu', key, callerPaneId])
+      if (key === 'tile-windows') return { key, label: 'Tile windows', menu: 'View', ran: false, disabled: true }
+      if (key === 'settings') setTimeout(() => { dialogs = ['dialog.settings'] }, 150)
+      return { key, ran: true }
+    }
+  } })
+  const ran = await call('menu', { key: 'settings' })
   assert.equal(ran.isError, undefined)
-  assert.match(textOf(ran), /"ran": true/)
-  assert.match(textOf(ran), /"chatSearchOpen": true/)
-  assert.deepEqual(calls, [['runMenu', 'tools', 'pane-caller'], ['uiState']])
+  assert.match(textOf(ran), /"uiChanged": true/)
+  assert.match(textOf(ran), /dialog\.settings/)
+  assert.deepEqual(calls.slice(0, 3), [['uiState'], ['runMenu', 'settings', 'pane-caller'], ['uiState']])
   calls.length = 0
   const greyed = await call('menu', { key: 'tile-windows' })
   assert.match(textOf(greyed), /"disabled": true/)
-  assert.deepEqual(calls, [['runMenu', 'tile-windows', 'pane-caller']])
+  assert.deepEqual(calls, [['uiState'], ['runMenu', 'tile-windows', 'pane-caller']])
+  const unseen = await call('menu', { key: 'zoom-in' })
+  assert.match(textOf(unseen), /"uiChanged": false/)
   for (const key of ['reload-renderer', 'close-window', 'no-such-row']) {
     const refused = await call('menu', { key })
     assert.equal(refused.isError, true, key)
