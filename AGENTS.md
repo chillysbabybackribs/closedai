@@ -55,7 +55,7 @@ produced each result so a browser capture is never presented as an image-generat
 - Design read tools for model context, not raw transport completeness: offer scope/query/projection controls and fit useful results within their output budget before the generic serializer has to truncate them.
 - Every interactive renderer control carries a `data-ui` id from `src/shared/ui-controls.ts`; add the id and its manifest entry together. Do not read renderer source merely to discover controls or selectors.
 
-## Hard hygiene limits
+## Hygiene limits (defaults, not design targets)
 
 - React/TSX component: 450 physical lines
 - TypeScript implementation: 675 physical lines
@@ -64,7 +64,13 @@ produced each result so a browser capture is never presented as an image-generat
 - Build script: 450 physical lines
 - Source JSON: 375 physical lines
 
-The byte caps and layer-boundary rules live in `scripts/hygiene-gate.mjs`; source-category byte budgets are 1.5× their original values alongside the line budgets above. At 80% of a limit, treat the warning as a prompt to review responsibility boundaries, not a demand to remove useful context or split cohesive code. Never minify source, compress formatting, raise a limit, add an exception, or disable a gate without explicit owner approval.
+The byte caps and layer-boundary rules live in `scripts/hygiene-gate.mjs`; source-category byte budgets are 1.5× their original values alongside the line budgets above.
+
+**While completing a task**, prefer the cohesive change that finishes the work—even when that pushes a file slightly past a cap—over artificial trimming, one-liner extractions, or pre-emptive splits whose only purpose is to satisfy the gate. Split or modularize when responsibility boundaries are genuinely wrong, when two unrelated concerns share a file, or when modularization clearly improves maintenance. At 80% of a limit, review boundaries only; do not delete useful context to stay under the line.
+
+The hygiene gate still fails CI when a file exceeds its numeric cap so runaway modules cannot grow without notice. Crossing a cap is acceptable when the task needs it; fix the failure by merging related work, splitting along real boundaries, or **raising the category limit with explicit owner approval**—not by minifying, compressing formatting, disabling the gate, or adding one-off exceptions without approval.
+
+Never minify source or compress formatting to satisfy a cap.
 
 ## Verification and Testing
 

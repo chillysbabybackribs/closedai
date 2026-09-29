@@ -39,6 +39,7 @@ export function notesTools(host: NotesToolHost): ToolNamespace {
 function listTool(host: NotesToolHost): ToolDefinition {
   return defineTool({
     name: 'list',
+    deferLoading: true,
     description: 'List notes, most recently changed first, and the tabs of the calling chat\'s notepad window.',
     inputSchema: objectSchema({
       query: { type: 'string', maxLength: 200, description: 'Optional case-insensitive filter over titles.' },
@@ -70,6 +71,7 @@ function listTool(host: NotesToolHost): ToolDefinition {
 function readTool(host: NotesToolHost): ToolDefinition {
   return defineTool({
     name: 'read',
+    deferLoading: true,
     description:
       'Read a note as numbered lines ("12| text"). Long notes stop at a budget and name `nextFromLine`. ' +
       'The turn context already holds a small active note in full; read it again only after it may have changed.',
@@ -105,6 +107,7 @@ function readTool(host: NotesToolHost): ToolDefinition {
 function editTool(host: NotesToolHost): ToolDefinition {
   return defineTool({
     name: 'edit',
+    deferLoading: true,
     description:
       'Change a note. Give exactly one of: `old_text` + `new_text` (an exact quote, unique unless `replace_all`); ' +
       '`from_line` + `to_line` + `text` (replace those lines; `to_line` = `from_line` - 1 inserts before `from_line`, ' +
@@ -140,6 +143,7 @@ function editTool(host: NotesToolHost): ToolDefinition {
 function createTool(host: NotesToolHost): ToolDefinition {
   return defineTool({
     name: 'create',
+    deferLoading: true,
     description:
       'Create a note. From a notepad window\'s chat it opens as a new tab in that window; the user\'s active tab stays put.',
     inputSchema: objectSchema({

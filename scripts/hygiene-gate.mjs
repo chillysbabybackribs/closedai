@@ -85,10 +85,16 @@ for (const file of files) {
 }
 
 console.log(`hygiene: checked ${files.length} source files`)
-if (warnings.length) console.log(`near limit:\n${warnings.map((warning) => `  • ${warning}`).join('\n')}`)
+if (warnings.length) {
+  console.log(
+    `near limit (review boundaries; do not trim cohesive work just to stay under):\n${warnings.map((warning) => `  • ${warning}`).join('\n')}`
+  )
+}
 if (problems.length) {
   for (const problem of problems) console.error(`✗ ${problem}`)
-  console.error('Split by responsibility; do not raise or bypass a limit without explicit owner approval.')
+  console.error(
+    'Over cap: split along real module boundaries, finish the cohesive change and raise the limit with owner approval, or merge unrelated growth elsewhere — not formatting tricks or gate bypass.'
+  )
   process.exit(1)
 }
 console.log('✓ hygiene gate passed')

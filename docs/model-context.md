@@ -79,6 +79,13 @@ ships full schemas on every turn; tools such as `search.query`, `tool_batch.run`
 CDP namespace load through discovery. `measureToolContextBudget()` in the main process guards
 that eager wire size in tests.
 
+**Provider parity target:** Cursor Composer in ClosedAI is the reference stack — full enabled
+MCP tool schemas on the session plus the provider's native repository loop. Other lanes should
+converge on the same *outcomes* (reliable routing to `closedai_app.*`, search, peer recall,
+browser session tools, seamless rotation) through adapter-specific policy, not by copying Cursor's
+transport. Registry changes should preserve Codex eager-wire regression budgets unless the owner
+expands them deliberately.
+
 Restart the application to load a changed main-process build. Use a fresh chat to evaluate a
 prompt or native-provider baseline without earlier thread context. Tool switches may cause a
 handoff on an existing chat, so a switched chat is not a clean baseline. The session guide is the

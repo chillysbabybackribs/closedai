@@ -24,6 +24,14 @@ async function setup() {
   return { store, bindings, call }
 }
 
+test('notes tools defer on Codex so they do not join the eager wire set', () => {
+  const store = null as unknown as NotesStore
+  const bindings = new NotepadBindings()
+  for (const tool of notesTools({ store: () => store, bindings }).tools) {
+    assert.equal(tool.deferLoading, true, tool.name)
+  }
+})
+
 const json = (result: ToolResult): Record<string, unknown> => JSON.parse((result.content[0] as { text: string }).text)
 
 test('a notepad chat edits the note its turn started on, even after the user switches tabs', async () => {
