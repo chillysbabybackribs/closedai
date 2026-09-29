@@ -18,7 +18,8 @@ export function toolManifest(registry: ToolRegistry, providers: string[]): ToolM
     namespaces,
     groups: [...TOOL_GROUPS],
     advertisedTokens,
-    readOnlyIds: [...READ_ONLY_TOOL_IDS]
+    readOnlyIds: [...READ_ONLY_TOOL_IDS],
+    chatToolSliceEnabled: false
   }
 }
 
