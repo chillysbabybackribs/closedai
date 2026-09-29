@@ -4,11 +4,12 @@ import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import type { HistoryController } from './history-controller.js'
 import { closesOnFocusOut, closesOnPointerDown, cursorIndex } from './header-search-dismiss.js'
 import { HeaderChatSearchRow } from './header-search-row.js'
-import { chatSearchFooter, chatSearchView, stepHighlight, type ChatSearchHit } from './history-search.js'
+import { chatSearchFooter, chatSearchView, stepHighlight } from './history-search.js'
+import { useChatSearchActions } from './use-chat-search-actions.js'
 
 const SHEET_EXIT_MS = 160
 /** Ranked title/preview matches shown for a query; the footer reports the full count. */
-const QUERY_RESULT_LIMIT = 40
+export const QUERY_RESULT_LIMIT = 40
 const NO_CHATS: ChatRowSummary[] = []
 
 type Phase = 'closed' | 'open' | 'closing'
@@ -29,13 +30,9 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
   const [query, setQuery] = useState('')
   const [phase, setPhase] = useState<Phase>('closed')
   const [highlightId, setHighlightId] = useState<string | null>(null)
-  const [opening, setOpening] = useState(false)
-  const [deleting, setDeleting] = useState<string | null>(null)
-  const [changingTurn, setChangingTurn] = useState<string | null>(null)
   // Synchronous mirror of `phase`: transitions triggered inside one event (open a result, then
   // blur the input) must see each other before React re-renders.
   const phaseRef = useRef<Phase>('closed')
-  const actionRef = useRef(false)
   const keyboardMoveRef = useRef(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const resultsRef = useRef<HTMLDivElement>(null)
@@ -108,58 +105,17 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
     }
   }, [expanded, hide])
 
-  const open = async (hit: ChatSearchHit | undefined): Promise<void> => {
-    if (!hit || actionRef.current) return
-    actionRef.current = true
-    setOpening(true)
-    try {
-      await controller.openRow(hit.row.paneId)
+  const { open, remove, toggleTurn, changingTurn, busy } = useChatSearchActions(controller, {
+    onOpened: () => {
       onOpened?.()
       setQuery('')
       setHighlightId(null)
       finish()
       inputRef.current?.blur()
-    } catch (error) {
-      controller.reportError(error)
-    } finally {
-      actionRef.current = false
-      setOpening(false)
-    }
-  }
-
-  const remove = async (hit: ChatSearchHit): Promise<void> => {
-    if (hit.row.running || actionRef.current) return
-    actionRef.current = true
-    setDeleting(hit.row.paneId)
-    // Keep keyboard focus in the search when its delete button disappears.
-    inputRef.current?.focus()
-    try {
-      await controller.deleteRow(hit.row.paneId)
-    } catch (error) {
-      controller.reportError(error)
-    } finally {
-      actionRef.current = false
-      setDeleting(null)
-    }
-  }
-
-  const toggleTurn = async (hit: ChatSearchHit): Promise<void> => {
-    if (actionRef.current || (!hit.row.running && !hit.row.paused)) return
-    actionRef.current = true
-    setChangingTurn(hit.row.paneId)
-    inputRef.current?.focus()
-    try {
-      if (hit.row.running) await controller.pauseRow(hit.row.paneId)
-      else await controller.resumeRow(hit.row.paneId)
-    } catch (error) {
-      controller.reportError(error)
-    } finally {
-      actionRef.current = false
-      setChangingTurn(null)
-    }
-  }
-
-  const busy = opening || deleting !== null || changingTurn !== null
+    },
+    // Keep keyboard focus in the search when a row's control disappears.
+    keepFocus: () => inputRef.current?.focus()
+  })
   const searching = query.trim() !== ''
 
   return <div ref={rootRef} className="header-chat-search" data-expanded={expanded} onBlur={event => {
