@@ -19,9 +19,9 @@ export function CrossWindowDockPreview({ canvas, frame, browserVisible, title }:
   const preview = useMemo(() => {
     if (!hover) return null
     const now = frame()
-    const probe = hover.tabIds[0] ?? hover.sourcePaneId
-    const target = resolveCrossDockTarget(probe, hover, now.size, now.tiled, now.floating)
-    return { target, rect: targetPreview(now.tree, probe, target, now.size, browserVisible, now.tiled, now.floating) }
+    const source = hover.sourcePaneId
+    const target = resolveCrossDockTarget(source, hover, now.size, now.tiled, now.floating)
+    return { target, rect: targetPreview(now.tree, source, target, now.size, browserVisible, now.tiled, now.floating) }
   }, [hover, frame, browserVisible, snapshot.tree, snapshot.size.width, snapshot.size.height])
   if (!hover || !preview) return null
   const join = preview.target.kind === 'group'

@@ -4,7 +4,7 @@ import {
   MAIN_WINDOW_ID, type AppWindowCommand, type AppWindowContext, type AppWindowId, type AppWindowInfo, type AppWindowRegion
 } from '../../shared/app-windows.js'
 import type { AppWindowDockEvent, CrossWindowDockComplete, CrossWindowDockRouteRequest, CrossWindowDockRouteResult } from '../../shared/cross-window-dock.js'
-import { routeCrossDock, screenToCanvas, tabsForComplete, type DockWindowFrame } from './cross-window-dock.js'
+import { routeCrossDock, tabsForComplete, type DockWindowFrame } from './cross-window-dock.js'
 import type { ChatWorkspaceEvent } from '../../shared/chat-peers.js'
 import type { QuickChatOverlayRequest } from '../../shared/quick-chat-overlay.js'
 import { IPC, type IpcEventChannel, type IpcEventChannels } from '../../shared/ipc-channels.js'
@@ -240,16 +240,13 @@ export class AppWindowRegistry {
     }
     if (foreignId) {
       const target = this.entries.get(foreignId)
-      const frame = this.dockFrames().find((entry) => entry.id === foreignId)
-      if (target && frame) {
-        const mapped = screenToCanvas(frame, request.screenX, request.screenY)
-        if (mapped) {
-          this.lastForeignHover = { targetId: foreignId, x: mapped.x, y: mapped.y }
-          this.deliverDock(target, { type: 'hover', hover: {
-            sourceWindowId: sourceId, sourcePaneId: request.source.paneId, tabIds: request.source.tabIds,
-            ghostTabLabel: request.source.ghostTabLabel, x: mapped.x, y: mapped.y
-          } })
-        }
+      const mapped = result.foreign
+      if (target && mapped) {
+        this.lastForeignHover = { targetId: foreignId, x: mapped.x, y: mapped.y }
+        this.deliverDock(target, { type: 'hover', hover: {
+          sourceWindowId: sourceId, sourcePaneId: request.source.paneId, tabIds: request.source.tabIds,
+          ghostTabLabel: request.source.ghostTabLabel, x: mapped.x, y: mapped.y
+        } })
       }
     } else {
       this.lastForeignHover = null

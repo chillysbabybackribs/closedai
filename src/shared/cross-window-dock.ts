@@ -26,6 +26,8 @@ export type CrossWindowDockRouteRequest = {
 export type CrossWindowDockRouteResult = {
   /** Another window is receiving the hover preview. */
   targetWindowId: AppWindowId | null
+  /** Canvas coordinates on the target window when `targetWindowId` is set. */
+  foreign?: { x: number; y: number }
   /** When the pointer is still over the source canvas, local snap targets. */
   local: { x: number; y: number; target: SerializedWindowTarget } | null
 }

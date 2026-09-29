@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { pickDockTarget, screenToCanvas } from './cross-window-dock.ts'
+import { pickCrossDockTarget, pickDockTarget, screenToCanvas } from './cross-window-dock.ts'
 
 const surface = { x: 8, y: 72, width: 600, height: 400 }
 const content = { x: 100, y: 50, width: 800, height: 600 }
@@ -18,4 +18,16 @@ test('pickDockTarget prefers the last frame in z-order', () => {
   ]
   const hit = pickDockTarget(frames, point.x, point.y)
   assert.deepEqual(hit, { windowId: 'b', x: 10, y: 10 })
+})
+
+test('pickCrossDockTarget uses overlap center when the pointer stays on the source window', () => {
+  const source = { x: 200, y: 100, width: 400, height: 300 }
+  const target = { x: 100, y: 100, width: 400, height: 300 }
+  const frames = [
+    { id: 'a', content: target, surface },
+    { id: 'b', content: source, surface }
+  ]
+  const pointer = { x: source.x + 50, y: source.y + 20 }
+  const hit = pickCrossDockTarget('b', frames, pointer.x, pointer.y)
+  assert.deepEqual(hit, { windowId: 'a', x: 242, y: 78 })
 })
