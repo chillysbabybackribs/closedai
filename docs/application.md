@@ -1105,11 +1105,16 @@ Closed, the layer is a round button (`browser.quick-chat`, a spinner while the c
 the chat's own `ChatPane` in a card. While the user types, the card is the whole chat (header with
 **New quick chat** `browser.quick-chat-new` and shrink `browser.quick-chat-compact`); when a turn
 starts it retracts to the compact composer with a running feed above it (`quick-chat-feed.ts`: the
-latest steps of the turn, newest last, then a two-line preview of the reply once it ends). Focusing
-the composer or clicking the feed brings the whole chat back (`browser.quick-chat-expand`); Escape
-shrinks it, and from the compact card closes it (`browser.quick-chat-collapse`). A click on the page
-retracts the card; an unused chat closes to the button. While a menu inside the layer is open, the
-layer grows upward so the menu is not clipped.
+latest steps of the turn in plain words from `feed-phrase.ts`, such as "Opened espn.com", newest last,
+then a two-line preview of what the model last said). Typing into the composer or clicking the card
+brings the whole chat back (`browser.quick-chat-expand`); focus alone does not, because the composer
+takes focus back after a send. Escape shrinks it, and from the compact card closes it
+(`browser.quick-chat-collapse`). A click on the page retracts the card; an unused chat closes to the
+button. The page's view takes focus without the layer's document seeing a blur, so main tracks the
+layer's focus from its `WebContents` and sends it in the view (`focused`). While a composer panel is
+open, the layer grows upward so the panel fits; inside the layer (`data-composer-panels="viewport"`)
+composer panels use the viewport, not the chat pane, as their collision boundary
+(`composerPanelBoundary`).
 
 The main window's layout owns which chat it is and whether it is open, and reports both with
 `quickChat.setState`; the layer's requests (`quickChat.request`: open, new, close) reach the layout as
