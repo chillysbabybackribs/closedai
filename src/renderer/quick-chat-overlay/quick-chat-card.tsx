@@ -10,9 +10,13 @@ import type { AppearanceSettings } from '../settings/appearance-settings.js'
 import { feedLead, quickChatFeed, type QuickChatFeed } from './quick-chat-feed.js'
 import { formatRunSeconds, useRunSeconds } from './run-clock.js'
 
-const request = (value: 'new' | 'close'): void => { void window.closedai.quickChat.request(value) }
+const overlayRequest = (value: QuickChatRequest): void => { void window.closedai.quickChat.request(value) }
 
-type Mode = 'full' | 'compact'
+export type QuickChatRequest = 'new' | 'close'
+export type QuickChatMode = 'full' | 'compact'
+/** Which quick chat a control belongs to; it is the controls' `data-ui-key`. */
+export type QuickChatSurface = 'browser' | 'notepad'
+type Mode = QuickChatMode
 
 // The shape the user last chose for each chat, so hiding and reopening it keeps that shape.
 const chosenMode = new Map<string, Mode>()
@@ -22,12 +26,20 @@ const chosenMode = new Map<string, Mode>()
  * shape only when the user presses shrink or expand; sending, clicks on the page and typing leave
  * it as it is.
  */
-export const QuickChatCard = memo(function QuickChatCard({ paneId, site, dispatch, appearance }: {
+export const QuickChatCard = memo(function QuickChatCard({
+  paneId, site, dispatch, appearance, surface = 'browser', onRequest = overlayRequest, mode: controlledMode, onModeChange
+}: {
   paneId: string
-  /** The site the browser shows, for "Working on espn.com". */
+  /** What the task works on: the site the browser shows, or the note, for "Working on espn.com". */
   site: string | null
   dispatch: Dispatch<ChatWorkspaceAction>
   appearance: AppearanceSettings
+  surface?: QuickChatSurface
+  /** Hide or clear the chat; the browser's layer asks main, a notepad handles it in place. */
+  onRequest?: (request: QuickChatRequest) => void
+  /** Set by a host that changes the shape itself (a notepad compacts on a tab switch mid-task). */
+  mode?: QuickChatMode
+  onModeChange?: (mode: QuickChatMode) => void
 }): JSX.Element {
   const slice = useWorkspacePaneSlice(paneId)
   const state = slice.state ?? initialChatState()
@@ -36,8 +48,15 @@ export const QuickChatCard = memo(function QuickChatCard({ paneId, site, dispatc
   const title = slice.chats.find((row) => row.paneId === paneId)?.title ?? 'New chat'
   const feed = useMemo(() => quickChatFeed(state, 1), [state])
   const seconds = useRunSeconds(paneId, running)
-  const [mode, setModeState] = useState<Mode>(() => chosenMode.get(paneId) ?? 'full')
-  const setMode = (next: Mode): void => { chosenMode.set(paneId, next); setModeState(next) }
+  const [ownMode, setModeState] = useState<Mode>(() => chosenMode.get(paneId) ?? 'full')
+  const mode = controlledMode ?? ownMode
+  const setMode = (next: Mode): void => {
+    chosenMode.set(paneId, next)
+    setModeState(next)
+    onModeChange?.(next)
+  }
+  const requestRef = useRef(onRequest)
+  requestRef.current = onRequest
   const cardRef = useRef<HTMLDivElement>(null)
 
   // Opening lands in the composer.
@@ -45,38 +64,41 @@ export const QuickChatCard = memo(function QuickChatCard({ paneId, site, dispatc
     cardRef.current?.querySelector<HTMLTextAreaElement>('textarea')?.focus()
   }, [])
 
-  // Escape hides the chat. Menus and panels inside the layer take their own Escape first.
+  // Escape hides the chat. Menus and panels inside the layer take their own Escape first; in the
+  // app window, where other tiles take keys too, only an Escape from inside the card counts.
   useEffect(() => {
     const onKeyDown = (event: globalThis.KeyboardEvent): void => {
       if (event.key !== 'Escape' || event.defaultPrevented) return
+      if (surface !== 'browser' && !(event.target instanceof Node && cardRef.current?.contains(event.target))) return
       event.preventDefault()
-      request('close')
+      requestRef.current('close')
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [])
+  }, [surface])
 
   const whole = mode === 'full' || !hasTranscript
+  const close = (): void => onRequest('close')
   return (
-    <div ref={cardRef} className={`quick-chat-card${whole ? ' is-whole' : ' is-compact'}`}>
+    <div ref={cardRef} className={`quick-chat-card${whole ? ' is-whole' : ' is-compact'}`} data-surface={surface}>
       {whole ? (
         <div className={`quick-chat-header${running ? ' is-running' : ''}`}>
           {running ? <Loader2 className="quick-chat-working-icon spin" size={14} aria-hidden="true" /> : null}
           <span className="quick-chat-title" title={title}>{title}</span>
           {running ? <WorkingText feed={feed} seconds={seconds} /> : null}
           {hasTranscript ? (
-            <IconButton control="browser.quick-chat-compact" label="Shrink to the status line"
+            <IconButton control="quick-chat.compact" surface={surface} label="Shrink to the status line"
               onClick={() => setMode('compact')}><Minimize2 size={14} aria-hidden="true" /></IconButton>
           ) : null}
-          <QuickChatMenu running={running} />
-          <CloseButton />
+          <QuickChatMenu running={running} surface={surface} onClear={() => onRequest('new')} />
+          <CloseButton surface={surface} onClose={close} />
         </div>
       ) : (
-        <QuickChatStatus feed={feed} site={site} seconds={seconds} onExpand={() => setMode('full')} />
+        <QuickChatStatus feed={feed} site={site} seconds={seconds} surface={surface} onExpand={() => setMode('full')} onClose={close} />
       )}
       <div className="quick-chat-body">
         <WorkspaceChat paneId={paneId} dispatch={dispatch} appearance={appearance} panelVisible={whole}
-          onNewChat={() => request('new')} />
+          onNewChat={() => onRequest('new')} />
       </div>
     </div>
   )
@@ -97,11 +119,13 @@ function WorkingText({ feed, seconds }: { feed: QuickChatFeed; seconds: number |
 }
 
 /** One line: what the task is doing and where, with the reply under it once the task ends. */
-function QuickChatStatus({ feed, site, seconds, onExpand }: {
+function QuickChatStatus({ feed, site, seconds, surface, onExpand, onClose }: {
   feed: QuickChatFeed
   site: string | null
   seconds: number | null
+  surface: QuickChatSurface
   onExpand: () => void
+  onClose: () => void
 }): JSX.Element {
   const { lead, where } = feedLead(feed.status, site)
   const step = feed.status === 'working' ? feed.lines.at(-1) : undefined
@@ -118,26 +142,26 @@ function QuickChatStatus({ feed, site, seconds, onExpand }: {
         {feed.status === 'working' && seconds !== null ? (
           <span className="quick-chat-working-time" aria-hidden="true">{formatRunSeconds(seconds)}</span>
         ) : null}
-        <IconButton control="browser.quick-chat-expand" label="Show the whole chat" onClick={onExpand}>
+        <IconButton control="quick-chat.expand" surface={surface} label="Show the whole chat" onClick={onExpand}>
           <Maximize2 size={14} aria-hidden="true" />
         </IconButton>
-        <CloseButton />
+        <CloseButton surface={surface} onClose={onClose} />
       </div>
       {feed.status !== 'working' && feed.reply ? <p className="quick-chat-status-reply">{feed.reply}</p> : null}
     </div>
   )
 }
 
-function QuickChatMenu({ running }: { running: boolean }): JSX.Element {
+function QuickChatMenu({ running, surface, onClear }: { running: boolean; surface: QuickChatSurface; onClear: () => void }): JSX.Element {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button type="button" className="quick-chat-icon-button" data-ui="browser.quick-chat-menu" title="More" aria-label="More">
+        <button type="button" className="quick-chat-icon-button" data-ui="quick-chat.menu" data-ui-key={surface} title="More" aria-label="More">
           <Ellipsis size={16} aria-hidden="true" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[240px]">
-        <DropdownMenuItem data-ui="browser.quick-chat-new" disabled={running} onSelect={() => request('new')}>
+        <DropdownMenuItem data-ui="quick-chat.new" data-ui-key={surface} disabled={running} onSelect={onClear}>
           Clear chat
         </DropdownMenuItem>
         <DropdownMenuLabel className="whitespace-normal font-normal">
@@ -148,17 +172,19 @@ function QuickChatMenu({ running }: { running: boolean }): JSX.Element {
   )
 }
 
-function CloseButton(): JSX.Element {
+function CloseButton({ surface, onClose }: { surface: QuickChatSurface; onClose: () => void }): JSX.Element {
   return (
-    <IconButton control="browser.quick-chat-close" label="Hide to the button (Ctrl+J)" onClick={() => request('close')}>
+    <IconButton control="quick-chat.close" surface={surface} label="Hide to the button (Ctrl+J)" onClick={onClose}>
       <X size={15} aria-hidden="true" />
     </IconButton>
   )
 }
 
-function IconButton({ control, label, onClick, children }: { control: string; label: string; onClick: () => void; children: ReactNode }): JSX.Element {
+function IconButton({ control, surface, label, onClick, children }: {
+  control: string; surface: QuickChatSurface; label: string; onClick: () => void; children: ReactNode
+}): JSX.Element {
   return (
-    <button type="button" className="quick-chat-icon-button" data-ui={control} title={label} aria-label={label} onClick={onClick}>
+    <button type="button" className="quick-chat-icon-button" data-ui={control} data-ui-key={surface} title={label} aria-label={label} onClick={onClick}>
       {children}
     </button>
   )
