@@ -1,4 +1,4 @@
-/* Compact cascading menus using the same workspace glass as chats. */
+/* Compact cascading menus extending the footer's wallpaper-responsive glass. */
 .dock-launcher,
 .dock-launcher-submenu {
   background: var(--surface-card);
@@ -25,10 +25,10 @@
 
 :root[data-backdrop] .dock-launcher,
 :root[data-backdrop] .dock-launcher-submenu {
-  background: var(--glass-fill);
+  background: var(--glass-rail-bottom);
   border-color: var(--glass-edge);
   box-shadow: inset 0 1px 0 var(--glass-sheen), 0 -8px 24px rgb(0 0 0 / 38%);
-  backdrop-filter: blur(var(--glass-blur, 20px));
+  backdrop-filter: none;
 }
 
 .dock-launcher [data-slot='dropdown-menu-sub-trigger'] {

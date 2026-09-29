@@ -751,7 +751,8 @@ the overview does: in the main window, once a chat is selected.
 
 Left: **Launcher** (`dock.launcher`) opens a compact menu joined flush to the footer's top edge,
 with square bottom corners and a full-height footer trigger, using the
-workspace card surface (chat glass when wallpaper is enabled) and existing menu styling.
+workspace card surface and existing menu styling. With wallpaper enabled, the menu and its
+submenus use the footer's pre-blurred wallpaper and brightness-adjusted tint (`--glass-rail-bottom`).
 Initially only Home, File, View, Agent, and Developer appear. Hovering or clicking a category
 (`dock.launcher-section`) opens its actions in a side submenu. Home offers common actions;
 the other categories retain the former header menu actions, separators, and eligibility rules.

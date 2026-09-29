@@ -19,6 +19,7 @@
     "guide:check": "node scripts/agent-guide-generate.mjs --check",
     "closure": "node scripts/closure-gate.mjs",
     "hygiene": "node scripts/hygiene-gate.mjs",
+    "ui-coverage": "node --disable-warning=ExperimentalWarning --experimental-transform-types --import ./scripts/ts-resolve-hook-register.mjs scripts/ui-coverage/cli.ts",
     "map": "node scripts/repo-tree.mjs --write",
     "map:check": "node scripts/repo-tree.mjs --check",
     "audit:docs": "node --experimental-transform-types --import ./scripts/ts-resolve-hook-register.mjs scripts/docs-telemetry-audit.ts",
