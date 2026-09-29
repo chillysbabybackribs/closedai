@@ -1,14 +1,21 @@
-/* The launcher uses the existing popover surface and menu tabs, joined to the dock strip. */
+/* Workspace surface and existing menu tabs, joined to the dock strip. */
 .dock-launcher {
   width: min(440px, 100vw);
   height: min(460px, calc(100dvh - 100px));
   border-bottom: 0;
   border-radius: 8px 8px 0 0;
   padding: 12px 12px 0;
-  background: color-mix(in srgb, var(--popover) 85%, transparent);
-  backdrop-filter: blur(12px);
-  box-shadow: 0 -8px 24px rgb(0 0 0 / 12%);
+  background: var(--surface-card);
+  color: var(--foreground);
+  border-color: var(--hairline-strong);
+  box-shadow: inset 0 1px 0 var(--surface-highlight), 0 -8px 24px rgb(0 0 0 / 24%);
   transform-origin: bottom left;
+}
+
+:root[data-backdrop] .dock-launcher {
+  background: var(--glass-fill);
+  border-color: var(--glass-edge);
+  box-shadow: inset 0 1px 0 var(--glass-sheen), 0 -8px 24px rgb(0 0 0 / 38%);
 }
 
 .dock-launcher[data-state='open'] {

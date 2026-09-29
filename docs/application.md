@@ -750,7 +750,8 @@ reads the spaces it navigates through `SpacesStage`'s `dock` render prop, so it 
 the overview does: in the main window, once a chat is selected.
 
 Left: **Launcher** (`dock.launcher`) opens a fixed-width drawer flush with the top of the footer,
-using the existing popover surface, buttons, and menu styling. Home offers common actions;
+using the workspace card surface (chat glass when wallpaper is enabled), existing buttons,
+and menu styling. Home offers common actions;
 File, View, Agent, and Developer retain the former header menu actions and eligibility rules.
 The bottom search field (`dock.launcher-search`) searches commands across all categories;
 category controls use `dock.launcher-section`. Arrow keys and Enter navigate/select commands,
