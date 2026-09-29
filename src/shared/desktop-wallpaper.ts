@@ -1,4 +1,4 @@
-/** The operating system's current desktop wallpaper, read by main for the workspace backdrop. */
+/** Wallpaper bytes main reads for the workspace backdrop: the OS desktop wallpaper or a saved upload. */
 export type DesktopWallpaper = {
   /** File name only, for display in Settings. */
   name: string

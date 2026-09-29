@@ -31,6 +31,10 @@ export type IpcInvokeChannels = {
   'window:close': { args: []; result: void }
   'window:toggleDevTools': { args: []; result: void }
   'window:desktopWallpaper': { args: []; result: import('./desktop-wallpaper.js').DesktopWallpaper | null }
+  'wallpapers:list': { args: []; result: import('./wallpaper-uploads.js').WallpaperUpload[] }
+  'wallpapers:add': { args: [import('./wallpaper-uploads.js').WallpaperUploadDraft]; result: import('./wallpaper-uploads.js').WallpaperUpload }
+  'wallpapers:read': { args: [string]; result: import('./desktop-wallpaper.js').DesktopWallpaper | null }
+  'wallpapers:remove': { args: [string]; result: void }
   'windows:context': { args: []; result: AppWindowContext }
   'windows:list': { args: []; result: AppWindowInfo[] }
   'windows:detachTabs': { args: [string, string[]]; result: AppWindowId }
@@ -164,6 +168,12 @@ export const IPC = {
       close: 'window:close',
       toggleDevTools: 'window:toggleDevTools',
       desktopWallpaper: 'window:desktopWallpaper'
+    },
+    wallpapers: {
+      list: 'wallpapers:list',
+      add: 'wallpapers:add',
+      read: 'wallpapers:read',
+      remove: 'wallpapers:remove'
     },
     windows: {
       context: 'windows:context',

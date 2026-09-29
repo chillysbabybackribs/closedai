@@ -33,6 +33,12 @@ const api: ClosedaiApi = {
     toggleDevTools: () => invoke(IPC.invoke.window.toggleDevTools),
     desktopWallpaper: () => invoke(IPC.invoke.window.desktopWallpaper)
   },
+  wallpapers: {
+    list: () => invoke(IPC.invoke.wallpapers.list),
+    add: (draft) => invoke(IPC.invoke.wallpapers.add, draft),
+    read: (id) => invoke(IPC.invoke.wallpapers.read, id),
+    remove: (id) => invoke(IPC.invoke.wallpapers.remove, id)
+  },
   windows: {
     context: () => invoke(IPC.invoke.windows.context),
     list: () => invoke(IPC.invoke.windows.list),

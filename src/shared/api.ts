@@ -38,6 +38,15 @@ export type ClosedaiApi = {
     /** The OS desktop wallpaper for the workspace backdrop; null when the desktop has none the app can paint. */
     desktopWallpaper: () => Promise<import('./desktop-wallpaper.js').DesktopWallpaper | null>
   }
+  /** Images the user added to the wallpaper picker; main keeps the files under the profile. */
+  wallpapers: {
+    list: () => Promise<import('./wallpaper-uploads.js').WallpaperUpload[]>
+    /** Rejects an unsupported type or an image over the size cap. */
+    add: (draft: import('./wallpaper-uploads.js').WallpaperUploadDraft) => Promise<import('./wallpaper-uploads.js').WallpaperUpload>
+    /** Full image bytes for the backdrop; null once the upload is gone. */
+    read: (id: string) => Promise<import('./desktop-wallpaper.js').DesktopWallpaper | null>
+    remove: (id: string) => Promise<void>
+  }
   /** The app's windows: which one this renderer is, and moving chat tabs between them. */
   windows: {
     context: () => Promise<AppWindowContext>
