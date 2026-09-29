@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { onAppWindowCommand } from '../app-windows/app-window-store.js'
+import { toggleFocusedNotepadChat } from '../notepad/notepad-chat.js'
 
 /**
  * The browser's quick chat floats over the page in a layer of its own (main process
@@ -24,6 +25,8 @@ export function useQuickChatOverlay({ enabled, paneId, open, openChat, setOpen }
     if (!enabled) return
     return onAppWindowCommand((command) => {
       if (command.type !== 'quickChat') return
+      // Ctrl+J from inside a notepad window opens that window's chat instead.
+      if (command.request === 'toggle' && toggleFocusedNotepadChat()) return
       const request = command.request === 'toggle' ? (actions.current.open ? 'close' : 'open') : command.request
       if (request === 'close') actions.current.setOpen(false)
       else void actions.current.openChat(request === 'new')
