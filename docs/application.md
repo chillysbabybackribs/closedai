@@ -931,9 +931,11 @@ either kind, so a new icon never changes the tray's size or spacing.
   through that provider using the selected model. The request receives only the latest assistant
   answer, stays out of the ClosedAI transcript, and is discarded if another turn starts first.
   Codex runs the request ephemerally; Cursor and Antigravity may record their short-lived request
-  in their own provider history. Tab or Right Arrow accepts the suggestion into the draft, Escape
-  dismisses it, and typing hides it until the draft is empty again. Suggestions are transient and
-  clear when the next turn starts. Typed drafts naturally hide the placeholder;
+  in their own provider history. Like the placeholder, the suggestion stays one line, cut off with
+  an ellipsis, with the Tab hint pinned to the draft slot's right edge; accepting it puts the full
+  text in the draft, which expands the capsule. Tab or Right Arrow accepts the suggestion into the
+  draft, Escape dismisses it, and typing hides it until the draft is empty again. Suggestions are
+  transient and clear when the next turn starts. Typed drafts naturally hide the placeholder;
   connection/unavailable messages retain precedence while idle. The textarea label, the disabled
   placeholder, and the pause/resume tooltips name the pane's provider. Before the first snapshot
   the workspace area shows “Starting ClosedAI…”, or “Could not start” with the reason and Retry
