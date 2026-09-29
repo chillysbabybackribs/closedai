@@ -1,16 +1,17 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type JSX, type RefObject } from 'react'
-import { Loader2, MessageSquareText } from 'lucide-react'
+import { MessageSquareText } from 'lucide-react'
 import type { QuickChatOverlayView } from '../../shared/quick-chat-overlay.js'
 import { useChatController } from '../chat-controller.js'
 import { chatRunning } from '../chat-state.js'
 import { useWorkspacePaneSlice } from '../chat-layout/workspace-pane-subscription.js'
 import { readAppearanceSettings, type AppearanceSettings } from '../settings/appearance-settings.js'
 import { QuickChatCard } from './quick-chat-card.js'
+import { feedLead, quickChatFeed } from './quick-chat-feed.js'
 import { layerMenuOpen } from './layer-menu.js'
 import '../styles.css'
 
 // While a menu inside the layer is open, the layer grows upward to this height so the menu is not
-// clipped by the layer's edge; the card stays on the page's foot.
+// clipped by the layer's edge; the card stays in the page's corner.
 const MENU_ROOM = 560
 
 /**
@@ -32,25 +33,47 @@ export function QuickChatOverlay(): JSX.Element {
   return (
     <div ref={rootRef} className="quick-chat-layer" style={style} data-ui-surface="browser-quick-chat" data-composer-panels="viewport">
       {!view ? null : view.open && paneId ? (
-        <QuickChatCard key={paneId} paneId={paneId} focused={view.focused} dispatch={chat.dispatch} appearance={appearance} />
+        <QuickChatCard key={paneId} paneId={paneId} site={view.site} dispatch={chat.dispatch} appearance={appearance} />
       ) : (
-        <QuickChatButton paneId={paneId} />
+        <QuickChatButton paneId={paneId} site={view.site} />
       )}
     </div>
   )
 }
 
-function QuickChatButton({ paneId }: { paneId: string | null }): JSX.Element {
+/**
+ * The closed quick chat. While its task runs the button carries a progress ring and the site's
+ * name; a task that ends while it is closed leaves "Done on espn.com" until the chat is opened.
+ */
+function QuickChatButton({ paneId, site }: { paneId: string | null; site: string | null }): JSX.Element {
   const slice = useWorkspacePaneSlice(paneId ?? '')
-  const running = paneId !== null && slice.state !== undefined && chatRunning(slice.state)
-  const title = slice.chats.find((row) => row.paneId === paneId)?.title
+  const state = paneId !== null ? slice.state : undefined
+  const running = state !== undefined && chatRunning(state)
+  const ended = useEndedWhileClosed(running)
+  const status = ended && state ? quickChatFeed(state, 1).status : null
+  const { lead, where } = feedLead(status ?? 'working', site)
+  const label = running ? where : status ? `${lead} ${where}` : null
+  const title = running ? `Quick chat is working on ${where} (Ctrl+J)` : 'Quick chat about this page (Ctrl+J)'
   return (
     <button type="button" className={`quick-chat-fab${running ? ' is-running' : ''}`} data-ui="browser.quick-chat"
-      title={running ? `Quick chat is working${title ? `: ${title}` : ''}` : 'Quick chat about this page'}
-      aria-label="Open quick chat" onClick={() => { void window.closedai.quickChat.request('open') }}>
-      {running ? <Loader2 className="spin" size={18} aria-hidden="true" /> : <MessageSquareText size={18} aria-hidden="true" />}
+      title={title} aria-label={label ? `Open quick chat: ${label}` : 'Open quick chat'}
+      onClick={() => { void window.closedai.quickChat.request('open') }}>
+      {label ? <span className={`quick-chat-fab-label${status ? ` is-${status}` : ''}`}>{label}</span> : null}
+      <span className="quick-chat-fab-disc"><MessageSquareText size={18} aria-hidden="true" /></span>
     </button>
   )
+}
+
+/** Whether a task ended since the button appeared; opening the chat (which unmounts it) clears it. */
+function useEndedWhileClosed(running: boolean): boolean {
+  const [ended, setEnded] = useState(false)
+  const wasRunning = useRef(running)
+  useEffect(() => {
+    if (running) setEnded(false)
+    else if (wasRunning.current) setEnded(true)
+    wasRunning.current = running
+  }, [running])
+  return ended
 }
 
 function useOverlayView(): QuickChatOverlayView | null {

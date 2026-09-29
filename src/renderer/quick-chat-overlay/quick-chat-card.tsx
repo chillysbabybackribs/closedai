@@ -1,23 +1,27 @@
-import { memo, useEffect, useMemo, useRef, useState, type Dispatch, type JSX, type KeyboardEvent, type PointerEvent } from 'react'
-import { AlertCircle, Check, ChevronDown, ChevronUp, Loader2, SquarePen } from 'lucide-react'
+import { memo, useEffect, useMemo, useRef, useState, type Dispatch, type JSX, type ReactNode } from 'react'
+import { AlertCircle, Check, Ellipsis, Loader2, Maximize2, Minimize2, Pause, X } from 'lucide-react'
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger
+} from '../../components/ui/dropdown-menu.js'
 import { chatRunning, initialChatState, type ChatWorkspaceAction } from '../chat-state.js'
 import { WorkspaceChat } from '../chat-layout/workspace-chat.js'
 import { useWorkspacePaneSlice } from '../chat-layout/workspace-pane-subscription.js'
 import type { AppearanceSettings } from '../settings/appearance-settings.js'
-import { quickChatFeed, type QuickChatFeed } from './quick-chat-feed.js'
-import { layerMenuOpen } from './layer-menu.js'
+import { feedLead, quickChatFeed, type QuickChatFeed } from './quick-chat-feed.js'
 
 const request = (value: 'new' | 'close'): void => { void window.closedai.quickChat.request(value) }
 
+type Mode = 'full' | 'compact'
+
 /**
- * The open quick chat. While the user types it is the whole chat over the page; once a task runs
- * it retracts to the compact composer with a running feed, so the page the model is driving stays
- * in view. Typing into the composer, or a click on the card, brings the whole chat back.
+ * The open quick chat: the whole chat, or the compact composer under a one-line status while a
+ * task drives the page. It changes shape only when the user asks (expand, shrink, ×, Esc, Ctrl+J)
+ * or a task starts; clicks on the page and typing leave it as it is.
  */
-export const QuickChatCard = memo(function QuickChatCard({ paneId, focused, dispatch, appearance }: {
+export const QuickChatCard = memo(function QuickChatCard({ paneId, site, dispatch, appearance }: {
   paneId: string
-  /** Whether the layer holds keyboard focus (main's view; the document is not told when the page takes it). */
-  focused: boolean
+  /** The site the browser shows, for "Working on espn.com". */
+  site: string | null
   dispatch: Dispatch<ChatWorkspaceAction>
   appearance: AppearanceSettings
 }): JSX.Element {
@@ -26,81 +30,53 @@ export const QuickChatCard = memo(function QuickChatCard({ paneId, focused, disp
   const running = chatRunning(state)
   const hasTranscript = state.items.length > 0
   const title = slice.chats.find((row) => row.paneId === paneId)?.title ?? 'New chat'
-  const feed = useMemo(() => quickChatFeed(state), [state])
-  const [expanded, setExpanded] = useState(true)
+  const feed = useMemo(() => quickChatFeed(state, 1), [state])
+  // Opening a chat whose task is running shows its status; anything else opens the whole chat.
+  const [mode, setMode] = useState<Mode>(() => running ? 'compact' : 'full')
   const cardRef = useRef<HTMLDivElement>(null)
 
-  // Opening lands in the composer, the way a click on the button reads.
+  // Opening lands in the composer.
   useEffect(() => {
     cardRef.current?.querySelector<HTMLTextAreaElement>('textarea')?.focus()
   }, [])
 
-  // A sent task retracts the chat to the compact composer and its running feed.
+  // A task starting shrinks the chat to its status, so the page it drives stays in view.
   const turnId = state.activeTurnId
   const previousTurn = useRef(turnId)
   useEffect(() => {
-    if (turnId && turnId !== previousTurn.current) {
-      setExpanded(false)
-      if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
-    }
+    if (turnId && turnId !== previousTurn.current) setMode('compact')
     previousTurn.current = turnId
   }, [turnId])
 
-  // Leaving the layer (a click on the page) retracts it; an unused chat goes back to the button.
-  const unused = !hasTranscript && !running
-  const wasFocused = useRef(focused)
-  useEffect(() => {
-    const left = wasFocused.current && !focused
-    wasFocused.current = focused
-    if (!left || layerMenuOpen()) return
-    if (unused) request('close')
-    else setExpanded(false)
-  }, [focused, unused])
-
-  // Escape shrinks the whole chat, then closes. The layer is its own page, so any focus in it counts.
+  // Escape shrinks a running task's whole chat to its status; otherwise it hides the chat. Menus
+  // and panels inside the layer take their own Escape first.
   useEffect(() => {
     const onKeyDown = (event: globalThis.KeyboardEvent): void => {
       if (event.key !== 'Escape' || event.defaultPrevented) return
       event.preventDefault()
-      if (expanded && hasTranscript) setExpanded(false)
+      if (mode === 'full' && running) setMode('compact')
       else request('close')
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [expanded, hasTranscript])
-  // Typing brings the whole chat back. Focus alone does not: the composer takes focus back itself
-  // after a send, which would undo the retract the send just caused.
-  const onKeyDownCapture = (event: KeyboardEvent): void => {
-    if (expanded || event.key === 'Escape' || event.key === 'Enter' || event.ctrlKey || event.metaKey || event.altKey) return
-    if ((event.target as Element).tagName === 'TEXTAREA') setExpanded(true)
-  }
-  // In the compact card, a click anywhere but Send, Stop and the feed's buttons opens the whole chat.
-  const onPointerDown = (event: PointerEvent): void => {
-    if (expanded) return
-    const target = event.target as Element
-    if (target.closest('[data-ui="composer.send"], [data-ui="composer.stop"], [data-ui="composer.resume"], .quick-chat-feed-actions')) return
-    setExpanded(true)
-  }
+  }, [mode, running])
 
-  const whole = expanded && hasTranscript
+  const whole = mode === 'full' || !hasTranscript
   return (
-    <div ref={cardRef} className={`quick-chat-card${whole ? ' is-whole' : ' is-compact'}`}
-      onKeyDownCapture={onKeyDownCapture} onPointerDownCapture={onPointerDown}>
+    <div ref={cardRef} className={`quick-chat-card${whole ? ' is-whole' : ' is-compact'}`}>
       {whole ? (
         <div className="quick-chat-header">
           <span className="quick-chat-title" title={title}>{title}</span>
-          <button type="button" className="quick-chat-icon-button" data-ui="browser.quick-chat-new"
-            title="New quick chat" aria-label="New quick chat" onClick={() => request('new')}>
-            <SquarePen size={15} aria-hidden="true" />
-          </button>
-          <button type="button" className="quick-chat-icon-button" data-ui="browser.quick-chat-compact"
-            title="Show the page (Esc)" aria-label="Shrink to the composer" onClick={() => setExpanded(false)}>
-            <ChevronDown size={16} aria-hidden="true" />
-          </button>
+          {hasTranscript ? (
+            <IconButton control="browser.quick-chat-compact" label="Shrink to the status line"
+              onClick={() => setMode('compact')}><Minimize2 size={14} aria-hidden="true" /></IconButton>
+          ) : null}
+          <QuickChatMenu running={running} />
+          <CloseButton />
         </div>
-      ) : feed.status !== 'idle' ? (
-        <QuickChatFeedView feed={feed} onExpand={() => setExpanded(true)} />
-      ) : null}
+      ) : (
+        <QuickChatStatus feed={feed} site={site} onExpand={() => setMode('full')} />
+      )}
       <div className="quick-chat-body">
         <WorkspaceChat paneId={paneId} dispatch={dispatch} appearance={appearance} panelVisible={whole}
           onNewChat={() => request('new')} />
@@ -109,30 +85,62 @@ export const QuickChatCard = memo(function QuickChatCard({ paneId, focused, disp
   )
 })
 
-function QuickChatFeedView({ feed, onExpand }: { feed: QuickChatFeed; onExpand: () => void }): JSX.Element {
+/** One line: what the task is doing and where, with the reply under it once the task ends. */
+function QuickChatStatus({ feed, site, onExpand }: { feed: QuickChatFeed; site: string | null; onExpand: () => void }): JSX.Element {
+  const { lead, where } = feedLead(feed.status, site)
+  const step = feed.status === 'working' ? feed.lines.at(-1) : undefined
+  const detail = step && step.id !== 'working' ? ` · ${step.text}` : ''
+  const icon = feed.status === 'working' ? <Loader2 className="spin" size={13} aria-hidden="true" />
+    : feed.status === 'failed' ? <AlertCircle size={13} aria-hidden="true" />
+      : feed.status === 'paused' ? <Pause size={13} aria-hidden="true" />
+        : <Check size={13} aria-hidden="true" />
   return (
-    <div className={`quick-chat-feed is-${feed.status}`} aria-live="polite">
-      <div className="quick-chat-feed-lines">
-        {feed.lines.map((line) => (
-          <div key={line.id} className={`quick-chat-feed-line is-${line.state}`}>
-            {line.state === 'live' ? <Loader2 className="spin" size={12} aria-hidden="true" />
-              : line.state === 'failed' ? <AlertCircle size={12} aria-hidden="true" />
-                : <Check size={12} aria-hidden="true" />}
-            <span>{line.text}</span>
-          </div>
-        ))}
-        {feed.reply ? <p className="quick-chat-feed-reply">{feed.reply}</p> : null}
+    <div className={`quick-chat-status is-${feed.status}`} aria-live="polite">
+      <div className="quick-chat-status-line">
+        <span className="quick-chat-status-icon">{icon}</span>
+        <span className="quick-chat-status-text">{lead} <b>{where}</b>{detail}</span>
+        <IconButton control="browser.quick-chat-expand" label="Show the whole chat" onClick={onExpand}>
+          <Maximize2 size={14} aria-hidden="true" />
+        </IconButton>
+        <CloseButton />
       </div>
-      <div className="quick-chat-feed-actions">
-        <button type="button" className="quick-chat-icon-button" data-ui="browser.quick-chat-expand"
-          title="Show the whole chat" aria-label="Show the whole chat" onClick={onExpand}>
-          <ChevronUp size={16} aria-hidden="true" />
-        </button>
-        <button type="button" className="quick-chat-icon-button" data-ui="browser.quick-chat-collapse"
-          title="Close to the button" aria-label="Close quick chat" onClick={() => request('close')}>
-          <ChevronDown size={16} aria-hidden="true" />
-        </button>
-      </div>
+      {feed.status !== 'working' && feed.reply ? <p className="quick-chat-status-reply">{feed.reply}</p> : null}
     </div>
+  )
+}
+
+function QuickChatMenu({ running }: { running: boolean }): JSX.Element {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button type="button" className="quick-chat-icon-button" data-ui="browser.quick-chat-menu" title="More" aria-label="More">
+          <Ellipsis size={16} aria-hidden="true" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-[240px]">
+        <DropdownMenuItem data-ui="browser.quick-chat-new" disabled={running} onSelect={() => request('new')}>
+          Clear chat
+        </DropdownMenuItem>
+        <DropdownMenuLabel className="whitespace-normal font-normal">
+          {running ? 'Stop the task first.' : 'Starts a new chat. This one stays in History.'}
+        </DropdownMenuLabel>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+function CloseButton(): JSX.Element {
+  return (
+    <IconButton control="browser.quick-chat-close" label="Hide to the button (Ctrl+J)" onClick={() => request('close')}>
+      <X size={15} aria-hidden="true" />
+    </IconButton>
+  )
+}
+
+function IconButton({ control, label, onClick, children }: { control: string; label: string; onClick: () => void; children: ReactNode }): JSX.Element {
+  return (
+    <button type="button" className="quick-chat-icon-button" data-ui={control} title={label} aria-label={label} onClick={onClick}>
+      {children}
+    </button>
   )
 }
