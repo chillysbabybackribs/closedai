@@ -75,9 +75,12 @@ export function uiStateExpression(): string {
       .map((element) => element.getAttribute('data-ui') || labelledBy(element) || container(element) ||
         element.getAttribute('aria-label') || element.tagName.toLowerCase())));
     const input = byId('composer.input');
+    const chat = Array.from(document.querySelectorAll('[data-ui-surface="chat"][data-zoom]')).find(visible);
+    const chatZoom = chat ? Number(chat.getAttribute('data-zoom')) : NaN;
     const active = document.activeElement;
     const focused = active && active.closest ? active.closest('[data-ui]') : null;
     return {
+      chatZoom: Number.isFinite(chatZoom) && chatZoom > 0 ? chatZoom : null,
       overviewOpen: byId('dock.overview')?.getAttribute('aria-pressed') === 'true',
       chatSearchOpen: byId('titlebar.chat-search')?.getAttribute('aria-expanded') === 'true',
       layout: {

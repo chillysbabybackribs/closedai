@@ -128,6 +128,20 @@ test('ui state reports overview visibility from its pressed control', () => {
   })
 })
 
+test('ui state reports rendered chat zoom and null without a chat', () => {
+  withDom([], () => {
+    for (const zoom of ['100', '110', null]) {
+      const chat = fakeElement({ attributes: { 'data-zoom': zoom }, closest: () => null })
+      Object.assign(globalThis, { document: {
+        querySelector: () => null,
+        querySelectorAll: (selector: string) => selector === '[data-ui-surface="chat"][data-zoom]' && zoom ? [chat] : []
+      } })
+      const state = new Function(`return ${uiStateExpression()}`)() as { chatZoom: number | null }
+      assert.equal(state.chatZoom, zoom ? Number(zoom) : null)
+    }
+  })
+})
+
 test('ui state reads browser visibility from the workspace, not the titlebar toggle', () => {
   const browserDock = fakeElement({
     attributes: { 'data-mode': 'browser', 'data-with-browser': 'no' },

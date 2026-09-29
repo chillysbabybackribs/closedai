@@ -12,7 +12,7 @@ export function appStateTool(app: () => AppCommandHost | null, ui: () => AppUiHo
     description:
       'Plain tool (no action field). Compact app state without DOM: workspace, chat, browser, downloads, window, ui. ' +
       'window.detached lists windows the user moved chats into, with their chat ids; ui, capture and controls see the main window only. ' +
-      'ui.overviewOpen reports workspace overview visibility. Optional include array lists section names to return (property is include, not sections). UI waits: closedai_app.ui wait_for.',
+      'ui.overviewOpen reports workspace overview visibility; ui.chatZoom is the rendered chat zoom percentage, or null without a visible chat. Optional include array lists section names to return (property is include, not sections). UI waits: closedai_app.ui wait_for.',
     inputSchema: objectSchema({
       include: {
         type: 'array', minItems: 1, uniqueItems: true,

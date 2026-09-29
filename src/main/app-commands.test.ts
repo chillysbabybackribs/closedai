@@ -124,7 +124,7 @@ function access(workspace = new FakeWorkspace(), tabs = browser(), ui: AppUiHost
   const uiHost: AppUiHost | null = ui ?? {
     controls: async () => ({ surfaces: [], controls: [], total: 0, omitted: 0 }),
     uiState: async () => ({
-      overviewOpen: false, chatSearchOpen: false, historyOpen: false, downloadsOpen: false, dialogs: [], menus: [],
+      chatZoom: 100, overviewOpen: false, chatSearchOpen: false, historyOpen: false, downloadsOpen: false, dialogs: [], menus: [],
       composer: null, focused: null, viewport: { width: 0, height: 0 }
     }),
     click: async () => ({}),
