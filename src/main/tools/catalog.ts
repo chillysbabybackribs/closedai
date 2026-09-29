@@ -49,6 +49,10 @@ export const TOOL_CATALOG: Readonly<Record<string, ToolCatalogEntry>> = {
   'peer_chats.list': { group: 'controls-app', label: 'List other chats', summary: 'See which chats are open or in history and what they are doing.', offEffect: 'Other chats are invisible, so they cannot be read or messaged by id.' },
   'peer_chats.read': { group: 'controls-app', label: 'Read another chat', summary: 'Page through another chat’s transcript in bounded excerpts.', offEffect: 'Other chats can be listed but not read.' },
   'peer_chats.recall': { group: 'controls-app', label: 'Recall past conversations', summary: 'Search earlier turns of this chat or a previous conversation.', offEffect: 'Nothing beyond the current context can be recalled after rotation.' },
+  'notes.list': { group: 'controls-app', label: 'List notes', summary: 'See your notes and which ones a notepad window has open.', offEffect: 'Notes other than the one a notepad chat is about stay hidden.' },
+  'notes.read': { group: 'controls-app', label: 'Read notes', summary: 'Read a note as numbered lines.', offEffect: 'Only the active note a notepad chat carries is visible; long notes are cut short.' },
+  'notes.edit': { group: 'controls-app', label: 'Edit notes', summary: 'Change a note; the edit lands live in your editor with the lines marked.', offEffect: 'Models can read notes but never change them.' },
+  'notes.create': { group: 'controls-app', label: 'Create notes', summary: 'Add a note, opened as a new tab in the notepad window the chat belongs to.', offEffect: 'Models cannot add notes.' },
   'tool_batch.run': { group: 'controls-app', label: 'Batch tool calls', summary: 'Run several tools in one request, in order or in parallel.', offEffect: 'Every tool call is its own round trip; more passes per task.' },
   'credential_vault.list': { group: 'reads-secrets', label: 'List credentials', summary: 'Masked names and field ids only, never a secret value.', offEffect: 'The model cannot discover which credentials exist, so it cannot ask for one.' },
   'credential_vault.read': { group: 'reads-secrets', label: 'Read a credential', summary: 'Decrypt one field for immediate use in a task you asked for. Redacted in the trace.', offEffect: 'No secret leaves the vault for any model.' },
@@ -65,7 +69,9 @@ export const READ_ONLY_TOOL_IDS: readonly string[] = [
   'closedai_ui.capture',
   'peer_chats.list',
   'peer_chats.read',
-  'peer_chats.recall'
+  'peer_chats.recall',
+  'notes.list',
+  'notes.read'
 ]
 
 export function catalogEntry(id: string): ToolCatalogEntry {

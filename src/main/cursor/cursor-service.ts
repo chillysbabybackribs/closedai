@@ -524,7 +524,7 @@ export class CursorChatService extends EventEmitter {
     try {
       return buildTurnAdditionalContext(prompt, this.surfaceContext())
     } catch (error) {
-      console.warn('[chat-context] could not capture the pane's browser or note state:', messageOf(error))
+      console.warn('[chat-context] could not capture the browser or note state:', messageOf(error))
       return undefined
     }
   }
