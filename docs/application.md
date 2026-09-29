@@ -1128,7 +1128,8 @@ a `quickChat` window command (`chat-layout/use-quick-chat-overlay.ts`). It is a 
 changing the selection, and main skips its early wake so the blank chat is not discarded before the
 layout reports it. The layout saves it per space (`SavedChatLayout.browserChat`/`browserChatOpen`),
 adds it to the ids sent to `setVisiblePanes` so main keeps it attached and streaming while closed, and
-never pulls it into a tile when main selects it. **New quick chat** creates a fresh one and closes the
+never pulls it into a tile: main selecting it leaves the tree alone, and opening it from History,
+search, or Start (`activateTab`) shows the browser with the card open. **New quick chat** creates a fresh one and closes the
 previous one through `closePeer`, which leaves a used chat in history and discards a blank one. The
 layer's controls live in its own page, so `closedai_app.ui` (which drives the main window's page) does
 not reach them.

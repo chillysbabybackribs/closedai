@@ -264,6 +264,11 @@ export function useChatLayout(
   /** Show a tab; a chat not yet open joins `anchor`'s tile (else the first). A view also focuses its tile. */
   const activateTab = useCallback(async (id: string, anchor?: string): Promise<void> => {
     if (pending.current || await revealedElsewhere(current.current.tree, id)) return
+    // The quick chat never joins a tile (History, search, Start): it opens over the page instead.
+    if (id === current.current.browserChat) {
+      setLayout((value) => ({ ...value, browserVisible: true, browserChatOpen: true }))
+      return
+    }
     const view = isViewTabId(id)
     if (!view) selected.current = id
     const focusTab = (): void => {
