@@ -78,6 +78,7 @@ export function uiStateExpression(): string {
     const active = document.activeElement;
     const focused = active && active.closest ? active.closest('[data-ui]') : null;
     return {
+      overviewOpen: byId('dock.overview')?.getAttribute('aria-pressed') === 'true',
       chatSearchOpen: byId('titlebar.chat-search')?.getAttribute('aria-expanded') === 'true',
       layout: {
         // Tiles stay mounted while a view tab or another tile covers them; only shown ones count.

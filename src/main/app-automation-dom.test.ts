@@ -112,6 +112,22 @@ test('control resolution names the failure: not rendered, disabled, or ambiguous
     assert.rejects(run(targetClickExpression({ control: 'titlebar.chat-search-result', match: 'gamma' })), /No visible titlebar\.chat-search-result matches "gamma"/))
 })
 
+test('ui state reports overview visibility from its pressed control', () => {
+  withDom([], () => {
+    for (const pressed of ['true', 'false', null]) {
+      const overview = fakeElement({
+        attributes: { 'aria-pressed': pressed }, closest: () => null
+      })
+      Object.assign(globalThis, { document: {
+        querySelector: () => null,
+        querySelectorAll: (selector: string) => selector === '[data-ui="dock.overview"]' ? [overview] : []
+      } })
+      const state = new Function(`return ${uiStateExpression()}`)() as { overviewOpen: boolean }
+      assert.equal(state.overviewOpen, pressed === 'true')
+    }
+  })
+})
+
 test('ui state reads browser visibility from the workspace, not the titlebar toggle', () => {
   const browserDock = fakeElement({
     attributes: { 'data-mode': 'browser', 'data-with-browser': 'no' },
