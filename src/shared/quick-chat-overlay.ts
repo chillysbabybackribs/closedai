@@ -13,6 +13,11 @@ export type QuickChatOverlayState = {
 /** What the layer renders: the state, plus the page it floats over (CSS pixels) to size the card by. */
 export type QuickChatOverlayView = QuickChatOverlayState & {
   page: { width: number; height: number }
+  /**
+   * Whether the layer holds keyboard focus, as main sees it. A click on the page moves focus to the
+   * page's own view without the layer's document ever seeing a blur, so only main can tell.
+   */
+  focused: boolean
 }
 
 /** The layer's content box in CSS pixels, shadow margin included; main anchors it to the page's foot. */

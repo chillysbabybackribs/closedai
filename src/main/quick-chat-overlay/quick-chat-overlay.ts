@@ -33,6 +33,7 @@ export class QuickChatOverlay {
   private page: BrowserBounds = { x: 0, y: 0, width: 0, height: 0 }
   private pageVisible = false
   private size: QuickChatOverlaySize | null = null
+  private focused = false
   private disposed = false
 
   constructor(private readonly host: QuickChatOverlayHost) {}
@@ -66,7 +67,8 @@ export class QuickChatOverlay {
 
   current(): QuickChatOverlayView | null {
     if (!this.state) return null
-    return { ...this.state, page: { width: Math.round(this.page.width), height: Math.round(this.page.height) } }
+    const page = { width: Math.round(this.page.width), height: Math.round(this.page.height) }
+    return { ...this.state, page, focused: this.focused }
   }
 
   /** Keep the layer above the page views; re-adding a child view only reorders it to the top. */
@@ -116,11 +118,19 @@ export class QuickChatOverlay {
     // The layer is the app's own page: it never navigates or opens windows of its own.
     contents.setWindowOpenHandler(() => ({ action: 'deny' }))
     contents.on('will-navigate', (event) => event.preventDefault())
+    contents.on('focus', () => this.setFocused(true))
+    contents.on('blur', () => this.setFocused(false))
     contents.on('render-process-gone', () => {
       if (!this.disposed && !contents.isDestroyed()) contents.reload()
     })
     installAppContextMenu(contents, Menu, { openLinkInNewTab: this.host.openLinkInNewTab })
     loadAppSurface(contents, QUICK_CHAT_SURFACE)
+  }
+
+  private setFocused(focused: boolean): void {
+    if (focused === this.focused) return
+    this.focused = focused
+    this.publish()
   }
 
   private publish(): void {

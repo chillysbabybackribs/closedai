@@ -31,7 +31,7 @@ export function QuickChatOverlay(): JSX.Element {
   return (
     <div ref={rootRef} className="quick-chat-layer" style={style} data-ui-surface="browser-quick-chat">
       {!view ? null : view.open && paneId ? (
-        <QuickChatCard key={paneId} paneId={paneId} dispatch={chat.dispatch} appearance={appearance} />
+        <QuickChatCard key={paneId} paneId={paneId} focused={view.focused} dispatch={chat.dispatch} appearance={appearance} />
       ) : (
         <QuickChatButton paneId={paneId} />
       )}

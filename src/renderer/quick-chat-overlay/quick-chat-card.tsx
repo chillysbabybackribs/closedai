@@ -13,8 +13,10 @@ const request = (value: 'new' | 'close'): void => { void window.closedai.quickCh
  * it retracts to the compact composer with a running feed, so the page the model is driving stays
  * in view. Typing into the composer, or a click on the feed, brings the whole chat back.
  */
-export const QuickChatCard = memo(function QuickChatCard({ paneId, dispatch, appearance }: {
+export const QuickChatCard = memo(function QuickChatCard({ paneId, focused, dispatch, appearance }: {
   paneId: string
+  /** Whether the layer holds keyboard focus (main's view; the document is not told when the page takes it). */
+  focused: boolean
   dispatch: Dispatch<ChatWorkspaceAction>
   appearance: AppearanceSettings
 }): JSX.Element {
@@ -45,15 +47,14 @@ export const QuickChatCard = memo(function QuickChatCard({ paneId, dispatch, app
 
   // Leaving the layer (a click on the page) retracts it; an unused chat goes back to the button.
   const unused = !hasTranscript && !running
+  const wasFocused = useRef(focused)
   useEffect(() => {
-    const onBlur = (): void => {
-      if (document.querySelector('[data-radix-popper-content-wrapper]')) return
-      if (unused) request('close')
-      else setExpanded(false)
-    }
-    window.addEventListener('blur', onBlur)
-    return () => window.removeEventListener('blur', onBlur)
-  }, [unused])
+    const left = wasFocused.current && !focused
+    wasFocused.current = focused
+    if (!left || document.querySelector('[data-radix-popper-content-wrapper]')) return
+    if (unused) request('close')
+    else setExpanded(false)
+  }, [focused, unused])
 
   const onKeyDown = (event: KeyboardEvent): void => {
     if (event.key !== 'Escape' || event.defaultPrevented) return
