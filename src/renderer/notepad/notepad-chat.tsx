@@ -12,9 +12,10 @@ import { clearEditedMarks } from './note-sessions.js'
 // the note it started on; switching tabs while it runs shrinks the card to its status line.
 // Otherwise the card changes shape only when the user asks.
 
-type ChatUi = { open: boolean; mode: QuickChatMode; taskNoteId: string | null }
+/** Kept per chat outside React: a tab switch remounts the note view, and with it this component. */
+type ChatUi = { open: boolean; mode: QuickChatMode; taskNoteId: string | null; noteId: string | null }
 const ui = new Map<string, ChatUi>()
-const uiFor = (key: string): ChatUi => ui.get(key) ?? { open: false, mode: 'full', taskNoteId: null }
+const uiFor = (key: string): ChatUi => ui.get(key) ?? { open: false, mode: 'full', taskNoteId: null, noteId: null }
 
 /** Ctrl+J for the notepad the keyboard is in; main routes the shortcut to the window's renderer. */
 const toggles = new Map<HTMLElement, () => void>()
@@ -58,11 +59,11 @@ export function NotepadChat({ host, tabId, noteId, windowNoteIds, chatId, noteTi
     wasRunning.current = running
   }, [running])
   // Switching tabs while it runs leaves the task where it was and shrinks the card out of the way.
-  const lastNote = useRef(noteId)
   useEffect(() => {
-    if (lastNote.current !== noteId && running && uiFor(key).mode === 'full') update({ mode: 'compact' })
-    lastNote.current = noteId
-  }, [noteId])
+    const seen = uiFor(key)
+    if (seen.noteId === noteId) return
+    update({ noteId, ...(seen.noteId !== null && running && seen.mode === 'full' ? { mode: 'compact' as const } : {}) })
+  }, [noteId, key])
 
   const open = useCallback(async () => {
     if (chatId) { update({ open: true }); return }
@@ -70,20 +71,20 @@ export function NotepadChat({ host, tabId, noteId, windowNoteIds, chatId, noteTi
     setCreating(true)
     try {
       const id = await host.newChat()
-      ui.set(id, { ...uiFor(key), open: true })
+      ui.set(id, { ...uiFor(key), open: true, noteId })
       host.setWindowChat(tabId, id)
     } catch (reason) {
       host.onError(reason)
     } finally {
       setCreating(false)
     }
-  }, [chatId, creating, host, key, tabId, update])
+  }, [chatId, creating, host, key, noteId, tabId, update])
   const request = useCallback((value: QuickChatRequest) => {
     if (value === 'close') { update({ open: false }); return }
     void (async () => {
       try {
         const id = await host.newChat()
-        ui.set(id, { open: true, mode: 'full', taskNoteId: null })
+        ui.set(id, { open: true, mode: 'full', taskNoteId: null, noteId })
         host.setWindowChat(tabId, id)
         if (chatId) {
           void window.closedai.notes.unbind(chatId)
@@ -93,7 +94,7 @@ export function NotepadChat({ host, tabId, noteId, windowNoteIds, chatId, noteTi
         host.onError(reason)
       }
     })()
-  }, [chatId, host, tabId, update])
+  }, [chatId, host, noteId, tabId, update])
 
   useEffect(() => {
     if (!root) return
