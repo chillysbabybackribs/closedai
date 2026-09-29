@@ -28,7 +28,7 @@ export const UI_CONTROLS = {
   'layout.keep-on-top': 'Window header context menu checkbox: keep this whole window, every tab in it, above windows without it; the browser gives way to it rather than going under; item is the active tab id',
   'layout.tools-preset': 'Pane header label present only while the tools registry is in the Read-only preset; no item',
   'layout.new-chat': 'Tile header + button: add and select a fresh conversation tab in this tile, preserving its existing tabs, other tiles and split sizes; item is the tile\u2019s active tab id',
-  'layout.tab': 'Select a conversation or view tab, or drag it to a tile header to join its tabs or a pane edge to split it out; item is the chat id or view tab id',
+  'layout.tab': 'Select a conversation or view tab, or drag it to a tile header to join its tabs, a pane edge to split it out, or free space (a floating window\u2019s body included) to open it in its own floating window there; item is the chat id or view tab id',
   'layout.tab-close': 'Remove a conversation or view tab from this tile without deleting history or stopping its turn; item is the chat id or view tab id',
   'layout.rename': 'Tab context menu: rename this chat; item is the chat id',
   'layout.pin': 'Tab context menu: pin or unpin this chat in history; item is the chat id',

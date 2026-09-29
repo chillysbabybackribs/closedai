@@ -5,7 +5,7 @@ import type { BrowserBounds, BrowserDownload, BrowserShot, BrowserState, Browser
 import type { SavedSite, SavedSiteDraft, SavedSitePatch } from './saved-sites.js'
 import type { ChatAttachment, ChatHistoryPage } from './chat.js'
 import type {
-  ChatContinuationSource, ChatPaneId, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot
+  ChatContinuationSource, ChatNewPeerOptions, ChatPaneId, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot
 } from './chat-peers.js'
 import type { CredentialDraft, CredentialSummary, CredentialVaultStatus } from './credentials.js'
 import type { ModelManifest, ModelSwitch, ModelsEvent } from './model-settings.js'
@@ -84,7 +84,7 @@ export type IpcInvokeChannels = {
   'chat:refreshPlanUsage': { args: [ChatPaneId]; result: void }
   'chat:login': { args: []; result: void }
   'chat:listChats': { args: []; result: ChatRowSummary[] }
-  'chat:newPeer': { args: [ChatPaneId?]; result: ChatPaneId }
+  'chat:newPeer': { args: [ChatPaneId?, ChatNewPeerOptions?]; result: ChatPaneId }
   'chat:closePeer': { args: [ChatPaneId]; result: void }
   'chat:continueInNewPeer': { args: [ChatContinuationSource, string | null]; result: ChatPaneId }
   'chat:openChat': { args: [string]; result: ChatPaneId }

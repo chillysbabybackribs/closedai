@@ -352,8 +352,12 @@ within the outer band of a tiled window (up to 56 px) it splits beside it; anywh
 where it was dropped. An outline shows the landing place, or rings the window it would join.
 Escape puts the window back. A floating window resizes from any edge or corner
 (`layout.window-resize`) and comes to the front when pressed. Tab drags keep their own behaviour:
-onto a tab strip or a tiled window's edge as before, and onto a floating window only to join its
-tabs. A chat opened beside a floating window (a split) floats too, cascaded from it.
+onto a tab strip or a tiled window's edge as before, and onto a floating window's tab strip to join
+its tabs. Released on free space, or on a floating window's body, a tab tears off into its own
+floating window there (`tearOffTab` in `window-arrange.ts`; the outline follows the pointer). It keeps
+the size of the floating window it left, or a share of a tiled one, and takes a slot beside that window
+so Tile windows can place it; the tiled layout does not change. A window's only tab moves the whole
+window, as its title bar would. A chat opened beside a floating window (a split) floats too, cascaded from it.
 
 The header's window buttons are **Minimize** (`layout.window-minimize`), **Maximize**
 (`layout.window-maximize`; double-clicking a tiled window's header does the same, and Escape
@@ -443,7 +447,8 @@ infer a request for user input from message text.
 
 Drag an individual conversation tab onto a tile's left or right edge to show chats side by side,
 or its top or bottom edge to stack them. A tab can split out of its own group, including the active
-tab; sibling conversations stay in place. Drop a tab onto another chat header to join its tab strip.
+tab; sibling conversations stay in place. Drop a tab onto another chat header to join its tab strip, or onto free space to open it in its
+own floating window.
 The highlighted region previews the split or tab destination. These moves preserve mounted drafts,
 attachments, and transcripts and persist with the project's layout.
 

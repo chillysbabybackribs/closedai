@@ -2,7 +2,8 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { BROWSER_PANE_ID, WORKSPACE_DOCK_ID, layoutGeometry, type ChatLayout } from '../layout-tree.ts'
 import { findWindow, floatWindow, floatingWindows } from './window-layout.ts'
-import { halfRect, hasFloatingWindows, setWindowOnTop, snapToSide, tearOffWindow, tileWindow, tileWindows } from './window-arrange.ts'
+import { halfRect, hasFloatingWindows, setWindowOnTop, snapToSide, tabTearOffRect, tearOffTab, tearOffWindow, tileWindow, tileWindows } from './window-arrange.ts'
+import { tabIds, tabOwner } from '../layout-tabs.ts'
 
 const size = { width: 1200, height: 800 }
 const tree: ChatLayout = { kind: 'split', id: 'root', axis: 'horizontal', ratio: 0.6,
@@ -77,4 +78,34 @@ test('a side target resolves the same way for the preview', async () => {
   const { targetPreview } = await import('./window-targets.ts')
   const loose = tearOffWindow(tree, BROWSER_PANE_ID, torn, onScreen(tree))
   assert.deepEqual(targetPreview(loose, 'b', { kind: 'split', target: WORKSPACE_DOCK_ID, edge: 'right' }, size, true, [], floats(loose)), halfRect('right', size))
+})
+
+test('a tab torn off opens its own floating window and leaves the tiled layout and its siblings alone', () => {
+  const before = onScreen(tree)
+  for (const id of ['a', 'a2']) {
+    const after = tearOffTab(tree, id, torn, before, 'tear')
+    assert.deepEqual(onScreen(after), before.map((tile) => tile.id === 'a' ? { ...tile, id: id === 'a' ? 'a2' : 'a' } : tile))
+    assert.deepEqual(floats(after), [{ id, rect: torn }])
+    assert.equal(tabOwner(after, id), id)
+    assert.deepEqual(tabIds(after).sort(), tabIds(tree).sort(), 'no tab is lost or duplicated')
+    assert.equal(tileWindows(after).kind, 'split', 'Tile windows gives it a slot beside the window it left')
+  }
+})
+
+test("a window's only tab moves the whole window; the browser never tears", () => {
+  const before = onScreen(tree)
+  const moved = tearOffTab(tree, 'b', torn, before, 'tear')
+  assert.deepEqual(moved, tearOffWindow(tree, 'b', torn, before))
+  const again = tearOffTab(moved, 'b', { ...torn, x: 20 }, [], 'tear')
+  assert.deepEqual(floats(again).find((tile) => tile.id === 'b')?.rect, { ...torn, x: 20 })
+  assert.equal(tearOffTab(tree, BROWSER_PANE_ID, torn, before, 'tear'), tree)
+  assert.equal(tearOffTab(tree, 'missing', torn, before, 'tear'), tree)
+})
+
+test('a torn-off tab keeps a floating window\'s size, takes a share of a tiled one, and sits under the pointer', () => {
+  const source = { x: 0, y: 0, width: 1000, height: 800 }
+  assert.deepEqual(tabTearOffRect(source, true, size, { x: 600, y: 300 }, 'a'), { x: 504, y: 281, width: 1000, height: 800 })
+  assert.deepEqual(tabTearOffRect(source, false, size, { x: 600, y: 300 }, 'a'), { x: 504, y: 281, width: 540, height: 600 })
+  assert.deepEqual(tabTearOffRect({ ...source, width: 100, height: 100 }, true, size, { x: 100, y: 100 }, 'a'),
+    { x: 25, y: 81, width: 300, height: 280 }, 'never below the window floor')
 })

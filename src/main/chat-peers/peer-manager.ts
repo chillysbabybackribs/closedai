@@ -3,6 +3,7 @@ import type { ChatAttachment, ChatEvent, ChatSnapshot, ChatThreadSummary } from 
 import { CHAT_TURN_PAGE_SIZE, type ChatHistoryPage, type ChatHistoryWindow } from '../../shared/chat.js'
 import type {
   ChatContinuationSource,
+  ChatNewPeerOptions,
   ChatPaneId,
   ChatPeerSummary,
   ChatRowSummary,
@@ -364,14 +365,15 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     }))
   }
 
-  async newPeer(anchorPaneId?: ChatPaneId): Promise<ChatPaneId> {
+  async newPeer(anchorPaneId?: ChatPaneId, options?: ChatNewPeerOptions): Promise<ChatPaneId> {
     this.projectSwitch.assertAvailable()
     if (anchorPaneId) {
       const anchor = this.lifecycle.require(anchorPaneId).surface.snapshot({ limit: 0 })
-      return this.newChat(anchor.selectedModel, anchor.selectedReasoningEffort, null, this.store.require(anchorPaneId))
+      return this.newChat(anchor.selectedModel, anchor.selectedReasoningEffort, null, this.store.require(anchorPaneId),
+        { selectPane: options?.select })
     }
     const current = this.lifecycle.require(this.selectedPaneId).surface.snapshot({ limit: 0 })
-    return this.newChat(current.selectedModel, current.selectedReasoningEffort, null)
+    return this.newChat(current.selectedModel, current.selectedReasoningEffort, null, undefined, { selectPane: options?.select })
   }
 
   private async newChat(modelId: string | null, reasoningEffort: string | null, continuation: ChatContinuation | null,
@@ -390,8 +392,10 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     })
     this.lifecycle.attach(record)
     this.chatRowsCache.invalidateDetached()
-    if (options?.selectPane !== false) this.selectedPaneId = record.id
-    this.parking.schedule(previousPaneId)
+    if (options?.selectPane !== false) {
+      this.selectedPaneId = record.id
+      this.parking.schedule(previousPaneId)
+    }
     this.lifecycle.parkExcessIdle(record.id)
     this.emitWorkspace()
     await this.persistOpenChats()

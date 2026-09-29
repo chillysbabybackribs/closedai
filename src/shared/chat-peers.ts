@@ -65,6 +65,9 @@ export type ChatRowSummary = ChatPeerSummary & {
   lastTurnEndedAt: number | null
 }
 
+/** `select: false` creates the chat without selecting it; the caller reports it visible (the browser's quick chat). */
+export type ChatNewPeerOptions = { select?: boolean }
+
 export type ChatContinuationSource = {
   /** Include conversation only through this completed assistant message. */
   throughItemId?: string

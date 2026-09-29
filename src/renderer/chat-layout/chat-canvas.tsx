@@ -13,7 +13,7 @@ import type { TabActivity } from './tab-activity.js'
 import { chatDropAt, dragPreviewPanes, dragSplitPreview } from './layout-drag-preview.js'
 import { ChatLayoutPaneHeader } from './chat-layout-pane-header.js'
 import { GLIDE_MS, miniature, useLayoutGlide } from './layout-motion.js'
-import { findWindow, floatWindow, minimizeWindow } from './floating/window-layout.js'
+import { WINDOW_HEADER, findWindow, floatWindow, minimizeWindow } from './floating/window-layout.js'
 import { tearOffWindow, tileWindow } from './floating/window-arrange.js'
 import { snapTarget } from './floating/window-targets.js'
 import { browserCovered, canvasTiles, floatingFront } from './floating/window-tiles.js'
@@ -21,6 +21,7 @@ import { useWindowDrag, type WindowFrame } from './floating/use-window-drag.js'
 import { useMaximizedWindow } from './floating/use-maximized-window.js'
 import { BrowserWindowContext, WindowResizeHandles } from './floating/window-controls.js'
 import { pressesMoveHandle } from './floating/window-move-handle.js'
+import { TEAR_OFF_TARGET, useTabTearOff } from './floating/use-tab-tear-off.js'
 
 const position = (rect: Rect): CSSProperties => ({ left: rect.x, top: rect.y, width: rect.width, height: rect.height })
 const contains = (rect: Rect, x: number, y: number): boolean =>
@@ -267,11 +268,14 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
     return () => { cancelled = true }
   }, [dragging, settling, gesture, whenGlideIdle])
 
-  // Tab drops meet floating windows first; a floating window only takes tabs into its strip.
+  const tearOff = useTabTearOff(windowFrame, windows.change)
+  // Tab drops meet floating windows first: a floating chat's strip takes the tab into its tabs, and
+  // free space, a floating window's body included, tears the tab off into its own window.
   const dropAt = (x: number, y: number) => {
     const hit = chatDropAt([...floating, ...geometry.panes], x, y, dropTarget.current)
-    if (!hit || !floatingIds.has(hit.target)) return hit
-    return hit.target === BROWSER_PANE_ID ? null : { target: hit.target, edge: null }
+    if (hit && !floatingIds.has(hit.target)) return hit
+    const over = hit && hit.target !== BROWSER_PANE_ID ? floating.find((tile) => tile.id === hit.target) : undefined
+    return over && y - over.rect.y < WINDOW_HEADER ? { target: over.id, edge: null } : tearOff.at(dragging, x, y)
   }
   const browserWindow = useMemo(() => ({
     maximized: soloTile?.id === BROWSER_PANE_ID,
@@ -327,6 +331,11 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
         const bounds = event.currentTarget.getBoundingClientRect()
         const target = dropAt(event.clientX - bounds.left, event.clientY - bounds.top)
         if (busy || !target) { finishDrag(); return }
+        if (target.target === TEAR_OFF_TARGET) {
+          finishDrag()
+          if (tearOff.commit(source)) onSelect(source)
+          return
+        }
         const singleTab = event.dataTransfer.types.includes(CHAT_TAB_DRAG_TYPE)
         const accepted = dragSplitPreview(tree, source, target, singleTab, size.width, size.height, browserVisible)
         settlingRef.current = true
@@ -390,6 +399,8 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
       })}
       {gesture?.preview && <div className="chat-layout-snap-preview" data-kind={gesture.target.kind}
         style={position(gesture.preview)} aria-hidden="true" />}
+      {drop?.target === TEAR_OFF_TARGET && tearOff.rect.current && <div ref={tearOff.outline} className="chat-layout-snap-preview"
+        data-kind="tear-off" style={position(tearOff.rect.current)} aria-hidden="true" />}
       {!soloTile && layoutDividers.map((divider) => <LayoutDivider key={divider.id}
         divider={divider} splitResize={splitResize} onResize={onResize} />)}
     </div>

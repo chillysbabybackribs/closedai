@@ -5,7 +5,7 @@ import type { BrowserBounds, BrowserDownload, BrowserShot, BrowserState, Browser
 import type { SavedSite, SavedSiteDraft, SavedSitePatch } from './saved-sites.js'
 import type { ChatAttachment, ChatHistoryPage } from './chat.js'
 import type {
-  ChatContinuationSource, ChatPaneId, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot
+  ChatContinuationSource, ChatNewPeerOptions, ChatPaneId, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot
 } from './chat-peers.js'
 import type { ProviderAvailability } from './provider-availability.js'
 import type { AppWindowContext, AppWindowId, AppWindowInfo, AppWindowRegion, AppWindowsEvent } from './app-windows.js'
@@ -127,8 +127,8 @@ export type ClosedaiApi = {
     loginWithChatGPT: () => Promise<void>
     /** Every chat of this workspace from the app's own store, newest first; provider catalogs are reconciled behind it. */
     listChats: () => Promise<ChatRowSummary[]>
-    /** Clear the pane; the next message starts a fresh app-server thread. */
-    newPeer: (anchorPaneId?: ChatPaneId) => Promise<ChatPaneId>
+    /** Clear the pane; the next message starts a fresh app-server thread. `select: false` keeps the current selection. */
+    newPeer: (anchorPaneId?: ChatPaneId, options?: ChatNewPeerOptions) => Promise<ChatPaneId>
     /** Retire an open peer pane from the active workspace shelf back to history. */
     closePeer: (paneId: ChatPaneId) => Promise<void>
     /** Create a new pane whose first message carries a compact digest of the exact source chat. */

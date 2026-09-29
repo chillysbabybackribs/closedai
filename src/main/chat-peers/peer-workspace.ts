@@ -1,5 +1,5 @@
 import type { ChatAttachment, ChatHistoryPage, ChatHistoryWindow, ChatThreadSummary } from '../../shared/chat.js'
-import type { ChatContinuationSource, ChatPaneId, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot } from '../../shared/chat-peers.js'
+import type { ChatContinuationSource, ChatNewPeerOptions, ChatPaneId, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot } from '../../shared/chat-peers.js'
 import type { DeferredProjectSwitch } from './deferred-project-switch.js'
 
 export type ChatWorkspaceSelection = {
@@ -30,8 +30,11 @@ export interface ChatWorkspaceSurface {
   listChats(): Promise<ChatRowSummary[]>
   /** Every thread the providers and the store know, reconciled first; for tools that search by title. */
   listThreads(): Promise<ChatThreadSummary[]>
-  /** When `anchorPaneId` is set, inherit that chat's model and workspace without focusing it first. */
-  newPeer(anchorPaneId?: ChatPaneId): Promise<ChatPaneId>
+  /**
+   * When `anchorPaneId` is set, inherit that chat's model and workspace without focusing it first.
+   * `select: false` leaves the selection alone; the caller reports the new chat visible itself.
+   */
+  newPeer(anchorPaneId?: ChatPaneId, options?: ChatNewPeerOptions): Promise<ChatPaneId>
   closePeer(paneId: ChatPaneId): Promise<void>
   continueInNewPeer(source: ChatContinuationSource, modelId: string | null): Promise<ChatPaneId>
   /** Show a chat: select it if attached, else attach it, replacing the selected chat only when that one is blank. */

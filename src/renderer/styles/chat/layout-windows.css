@@ -85,6 +85,8 @@
   background: color-mix(in srgb, var(--focus-ink) 10%, transparent);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-ink) 28%, transparent);
 }
+/* A torn-off tab's window follows the pointer; easing would trail behind it. */
+.chat-layout-snap-preview[data-kind='tear-off'] { transition: none; }
 @media (prefers-reduced-motion: reduce) {
   .chat-layout-snap-preview { transition: none; }
 }

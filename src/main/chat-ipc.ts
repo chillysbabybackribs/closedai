@@ -4,7 +4,7 @@ import { stat } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import type { ChatAttachment } from '../shared/chat.js'
 import { CHAT_TURN_PAGE_SIZE } from '../shared/chat.js'
-import type { ChatContinuationSource } from '../shared/chat-peers.js'
+import type { ChatContinuationSource, ChatNewPeerOptions } from '../shared/chat-peers.js'
 import { IPC } from '../shared/ipc-channels.js'
 import type { ChatWorkspaceSurface } from './chat-peers/peer-manager.js'
 import { detectProviderAvailability } from './provider-availability.js'
@@ -44,7 +44,11 @@ export function registerChatIpc(ipcMain: IpcMain, getService: () => ChatWorkspac
   )
   ipcMain.handle(IPC.invoke.chat.refreshPlanUsage, (_event, paneId: string) => requireService().refreshPlanUsage(paneId))
   ipcMain.handle(IPC.invoke.chat.listChats, () => requireService().listChats())
-  ipcMain.handle(IPC.invoke.chat.newPeer, (_event, anchorPaneId?: string) => requireService().newPeer(anchorPaneId))
+  ipcMain.handle(IPC.invoke.chat.newPeer, (_event, anchorPaneId?: string, options?: ChatNewPeerOptions) => {
+    if (options !== undefined && (typeof options !== 'object' || options === null
+      || (options.select !== undefined && typeof options.select !== 'boolean'))) throw new Error('Choose valid new chat options')
+    return requireService().newPeer(anchorPaneId, options)
+  })
   ipcMain.handle(IPC.invoke.chat.closePeer, (_event, paneId: string) => requireService().closePeer(paneId))
   ipcMain.handle(IPC.invoke.chat.continueInNewPeer, (_event, source: ChatContinuationSource, modelId: string | null) =>
     requireService().continueInNewPeer(source, modelId)
