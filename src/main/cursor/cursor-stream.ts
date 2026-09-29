@@ -16,9 +16,13 @@ import {
 // Update kinds handled: `agent_message_chunk` and `agent_thought_chunk` (true deltas — unlike
 // the one-shot `--print` stream, no full-text repeat arrives at the end, so the chunks ARE the
 // transcript), `tool_call` and `tool_call_update` (a call is announced with `status: "pending"`
-// and its `rawInput` often only arrives on the first update), `plan`, `session_info_update`
-// (the agent's own title for the chat), and `current_mode_update`. `available_commands_update`
-// is deliberately ignored: the pane has no slash-command surface to put it in.
+// and its `rawInput` often only arrives on the first update), `plan`, and `current_mode_update`.
+// `available_commands_update` is ignored: the pane has no slash-command surface to put it in.
+// `session_info_update` (the agent's own title) is ignored too: cursor-agent names the chat from
+// the start of the first prompt, which is always the app's context (the clock, the session
+// guide), so 190 of the ~220 titled sessions on the owner's machine read "ClosedAI Guide" or
+// "Cursor Instructions" (counted 2026-09-29). The pane titles itself from the first message and
+// the app's generated title, as the other lanes do.
 //
 // Text and tools interleave, so a tool call closes the open assistant item; the next chunk
 // starts a new one. That keeps a reply that resumes after a tool from being appended to text
@@ -26,7 +30,7 @@ import {
 
 export type { TranscriptOp, TurnEnd } from '../chat-transcript-ops.js'
 
-export type CursorTranslation = { ops: TranscriptOp[]; title?: string; modeId?: string }
+export type CursorTranslation = { ops: TranscriptOp[]; modeId?: string }
 
 export type CursorTranslatorOptions = {
   /** Null when replaying a stored session, where the items belong to no turn of this run. */
@@ -71,13 +75,6 @@ export class CursorTurnTranslator {
         return { ops: this.handleToolUpdate(update) }
       case 'plan':
         return { ops: this.handlePlan(update) }
-      case 'session_info_update': {
-        const title = stringOf(update.title)
-        if (title && (title.includes('<closedai_context') || title.includes('closedai.instructions'))) {
-          return { ops: [] }
-        }
-        return title ? { ops: [], title } : { ops: [] }
-      }
       case 'current_mode_update': {
         const modeId = stringOf(update.currentModeId)
         return modeId ? { ops: [], modeId } : { ops: [] }

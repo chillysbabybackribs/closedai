@@ -108,9 +108,9 @@ test('a replay turns user chunks into user items with no turn of their own', () 
   assert.ok(items[0]?.id.startsWith('session-1:'))
 })
 
-test('the title and plan updates are surfaced, and unknown kinds are ignored', () => {
+test('plan updates are surfaced; the agent\'s own title and unknown kinds are ignored', () => {
   const instance = translator()
-  assert.equal(instance.handle({ update: { sessionUpdate: 'session_info_update', title: 'Apple Echo' } }).title, 'Apple Echo')
+  assert.deepEqual(instance.handle({ update: { sessionUpdate: 'session_info_update', title: 'ClosedAI Guide' } }), { ops: [] })
   assert.deepEqual(instance.handle({ update: { sessionUpdate: 'available_commands_update', availableCommands: [] } }).ops, [])
   const plan = instance.handle({
     update: { sessionUpdate: 'plan', entries: [{ content: 'step one', status: 'completed' }, { content: 'step two', status: 'in_progress' }] }

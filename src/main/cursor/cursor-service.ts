@@ -450,7 +450,6 @@ export class CursorChatService extends EventEmitter {
         if (await carryLostCursorSession(this.threadHost(), sessionId)) this.addNotice(LOST_SESSION_NOTICE, 'info')
       },
       onSetup: (setup) => this.adoptSetup(setup),
-      onTitle: (title) => this.adoptTitle(title),
       onTurnEnd: (turnId, end) => this.onTurnEnd(turnId, end),
       displayScreenshot: (callId) => this.screenshots?.get(callId) ?? null,
       takeCallId: (namespace, tool) => this.bridge.takeCallId(this.bridgeKey, namespace, tool),
@@ -547,14 +546,6 @@ export class CursorChatService extends EventEmitter {
   private adoptSessionId(sessionId: string): void {
     this.bindBridge()
     this.emitEvent({ type: 'thread', threadId: cursorThreadId(sessionId), threadName: this.threadName })
-  }
-
-  /** ACP names the chat itself, a turn or two in; that title is what the header shows. */
-  private adoptTitle(title: string): void {
-    if (title === this.threadName) return
-    this.threadName = title
-    const sessionId = this.session?.sessionId
-    if (sessionId) this.emitEvent({ type: 'thread', threadId: cursorThreadId(sessionId), threadName: title })
   }
 
   private onTurnEnd(turnId: string, end: TurnEnd): void {

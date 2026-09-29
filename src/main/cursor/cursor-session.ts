@@ -43,7 +43,6 @@ export type CursorSessionDeps = {
    */
   onSessionLost?: (sessionId: string, reason: string) => Promise<void> | void
   onSetup: (setup: AcpSessionSetup) => void
-  onTitle: (title: string) => void
   onTurnEnd: (turnId: string, end: TurnEnd) => void
   displayScreenshot?: (callId: string) => { dataUrl: string } | null
   /** The registry call id behind the ClosedAI tool the agent just reported, when the bridge served one. */
@@ -383,7 +382,6 @@ export class CursorSession {
     if (this.sessionId && updateKind(params) !== 'available_commands_update') this.markSaved(this.sessionId)
     const translation = translator.handle(params)
     for (const op of translation.ops) this.deps.apply(op)
-    if (translation.title) this.deps.onTitle(translation.title)
   }
 
   private onExit(): void {
