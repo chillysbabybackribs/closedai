@@ -9,6 +9,7 @@ import { createSessionRotator } from '../chat-context/session-rotator-factory.js
 import { buildProviderChildEnv } from '../provider-work-env.js'
 import type { SessionRotator } from '../chat-context/session-rotation.js'
 import {
+  carryLostCursorSession,
   detachCursorThread,
   resumeCursorSession,
   resumePersistedCursorSession,
@@ -56,6 +57,7 @@ import { generatePromptSuggestion } from '../chat-prompt-suggestions.js'
 // session store the agent itself keeps — `session/list` is the chat history and `session/load`
 // replays a transcript, so unlike the Antigravity lane this provider records nothing of its own.
 
+const LOST_SESSION_NOTICE = 'Cursor no longer had this conversation, so it continues in a new session with a summary of the chat.'
 const SIGN_IN_MESSAGE = 'Sign in to Cursor: run `cursor-agent login` in a terminal, complete the browser login, then choose a Cursor model again.'
 
 export class CursorChatService extends EventEmitter {
@@ -159,6 +161,9 @@ export class CursorChatService extends EventEmitter {
       turnId = cursorTurnId()
       this.setTurn(turnId)
       session.beginTurn(turnId)
+      // Open the session before the prompt is assembled: a saved session the agent no longer holds
+      // is replaced here, and the conversation it carried has to reach this turn's context.
+      await session.warm()
       const sessionId = session.sessionId
       const pendingHandoff = this.settings.get().chatContinuation?.handoff ?? null
       const guideThreadKey = sessionGuideThreadKey(
@@ -440,6 +445,10 @@ export class CursorChatService extends EventEmitter {
       apply: (op) => this.applyOp(op),
       onTurn: (turnId) => this.setTurn(turnId),
       onSessionId: (sessionId) => this.adoptSessionId(sessionId),
+      onSessionSaved: (sessionId) => { void this.settings.set({ chatCursorSessionId: sessionId }) },
+      onSessionLost: async (sessionId) => {
+        if (await carryLostCursorSession(this.threadHost(), sessionId)) this.addNotice(LOST_SESSION_NOTICE, 'info')
+      },
       onSetup: (setup) => this.adoptSetup(setup),
       onTitle: (title) => this.adoptTitle(title),
       onTurnEnd: (turnId, end) => this.onTurnEnd(turnId, end),
@@ -536,7 +545,6 @@ export class CursorChatService extends EventEmitter {
   }
 
   private adoptSessionId(sessionId: string): void {
-    void this.settings.set({ chatCursorSessionId: sessionId })
     this.bindBridge()
     this.emitEvent({ type: 'thread', threadId: cursorThreadId(sessionId), threadName: this.threadName })
   }

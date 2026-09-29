@@ -37,9 +37,10 @@ html.quick-chat-surface #root {
   place-items: center;
   width: 42px;
   height: 42px;
-  border: 1px solid var(--hairline);
+  border: 1px solid color-mix(in srgb, var(--tab-accent, #8ab4f8) 42%, var(--hairline));
   border-radius: 50%;
-  background: var(--surface-raised);
+  background: color-mix(in srgb, var(--tab-accent, #8ab4f8) 16%, var(--surface-raised));
+  color: var(--tab-accent, #8ab4f8);
   box-shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 22px rgb(0 0 0 / 34%);
   transition:
     background 110ms var(--ease-chrome),
@@ -47,7 +48,7 @@ html.quick-chat-surface #root {
 }
 
 .quick-chat-fab:hover .quick-chat-fab-disc {
-  background: var(--surface-control-hover, #343434);
+  background: color-mix(in srgb, var(--tab-accent, #8ab4f8) 25%, var(--surface-control-hover, #343434));
   transform: scale(1.05);
 }
 

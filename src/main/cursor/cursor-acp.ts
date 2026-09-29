@@ -1,5 +1,5 @@
 import { readFile, writeFile } from 'node:fs/promises'
-import { StdioJsonRpcClient, type JsonRpcRequest } from '../stdio-json-rpc.js'
+import { JsonRpcPeerError, StdioJsonRpcClient, type JsonRpcRequest } from '../stdio-json-rpc.js'
 import type { TraceScope } from '../trace/trace-log.js'
 import { summarizeCursorRpc } from '../trace/summaries.js'
 import { cursorAcpArgs, cursorBinary } from './cursor-cli.js'
@@ -150,6 +150,19 @@ export class CursorAcpClient extends StdioJsonRpcClient {
     await this.request('session/set_config_option', { sessionId, configId, value })
   }
 
+  /**
+   * cursor-agent puts the reason in `data.message` and only a generic label in `message`
+   * ("Invalid params" for a session it no longer holds), so the reason is folded into the text.
+   */
+  protected override rpcError(message: string, code: number | null, data: unknown): Error {
+    const detail = asRecord(data)?.message
+    return new JsonRpcPeerError(
+      typeof detail === 'string' && detail && detail !== message ? `${message}: ${detail}` : message,
+      code,
+      data
+    )
+  }
+
   private async setup(method: string, params: Record<string, unknown>): Promise<AcpSessionSetup> {
     const result = await this.request<Record<string, unknown>>(method, params, 60_000)
     const models = asRecord(result?.models)
@@ -189,6 +202,17 @@ export class CursorAcpClient extends StdioJsonRpcClient {
       this.respondWithError(request.id, -32000, error instanceof Error ? error.message : String(error))
     }
   }
+}
+
+/**
+ * The agent does not hold that session. `session/new` only reserves an id: verified 2026-09-29
+ * against cursor-agent, a session that never received a prompt answers a later `session/load`
+ * from a new process with -32602 `Session "<id>" not found`, while one prompted for ~0.7s loads.
+ */
+export function isAcpSessionNotFound(error: unknown): boolean {
+  if (!(error instanceof JsonRpcPeerError)) return false
+  const detail = asRecord(error.data)?.message
+  return typeof detail === 'string' && /session .* not found/i.test(detail)
 }
 
 /** The broadest allow the request offers, so a turn never stalls on an approval nobody will see. */

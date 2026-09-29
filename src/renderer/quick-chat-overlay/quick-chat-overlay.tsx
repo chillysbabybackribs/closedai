@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type JSX, type RefObject } from 'react'
-import { MessageSquareText } from 'lucide-react'
+import { MessageSquareMore } from 'lucide-react'
 import type { QuickChatOverlayView } from '../../shared/quick-chat-overlay.js'
 import { useChatController } from '../chat-controller.js'
 import { chatRunning } from '../chat-state.js'
@@ -59,7 +59,7 @@ function QuickChatButton({ paneId, site }: { paneId: string | null; site: string
       title={title} aria-label={label ? `Open quick chat: ${label}` : 'Open quick chat'}
       onClick={() => { void window.closedai.quickChat.request('open') }}>
       {label ? <span className={`quick-chat-fab-label${status ? ` is-${status}` : ''}`}>{label}</span> : null}
-      <span className="quick-chat-fab-disc"><MessageSquareText size={18} aria-hidden="true" /></span>
+      <span className="quick-chat-fab-disc"><MessageSquareMore size={19} aria-hidden="true" /></span>
     </button>
   )
 }

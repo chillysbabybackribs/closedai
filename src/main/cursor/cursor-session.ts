@@ -1,5 +1,5 @@
 import {
-  CursorAcpClient,
+  CursorAcpClient, isAcpSessionNotFound,
   type AcpCapabilities, type AcpMcpServer, type AcpPromptBlock, type AcpSessionSetup
 } from './cursor-acp.js'
 import { CursorTurnTranslator, cursorTurnEnd, type TranscriptOp, type TurnEnd } from './cursor-stream.js'
@@ -29,7 +29,19 @@ export type CursorSessionDeps = {
   modelId: () => string | null
   apply: (op: TranscriptOp) => void
   onTurn: (turnId: string | null) => void
+  /** The thread's session changed — including to one the agent has only reserved so far. */
   onSessionId: (sessionId: string) => void
+  /**
+   * The session became one the agent can reopen: it was loaded, or it has taken a turn. A session
+   * `session/new` just opened is gone from any later process until it has been prompted (see
+   * `isAcpSessionNotFound`), so this — not `onSessionId` — is when the pane saves the id.
+   */
+  onSessionSaved: (sessionId: string) => void
+  /**
+   * The saved session could not be reopened and a new one replaced it, so the agent no longer
+   * holds the conversation the pane shows. Awaited before the turn uses the new session.
+   */
+  onSessionLost?: (sessionId: string, reason: string) => Promise<void> | void
   onSetup: (setup: AcpSessionSetup) => void
   onTitle: (title: string) => void
   onTurnEnd: (turnId: string, end: TurnEnd) => void
@@ -49,6 +61,8 @@ export class CursorSession {
   private client: CursorAcpClient | null = null
   /** The session `this.client` currently holds, so one process never loads the same one twice. */
   private loadedSessionId: string | null = null
+  /** The session last reported through `onSessionSaved` (or seeded from the pane's save). */
+  private savedSessionId: string | null = null
   private translator: CursorTurnTranslator | null = null
   private readonly idleGuard: IdleProcessGuard
   private opening: Promise<CursorAcpClient> | null = null
@@ -92,6 +106,7 @@ export class CursorSession {
   adoptSaved(sessionId: string | null): void {
     if (!sessionId || this.sessionId || this.activeTurnId) return
     this.sessionId = sessionId
+    this.savedSessionId = sessionId
   }
 
   /** Prove the CLI answers and read the catalog, without committing the pane to a turn. */
@@ -128,6 +143,7 @@ export class CursorSession {
       })
       client.prompt(setup.sessionId, blocks)
         .then((stopReason) => {
+          this.markSaved(setup.sessionId)
           if (this.activeTurnId !== turnId) return
           this.endTurn(cursorTurnEnd(stopReason))
           this.scheduleIdleClose()
@@ -181,6 +197,7 @@ export class CursorSession {
   async reset(): Promise<void> {
     await this.retire()
     this.sessionId = null
+    this.savedSessionId = null
   }
 
   /**
@@ -190,6 +207,8 @@ export class CursorSession {
    */
   continueWith(sessionId: string): void {
     if (this.loadedSessionId === sessionId && this.setup) this.deps.onSetup(this.setup)
+    // Only a replayed session gets here, and the caller saves it with the history it restored.
+    this.savedSessionId = sessionId
     if (this.sessionId === sessionId) return
     this.sessionId = sessionId
     this.deps.onSessionId(sessionId)
@@ -267,7 +286,7 @@ export class CursorSession {
   /**
    * Open the thread's session on this process. A session id the agent no longer holds — a stale
    * id from a previous run, or one `loadSession` cannot serve — falls back to a fresh session
-   * rather than failing the turn. One open at a time: a new chat's warm-up and its first send
+   * rather than failing the turn, and the pane is told so it can carry its conversation over. One open at a time: a new chat's warm-up and its first send
    * would otherwise each create a session, and the turn would stream into the one the thread is
    * not listening to. A caller that waited reuses the session the open before it settled.
    */
@@ -292,12 +311,23 @@ export class CursorSession {
     if (this.sessionId && this.sessionId === this.loadedSessionId && this.setup && this.attachedServers === attaching) {
       return this.setup
     }
+    let lost: { sessionId: string; reason: string } | null = null
     if (this.sessionId && client.capabilities?.loadSession) {
-      const loaded = await client.loadSession(this.sessionId, this.deps.cwd, mcpServers).catch(() => null)
-      if (loaded) {
+      const sessionId = this.sessionId
+      try {
+        const loaded = await client.loadSession(sessionId, this.deps.cwd, mcpServers)
         this.loadedSessionId = loaded.sessionId
         this.attachedServers = attaching
-        return this.adoptSetup(loaded)
+        const setup = this.adoptSetup(loaded)
+        this.markSaved(setup.sessionId)
+        return setup
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error)
+        // An id that was reserved but never prompted is expected to be gone; anything else is not.
+        if (!isAcpSessionNotFound(error) || this.savedSessionId === sessionId) {
+          console.warn(`[Cursor ACP] could not reopen session ${sessionId}; starting a new one:`, reason)
+        }
+        if (this.savedSessionId === sessionId) lost = { sessionId, reason }
       }
     }
     const created = await client.newSession(this.deps.cwd, mcpServers)
@@ -314,7 +344,15 @@ export class CursorSession {
         console.warn('[Cursor ACP] could not select the model:', error instanceof Error ? error.message : error)
       })
     }
-    return this.adoptSetup(created)
+    const setup = this.adoptSetup(created)
+    if (lost) await this.deps.onSessionLost?.(lost.sessionId, lost.reason)
+    return setup
+  }
+
+  private markSaved(sessionId: string): void {
+    if (!sessionId || this.savedSessionId === sessionId) return
+    this.savedSessionId = sessionId
+    this.deps.onSessionSaved(sessionId)
   }
 
   private adoptSetup(setup: AcpSessionSetup): AcpSessionSetup {
@@ -341,6 +379,8 @@ export class CursorSession {
     const translator = this.translator
     // A load running for another session must not be mistaken for this thread's turn.
     if (!translator || (sessionId !== null && sessionId !== this.sessionId)) return
+    // Measured at ~0.7s into a first turn; the agent announces its commands before it has stored anything.
+    if (this.sessionId && updateKind(params) !== 'available_commands_update') this.markSaved(this.sessionId)
     const translation = translator.handle(params)
     for (const op of translation.ops) this.deps.apply(op)
     if (translation.title) this.deps.onTitle(translation.title)
@@ -376,6 +416,10 @@ export class CursorSession {
   private clearIdleTimer(): void {
     this.idleGuard.clear()
   }
+}
+
+function updateKind(params: unknown): unknown {
+  return (params as { update?: { sessionUpdate?: unknown } } | null)?.update?.sessionUpdate
 }
 
 /** Identity of a tool endpoint set: same names on same URLs means the agent needs no new attach. */
