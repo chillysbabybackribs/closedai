@@ -428,7 +428,8 @@ also switch tabs, and Delete closes the focused tab. Only the active tab's close
 tab order. Tab strips scroll horizontally when full: narrow tiles keep a 96 px floor per tab so the
 strip overflows instead of collapsing labels, a wheel over the strip pans it, and selecting a tab
 scrolls it into view. Mounted drafts and attachments survive
-switching tabs. Each tab's close button removes it from the layout without deleting its history
+switching tabs; unsent text (and attachments small enough to store) is also kept per chat in
+renderer localStorage (`closedai.composer.drafts.v1`, newest 50), so it survives a relaunch. Each tab's close button removes it from the layout without deleting its history
 or stopping a running turn. Closing the active tab selects a neighbor; closing the last tab in a
 tile removes that tile when another tile remains. The workspace always keeps at least one tab.
 Hidden tabs can be parked or detached by normal runtime trimming and are reattached when selected.
@@ -615,7 +616,10 @@ when present. The message takes no layout space and adds no controls. In maximiz
 tile expands to 100% canvas dimensions while background tiles and the browser remain mounted and
 hidden with active agent tasks running undisturbed. Pressing `Escape` or double-clicking the header
 immediately restores the full split grid layout without modifying persisted divider ratios. Browser visibility and the chat tree, including divider ratios, are saved per project
-in renderer localStorage, including tab order and each tile's active tab. Missing/archived chats
+in renderer localStorage, including tab order, each tile's active tab (a History or other view left
+in front of a chat stays in front), the window's focused chat (`focused`) and its maximized window
+(`maximized`, which reopens maximized after a relaunch). A layout change is written after 250 ms and
+again on `pagehide`, so a reload or quit inside that delay keeps it. Missing/archived chats
 are removed from a restored layout; layouts saved before tabs remain compatible.
 
 **View** offers five one-click starting arrangements (`layout.dock-preset`, items `browser-side`,
@@ -677,7 +681,9 @@ reported by any other window. Workspace-wide events (chat rows, runs, tools, tra
 reach every window. Detached windows are saved in `app-windows.json` (id, project, chat tabs) and
 their layout in renderer localStorage beside the project's main layout (`#window:<id>`). Electron
 persists each window's bounds, monitor and maximized state under its window name and falls back to a
-connected display when that monitor is gone; on Wayland the compositor chooses placement. A
+connected display when that monitor is gone; on Wayland the compositor chooses placement. At launch
+only the reopened window holding the selected chat takes focus; the others show inactive, because a
+window taking focus claims the selection, and each window resumes the chat its layout last had focused. A
 detached window belongs to its project: selecting another project closes it without handing its
 chats back, and it reopens when its project is selected again or at the next launch.
 `closedai_app.state` lists detached windows and their chat ids under `window.detached`; UI
@@ -1014,7 +1020,12 @@ cover the rest; reasoning items still never cross into another pane.
 
 `BrowserService` owns a `WebContentsView` per tab and one `persist:browser` partition. Cookies,
 login state, history, and downloads are app-wide. The initial cookie import runs before the first
-page load. Tab state and history are persisted separately.
+page load. Tab state and history are persisted separately. `browser-tabs.json` keeps each http(s) tab's
+back/forward stack with Chromium's page state, so a restored tab reopens on the entry it showed (the
+index is tracked through dropped `about:blank` and trimmed entries) at its scroll offset, a single page
+included; quit re-reads the strip first, since scrolling alone does not trigger a save. A tab not yet
+loaded, or crashed, keeps the stack it was restored with. When the active tab is not restorable (blank,
+file, image), its left neighbour is shown.
 
 Page permission requests follow `Settings ▸ Security ▸ Web permissions` (`src/main/browser-permissions.ts`).
 The default, `allow`, is the historical policy: every Chromium permission request, permission check,
@@ -1260,13 +1271,18 @@ App-owned files live under Electron's `userData` (`~/.config/closedai/` on Linux
 | `security-settings.json` | Settings ▸ Security: `credentialsRequireApproval`, `secretsRequireKeychain`, `webPermissions`, `importBrowserCookies`. A missing file is every default, which is the behavior before the tab existed; an unreadable one is set aside as `security-settings.json.corrupt-<time>` and never overwritten |
 | `credential-vault.json` | Saved credentials: service id, entry label, timestamps, per-entry `agentAccess` (absent on older records, read as on), and one record per field. Secret fields are `safeStorage` ciphertext (base64); hosts, usernames and URLs stay readable so the list renders without decrypting. Written atomically at 0600. Only a missing file is an empty vault; a file that cannot be read is set aside as `credential-vault.json.corrupt-<time>` before the vault continues empty, so the next save never overwrites it. Entries the earlier localStorage vault held are moved here on first open and the localStorage copy is cleared only after every entry lands |
 | `antigravity/profile/`, `antigravity/attachments/`, `antigravity/transcripts/` | Generated agent plugin, materialized image attachments, and app-recorded transcripts; the CLI retains its own conversation store |
-| Renderer localStorage | Appearance, model-picker usage, completion review queue (including review time; legacy storage key retained), message timestamps |
+| Renderer localStorage | Appearance, model-picker usage, completion review queue (including review time; legacy storage key retained), message timestamps, per-space and per-window layouts (`closedai.chat-layout.v1:*`), spaces, and unsent composer drafts |
 | In-memory trace | At most 4,000 entries and 24,000,000 detail characters, 48,000 characters per detail before its truncation marker; cleared on restart |
 
 Only a missing store file means a fresh start. When `chats.json`, `app-settings.json`, or
 `browser-tabs.json` cannot be read or parsed, the file is renamed beside itself to
 `<name>.corrupt-<timestamp>`, one warning names that copy, and the store starts from defaults, so
-the next debounced write never replaces the only copy of the user's data. Store writes reach the
+the next debounced write never replaces the only copy of the user's data. Quit waits (at most 5 s)
+for every store to flush; a second quit request during that wait, such as another signal or the last
+window closing, waits for the same flush instead of exiting mid-write. Once the chat service stops at
+quit, nothing rewrites the open chat ids, so the next launch reopens the chats that were open. Blank
+chats stay attached past the 8-chat cap, since a detached blank chat is not listed and its tab would
+vanish from the strip. Store writes reach the
 disk (`fsync`) before the temp file is renamed into place. A `credential_vault.read` result never
 enters `chat-transcripts/` or the Antigravity transcript copies: the model receives the values,
 and the transcript's tool row keeps `[credential values withheld from the record]`.
