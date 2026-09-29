@@ -1,11 +1,14 @@
 import type { IpcMain } from 'electron'
-import { BrowserWindow, session } from 'electron'
+import { join } from 'node:path'
+import { app, BrowserWindow, session } from 'electron'
 import { CHAT_PROVIDERS } from '../shared/chat-providers.js'
 import type { ModelsEvent } from '../shared/model-settings.js'
 import type { ToolsEvent } from '../shared/tools.js'
 import { IPC, type IpcEventChannel, type IpcEventChannels } from '../shared/ipc-channels.js'
 import { registerWindowIpc } from './window-ipc.js'
 import { registerAppWindowsIpc } from './windows/ipc.js'
+import { registerWallpaperIpc } from './wallpapers/ipc.js'
+import { WallpaperUploadStore } from './wallpapers/upload-store.js'
 import { registerBrowserCoreIpc } from './browser-core-ipc.js'
 import { registerBrowserDownloadsIpc } from './browser-downloads-ipc.js'
 import { registerSavedSitesIpc } from './saved-sites-ipc.js'
@@ -68,6 +71,8 @@ export function mainCookieImportDeps(reg: MainIpcRegistration): CookieImportDeps
 
 export function registerMainProcessIpc(reg: MainIpcRegistration): void {
   registerWindowIpc(reg.ipcMain, (event) => BrowserWindow.fromWebContents(event.sender))
+  let wallpapers: WallpaperUploadStore | null = null
+  registerWallpaperIpc(reg.ipcMain, () => wallpapers ??= new WallpaperUploadStore(join(app.getPath('userData'), 'wallpapers')))
   registerAppWindowsIpc(reg.ipcMain, reg.windows)
   registerBrowserCoreIpc(reg.ipcMain, reg.browserService, reg.savedSites, (sender) => reg.windows()?.isMain(sender) ?? true)
   registerBrowserDownloadsIpc(reg.ipcMain, reg.browserDownloads)
