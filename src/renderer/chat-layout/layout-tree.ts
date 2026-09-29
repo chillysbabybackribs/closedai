@@ -167,7 +167,15 @@ export function layoutGeometry(tree: ChatLayout, width: number, height: number, 
 
 /** A view pinned to one chat; unpinned views follow their tile and are absent here. */
 export type ViewScopes = Record<string, { pinnedChatId: string }>
-export type SavedChatLayout = { tree: ChatLayout | null; browserVisible: boolean; views?: ViewScopes }
+export type SavedChatLayout = {
+  tree: ChatLayout | null
+  browserVisible: boolean
+  views?: ViewScopes
+  /** The chat this window last had focused; main's one selection names only the window in front. */
+  focused?: string
+  /** The maximized window (a tile or one of its tabs), which fills the canvas until Escape. */
+  maximized?: string
+}
 // Keyed by the main window's space (a project folder for spaces made before space ids); a detached
 // window keeps its own layout for the project beside the main window's.
 const storageKey = (key: string, windowId?: string): string =>
@@ -222,8 +230,14 @@ export function readLayout(storage: Pick<Storage, 'getItem'>, key: string, windo
     }
     if (!raw || !(raw.tree === null || validate(raw.tree)) || typeof raw.browserVisible !== 'boolean') return fallback
     const views = validViewScopes(raw.views, chats)
-    return Object.keys(views).length ? { tree: raw.tree, browserVisible: raw.browserVisible, views }
-      : { tree: raw.tree, browserVisible: raw.browserVisible }
+    const focused = typeof raw.focused === 'string' && chats.has(raw.focused) && !isViewTabId(raw.focused) ? raw.focused : null
+    const maximized = typeof raw.maximized === 'string' && (chats.has(raw.maximized) || raw.maximized === BROWSER_PANE_ID) ? raw.maximized : null
+    return {
+      tree: raw.tree, browserVisible: raw.browserVisible,
+      ...(Object.keys(views).length ? { views } : {}),
+      ...(focused ? { focused } : {}),
+      ...(maximized ? { maximized } : {})
+    }
   } catch { return fallback }
 }
 

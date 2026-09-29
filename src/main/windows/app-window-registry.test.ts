@@ -42,25 +42,28 @@ class FakeWindow {
   }
 }
 
-function harness(records: ConstructorParameters<typeof AppWindowRegistry>[0]['store'] = AppWindowStore.inMemory()) {
+function harness(records: ConstructorParameters<typeof AppWindowRegistry>[0]['store'] = AppWindowStore.inMemory(), selectedChat: string | null = null) {
   const opened = new Map<string, FakeWindow>()
+  const activated = new Map<string, boolean>()
   const forgotten: string[] = []
   const released: string[] = []
   let cwd = '/project'
   const registry = new AppWindowRegistry({
     store: records,
-    openWindow: (id) => {
+    openWindow: (id, activate) => {
       const window = new FakeWindow()
       opened.set(id, window)
+      activated.set(id, activate)
       return window as unknown as RegistryWindow
     },
     forgetPlacement: (id) => { forgotten.push(id) },
     releaseChats: (id) => { released.push(id) },
-    workspaceCwd: () => cwd
+    workspaceCwd: () => cwd,
+    selectedChat: () => selectedChat
   })
   const main = new FakeWindow()
   registry.attachMain(main as unknown as RegistryWindow)
-  return { registry, main, opened, forgotten, released, store: records, setCwd: (next: string) => { cwd = next } }
+  return { registry, main, opened, activated, forgotten, released, store: records, setCwd: (next: string) => { cwd = next } }
 }
 
 const paneEvent = (paneId: string): ChatWorkspaceEvent => ({ type: 'pane', paneId, event: { type: 'turn', turnId: 't' } } as ChatWorkspaceEvent)
@@ -72,6 +75,15 @@ test('detaching moves the tabs into a new window that opens with them', () => {
   assert.deepEqual(registry.context(opened.get(id)!.webContents), { id, main: false, cwd: '/project', initialTabs: ['b'] })
   assert.deepEqual(registry.list().map((entry) => [entry.id, entry.tabIds]), [['main', ['a']], [id, ['b']]])
   assert.deepEqual(store.list(), [{ id, cwd: '/project', tabIds: ['b'] }])
+})
+
+test('at launch only the reopened window holding the selected chat takes focus', () => {
+  const store = AppWindowStore.inMemory()
+  store.put({ id: 'w1', cwd: '/project', tabIds: ['a'] })
+  store.put({ id: 'w2', cwd: '/project', tabIds: ['b', 'c'] })
+  const { registry, activated } = harness(store, 'c')
+  registry.restore('/project')
+  assert.deepEqual([...activated], [['w1', false], ['w2', true]])
 })
 
 test('detaching refuses a stale project', () => {

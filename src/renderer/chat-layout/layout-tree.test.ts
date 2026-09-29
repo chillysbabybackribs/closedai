@@ -138,3 +138,13 @@ test('layout persistence is project-scoped and browser visibility is independent
   const duplicate = { kind: 'split', id: 's', ratio: 0.5, axis: 'horizontal', first: { kind: 'pane', id: 'a' }, second: { kind: 'pane', id: 'a' } }
   assert.equal(readLayout({ getItem: () => JSON.stringify({ tree: duplicate, browserVisible: true }) }, '/a').tree, null)
 })
+
+test('a saved layout keeps its focused chat and maximized window while they are still in the tree', () => {
+  const values = new Map<string, string>()
+  const storage = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value) } }
+  const tree = withBrowser(dockPane({ kind: 'pane', id: 'a' }, 'b', 'a', 'right', 'ab'))
+  saveLayout(storage, '/p', { tree, browserVisible: true, focused: 'b', maximized: 'a' })
+  assert.deepEqual(readLayout(storage, '/p'), { tree, browserVisible: true, focused: 'b', maximized: 'a' })
+  saveLayout(storage, '/p', { tree, browserVisible: true, focused: 'gone', maximized: BROWSER_PANE_ID })
+  assert.deepEqual(readLayout(storage, '/p'), { tree, browserVisible: true, maximized: BROWSER_PANE_ID })
+})

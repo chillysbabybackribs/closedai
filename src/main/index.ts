@@ -239,10 +239,11 @@ async function main(): Promise<void> {
   }))
   windows = new AppWindowRegistry({
     store: windowStore,
-    openWindow: (id) => openDetachedWindow(id, { openLinkInNewTab: (url) => browserService?.openNewTab(url, false) }),
+    openWindow: (id, activate) => openDetachedWindow(id, { openLinkInNewTab: (url) => browserService?.openNewTab(url, false) }, activate),
     forgetPlacement: (id) => BaseWindow.clearPersistedState(`detached-${id}`),
     releaseChats: (id) => chatService?.releaseWindow(id),
     workspaceCwd: () => chatWorkspace,
+    selectedChat: () => settings?.get().chatSelectedPaneId ?? null,
     display: (bounds) => {
       const display = screen.getDisplayMatching(bounds)
       return { id: display.id, label: display.label }

@@ -49,10 +49,12 @@ export type AppWindowFrame = {
   /** Used only when no state was persisted under `name`. */
   x?: number
   y?: number
+  /** False shows the window without taking focus from the one in front. */
+  activate?: boolean
 }
 
 /** A frameless app-shell window; the renderer draws its own title bar and window controls. */
-export function createAppWindow(actions: MainWindowActions, frame: AppWindowFrame): BrowserWindow {
+export function createAppWindow(actions: MainWindowActions, { activate = true, ...frame }: AppWindowFrame): BrowserWindow {
   const icon = loadAppIcon()
   const window = new BrowserWindow({
     ...frame,
@@ -74,7 +76,8 @@ export function createAppWindow(actions: MainWindowActions, frame: AppWindowFram
   window.once('ready-to-show', () => {
     if (window.isDestroyed()) return
     if (icon) window.setIcon(icon)
-    window.show()
+    if (activate) window.show()
+    else window.showInactive()
   })
 
   installAppContextMenu(window.webContents, Menu, actions)

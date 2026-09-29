@@ -17,13 +17,15 @@ export type RegistryWindow = Pick<BrowserWindow,
 
 export type AppWindowRegistryDeps = {
   store: AppWindowStore
-  /** Create and start loading a detached window's renderer. */
-  openWindow: (id: AppWindowId) => RegistryWindow
+  /** Create and start loading a detached window's renderer; an inactive one shows without taking focus. */
+  openWindow: (id: AppWindowId, activate: boolean) => RegistryWindow
   /** Drop the placement Electron persisted for a window the user closed for good. */
   forgetPlacement: (id: AppWindowId) => void
   /** Stop counting a closed window's chats as visible. */
   releaseChats: (id: AppWindowId) => void
   workspaceCwd: () => string
+  /** The chat selected when the app last quit; the window holding it is the one that takes focus. */
+  selectedChat?: () => string | null
   display?: (bounds: Rectangle) => { id: number; label: string } | null
 }
 
@@ -67,12 +69,17 @@ export class AppWindowRegistry {
     })
   }
 
-  /** Reopen the saved detached windows of this project that are not already open. */
+  /**
+   * Reopen the saved detached windows of this project that are not already open. Only the one
+   * holding the selected chat takes focus: a window that takes focus claims the selection, so the
+   * rest showing inactive keeps the chat and window the user left in front.
+   */
   restore(cwd: string): void {
     this.observedCwd = cwd
+    const selected = this.deps.selectedChat?.() ?? null
     for (const record of this.deps.store.list()) {
       if (record.cwd !== cwd || this.entries.has(record.id)) continue
-      this.open(record.id, record.cwd, record.tabIds)
+      this.open(record.id, record.cwd, record.tabIds, selected !== null && record.tabIds.includes(selected))
     }
   }
 
@@ -143,7 +150,7 @@ export class AppWindowRegistry {
     for (const id of tabs) from.visible.delete(id)
     const id = randomUUID()
     this.deps.store.put({ id, cwd, tabIds: tabs })
-    this.open(id, cwd, tabs)
+    this.open(id, cwd, tabs, true)
     return id
   }
 
@@ -194,8 +201,8 @@ export class AppWindowRegistry {
     for (const entry of targets) deliver(entry, IPC.event.chatEvent, event)
   }
 
-  private open(id: AppWindowId, cwd: string, tabs: string[]): void {
-    const window = this.deps.openWindow(id)
+  private open(id: AppWindowId, cwd: string, tabs: string[], activate: boolean): void {
+    const window = this.deps.openWindow(id, activate)
     const entry = this.track(id, false, cwd, window, tabs)
     window.on('close', () => {
       if (entry.keep || this.shuttingDown) return
