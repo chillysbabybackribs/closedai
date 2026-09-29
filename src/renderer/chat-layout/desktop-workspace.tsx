@@ -113,7 +113,7 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, on
   const renderPaneRef = useRef<(id: string, visible: boolean) => ReactElement>(() => null as unknown as ReactElement)
   renderPaneRef.current = (id: string, visible: boolean) => {
     const view = parseViewTab(id)
-    if (view?.kind === 'note') return <NotepadView tabId={view.id} />
+    if (view?.kind === 'note') return <NotepadView tabId={view.id} active={visible} />
     if (view) return <WorkspaceViewHost viewId={view.id} kind={view.kind} />
     return <WorkspaceChat paneId={id} dispatch={dispatch} appearance={appearance} panelVisible={visible}
       onContinueInNewChat={() => continueChatRef.current(id)}

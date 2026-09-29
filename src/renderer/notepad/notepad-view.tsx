@@ -15,8 +15,9 @@ const NOTES_MENU_LIMIT = 30
 /**
  * A note tab's body: the editor, the status line under it, and the window's chat floating over
  * the notes. Everything a window shares (its chat, its tabs) is read from the tile it lives in.
+ * Every tab of a tile stays mounted; only the one in front speaks for the window (`active`).
  */
-export function NotepadView({ tabId }: { tabId: string }): JSX.Element | null {
+export function NotepadView({ tabId, active }: { tabId: string; active: boolean }): JSX.Element | null {
   const host = useContext(NotepadHostContext)
   const noteId = noteIdOfTab(tabId)
   const notes = useNotes()
@@ -30,9 +31,9 @@ export function NotepadView({ tabId }: { tabId: string }): JSX.Element | null {
 
   // Main reads which notes the window's chat is about when a turn is sent and when a tool runs.
   useEffect(() => {
-    if (!chatId || !noteId) return
+    if (!chatId || !noteId || !active) return
     void window.closedai.notes.bind({ chatPaneId: chatId, noteIds: windowKey.split('\0').filter(Boolean), activeNoteId: noteId })
-  }, [chatId, noteId, windowKey])
+  }, [active, chatId, noteId, windowKey])
   // The chat card sizes itself from the notes it floats over, as the quick chat does from the page.
   useLayoutEffect(() => {
     if (!root) return
@@ -56,9 +57,9 @@ export function NotepadView({ tabId }: { tabId: string }): JSX.Element | null {
   return <section ref={setRoot} className="notepad-view" data-ui="view.note" data-ui-key={tabId} aria-label={`Note ${title(noteId)}`}
     onKeyDown={onKeyDown}>
     <div className="notepad-body" style={style}>
-      <NoteEditor key={noteId} noteId={noteId} focusOnOpen onCaret={setCaret} onError={host.onError} />
-      <NotepadChat host={host} tabId={tabId} noteId={noteId} windowNoteIds={windowNoteIds} chatId={chatId}
-        noteTitle={title} root={root} />
+      <NoteEditor key={noteId} noteId={noteId} active={active} onCaret={setCaret} onError={host.onError} />
+      {active ? <NotepadChat host={host} tabId={tabId} noteId={noteId} windowNoteIds={windowNoteIds} chatId={chatId}
+        noteTitle={title} root={root} /> : null}
     </div>
     <NotepadStatus host={host} tabId={tabId} noteId={noteId} caret={caret} notes={notes} windowNoteIds={windowNoteIds} />
   </section>

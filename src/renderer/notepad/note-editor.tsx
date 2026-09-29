@@ -8,9 +8,10 @@ export type NoteCaret = { line: number; column: number; lines: number; chars: nu
  * The editor for one note. The buffer outlives the component (see note-sessions.ts), so this
  * only attaches a view to it, lands the caret in it, and reports where the caret is.
  */
-export function NoteEditor({ noteId, focusOnOpen, onCaret, onError }: {
+export function NoteEditor({ noteId, active, onCaret, onError }: {
   noteId: string
-  focusOnOpen: boolean
+  /** The tab is in front: the caret lands here when it comes forward. */
+  active: boolean
   onCaret: (caret: NoteCaret) => void
   onError: (reason: unknown) => void
 }): JSX.Element {
@@ -20,6 +21,9 @@ export function NoteEditor({ noteId, focusOnOpen, onCaret, onError }: {
   caretRef.current = onCaret
   const errorRef = useRef(onError)
   errorRef.current = onError
+  const activeRef = useRef(active)
+  activeRef.current = active
+  const [view, setView] = useState<EditorView | null>(null)
 
   useEffect(() => {
     let disposed = false
@@ -32,13 +36,13 @@ export function NoteEditor({ noteId, focusOnOpen, onCaret, onError }: {
         parent: host.current,
         dispatchTransactions: (transactions, target) => {
           target.update(transactions)
-          if (transactions.some((transaction) => transaction.docChanged || transaction.selection)) report(target)
+          if (activeRef.current && transactions.some((transaction) => transaction.docChanged || transaction.selection)) report(target)
         }
       })
       session.view = view
       attached = { session, view }
+      setView(view)
       report(view)
-      if (focusOnOpen) view.focus()
     }, (reason: unknown) => errorRef.current(reason))
     const report = (view: EditorView): void => {
       const { state } = view
@@ -49,6 +53,7 @@ export function NoteEditor({ noteId, focusOnOpen, onCaret, onError }: {
     }
     return () => {
       disposed = true
+      setView(null)
       if (!attached) return
       const { session, view } = attached
       session.state = view.state
@@ -56,8 +61,16 @@ export function NoteEditor({ noteId, focusOnOpen, onCaret, onError }: {
       view.destroy()
       void session.sync.flush()
     }
-    // focusOnOpen only matters for the first attach of this note.
   }, [noteId])
+  // Coming forward (or opening in front) puts the caret back in the note.
+  useEffect(() => {
+    if (!active || !view) return
+    view.focus()
+    const { state } = view
+    const line = state.doc.lineAt(state.selection.main.head)
+    caretRef.current({ line: line.number, column: state.selection.main.head - line.from + 1, lines: state.doc.lines,
+      chars: state.doc.length, selected: 0 })
+  }, [active, view])
 
   return missing
     ? <div className="notepad-missing">This note was deleted.</div>
