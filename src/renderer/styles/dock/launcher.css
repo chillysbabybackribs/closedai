@@ -25,10 +25,12 @@
 
 :root[data-backdrop] .dock-launcher,
 :root[data-backdrop] .dock-launcher-submenu {
-  background: var(--glass-rail-bottom);
+  /* Radix positions menus with a transformed wrapper, which makes fixed image
+     backgrounds fit the popup instead of the viewport. Sample the actual backdrop. */
+  background: rgb(var(--glass-ink) / 68%);
   border-color: var(--glass-edge);
   box-shadow: inset 0 1px 0 var(--glass-sheen), 0 -8px 24px rgb(0 0 0 / 38%);
-  backdrop-filter: none;
+  backdrop-filter: blur(24px);
 }
 
 .dock-launcher [data-slot='dropdown-menu-sub-trigger'] {

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { EventEmitter } from 'node:events'
 import test from 'node:test'
 
+import type { AgentRun } from '../shared/agent-runs.ts'
 import type { ChatWorkspaceSnapshot } from '../shared/chat-peers.ts'
 import type { ChatSnapshot, ChatThreadSummary } from '../shared/chat.ts'
 import { AppCommandAccess } from './app-commands.ts'
@@ -318,4 +319,31 @@ test('a tab a chat opens for its own work is selected, like one the user opens',
     ['newTabToRight', '1', true],
     ['duplicateTab', '1', true]
   ])
+})
+
+test('finish pauses the caller\'s own running run without interrupting its turn', async () => {
+  const workspace = new FakeWorkspace()
+  const paneId = workspace.snapshot().selectedPaneId
+  const pauses: unknown[] = []
+  let status: 'running' | 'paused' | null = 'running'
+  const runs = {
+    get: () => status ? { status } as AgentRun : null,
+    startRun: async () => { throw new Error('unused') },
+    pauseRun: async (chatId: string, reason: string, options?: { interrupt?: boolean }) => {
+      pauses.push([chatId, reason, options])
+      status = 'paused'
+      return { status, reason } as AgentRun
+    },
+    resumeRun: async () => null,
+    stopRun: async () => {}
+  }
+  const host = new AppCommandAccess({
+    chat: () => workspace, browser: () => browser(), downloads: () => ({ list: () => [] }), window: () => null, agentRuns: () => runs
+  })
+  const finished = await host.agentRun({ op: 'finish', paneId, summary: ' ledger complete ' })
+  assert.equal(finished?.reason, 'Finished: ledger complete')
+  assert.deepEqual(pauses, [[paneId, 'Finished: ledger complete', undefined]])
+  await assert.rejects(host.agentRun({ op: 'finish', paneId, summary: 'again' }), /no running agent run/)
+  status = null
+  await assert.rejects(host.agentRun({ op: 'finish', paneId, summary: 'none' }), /no running agent run/)
 })

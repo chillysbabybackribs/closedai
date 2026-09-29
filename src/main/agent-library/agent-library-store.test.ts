@@ -3,7 +3,7 @@ import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
-import { BUILT_IN_AGENTS } from '../../shared/agent-library.js'
+import { BUILT_IN_AGENTS, LEGACY_BUILT_IN_KEYS } from '../../shared/agent-library.js'
 import { AgentLibraryStore } from './agent-library-store.js'
 
 async function scratch(): Promise<string> {
@@ -13,14 +13,29 @@ async function scratch(): Promise<string> {
 test('a first open seeds the built-in agents and writes them; a later open keeps the file as is', async () => {
   const file = await scratch()
   const store = await AgentLibraryStore.open(file)
-  assert.deepEqual(store.list().map((agent) => agent.name), BUILT_IN_AGENTS.map((agent) => agent.name))
+  assert.deepEqual(store.list().map((agent) => agent.name).sort(), BUILT_IN_AGENTS.map((agent) => agent.name).sort())
   const persisted = JSON.parse(await readFile(file, 'utf8')) as { version: number; agents: unknown[] }
   assert.equal(persisted.version, 1)
   assert.equal(persisted.agents.length, BUILT_IN_AGENTS.length)
-  store.remove(store.list()[0]!.id)
+  for (const agent of store.list()) store.remove(agent.id)
   await store.flush()
   const reopened = await AgentLibraryStore.open(file)
   assert.deepEqual(reopened.list(), [], 'an emptied library is the user\'s choice, not a reason to re-seed')
+})
+
+test('a library from before a built-in shipped is offered it once; deleting it sticks', async () => {
+  const file = await scratch()
+  await writeFile(file, JSON.stringify({ version: 1, agents: [{ id: 'mine', name: 'Mine', prompt: 'Go.', createdAt: 5 }] }))
+  const store = await AgentLibraryStore.open(file)
+  const added = BUILT_IN_AGENTS.filter((agent) => !LEGACY_BUILT_IN_KEYS.includes(agent.key)).map((agent) => agent.name)
+  assert.ok(added.length > 0)
+  assert.deepEqual(store.list().map((agent) => agent.name).sort(), ['Mine', ...added].sort(), 'legacy built-ins are not re-added')
+  for (const agent of store.list()) if (agent.name !== 'Mine') store.remove(agent.id)
+  await store.flush()
+  const persisted = JSON.parse(await readFile(file, 'utf8')) as { offered: string[] }
+  assert.deepEqual(persisted.offered.sort(), BUILT_IN_AGENTS.map((agent) => agent.key).sort())
+  const reopened = await AgentLibraryStore.open(file)
+  assert.deepEqual(reopened.list().map((agent) => agent.name), ['Mine'])
 })
 
 test('save, update, recordRun and remove keep the list ordered by last use and announce changes', async () => {
@@ -48,7 +63,7 @@ test('save, update, recordRun and remove keep the list ordered by last use and a
   store.recordRun('missing')
   store.remove(triage.id)
   assert.equal(store.get(triage.id), null)
-  assert.deepEqual(changes, [2, 2, 2, 1])
+  assert.deepEqual(changes, [BUILT_IN_AGENTS.length + 1, BUILT_IN_AGENTS.length + 1, BUILT_IN_AGENTS.length + 1, BUILT_IN_AGENTS.length])
 })
 
 test('saving refuses a blank name or blank instructions', async () => {
@@ -59,9 +74,9 @@ test('saving refuses a blank name or blank instructions', async () => {
   assert.throws(() => store.update(repair.id, { name: '' }), /name/)
 })
 
-test('a malformed file starts clean without re-seeding, and broken entries are dropped on read', async () => {
+test('a malformed file starts clean, and broken entries are dropped on read', async () => {
   const file = await scratch()
-  await writeFile(file, JSON.stringify({ version: 1, agents: [
+  await writeFile(file, JSON.stringify({ version: 1, offered: BUILT_IN_AGENTS.map((agent) => agent.key), agents: [
     { id: 'ok', name: 'Kept', prompt: 'Do it.', maxCycles: 'many', createdAt: 5, runCount: -1 },
     { id: 'no-name', name: '', prompt: 'x' },
     'junk'
@@ -70,5 +85,5 @@ test('a malformed file starts clean without re-seeding, and broken entries are d
   assert.deepEqual(store.list().map((agent) => [agent.name, agent.maxCycles, agent.updatedAt, agent.runCount]), [['Kept', null, 5, 0]])
   await writeFile(file, '{not json')
   const clean = await AgentLibraryStore.open(file)
-  assert.deepEqual(clean.list().map((agent) => agent.name), BUILT_IN_AGENTS.map((agent) => agent.name), 'unreadable counts as first open')
+  assert.deepEqual(clean.list().map((agent) => agent.name).sort(), BUILT_IN_AGENTS.map((agent) => agent.name).sort(), 'unreadable counts as first open')
 })

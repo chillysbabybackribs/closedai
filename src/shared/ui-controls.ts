@@ -14,7 +14,7 @@ export const UI_CONTROLS = {
   'titlebar.chat-search-resume': 'Resume a paused chat without opening it; item is the chat id',
   'titlebar.chat-search-delete': 'Delete a chat from history immediately without confirmation; item is the chat id',
   'titlebar.menu': 'Application menu tab; item is file, view, agent, or developer',
-  'titlebar.menu-item': 'Application menu row; item is its stable key, for example new-chat, tools, compact-context, stop-turn, turn-trace, reload-renderer, toggle-devtools',
+  'titlebar.menu-item': 'Application menu row; item is its stable key, for example new-chat, tools, compact-context, stop-turn, turn-trace, reload-renderer, toggle-devtools; closedai_app.menu runs the same row by key in one call without opening the menu',
   'window.minimize': 'Minimize the window',
   'window.maximize': 'Maximize or restore the window',
   'window.close': 'Close the window',

@@ -2,7 +2,7 @@ import { EventEmitter } from 'node:events'
 import { readFile } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
 import {
-  BUILT_IN_AGENTS, cleanAgentName, cleanMaxCycles, normalizeSavedAgent,
+  BUILT_IN_AGENTS, LEGACY_BUILT_IN_KEYS, cleanAgentName, cleanMaxCycles, normalizeSavedAgent,
   type SavedAgent, type SavedAgentDraft, type SavedAgentPatch
 } from '../../shared/agent-library.js'
 import { AGENT_RUN_MAX_PROMPT_CHARS } from '../../shared/agent-runs.js'
@@ -10,11 +10,14 @@ import { writeAtomic } from '../atomic-write.js'
 
 // The agents the user built and kept, one small file beside the other user stores. A missing
 // file is a first open and gets the built-in entries; a present file, even an emptied one, is
-// the user's and is never re-seeded. Same atomic-write + debounce discipline as SavedSitesStore.
+// the user's and is never re-seeded; a built-in shipped later is offered to it once, and `offered`
+// remembers that so deleting it sticks. Same atomic-write + debounce discipline as SavedSitesStore.
 
 type PersistedAgentLibrary = {
   version: 1
   agents: SavedAgent[]
+  /** Built-in keys this library has been offered. */
+  offered: string[]
 }
 
 const WRITE_DEBOUNCE_MS = 250
@@ -34,10 +37,14 @@ export class AgentLibraryStore extends EventEmitter {
   }
 
   static async open(filePath: string, now: () => number = () => Date.now()): Promise<AgentLibraryStore> {
-    const state = await readAgentLibrary(filePath)
-    if (state) return new AgentLibraryStore(filePath, state, now)
-    const store = new AgentLibraryStore(filePath, { version: 1, agents: [] }, now)
-    for (const draft of BUILT_IN_AGENTS) store.insert(draft)
+    const state = await readAgentLibrary(filePath) ?? { version: 1, agents: [], offered: [] }
+    const store = new AgentLibraryStore(filePath, state, now)
+    const fresh = BUILT_IN_AGENTS.filter((draft) => !state.offered.includes(draft.key))
+    if (fresh.length === 0) return store
+    for (const draft of fresh) {
+      store.insert(draft)
+      state.offered.push(draft.key)
+    }
     await store.flush()
     return store
   }
@@ -139,14 +146,17 @@ function requirePrompt(prompt: unknown): string {
   return clean
 }
 
-type MaybePersisted = { version?: unknown; agents?: unknown }
+type MaybePersisted = { version?: unknown; agents?: unknown; offered?: unknown }
 
 async function readAgentLibrary(filePath: string): Promise<PersistedAgentLibrary | null> {
   try {
     const parsed = JSON.parse(await readFile(filePath, 'utf8')) as MaybePersisted
     if (parsed.version !== 1 || !Array.isArray(parsed.agents)) return null
     const agents = parsed.agents.map(normalizeSavedAgent).filter((agent): agent is SavedAgent => agent !== null)
-    return { version: 1, agents }
+    const offered = Array.isArray(parsed.offered)
+      ? parsed.offered.filter((key): key is string => typeof key === 'string')
+      : [...LEGACY_BUILT_IN_KEYS]
+    return { version: 1, agents, offered }
   } catch (error) {
     const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : ''
     if (code !== 'ENOENT') console.warn('Unable to read the agent library; starting clean', error)

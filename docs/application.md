@@ -540,8 +540,11 @@ emptied library shows an empty state with New agent. **Build** (its back control
 returns to the Library and keeps an unsaved draft for the session) is the editor: a name (`agents.name`), a
 max-cycles cap (`agents.max-cycles`, blank runs until paused), and the standing instructions
 (`agents.prompt`). The library (`src/main/agent-library/`, `agent-library.json`) is user-owned
-and never pruned; a first open seeds it with the built-in repair agent (`BUILT_IN_AGENTS` in
-`src/shared/agent-library.ts`), and an emptied library stays empty. **Save** (`agents.save`)
+and never pruned; a first open seeds it with the built-in agents (`BUILT_IN_AGENTS` in
+`src/shared/agent-library.ts`: the repair agent and the UI coverage agent), and an emptied library stays empty. Each
+built-in has a stable key; the file's `offered` list records which keys the library has been given, so a built-in
+shipped later is added to an existing library once and deleting it sticks (a file without `offered` counts as
+offered the repair agent). **Save** (`agents.save`)
 keeps a new entry or the loaded one's edits; **Delete** (`agents.delete`) removes the loaded
 entry and returns to the Library. **Start** (`agents.start`, also returning to the Library) docks a new chat and starts an **agent run** on it
 (`agentRuns.start`) using the launching pane's model and folder. The run records the library
@@ -579,8 +582,20 @@ pending credential approval (`agents.review`), **Pause**/**Resume**/**Stop** (`a
 reveals it as a tab in the workspace. An empty Runs screen offers New agent. Starting a run
 still adds its chat as a tab. Models drive runs in other panes
 with `closedai_app.agent` (`start` with a standing prompt attaches the same loop to an
-existing chat; `pause`, `resume`, `stop`). `closedai_app.state` reports the run under
-`chat.agentRun`. There is no collapsed mode;
+existing chat; `pause`, `resume`, `stop`), and a run ends itself with `finish`, which pauses it
+with `Finished: <summary>`. `closedai_app.state` reports the run under
+`chat.agentRun`.
+
+The **UI coverage agent** (built-in, 80-cycle cap) exercises every model-runnable menu row and
+every `data-ui` manifest control the way a model would and records what each cost. Its memory is
+the coverage ledger, `npm run ui-coverage -- next|record|status|reopen`
+(`scripts/ui-coverage/`): jobs are derived on every read from `MODEL_MENU_KEYS` and
+`UI_CONTROLS`, so they cannot go stale, and only results (status, cheapest path, tool calls,
+note, fix) are stored, in the checkout's gitignored `.closedai/ui-coverage.json`. A menu job's
+budget is one `closedai_app.menu` call and a control job's is three calls; failures and
+over-budget results form the backlog `status` prints. Controls whose description deletes, clears,
+resets, or closes something are marked `caution`. When `next` reports COMPLETE the agent reports
+the backlog and calls `finish`. There is no collapsed mode;
 pending attachment chips sit above the line inside the card. The setup trigger opens a
 fixed-height panel (520px, or less when the pane is shorter), top to bottom: a Context line
 (`composer.context`; used/window tokens, the first plan window, a meter) that expands to the
@@ -752,7 +767,9 @@ the overview does: in the main window, once a chat is selected.
 Left: **Launcher** (`dock.launcher`) opens a compact menu joined flush to the footer's top edge,
 with square bottom corners and a full-height footer trigger, using the
 workspace card surface and existing menu styling. With wallpaper enabled, the menu and its
-submenus use the footer's pre-blurred wallpaper and brightness-adjusted tint (`--glass-rail-bottom`).
+submenus use a dark translucent tint and live backdrop blur, picking up the local wallpaper or
+window content directly beneath each menu. This avoids fitting the whole wallpaper into the
+transformed positioning wrapper used by the popup.
 Initially only Home, File, View, Agent, and Developer appear. Hovering or clicking a category
 (`dock.launcher-section`) opens its actions in a side submenu. Home offers common actions;
 the other categories retain the former header menu actions, separators, and eligibility rules.
