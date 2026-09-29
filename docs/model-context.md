@@ -38,6 +38,12 @@ their native turn input. A browser-related message can receive a timestamped amb
 fragment from `buildTurnAdditionalContext`. It is labeled `untrusted` and marks relevance as
 undetermined. Ordinary coding turns receive no automatic browser snapshot.
 
+A notepad window's chat instead receives `closedai.notepad` (`kind: untrusted`, `contextRole:
+subject`) on every turn: the active note with numbered lines (whole up to 12,000 characters and 400
+lines, else its first 120 lines with a pointer to `notes.read`), its revision, and the window's other
+tabs by title and length. Sending pins the turn to that note, so `notes` tools that name no note
+edit it even after the user switches tabs.
+
 Explicit conversation continuation, branching, provider switching, project switching, and
 session rotation may carry a bounded handoff or compacted seed. Those fragments contain
 historical user and assistant text; they are labeled untrusted and are not fresh user

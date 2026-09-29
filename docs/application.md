@@ -1128,11 +1128,12 @@ Closed, the layer is a round button (`browser.quick-chat`). While its chat runs,
 a progress ring and the name of the site the browser shows (`quickChat` view `site`, from the active
 tab's address); a turn that ends while the chat is closed leaves "Done on espn.com" beside it until
 the chat is opened. Open, it is the chat's own `ChatPane` in a card with two shapes. Whole is the
-chat under a header with shrink `browser.quick-chat-compact` (once there is a transcript), a menu
-`browser.quick-chat-menu` holding **Clear chat** `browser.quick-chat-new` (disabled while a task
-runs), and hide `browser.quick-chat-close`. Compact is the composer under one status line, such as
+chat under a header with shrink `quick-chat.compact` (once there is a transcript), a menu
+`quick-chat.menu` holding **Clear chat** `quick-chat.new` (disabled while a task
+runs), and hide `quick-chat.close`; these card controls are shared with notepad windows and carry the
+surface (`browser` or `notepad`) as their `data-ui-key`. Compact is the composer under one status line, such as
 "Working on espn.com · Opened espn.com" (`quick-chat-feed.ts`: the turn's latest step in plain words
-from `feed-phrase.ts`), with expand `browser.quick-chat-expand` and hide; once the turn ends the line
+from `feed-phrase.ts`), with expand `quick-chat.expand` and hide; once the turn ends the line
 reads "Done on …" with a two-line preview of the reply. While the task runs, the whole card's header
 carries a turning mark before the title and the step under way ("Thinking", "Opening espn.com") with
 how long the task has run (`run-clock.ts`); the compact line carries the same clock, so a quiet stretch
@@ -1161,6 +1162,42 @@ search, or Start (`activateTab`) shows the browser with the card open. **Clear c
 previous one through `closePeer`, which leaves a used chat in history and discards a blank one. The
 layer's controls live in its own page, so `closedai_app.ui` (which drives the main window's page) does
 not reach them.
+
+### Notepad
+
+A notepad window (`src/renderer/notepad/`) is an ordinary tile whose tabs are notes
+(`closedai:view:note:<noteId>`, view kind `note`), so it floats, snaps, minimizes, tears off, and
+restores like any window. It opens from the dock's **Notes** icon (`dock.app` `note`), View →
+**Notepad**, or Ctrl+Shift+N: the open notepad window comes forward, else the latest note opens in a
+new floating window, else a new note does. **New** (`notepad.new`) and the **Notes** menu
+(`notepad.notes`: other notes, and **Delete this note**) sit in the status line under the editor with the
+caret position (`notepad.caret`). Tab titles are the note's first line until a note is named.
+
+Notes are buffers, not files: main's `NotesStore` (`src/main/notes/notes-store.ts`) keeps each
+note's text as `<userData>/notes/<id>.txt` beside an `index.json`, written atomically after a
+250 ms debounce, so typing saves on its own and untitled notes survive a restart. An empty note
+whose tab closes (and is open in no other window) is removed. The editor (`notepad.editor`) is
+CodeMirror 6 with line numbers, Ctrl+F search, undo, Markdown colouring, and list continuation on
+Enter; each note keeps one editing session for the window's life (`note-sessions.ts`), so undo
+and the caret survive tab switches. Saves name the revision the buffer was built on
+(`notes.save(id, text, baseRevision)`); a model edit that landed first makes main refuse the save,
+and its change event is rebased over the unsaved typing (`note-sync.ts`, CodeMirror change sets)
+before the buffer saves again, so neither side's work is lost. Lines a model wrote are tinted and
+marked in the gutter until the window's next task starts.
+
+Each notepad window has one chat, kept on its tile (`ChatLayout` pane `notepadChat`) and created
+unselected the first time its round button (`notepad.chat`) opens it, on the model notepad chats
+last used (`closedai.notepadChat.modelId`). The layout reports it visible like the browser's quick
+chat, and it floats over the notes with the same card (`QuickChatCard`, surface `notepad`). The
+tab in front tells main which notes the chat is about (`notes.bind`: the window's note ids and the
+active note). Every turn carries that note (see [model context](model-context.md)), and a turn
+pins the note it started on: switching tabs while it runs leaves the task there, shrinks a whole
+card to its status line, and shows "The task stays on <note>" with **Go to it**
+(`notepad.chat-go-to-task`). Otherwise the card changes shape only on its own controls. Ctrl+J
+while typing in a note toggles that window's chat (main's shortcut is routed to the focused
+notepad before the browser's quick chat; a detached window catches it in the renderer), and Esc
+hides the card only when pressed inside it. **Clear chat** starts a new chat for the window and
+sends the old one to History. Moving a note to another window leaves the chat behind.
 
 On Linux, startup disables accelerated video decode by default because affected driver stacks can
 accept and advance H.264 playback while compositing blank frames. This leaves GPU compositing and
