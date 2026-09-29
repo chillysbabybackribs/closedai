@@ -4,17 +4,18 @@
 
 const KEY = 'closedai.quickChat.modelId'
 
-export function readQuickChatModel(storage: Pick<Storage, 'getItem'>): string | null {
+/** `key` names another side chat's memory (a notepad window's chat keeps its own). */
+export function readQuickChatModel(storage: Pick<Storage, 'getItem'>, key = KEY): string | null {
   try {
-    return storage.getItem(KEY) || null
+    return storage.getItem(key) || null
   } catch {
     return null
   }
 }
 
-export function rememberQuickChatModel(storage: Pick<Storage, 'setItem'>, modelId: string): void {
+export function rememberQuickChatModel(storage: Pick<Storage, 'setItem'>, modelId: string, key = KEY): void {
   try {
-    storage.setItem(KEY, modelId)
+    storage.setItem(key, modelId)
   } catch {
     // Storage full or unavailable: the next quick chat falls back to the focused tile's model.
   }

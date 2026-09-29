@@ -73,6 +73,15 @@ export function withNotepadChat(tree: ChatLayout, tabId: string, chatId: string 
   })
 }
 
+/** A model's new note joins its chat's window behind the tab the user is on. */
+export function addNoteToChatWindow(tree: ChatLayout, chatId: string, noteId: string): ChatLayout {
+  const tab = noteTabId(noteId)
+  if (tabOwner(tree, tab)) return tree
+  const pane = panes(tree).find((node) => node.notepadChat === chatId)
+  if (!pane) return tree
+  return mapWindow(tree, pane.id, (node) => ({ ...node, tabs: [...(node.tabs ?? [node.id]), tab] }))
+}
+
 /** A window whose front tab is a note, preferring the one `near` belongs to. */
 function notepadTile(tree: ChatLayout, near: string | null): string | null {
   const owner = near ? tabOwner(tree, near) : null
