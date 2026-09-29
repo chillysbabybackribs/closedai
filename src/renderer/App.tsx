@@ -18,7 +18,7 @@ import { appShortcutForKey, escapePausesTask, targetRunningPaneId } from './app-
 import { AppStartup } from './app-startup.js'
 import { errorMessage } from './error-message.js'
 import { providerSupportsContextShrink } from './context-shrink-eligibility.js'
-import { TitlebarMenu, type MenuAction } from './titlebar-menu.js'
+import { TitlebarMenu, type MenuAction, type TitlebarMenuProps } from './titlebar-menu.js'
 import { DesktopWorkspace, type ChatLayoutHandle } from './chat-layout/desktop-workspace.js'
 import { ChatRenameDialog } from './chat-rename-dialog.js'
 import { SpacesStage, type SpacesHandle } from './spaces/spaces-stage.js'
@@ -234,22 +234,24 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
     }
   }, [history.newChat, report])
 
+  const applicationMenu: TitlebarMenuProps = {
+    chatZoom: appearance.chatZoom,
+    selectedChatTitle: selectedRow?.title ?? null,
+    compactEnabled,
+    stopEnabled: running,
+    onChatZoomChange: changeChatZoom,
+    onAction: menuAction,
+    onSearchChats: focusSearch,
+    layoutEnabled: Boolean(chat.selectedPaneId),
+    tileEnabled: windowsFloating,
+    onApplyLayoutPreset: (preset) => workspaceRef.current?.applyPreset(preset)
+  }
+
   return (
     <div className="shell" data-ui-surface="shell">
       <header className="shell-titlebar" aria-label="Window title bar">
         <TitlebarRail search={searchTools} />
-        <TitlebarMenu
-          chatZoom={appearance.chatZoom}
-          selectedChatTitle={selectedRow?.title ?? null}
-          compactEnabled={compactEnabled}
-          stopEnabled={running}
-          onChatZoomChange={changeChatZoom}
-          onAction={menuAction}
-          onSearchChats={focusSearch}
-          layoutEnabled={Boolean(chat.selectedPaneId)}
-          tileEnabled={windowsFloating}
-          onApplyLayoutPreset={(preset) => workspaceRef.current?.applyPreset(preset)}
-        />
+        {(!appWindow().main || !chat.selectedPaneId) && <TitlebarMenu {...applicationMenu} />}
         <div ref={setSearchTools} className="titlebar-search-tools">
           <HeaderChatSearch chats={chat.chats} controller={history} inputRef={searchRef} />
         </div>
@@ -267,7 +269,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
         {chat.selectedPaneId && !projectElsewhere && <SpacesStage ref={spacesRef} enabled={appWindow().main}
           workspace={chat.workspace ?? { cwd: chat.state.cwd, projectPath: null }} chats={chat.chats}
           selectedPaneId={chat.selectedPaneId}
-          dock={(nav) => <AppDock nav={nav} chats={chat.chats} chatTitle={selectedRow?.title ?? null}
+          dock={(nav) => <AppDock menu={applicationMenu} nav={nav} chats={chat.chats} chatTitle={selectedRow?.title ?? null}
             browserVisible={browserVisible} prefs={dockPrefs} onPrefsChange={updateDockPrefs}
             onLaunch={(id) => {
               if (id === 'chats') workspaceRef.current?.toggleView('history').catch(report('Could not open chat history'))

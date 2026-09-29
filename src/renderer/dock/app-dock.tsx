@@ -14,6 +14,8 @@ import type { SpacesDockNav } from '../spaces/spaces-stage.js'
 import { DOCK_HEIGHT, DOCK_REACH, TRAY_LIFT, dockLocation, trayApps, type DockPrefs, type TrayAppId } from './dock-model.js'
 import { DockSurface } from './dock-surface.js'
 import { DockTray } from './dock-tray.js'
+import { DockLauncher } from './dock-launcher.js'
+import type { TitlebarMenuProps } from '../application-menu-model.js'
 import { DockLayoutMenu } from './dock-layout-menu.js'
 import type { LayoutPreset } from '../chat-layout/layout-presets.js'
 import type { MinimizedWindow } from '../chat-layout/floating/minimized-windows.js'
@@ -22,6 +24,7 @@ import { useDockReveal } from './use-dock-reveal.js'
 const SLIDE_MS = 200
 
 export type AppDockProps = {
+  menu: TitlebarMenuProps
   nav: SpacesDockNav
   chats: readonly ChatRowSummary[]
   chatTitle: string | null
@@ -45,8 +48,8 @@ export type AppDockProps = {
  * have zoomed, and where you are. Centre: the app tray. Right: dock settings. It hides until the
  * pointer reaches the bottom edge unless Keep visible is on.
  */
-export function AppDock({ nav, chats, chatTitle, browserVisible, prefs, onPrefsChange, onLaunch, onOpenSite, onAllSavedSites, minimized, onRestoreWindow, canTile, onTileWindows, onApplyPreset, onOpenLayouts }: AppDockProps): JSX.Element {
-  const [openList, setOpenList] = useState<TrayAppId | 'settings' | 'layout' | null>(null)
+export function AppDock({ menu, nav, chats, chatTitle, browserVisible, prefs, onPrefsChange, onLaunch, onOpenSite, onAllSavedSites, minimized, onRestoreWindow, canTile, onTileWindows, onApplyPreset, onOpenLayouts }: AppDockProps): JSX.Element {
+  const [openList, setOpenList] = useState<TrayAppId | 'settings' | 'layout' | 'launcher' | null>(null)
   const [keyboard, setKeyboard] = useState(false)
   const { shown, show } = useDockReveal({ pinned: prefs.keepVisible, held: openList !== null || keyboard })
   // The freeze reads data-state: the page stays a still until the dock has slid fully away.
@@ -90,6 +93,7 @@ export function AppDock({ nav, chats, chatTitle, browserVisible, prefs, onPrefsC
         {/* Behind the strip's controls: the strip's transform keeps -z-10 inside the dock. */}
         <DockSurface tray={tray} />
         <div className="flex max-w-[calc(50%-190px)] min-w-0 items-center gap-0.5">
+          <DockLauncher menu={menu} open={openList === 'launcher'} onOpenChange={(open) => setOpenList(open ? 'launcher' : null)} />
           <Button variant="ghost" size="sm" data-ui="dock.overview" aria-pressed={nav.overview} disabled={nav.moving}
             className={cn(nav.overview && 'bg-accent text-accent-foreground')} onClick={nav.toggleOverview}>
             <LayoutGrid aria-hidden="true" />Overview

@@ -10,6 +10,7 @@
 @import "./styles/shell-chat.css";
 @import "./styles/titlebar.css";
 @import "./styles/titlebar-menu.css";
+@import "./styles/dock/launcher.css";
 @import "./styles/dropdown-menu.css";
 @import "./styles/chat/layout.css";
 @import "./styles/chat/layout-views.css";
