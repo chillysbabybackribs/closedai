@@ -1,5 +1,5 @@
 import { ensureExpandedGroup, layoutGroups } from './layout-docking.js'
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type SetStateAction } from 'react'
 import type { ChatWorkspaceSnapshot } from '../../shared/chat-peers.js'
 import { errorMessage } from '../error-message.js'
 import { BROWSER_PANE_ID, WORKSPACE_DOCK_ID, chatPaneIds, isViewTabId, withBrowser, dockBrowser, dockPane, paneIds, readLayout, removePane, resizeSplit, saveLayout, type ChatLayout, type DockEdge, type SplitResizePhase } from './layout-tree.js'
@@ -7,7 +7,7 @@ import { addTab, chatTabIds, focusChatTabInLayout, focusedCloseAction, isChatTab
 import { isWorkspaceViewKind, pinOnMove, pruneViewScopes, tileView, viewScope, viewTabId, workspaceView, type ViewKind } from './layout-views.js'
 import { removalNotice } from './layout-copy.js'
 import { adoptTabs, initialWindowTree } from './layout-windows.js'
-import { adoptsUnheldChats, appWindow, onAppWindowCommand, tabsHeldElsewhere, useAppWindows } from '../app-windows/app-window-store.js'
+import { adoptsUnheldChats, appWindow, isFrontWindow, onAppWindowCommand, tabsHeldElsewhere, useAppWindows } from '../app-windows/app-window-store.js'
 import { floatBeside, groupWindow, minimizeWindow, raiseWindow, restoreWindow } from './floating/window-layout.js'
 import { setWindowOnTop, tileWindows } from './floating/window-arrange.js'
 import { assignGroups, presetLayout, presetSlots, singleGroup, type CanvasSize, type LayoutPreset } from './layout-presets.js'
@@ -30,8 +30,9 @@ export function useChatLayout(
   const self = appWindow()
   const layoutKey = self.main && spaceId ? spaceId : cwd
   const windows = useAppWindows()
+  const [restored] = useState(() => readLayout(window.localStorage, layoutKey, self.id))
   const [layout, setLayout] = useState(() => {
-    const saved = readLayout(window.localStorage, layoutKey, self.id)
+    const { focused: _focused, ...saved } = restored
     const tree = initialWindowTree(saved.tree, {
       available: new Set(snapshot.chats.map((chat) => chat.paneId)), elsewhere: tabsHeldElsewhere(),
       selectedPaneId: snapshot.selectedPaneId, detached: !self.main, initialTabs: self.initialTabs,
@@ -63,9 +64,11 @@ export function useChatLayout(
   const [busy, setBusy] = useState(false)
   const [selectionToConfirm, setSelectionToConfirm] = useState<string | null>(null)
   const pending = useRef(false)
-  // This window's own selection: a chat another window selects is never recorded here.
-  const selected = useRef(chatTabIds(layout.tree).includes(snapshot.selectedPaneId)
-    ? snapshot.selectedPaneId : chatPaneIds(layout.tree)[0] ?? snapshot.selectedPaneId)
+  // This window's own selection: a chat another window selects is never recorded here. Main's
+  // selection names the window in front; every other window resumes the chat it last had focused.
+  const selected = useRef(chatTabIds(layout.tree).includes(snapshot.selectedPaneId) ? snapshot.selectedPaneId
+    : restored.focused && chatPaneIds(layout.tree).includes(restored.focused) ? restored.focused
+      : chatPaneIds(layout.tree)[0] ?? snapshot.selectedPaneId)
   const current = useRef(layout)
   current.current = layout
   // Main hears about chats only: a tile showing a view has no visible chat, its chats are retained.
@@ -80,17 +83,23 @@ export function useChatLayout(
 
   const layoutPersist = useRef(layout)
   layoutPersist.current = layout
+  // A selection change is saved too (the focused chat is read at write time), and a reload or quit
+  // inside the debounce still writes the last change.
+  const mainSelection = snapshot.selectedPaneId
   useEffect(() => {
     const persist = (): void => {
       const value = layoutPersist.current
-      saveLayout(window.localStorage, layoutKey, { ...value, views: pruneViewScopes(value.views, value.tree) }, self.id)
+      const focused = chatTabIds(value.tree).includes(selected.current) ? selected.current : undefined
+      saveLayout(window.localStorage, layoutKey, { ...value, views: pruneViewScopes(value.views, value.tree), focused }, self.id)
     }
     const timer = window.setTimeout(persist, 250)
+    window.addEventListener('pagehide', persist)
     return () => {
       window.clearTimeout(timer)
+      window.removeEventListener('pagehide', persist)
       persist()
     }
-  }, [layoutKey, layout])
+  }, [layoutKey, layout, mainSelection])
 
   useEffect(() => {
     if (!hasTiles) return
@@ -139,9 +148,10 @@ export function useChatLayout(
     selected.current = next
     setLayout((value) => {
       let tree: ChatLayout | null = value.tree
-      // A selection this hook made itself (a view tile focusing the chat it follows) is already
-      // placed; re-asserting it would pull the chat out from behind the view.
-      if (next === previous && tree && tabIds(tree).includes(next) && isChatTabActive(tree, next)) return value
+      // A selection this hook made itself (a view tile focusing the chat it follows), or the one it
+      // mounted with, is already placed; re-asserting it would pull the chat out from behind a view
+      // or out of a minimized window. Only a chat behind a sibling chat comes forward.
+      if (next === previous && tree && tabIds(tree).includes(next) && !behindSiblingChat(tree, next)) return value
       if (!tree || !paneIds(tree).length) tree = withBrowser({ kind: 'pane', id: next })
       else if (!tabIds(tree).includes(next)) {
         const anchor = paneIds(tree).includes(previous) ? previous : paneIds(tree)[0]!
@@ -461,7 +471,8 @@ export function useChatLayout(
       const own = chatTabIds(tree).includes(selected.current) ? selected.current : chatPaneIds(tree)[0]
       if (own) void window.closedai.chat.selectPane(own).catch(() => {})
     }
-    if (document.hasFocus()) claimSelection()
+    // Focus comes from main's window list: a renderer's own hasFocus() can be true behind another window.
+    if (isFrontWindow()) claimSelection()
     window.addEventListener('focus', claimSelection)
     return () => window.removeEventListener('focus', claimSelection)
   }, [])
@@ -493,13 +504,19 @@ export function useChatLayout(
     }
   }), [windowTree, focusPane])
 
+  const setMaximized = useCallback((next: SetStateAction<string | null>): void => setLayout((value) => {
+    const current = value.maximized ?? null
+    const maximized = typeof next === 'function' ? next(current) : next
+    return maximized === current ? value : { ...value, maximized: maximized ?? undefined }
+  }), [])
   const toggleBrowser = useCallback(() => setLayout((value) => ({ ...value, browserVisible: !value.browserVisible })), [])
   const showBrowser = useCallback(() => setLayout((value) => value.browserVisible ? value : { ...value, browserVisible: true }), [])
   return {
     ...layout, browserVisible: self.main && layout.browserVisible, detached: !self.main,
     error: error?.text ?? '', notice: notice?.text ?? '', busy, dock, newChat, continueChat, focusPane,
     activateTab, openView, toggleView, pinView, moveTabToTile, closeTab, hide, closeFocused, resize, arrange,
-    toggleBrowser, showBrowser, detachTab, returnTab, windows: windowActions
+    toggleBrowser, showBrowser, detachTab, returnTab, windows: windowActions,
+    maximized: layout.maximized ?? null, setMaximized
   }
 }
 
@@ -507,6 +524,17 @@ export function useChatLayout(
 async function revealedElsewhere(tree: ChatLayout, id: string): Promise<boolean> {
   if (tabIds(tree).includes(id) || !tabsHeldElsewhere().has(id)) return false
   return window.closedai.windows.revealTab(id)
+}
+
+/** The chat's tile shows another chat in front of it, rather than a view or a minimized window. */
+function behindSiblingChat(tree: ChatLayout, id: string): boolean {
+  if (isChatTabActive(tree, id)) return false
+  const owner = tabOwner(tree, id)
+  return owner !== null && !isViewTabId(owner) && !minimizedTile(tree, owner)
+}
+
+function minimizedTile(tree: ChatLayout, id: string): boolean {
+  return tree.kind === 'pane' ? tree.id === id && Boolean(tree.docked) : minimizedTile(tree.first, id) || minimizedTile(tree.second, id)
 }
 
 function withoutTab(tree: ChatLayout, id: string): ChatLayout {

@@ -6,7 +6,7 @@ import { ChatCanvas } from './chat-canvas.tsx'
 import type { ChatLayout } from './layout-tree.ts'
 
 const windows = { change: () => {}, group: () => {}, raise: () => {}, minimize: () => {}, keepOnTop: () => {} }
-const backdropProps = { backdrop: 'off' as const, onBackdropChange: () => {}, onOpenWallpaper: () => {} }
+const backdropProps = { backdrop: 'off' as const, onBackdropChange: () => {}, onOpenWallpaper: () => {}, maximized: [null, () => {}] as [string | null, () => void] }
 
 const multiPaneTree: ChatLayout = {
   kind: 'split',

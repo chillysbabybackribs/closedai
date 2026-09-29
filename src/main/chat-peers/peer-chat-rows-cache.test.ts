@@ -27,6 +27,7 @@ function stubHost(store: ChatStore, attached: Set<string>, liveById: Map<string,
     selectedPaneId: () => [...attached][0] ?? 'none',
     visiblePaneIds: () => new Set(),
     retainedTabIds: () => new Set(),
+    stopped: () => false,
     emitWorkspaceEvent: () => {}
   }
 }

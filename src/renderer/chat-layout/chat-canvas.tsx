@@ -1,6 +1,6 @@
 import { expandedPaneIds } from './layout-docking.js'
 import { DropdownMenu } from 'radix-ui'
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent as ReactDragEvent, type MouseEvent, type ReactNode } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type Dispatch, type SetStateAction, type DragEvent as ReactDragEvent, type MouseEvent, type ReactNode } from 'react'
 import type { WorkspaceBackdrop } from '../../shared/backdrop-presets.js'
 import { WorkspaceBackdropMenuItems } from '../backdrop/workspace-backdrop-menu.js'
 import type { ChatReviewQueue } from '../chat-history/review-queue.js'
@@ -52,6 +52,8 @@ type ChatCanvasProps = {
   notice?: string
   browserVisible: boolean
   browserRevealVersion?: number
+  /** The maximized window, saved with the layout so a relaunch reopens it maximized. */
+  maximized: [string | null, Dispatch<SetStateAction<string | null>>]
   renderBrowser: ReactNode
   onDragActive: (active: boolean) => void
   title: (id: string) => string
@@ -85,7 +87,7 @@ type ChatCanvasProps = {
   onOpenWallpaper: () => void
 }
 
-function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, browserVisible, browserRevealVersion, renderBrowser, onDragActive, title, activity, reviewQueue, chatRow, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onTogglePin, onContinueChat: _onContinueChat, onPauseTab, onResumeTab, onOpenPresets, onSizeChange, onDock, onHide, onResize, windows, onBrowserCovered, backdrop, onBackdropChange, onOpenWallpaper }: ChatCanvasProps) {
+function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, browserVisible, browserRevealVersion, maximized, renderBrowser, onDragActive, title, activity, reviewQueue, chatRow, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onTogglePin, onContinueChat: _onContinueChat, onPauseTab, onResumeTab, onOpenPresets, onSizeChange, onDock, onHide, onResize, windows, onBrowserCovered, backdrop, onBackdropChange, onOpenWallpaper }: ChatCanvasProps) {
   const viewport = useRef<HTMLDivElement>(null)
   const [backdropMenuOpen, setBackdropMenuOpen] = useState(false)
   const [backdropMenuPoint, setBackdropMenuPoint] = useState({ x: 0, y: 0 })
@@ -225,7 +227,7 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
   const chatCount = expandedPaneIds(tree).length
   const canMaximize = chatCount > 1 || (browserVisible && chatCount >= 1)
   const shown = tiles.filter((tile) => tile.kind !== 'hidden')
-  const [soloPaneId, setSoloPaneId] = useMaximizedWindow(shown, canMaximize || floating.length > 0, browserRevealVersion)
+  const [soloPaneId, setSoloPaneId] = useMaximizedWindow(shown, canMaximize || floating.length > 0, browserRevealVersion, maximized)
   const soloTile = soloPaneId ? shown.find((p) => p.id === soloPaneId || p.tabs.includes(soloPaneId)) ?? null : null
   const soloRect: Rect = { x: 0, y: 0, width: Math.max(size.width, minimum.width), height: Math.max(size.height, minimum.height) }
   const covered = !soloTile && browserCovered(tiles)
@@ -415,6 +417,7 @@ function chatCanvasPropsEqual(previous: ChatCanvasProps, next: ChatCanvasProps):
   return previous.tree === next.tree && previous.selectedId === next.selectedId && previous.busy === next.busy
     && previous.notice === next.notice && previous.toolsPreset === next.toolsPreset
     && previous.browserVisible === next.browserVisible && previous.browserRevealVersion === next.browserRevealVersion
+    && previous.maximized[0] === next.maximized[0] && previous.maximized[1] === next.maximized[1]
     && previous.renderBrowser === next.renderBrowser && previous.renderPane === next.renderPane
     && previous.onDragActive === next.onDragActive && previous.title === next.title && previous.activity === next.activity
     && previous.reviewQueue === next.reviewQueue && previous.chatRow === next.chatRow && previous.onSelect === next.onSelect

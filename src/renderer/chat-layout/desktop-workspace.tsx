@@ -72,6 +72,7 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, on
   workspaceSnapshotRef.current = chat.snapshot
   const layoutRevision = chatLayoutRevision(chat.snapshot)
   const layout = useChatLayout(() => workspaceSnapshotRef.current, layoutRevision, spaceId)
+  const maximized = useMemo((): [string | null, typeof layout.setMaximized] => [layout.maximized, layout.setMaximized], [layout.maximized, layout.setMaximized])
   // The canvas moves the browser window from a press on this grip, as it does a chat's.
   const browserDragHandle = useMemo(() => <button type="button"
     className="browser-layout-drag" data-ui="layout.browser-drag" data-window-grip="" disabled={layout.busy}
@@ -244,7 +245,7 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, on
     <WorkspaceViewContext.Provider value={viewContext}>
     <ChatCanvas tree={layout.tree} selectedId={chat.selectedPaneId} busy={layout.busy}
         notice={layout.notice} toolsPreset={toolsPreset}
-        browserRevealVersion={browserRevealVersion}
+        browserRevealVersion={browserRevealVersion} maximized={maximized}
         onDragActive={setLayoutDragging}
         browserVisible={layout.browserVisible}
         title={title}

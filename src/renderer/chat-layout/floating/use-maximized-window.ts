@@ -1,18 +1,26 @@
-import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
+import { useEffect, useRef, type Dispatch, type SetStateAction } from 'react'
 
 /**
- * The maximized window, which fills the canvas while every other window hides. It is view state,
- * not layout: it resets when the browser is revealed, when the window goes away or there is
- * nothing left to hide, and on Escape outside a text field.
+ * The maximized window, which fills the canvas while every other window hides. The layout owns
+ * the value and saves it, so a relaunch reopens the window maximized; this hook clears it when
+ * the browser is revealed, when the window goes away or there is nothing left to hide, and on
+ * Escape outside a text field.
  */
 export function useMaximizedWindow(windows: ReadonlyArray<{ id: string; tabs: string[] }>, canHideOthers: boolean,
-  browserRevealVersion: number | undefined): [string | null, Dispatch<SetStateAction<string | null>>] {
-  const [maximized, setMaximized] = useState<string | null>(null)
-  useEffect(() => { setMaximized(null) }, [browserRevealVersion])
+  browserRevealVersion: number | undefined,
+  [maximized, setMaximized]: [string | null, Dispatch<SetStateAction<string | null>>]): [string | null, Dispatch<SetStateAction<string | null>>] {
+  // A reveal after mount clears it; the version the canvas mounts with is not a reveal.
+  const revealed = useRef(browserRevealVersion)
+  useEffect(() => {
+    if (revealed.current === browserRevealVersion) return
+    revealed.current = browserRevealVersion
+    setMaximized(null)
+  }, [browserRevealVersion, setMaximized])
   const present = maximized ? windows.some((tile) => tile.id === maximized || tile.tabs.includes(maximized)) : false
   useEffect(() => {
-    if (maximized && (!present || !canHideOthers)) setMaximized(null)
-  }, [maximized, present, canHideOthers])
+    // Before the canvas has measured there are no windows yet; that is not the window going away.
+    if (maximized && windows.length && (!present || !canHideOthers)) setMaximized(null)
+  }, [maximized, present, canHideOthers, windows.length, setMaximized])
   useEffect(() => {
     if (!maximized) return
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -24,6 +32,6 @@ export function useMaximizedWindow(windows: ReadonlyArray<{ id: string; tabs: st
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [maximized])
+  }, [maximized, setMaximized])
   return [maximized, setMaximized]
 }

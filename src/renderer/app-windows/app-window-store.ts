@@ -57,6 +57,11 @@ export function adoptsUnheldChats(): boolean {
   return focused ? focused.id === snapshot.self.id : snapshot.self.main
 }
 
+/** Whether main reports this window as the focused one. */
+export function isFrontWindow(): boolean {
+  return snapshot.windows.some((entry) => entry.focused && entry.id === snapshot.self.id)
+}
+
 export function useAppWindows(): Snapshot {
   return useSyncExternalStore(subscribe, () => snapshot)
 }
