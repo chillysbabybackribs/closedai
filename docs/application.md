@@ -774,7 +774,18 @@ on either side (`dock.app`, item is the surface), 48 px and growing to 64 px und
 (`dock.start-search`), a **Pinned** grid of common commands (`dock.start-pin`, item is the menu
 row key), **Recent chats** when any listable history exists (`dock.start-chat`, item is the pane id), and **All apps**
 (`dock.start-all-apps`) listing every File, View, Agent, and Developer row with the same disabled
-rules as the menus. The footer names the current workspace and **All workspaces**
+rules as the menus. Rows with a screen (Search chats, Manage chat history, Agents, Tools &
+capabilities, Settings) open it inside Start, whether chosen from Pinned, All apps, or command
+search (`startScreenForRow` in `dock-start-model.ts`); the same rows from the title-bar menus,
+Ctrl+H, and Ctrl+, keep their header palette, view tab, or dialog. A screen has a back header
+(`dock.start-back`; Escape does the same) over the same component its view tab or dialog shows
+(`dock-start-views.tsx`: `ChatHistory`, `AgentLibraryView`, `ToolsPanel`, and `SettingsSections`,
+which the Settings dialog also wraps), and the panel grows to 1120 px wide and up to 900 px tall,
+bounded by the room above the dock. Search chats (`dock.start-chat-search`) is the title-bar
+palette's list (`chat-search-results.tsx`, row ids `titlebar.chat-search-*`) in Start's body.
+Anything that leaves Start closes it: opening a chat, a Tools repair draft (sent to the selected
+chat), starting an agent (docked beside the selected chat), or the wallpaper picker. Start always
+reopens on its home. The footer names the current workspace and **All workspaces**
 (`dock.overview`, pressed while zoomed out) toggles the workspace overview. Menu definitions and
 `runMenuItem` are shared in `application-menu-model.ts`. The main-window header keeps chat search;
 detached windows and startup retain the header menus because no dock is available there. Each surface

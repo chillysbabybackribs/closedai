@@ -7,7 +7,9 @@
    surface reads the same on the dark chassis and the warm paper theme without a
    second token set. */
 
-.header-chat-search {
+/* Start's Search chats screen shows the same palette list, so it takes the same ink. */
+.header-chat-search,
+.dock-start-chat-search {
   --search-fill: color-mix(in srgb, var(--popover-foreground) 4%, transparent);
   --search-fill-hover: color-mix(in srgb, var(--popover-foreground) 7%, transparent);
   --search-row-selected: color-mix(in srgb, var(--popover-foreground) 8%, transparent);
@@ -16,7 +18,9 @@
   --search-ink-quiet: color-mix(in srgb, var(--popover-foreground) 40%, transparent);
   --search-line: var(--hairline);
   --search-kbd-edge: color-mix(in srgb, var(--popover-foreground) 14%, transparent);
+}
 
+.header-chat-search {
   position: relative;
   display: flex;
   flex: 1;
@@ -122,7 +126,8 @@
 .header-chat-search-clear:hover { background: var(--chrome-control-hover); color: var(--chrome-fg-strong); }
 
 /* One kbd treatment for the pill hint and the palette footer. */
-.header-chat-search kbd {
+.header-chat-search kbd,
+.dock-start-chat-search kbd {
   display: inline-grid;
   place-items: center;
   min-width: 17px;

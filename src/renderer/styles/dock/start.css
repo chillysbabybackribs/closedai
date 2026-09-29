@@ -180,3 +180,99 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* ---- Screens -----------------------------------------------------------------
+   A Start tile that has a screen (Search chats, History, Agents, Tools, Settings) swaps the body
+   for it and the panel grows to hold the larger ones, never past the room above the dock. */
+.dock-start-shell:not([data-start-view='home']) {
+  width: min(96vw, 1120px);
+  max-height: min(var(--radix-popover-content-available-height, 90vh), 900px);
+}
+
+.dock-start:not([data-view='home']) {
+  height: calc(min(var(--radix-popover-content-available-height, 90vh), 900px) - 2px);
+  max-height: none;
+}
+
+/* Dense screens read like a window: the acrylic thickens so rows stay legible over the wallpaper. */
+:root[data-backdrop] .dock-start-shell:not([data-start-view='home']) {
+  background: rgb(var(--glass-ink) / calc(var(--backdrop-glass) * 0.86));
+}
+
+.dock-start-screen {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.dock-start-screen-head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--hairline, var(--border));
+}
+
+.dock-start-screen-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.dock-start-screen-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.dock-start-screen-body > * { flex: 1; min-height: 0; }
+
+/* The dialog's heading leaves room for its close button; Start has Back in its own header. */
+.dock-start-screen .settings-heading { padding-right: 20px; }
+
+.dock-start-chat-search {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.dock-start-chat-search .chat-history {
+  flex: none;
+  padding: 12px 14px 4px;
+}
+
+.dock-start-chat-search-results {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0 10px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.dock-start-chat-search-results .header-chat-search-list {
+  max-height: none;
+  overflow: visible;
+}
+
+.dock-start-chat-search-clear {
+  display: grid;
+  flex: 0 0 22px;
+  place-items: center;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+}
+
+.dock-start-chat-search-clear:hover { background: var(--accent); color: var(--foreground); }
+
+.dock-start-chat-search .chat-history-error { margin: 0 14px 10px; }
