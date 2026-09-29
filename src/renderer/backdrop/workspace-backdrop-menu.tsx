@@ -10,10 +10,12 @@ import {
 export type WorkspaceBackdropMenuProps = {
   backdrop: WorkspaceBackdrop
   onBackdropChange: (mode: WorkspaceBackdrop) => void
+  /** Open the full picker: uploads, previews and the current wallpaper. */
+  onOpenWallpaper: () => void
 }
 
 /** Menu body for the workspace background picker (right-click on empty canvas). */
-export function WorkspaceBackdropMenuItems({ backdrop, onBackdropChange }: WorkspaceBackdropMenuProps): ReactNode {
+export function WorkspaceBackdropMenuItems({ backdrop, onBackdropChange, onOpenWallpaper }: WorkspaceBackdropMenuProps): ReactNode {
   return <>
     <BackdropMenuRow label="Off" checked={backdrop === 'off'} data-ui="workspace.backdrop" data-ui-key="off"
       onSelect={() => onBackdropChange('off')} />
@@ -26,6 +28,9 @@ export function WorkspaceBackdropMenuItems({ backdrop, onBackdropChange }: Works
         data-ui="workspace.backdrop" data-ui-key={id}
         onSelect={() => onBackdropChange(value)} />
     })}
+    <DropdownMenu.Separator className="titlebar-menu-separator" />
+    <BackdropMenuRow label="Change wallpaper…" checked={false} data-ui="workspace.wallpaper" data-ui-key="open"
+      onSelect={onOpenWallpaper} />
   </>
 }
 

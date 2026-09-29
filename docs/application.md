@@ -946,13 +946,23 @@ either kind, so a new icon never changes the tray's size or spacing.
   compaction. The composer preserves unsubmitted drafts (text and pending attachments) per
   conversation pane across tab switching and unmounting, clearing them only on submission.
   Appearance settings separate message and composer font sizes
-  (defaults 14 and 15 px, range 13–22) from chat zoom. Appearance → Background is opt-in
-  (default Off): Off keeps the flat chassis; Desktop wallpaper paints the OS wallpaper (GNOME
+  (defaults 14 and 15 px, range 13–22) from chat zoom. The workspace wallpaper is opt-in
+  (default Off) and chosen in the wallpaper picker (`renderer/backdrop/wallpaper-dialog.tsx`), opened
+  from Appearance → Wallpaper (which closes Settings so the workspace stays visible) or from the
+  empty-canvas background menu's Change wallpaper…. The picker opens on a current-wallpaper card
+  (preview under two mock glass tiles, name, source, and an Image / Desktop wallpaper / Off switch;
+  Image returns to the last picked image), then Curated and Your uploads grids with a check badge on
+  the selected tile. Choices apply live; Cancel restores the wallpaper the picker opened with, Done
+  and Close keep it. Off keeps the flat chassis; Desktop wallpaper paints the OS wallpaper (GNOME
   `picture-uri`/`picture-uri-dark`, read by main via `window:desktopWallpaper` in
   `main/desktop-wallpaper.ts`); bundled presets (`preset:aurora`, `preset:dusk`, `preset:ocean`,
   `preset:ember` in `shared/backdrop-presets.ts`, assets under `renderer/backdrop/presets/`) load in
-  the renderer and use the same prepare path. Right-click empty workspace canvas (gaps between tiles)
-  opens the same background menu. Custom uploads are not wired yet. Every non-off source sits
+  the renderer and use the same prepare path. Uploads (`upload:<uuid>`) come from the Add image… tile
+  or a JPEG, PNG, WebP or AVIF file dropped anywhere on the picker (48 MB cap); the renderer draws a
+  thumbnail and main stores image, thumbnail and a newest-first manifest under
+  `<userData>/wallpapers/` (`main/wallpapers/upload-store.ts`, `wallpapers:*` channels), building
+  every path from a validated UUID. Deleting the selected upload falls back to the last image. The
+  background menu itself still lists Off, Desktop wallpaper and the presets. Every non-off source sits
   dimmed by its measured brightness; it shows in the gaps between tiles. The title bar and the dock
   are full-width rails of one glass, each tinted from the wallpaper band behind it
   (`--backdrop-rail-top`/`--backdrop-rail-bottom`, `railTint`) so both land at the same darkness over a bright sky or a dark

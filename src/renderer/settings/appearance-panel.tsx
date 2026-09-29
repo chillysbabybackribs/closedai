@@ -1,13 +1,7 @@
 import type { JSX } from 'react'
-import { Minus, Plus, RotateCcw } from 'lucide-react'
+import { ImageIcon, Minus, Plus, RotateCcw } from 'lucide-react'
 import { Button } from '../../components/ui/button.js'
-import { ToggleGroup, ToggleGroupItem } from '../../components/ui/toggle-group.js'
 import type { BackdropStatus } from '../backdrop/use-workspace-backdrop.js'
-import {
-  BACKDROP_PRESET_IDS,
-  BACKDROP_PRESET_LABELS,
-  BACKDROP_PRESET_PREFIX
-} from '../../shared/backdrop-presets.js'
 import {
   CHAT_FONT_SIZE_DEFAULT,
   CHAT_FONT_SIZE_MAX,
@@ -30,25 +24,19 @@ import {
 export type AppearancePanelProps = AppearanceSettings & {
   backdropStatus: BackdropStatus
   onChange: (patch: Partial<AppearanceSettings>) => void
+  /** Open the wallpaper picker; the choice itself lives there. */
+  onOpenWallpaper: () => void
 }
 
-const BACKDROP_OPTIONS: Array<{ value: WorkspaceBackdrop; label: string }> = [
-  { value: 'off', label: 'Off' },
-  { value: 'desktop', label: 'Desktop wallpaper' },
-  ...BACKDROP_PRESET_IDS.map((id) => ({
-    value: `${BACKDROP_PRESET_PREFIX}${id}` as WorkspaceBackdrop,
-    label: BACKDROP_PRESET_LABELS[id]
-  }))
-]
-
-/** The Appearance tab of Settings: the workspace background, three sliders and a reset. Persistence belongs to the caller. */
+/** The Appearance tab of Settings: the workspace wallpaper, three sliders and a reset. Persistence belongs to the caller. */
 export function AppearancePanel({
   chatFontSize,
   composerFontSize,
   chatZoom,
   backdrop,
   backdropStatus,
-  onChange
+  onChange,
+  onOpenWallpaper
 }: AppearancePanelProps): JSX.Element {
   const isDefault = chatFontSize === CHAT_FONT_SIZE_DEFAULT
     && composerFontSize === COMPOSER_FONT_SIZE_DEFAULT
@@ -58,32 +46,16 @@ export function AppearancePanel({
   return (
     <div className="settings-panel appearance-panel">
         <div className="appearance-controls">
-          <div className="appearance-control">
+          <div className="appearance-control appearance-wallpaper">
             <div className="appearance-control-copy">
-              <label id="workspace-backdrop">Background</label>
+              <label id="workspace-backdrop">Wallpaper</label>
               <span>{backdropHint(backdropStatus, backdrop)}</span>
             </div>
-            <ToggleGroup
-              type="single"
-              variant="outline"
-              size="sm"
-              value={backdrop}
-              onValueChange={(next) => { if (next) onChange({ backdrop: next as WorkspaceBackdrop }) }}
-              aria-labelledby="workspace-backdrop"
-              className="appearance-backdrop-options appearance-backdrop-options-wrap"
-            >
-              {BACKDROP_OPTIONS.map((option) => (
-                <ToggleGroupItem
-                  key={option.value}
-                  value={option.value}
-                  data-ui="settings.backdrop"
-                  data-ui-key={option.value}
-                  className="h-7 flex-1"
-                >
-                  {option.label}
-                </ToggleGroupItem>
-              ))}
-            </ToggleGroup>
+            <Button type="button" variant="outline" size="sm" className="appearance-wallpaper-open"
+              aria-describedby="workspace-backdrop" data-ui="settings.wallpaper" onClick={onOpenWallpaper}>
+              <ImageIcon size={14} aria-hidden="true" />
+              Change wallpaper…
+            </Button>
           </div>
           <AppearanceControl
             id="chat-font-size"

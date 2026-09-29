@@ -82,9 +82,10 @@ type ChatCanvasProps = {
   onBrowserCovered?: (covered: boolean) => void
   backdrop: WorkspaceBackdrop
   onBackdropChange: (mode: WorkspaceBackdrop) => void
+  onOpenWallpaper: () => void
 }
 
-function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, browserVisible, browserRevealVersion, renderBrowser, onDragActive, title, activity, reviewQueue, chatRow, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onTogglePin, onContinueChat: _onContinueChat, onPauseTab, onResumeTab, onOpenPresets, onSizeChange, onDock, onHide, onResize, windows, onBrowserCovered, backdrop, onBackdropChange }: ChatCanvasProps) {
+function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, browserVisible, browserRevealVersion, renderBrowser, onDragActive, title, activity, reviewQueue, chatRow, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onTogglePin, onContinueChat: _onContinueChat, onPauseTab, onResumeTab, onOpenPresets, onSizeChange, onDock, onHide, onResize, windows, onBrowserCovered, backdrop, onBackdropChange, onOpenWallpaper }: ChatCanvasProps) {
   const viewport = useRef<HTMLDivElement>(null)
   const [backdropMenuOpen, setBackdropMenuOpen] = useState(false)
   const [backdropMenuPoint, setBackdropMenuPoint] = useState({ x: 0, y: 0 })
@@ -403,7 +404,7 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
         <WorkspaceBackdropMenuItems backdrop={backdrop} onBackdropChange={(mode) => {
           onBackdropChange(mode)
           setBackdropMenuOpen(false)
-        }} />
+        }} onOpenWallpaper={onOpenWallpaper} />
       </DropdownMenu.Content>
     </DropdownMenu.Portal>
   </DropdownMenu.Root>
@@ -424,6 +425,7 @@ function chatCanvasPropsEqual(previous: ChatCanvasProps, next: ChatCanvasProps):
     && previous.onDock === next.onDock && previous.onHide === next.onHide && previous.onResize === next.onResize
     && previous.windows === next.windows && previous.onBrowserCovered === next.onBrowserCovered
     && previous.backdrop === next.backdrop && previous.onBackdropChange === next.onBackdropChange
+    && previous.onOpenWallpaper === next.onOpenWallpaper
 }
 
 export const ChatCanvas = memo(ChatCanvasInner, chatCanvasPropsEqual)

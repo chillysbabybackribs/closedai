@@ -31,6 +31,10 @@ const SettingsDialog = lazy(async () => {
   const module = await import('./settings/settings-dialog.js')
   return { default: module.SettingsDialog }
 })
+const WallpaperDialog = lazy(async () => {
+  const module = await import('./backdrop/wallpaper-dialog.js')
+  return { default: module.WallpaperDialog }
+})
 import { useToolsPreset } from './tools/use-tools-preset.js'
 import { useBrowserSavedSitesController } from './browser-saved-sites-controller.js'
 import {
@@ -69,6 +73,12 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
   const backdropStatus = useWorkspaceBackdrop(appearance.backdrop)
   const [settingsOpen, setSettingsOpen] = useState(initialSettingsOpen)
   const [settingsTab, setSettingsTab] = useState<SettingsTab>('appearance')
+  const [wallpaperOpen, setWallpaperOpen] = useState(false)
+  // The picker previews live on the workspace, so Settings steps aside instead of covering it.
+  const openWallpaper = useCallback(() => {
+    setSettingsOpen(false)
+    setWallpaperOpen(true)
+  }, [])
   const [renamingChat, setRenamingChat] = useState<{ id: string; title: string } | null>(null)
   const dialogsRef = useRef({ settingsOpen, renamingChat })
   dialogsRef.current = { settingsOpen, renamingChat }
@@ -286,6 +296,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
             onMinimizedChange={setMinimizedWindows}
             onFloatingChange={setWindowsFloating}
             onBackdropChange={(mode) => updateAppearance({ backdrop: mode })}
+            onOpenWallpaper={openWallpaper}
             archiveChat={history.deleteRow}
           />}
         </SpacesStage>}
@@ -308,6 +319,15 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
           appearance={appearance}
           onAppearanceChange={updateAppearance}
           backdropStatus={backdropStatus}
+          onOpenWallpaper={openWallpaper}
+        />
+      </Suspense>}
+      {wallpaperOpen && <Suspense fallback={null}>
+        <WallpaperDialog
+          onOpenChange={setWallpaperOpen}
+          backdrop={appearance.backdrop}
+          status={backdropStatus}
+          onBackdropChange={(mode) => updateAppearance({ backdrop: mode })}
         />
       </Suspense>}
     </div>

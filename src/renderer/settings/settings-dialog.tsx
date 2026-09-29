@@ -31,6 +31,7 @@ export type SettingsDialogProps = {
   appearance: AppearanceSettings
   onAppearanceChange: (patch: Partial<AppearanceSettings>) => void
   backdropStatus: BackdropStatus
+  onOpenWallpaper: () => void
 }
 
 /** File → Settings: one fixed-size dialog whose tabs are the app's configuration surfaces. */
@@ -41,7 +42,8 @@ export function SettingsDialog({
   onOpenChange,
   appearance,
   onAppearanceChange,
-  backdropStatus
+  backdropStatus,
+  onOpenWallpaper
 }: SettingsDialogProps): JSX.Element {
   const current = TABS.find((entry) => entry.id === tab) ?? TABS[0]!
   return (
@@ -63,7 +65,8 @@ export function SettingsDialog({
             </Tabs.List>
           </div>
           <Tabs.Content value="appearance" className="settings-tab-content">
-            <AppearancePanel {...appearance} backdropStatus={backdropStatus} onChange={onAppearanceChange} />
+            <AppearancePanel {...appearance} backdropStatus={backdropStatus} onChange={onAppearanceChange}
+              onOpenWallpaper={onOpenWallpaper} />
           </Tabs.Content>
           <Tabs.Content value="models" className="settings-tab-content">
             <ModelsPanel active={open && tab === 'models'} />

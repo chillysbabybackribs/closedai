@@ -35,11 +35,11 @@ export class WallpaperUploadStore {
 
   async list(): Promise<WallpaperUpload[]> {
     const entries = await this.entries()
-    const uploads = await Promise.all(entries.map(async (entry) => {
+    const uploads = await Promise.all(entries.map(async (entry): Promise<WallpaperUpload[]> => {
       const thumbnail = await readFile(this.thumbnailPath(entry.id)).catch(() => null)
-      return thumbnail ? { id: entry.id, name: entry.name, thumbnail } : null
+      return thumbnail ? [{ id: entry.id, name: entry.name, thumbnail }] : []
     }))
-    return uploads.filter((upload): upload is WallpaperUpload => upload !== null)
+    return uploads.flat()
   }
 
   async add(draft: WallpaperUploadDraft): Promise<WallpaperUpload> {
