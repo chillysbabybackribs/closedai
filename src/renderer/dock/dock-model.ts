@@ -35,26 +35,19 @@ export const DOCK_HEIGHT = 44
 /** Tray tile size at rest and under the pointer (1.33x). */
 export const TRAY_ICON = 48
 export const TRAY_MAGNIFIED = 64
-/** Start sits in the centre of the tray, slightly larger than the surface tiles. */
-export const TRAY_START_ICON = 56
-export const TRAY_START_MAGNIFIED = 76
-const TRAY_TILE = Math.max(TRAY_ICON, TRAY_START_ICON)
-const TRAY_TILE_MAGNIFIED = Math.max(TRAY_MAGNIFIED, TRAY_START_MAGNIFIED)
 /** The resting tiles' bottom edge, above the window's bottom edge. */
 export const TRAY_LIFT = 12
 /** Room around the tiles inside the tab: at the sides and above them. */
 export const TAB_PADDING = 10
-/** Row height inside the tab over the tray (tile + padding above). */
-export const TRAY_ROW_HEIGHT = TRAY_TILE + TAB_PADDING
 /** The tab over the tray: how far it rises above the strip, its top corners, and the concave joins. */
-export const TAB_RISE = TRAY_LIFT + TRAY_TILE + TAB_PADDING - DOCK_HEIGHT
+export const TAB_RISE = TRAY_LIFT + TRAY_ICON + TAB_PADDING - DOCK_HEIGHT
 export const TAB_RADIUS = 16
 export const TAB_FILLET = 10
 /**
  * How far above the window's bottom edge the dock can draw: a magnified tile, or the tab when it is
  * taller. The dock's box is this tall, so a browser under any part of it counts as covered.
  */
-export const DOCK_REACH = Math.max(DOCK_HEIGHT + TAB_RISE, TRAY_LIFT + TRAY_TILE_MAGNIFIED) + 3
+export const DOCK_REACH = Math.max(DOCK_HEIGHT + TAB_RISE, TRAY_LIFT + TRAY_MAGNIFIED) + 3
 /**
  * With Keep visible on, the workspace ends this far above the window's bottom edge. The gap past
  * the dock's reach keeps the browser's edge margin (titlebar-browser-freeze.ts) clear of it, so a

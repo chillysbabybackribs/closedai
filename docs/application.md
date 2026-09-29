@@ -768,9 +768,9 @@ Left: back and forward (`dock.back`, `dock.forward`) step through the zoom histo
 are disabled at either end and while a zoom is moving; their tooltips name where you are
 (workspace and selected chat, or "All workspaces"). Right: Layout and dock settings
 (`dock.settings`). Centre: the **app tray**, Magic UI's `Dock` (`src/components/ui/dock.tsx`,
-`@magicui/dock`), with **Start** centred in the tray at 56 px (76 px under the pointer) and one
-rounded-square tile per ClosedAI surface on either side (`dock.app`, item is the surface), 48 px and
-growing to 64 px under the pointer. **Start** (`dock.start`) opens a panel above the tray with search
+`@magicui/dock`), with **Start** centred in the tray and one rounded-square tile per ClosedAI surface
+on either side (`dock.app`, item is the surface), 48 px and growing to 64 px under the pointer.
+**Start** (`dock.start`) opens a panel above the tray with search
 (`dock.start-search`), a **Pinned** grid of common commands (`dock.start-pin`, item is the menu
 row key), **Recommended** recent chats (`dock.start-chat`, item is the pane id), and **All apps**
 (`dock.start-all-apps`) listing every File, View, Agent, and Developer row with the same disabled

@@ -13,9 +13,7 @@ import { APP_ICONS, AppIconMark, type AppIconId } from '../app-icons.js'
 import type { MinimizedWindow } from '../chat-layout/floating/minimized-windows.js'
 import { BrowserSiteIcon } from '../browser-site-icon.js'
 import { downloadActions, downloadDetail } from '../browser-downloads-model.js'
-import {
-  TRAY_ICON, TRAY_MAGNIFIED, TRAY_ROW_HEIGHT, TRAY_START_ICON, TRAY_START_MAGNIFIED, type TrayApp, type TrayAppId
-} from './dock-model.js'
+import { TRAY_ICON, TRAY_MAGNIFIED, type TrayApp, type TrayAppId } from './dock-model.js'
 const STACK_ROWS = 8
 
 export type DockTrayProps = {
@@ -50,12 +48,10 @@ export function DockTray(props: DockTrayProps): JSX.Element {
   return <Dock data-slot="app-dock-tray" direction="bottom" iconSize={TRAY_ICON} iconMagnification={TRAY_MAGNIFIED}
     disableMagnification={!magnify}
     // The tab behind it is DockSurface, so the tray itself draws nothing. It fills the tab above the
-    // strip: height TRAY_ROW_HEIGHT, and p-2.5 is TAB_PADDING at the sides and top.
-    className="mx-0 mt-0 gap-2 rounded-none border-0 bg-transparent p-2.5 pb-0 backdrop-blur-none"
-    style={{ height: TRAY_ROW_HEIGHT }}>
+    // strip: height TRAY_ICON + TAB_PADDING, and p-2.5 is TAB_PADDING at the sides and top.
+    className="mx-0 mt-0 h-[58px] gap-2 rounded-none border-0 bg-transparent p-2.5 pb-0 backdrop-blur-none">
     {leftApps.map((app) => <TrayAppIcon key={app.id} {...props} app={app} />)}
-    <DockIcon padding={0} size={TRAY_START_ICON} magnification={TRAY_START_MAGNIFIED}
-      className="relative z-[1] mx-1 rounded-[22%] shadow-sm">{startTrigger}</DockIcon>
+    <DockIcon padding={0} className="relative rounded-[22%]">{startTrigger}</DockIcon>
     {rightApps.map((app) => <TrayAppIcon key={app.id} {...props} app={app} />)}
     {minimized.length > 0 && <Separator orientation="vertical" className="mx-1 h-9 self-center" />}
     {minimized.map((entry) => <DockIcon key={entry.id} padding={0} className="relative rounded-[22%]">
