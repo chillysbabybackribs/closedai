@@ -73,6 +73,14 @@ from `src/shared/provider-availability.ts`: provider, installed, resolved path, 
 chat starts a provider; resolution follows each lane's spawn order (env override, the installer's
 `~/.local/bin`, then PATH; Claude is the bundled SDK and always present).
 
+First-run onboarding (renderer). Before the workspace is used on a fresh install, the shell shows
+a full-screen **session gate** (local profiles: sign in, create account, keep signed in) persisted
+in `localStorage` under `closedai.onboarding.v1` (`src/shared/onboarding.ts`). Existing installs
+with chat history skip the flow automatically. After the gate, the normal title bar, workspace,
+and dock stay visible while a **provider setup** modal lists all four providers with install hints,
+Codex in-app connect, and CLI confirmation for the other lanes. Per-pane empty states still show
+connection guidance when a lane later drifts out of `ready`.
+
 Launch resilience. A bootstrap failure is shown in a native error box and ends the app; an
 uncaught exception or unhandled rejection after the window exists is logged with a `[main]`
 prefix and survived (`src/main/app-crash-guard.ts`). The app shell reloads once when its renderer

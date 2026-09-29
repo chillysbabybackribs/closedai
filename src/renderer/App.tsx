@@ -47,6 +47,9 @@ import {
 } from './settings/appearance-settings.js'
 import { useWorkspaceBackdrop } from './backdrop/use-workspace-backdrop.js'
 import type { MinimizedWindow } from './chat-layout/floating/minimized-windows.js'
+import { ProviderSetupModal } from './onboarding/provider-setup-modal.js'
+import { SessionGate } from './onboarding/session-gate.js'
+import { useOnboarding } from './onboarding/use-onboarding.js'
 import './styles.css'
 
 export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boolean }): JSX.Element {
@@ -73,6 +76,8 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
   const focusSearch = useCallback(() => { searchRef.current?.focus(); searchRef.current?.select() }, [])
   const [appearance, setAppearance] = useState(() => readAppearanceSettings(window.localStorage))
   const backdropStatus = useWorkspaceBackdrop(appearance.backdrop)
+  const legacyOnboardingBypass = chat.chats.length > 0
+  const onboarding = useOnboarding(chat.state, legacyOnboardingBypass)
   const [settingsOpen, setSettingsOpen] = useState(initialSettingsOpen)
   const [settingsTab, setSettingsTab] = useState<SettingsTab>('appearance')
   const [wallpaperOpen, setWallpaperOpen] = useState(false)
@@ -355,6 +360,26 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
           onBackdropChange={(mode) => updateAppearance({ backdrop: mode })}
         />
       </Suspense>}
+      {onboarding.showSessionGate && (
+        <SessionGate
+          users={onboarding.settings.users}
+          keepSignedIn={onboarding.settings.keepSignedIn}
+          backdropStatus={backdropStatus}
+          onKeepSignedInChange={onboarding.setKeepSignedIn}
+          onSignIn={onboarding.signIn}
+          onCreateAccount={onboarding.createAccount}
+        />
+      )}
+      <ProviderSetupModal
+        open={onboarding.showProviderSetup}
+        chat={chat.state}
+        connectedProviders={onboarding.settings.connectedProviders}
+        onLoginCodex={chat.loginWithChatGPT}
+        onMarkConnected={onboarding.markProviderConnected}
+        onClearConnected={onboarding.clearProviderConnected}
+        onContinue={onboarding.completeProviderSetup}
+        onSkip={onboarding.skipProviderSetup}
+      />
     </div>
   )
 }

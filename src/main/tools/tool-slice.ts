@@ -2,18 +2,27 @@ import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { appCheckoutPath } from '../app-checkout.js'
 import { parseToolSliceCatalog, type ToolSliceCatalog, type ToolSliceDefinition } from '../../shared/tool-slices.js'
 import { measureToolContextBudget } from './tool-context-budget.js'
 import { ToolRegistry, type ToolRegistry as ToolRegistryType } from './registry.js'
 import type { ToolDefinition, ToolNamespace } from './tool.js'
 
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..')
+/** Source module dir (tests); bundled main is `out/main/index.js` so `../../..` is not the repo. */
+function toolSliceCatalogFile(): string {
+  try {
+    return path.join(appCheckoutPath(), 'scripts/tool-slices.json')
+  } catch {
+    const fromSource = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..')
+    return path.join(fromSource, 'scripts/tool-slices.json')
+  }
+}
 
 let cachedCatalog: ToolSliceCatalog | null = null
 
 export async function loadToolSliceCatalog(): Promise<ToolSliceCatalog> {
   if (cachedCatalog) return cachedCatalog
-  const source = await readFile(path.join(repoRoot, 'scripts/tool-slices.json'), 'utf8')
+  const source = await readFile(toolSliceCatalogFile(), 'utf8')
   cachedCatalog = parseToolSliceCatalog(JSON.parse(source))
   return cachedCatalog
 }

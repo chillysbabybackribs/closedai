@@ -107,6 +107,17 @@ export const UI_CONTROLS = {
   'shell.error-reload': 'Reload the renderer from the error panel after a render failure',
   'shell.alert-dismiss': 'Dismiss the shell-level alert shown after a failed shortcut or menu action',
 
+  'onboarding.gate-sign-in': 'Session gate: sign in as an existing local profile; item is the profile id',
+  'onboarding.gate-display-name': 'Session gate: display name for a new local profile',
+  'onboarding.gate-create': 'Session gate: create a new local profile and continue',
+  'onboarding.gate-keep-signed-in': 'Session gate: keep this profile signed in on the next launch',
+  'dialog.onboarding-providers': 'First-run dialog: connect chat providers before using the workspace',
+  'onboarding.provider-connect': 'Provider setup: connect or confirm sign-in for a provider; item is codex, claude, antigravity, or cursor',
+  'onboarding.provider-disconnect': 'Provider setup: clear a provider marked connected during onboarding; item is the provider id',
+  'onboarding.provider-refresh': 'Provider setup: re-check which provider binaries are installed',
+  'onboarding.provider-skip': 'Provider setup: continue without connecting a provider',
+  'onboarding.provider-continue': 'Provider setup: finish onboarding after at least one provider is connected',
+
   'diff.toggle-view': 'Toggle between unified and side-by-side split diff view; item is unified or split',
   'diff.collapse-all': 'Collapse or expand all hunks in the diff viewer',
   'diff.collapse-hunk': 'Collapse or expand a specific diff hunk; item is the hunk index',

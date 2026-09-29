@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict'
+import path from 'node:path'
 import test from 'node:test'
+import { fileURLToPath } from 'node:url'
 
+import { setAppCheckoutPath } from '../app-checkout.ts'
 import { parseToolSliceCatalog } from '../../shared/tool-slices.ts'
 import { appTools } from './app/index.ts'
 import { batchTools } from './batch/index.ts'
@@ -15,7 +18,9 @@ import { peerChatTools } from './peer-chats/index.ts'
 import { searchTools } from './search/index.ts'
 import type { ResearchDependencies } from './search/research/service.ts'
 import { measureToolContextBudget } from './tool-context-budget.ts'
-import { applyToolSliceById, loadToolSliceCatalog, validateToolSliceCatalog } from './tool-slice.ts'
+import { applyToolSliceById, loadToolSliceCatalog, resetToolSliceCatalogCache, validateToolSliceCatalog } from './tool-slice.ts'
+
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..')
 
 const root = '/tmp/closedai-tool-slice'
 
@@ -55,6 +60,14 @@ function fullRegistry() {
   ])
   return registry
 }
+
+test('loadToolSliceCatalog reads scripts/tool-slices.json from app checkout (bundled main safe)', async () => {
+  resetToolSliceCatalogCache()
+  setAppCheckoutPath(repoRoot)
+  const catalog = await loadToolSliceCatalog()
+  assert.ok(catalog.slices.core)
+  resetToolSliceCatalogCache()
+})
 
 test('tool slice catalog parses and every slice respects the Codex eager wire cap', async () => {
   const catalog = await loadToolSliceCatalog()
