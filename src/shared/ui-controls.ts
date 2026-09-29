@@ -53,7 +53,7 @@ export const UI_CONTROLS = {
   'spaces.slot': 'Workspace overview (View → Workspace overview, Ctrl+Shift+O, or Ctrl+scroll out): zoom into this workspace, switching to its project; item is the project folder',
   'spaces.add': 'Workspace overview: the Add workspace tile; adds a workspace in the current folder with a fresh chat left of the browser and zooms into it',
   'dock.bar': 'The dock along the bottom of the main window; hidden until the pointer reaches the bottom edge unless Keep visible is on',
-  'dock.start': 'Dock tray: open the Start panel of pinned apps, search, and recommendations',
+  'dock.start': 'Dock tray centre tile: open the Start panel of pinned apps, search, and recommendations',
   'dock.start-search': 'Start panel: search application menus and commands',
   'dock.start-pin': 'Start panel pinned app; item is the menu row key, for example new-chat or settings',
   'dock.start-all-apps': 'Start panel: show every menu command, or return to pinned apps',

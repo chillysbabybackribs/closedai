@@ -768,17 +768,17 @@ Left: back and forward (`dock.back`, `dock.forward`) step through the zoom histo
 are disabled at either end and while a zoom is moving; their tooltips name where you are
 (workspace and selected chat, or "All workspaces"). Right: Layout and dock settings
 (`dock.settings`). Centre: the **app tray**, Magic UI's `Dock` (`src/components/ui/dock.tsx`,
-`@magicui/dock`), with **Start** as the first tile and one
-rounded-square tile per ClosedAI surface (`dock.app`, item is the surface), 48 px and growing to 64 px
-under the pointer. **Start** (`dock.start`) opens a panel above the tray with search
+`@magicui/dock`), with **Start** centred in the tray at 56 px (76 px under the pointer) and one
+rounded-square tile per ClosedAI surface on either side (`dock.app`, item is the surface), 48 px and
+growing to 64 px under the pointer. **Start** (`dock.start`) opens a panel above the tray with search
 (`dock.start-search`), a **Pinned** grid of common commands (`dock.start-pin`, item is the menu
 row key), **Recommended** recent chats (`dock.start-chat`, item is the pane id), and **All apps**
 (`dock.start-all-apps`) listing every File, View, Agent, and Developer row with the same disabled
 rules as the menus. The footer names the current workspace and **All workspaces**
 (`dock.overview`, pressed while zoomed out) toggles the workspace overview. Menu definitions and
 `runMenuItem` are shared in `application-menu-model.ts`. The main-window header keeps chat search;
-detached windows and startup retain the header menus because no dock is available there. Each tray
-tile after Start holds the surface's icon from the shared list in
+detached windows and startup retain the header menus because no dock is available there. Each surface
+tile holds its icon from the shared list in
 `src/renderer/app-icons.tsx`, which the view tabs use too. The strip is 44 px tall and a step lighter than the workspace
 (`--surface-raised`); the tray sits in a tab that rises out of its centre, drawn with the strip as
 one shape and one outline (`dock-surface.tsx`). The dock's box reaches as high as a magnified tile, so a browser under any of it is covered. **Chats** opens chat history. **Browser** shows or hides the
