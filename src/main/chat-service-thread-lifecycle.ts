@@ -9,9 +9,11 @@ import { ChatTranscript } from './chat-transcript.js'
 import type { ContextCompactor } from './chat-context/context-compaction.js'
 import type { SessionRotator } from './chat-context/session-rotation.js'
 import type { ChatModelState } from './chat-model-state.js'
-import { dynamicToolSpecs } from './tools/app-server-tools.js'
+import { resolveCodexToolCatalog } from './tools/codex-tool-catalog.js'
 import type { ToolRegistry } from './tools/registry.js'
 import type { CodexRuntimeSession } from './codex-workspace-runtime.js'
+import type { TurnSurfaceContext } from './chat-context/turn-context.js'
+import { traceLog } from './trace/trace-log.js'
 
 export const CHAT_SERVICE_THREAD_CACHE_LIMIT = 8
 
@@ -37,6 +39,7 @@ export type ChatServiceThreadHost = {
   setThreadName(name: string | null): void
   setThreadToolCatalog(catalog: unknown): void
   setActiveTurnId(id: string | null): void
+  surfaceContext(): TurnSurfaceContext | null
 }
 
 export function rememberThreadCache(host: ChatServiceThreadHost, threadId: string, content: ChatThreadContent): void {
@@ -134,7 +137,21 @@ export async function rotateCodexProviderSession(host: ChatServiceThreadHost, ex
 }
 
 export async function ensureCodexThread(host: ChatServiceThreadHost, clientUserMessageId?: string): Promise<string> {
-  const catalog = dynamicToolSpecs(host.tools)
+  const prompt = clientUserMessageId ? host.transcript.optimisticUserText(clientUserMessageId) : null
+  const bundle = await resolveCodexToolCatalog(host.tools, host.settings.get(), {
+    prompt,
+    surface: host.surfaceContext()
+  })
+  const catalog = bundle.dynamicTools
+  if (bundle.sliceId) {
+    traceLog.record({ paneId: host.paneId, provider: 'codex', turnId: null }, {
+      kind: 'tool',
+      label: 'codex.tool_slice',
+      summary: `${bundle.sliceId} (${bundle.promotedIds.length} eager)`,
+      detail: { sliceId: bundle.sliceId, promotedIds: bundle.promotedIds },
+      ok: true
+    })
+  }
   if (host.threadId() && !isDeepStrictEqual(host.threadToolCatalog(), catalog)) {
     await rotateCodexProviderSession(host, clientUserMessageId ? `user:${clientUserMessageId}` : undefined)
     if (host.threadId()) {
@@ -146,7 +163,7 @@ export async function ensureCodexThread(host: ChatServiceThreadHost, clientUserM
   if (existing) return existing
   const response = await host.client.request<ThreadResponse>(
     'thread/start',
-    startThreadParams(host.cwd, host.tools, selectedThreadModelSettings(host))
+    startThreadParams(host.cwd, host.tools, selectedThreadModelSettings(host), catalog)
   )
   const thread = recordOf(response.thread)
   if (typeof thread?.id !== 'string') throw new Error('Codex returned an invalid thread')

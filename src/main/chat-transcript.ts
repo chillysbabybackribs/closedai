@@ -94,6 +94,12 @@ export class ChatTranscript {
     this.upsert({ type: 'user', id, turnId: null, text, ...(attachments.length ? { attachments } : {}) })
   }
 
+  /** Text of an optimistic user row keyed by the client id passed to turn/start. */
+  optimisticUserText(clientId: string): string | null {
+    const item = this.items.get(`user:${clientId}`)
+    return item?.type === 'user' ? item.text : null
+  }
+
   consume(raw: unknown, turnId: string | null, completed: boolean): void {
     const record = recordOf(raw)
     if (!record) return

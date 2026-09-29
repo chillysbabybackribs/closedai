@@ -1,4 +1,4 @@
-import { dynamicToolSpecs } from '../tools/app-server-tools.js'
+import { dynamicToolSpecs, type DynamicToolSpec } from '../tools/app-server-tools.js'
 import type { ToolRegistry } from '../tools/registry.js'
 
 export type ThreadResponse = {
@@ -39,11 +39,12 @@ export function resumeThreadParams(
 export function startThreadParams(
   cwd: string,
   tools: ToolRegistry,
-  modelSettings: ThreadModelSettings = { model: null, effort: null }
+  modelSettings: ThreadModelSettings = { model: null, effort: null },
+  dynamicTools?: DynamicToolSpec[]
 ): Record<string, unknown> {
   return {
     ...sharedThreadParams(cwd),
-    dynamicTools: dynamicToolSpecs(tools),
+    dynamicTools: dynamicTools ?? dynamicToolSpecs(tools),
     serviceName: 'closedai',
     ...(modelSettings.model ? { model: modelSettings.model } : {}),
     ...threadConfig(modelSettings)

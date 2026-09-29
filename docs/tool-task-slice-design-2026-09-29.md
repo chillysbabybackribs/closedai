@@ -1,6 +1,6 @@
 # Task-scoped tool slices (design)
 
-Status: **Phase 0 landed** — `scripts/tool-slices.json`, `applyToolSlice()` in `src/main/tools/tool-slice.ts`, and budget tests. Provider wiring is **not** connected yet.
+Status: **Phase 1 (Codex) landed** — slice manifest + `applyToolSlice()`, Codex `thread/start` catalog via `resolveCodexToolCatalog()` when `chatToolSliceEnabled` is true. Cursor/Claude adapters remain Phase 2–3.
 
 ## Problem
 
@@ -76,8 +76,8 @@ All user-enabled tools remain **callable** after discovery / ToolSearch / loadin
 - [x] Versioned JSON manifest + parse tests
 - [x] Greedy promotion under wire cap
 - [x] `resetEager` swaps default browser eager off on workspace tasks
-- [ ] Wire slice selection into `ensureCodexThread` / turn build
-- [ ] Telemetry: slice id, promoted ids, discovery fallbacks
+- [x] Wire slice selection into `ensureCodexThread` / turn build (`chatToolSliceEnabled`)
+- [x] Telemetry: trace `codex.tool_slice` with slice id and promoted ids
 - [ ] Guide outline: one line on slice + discovery fallback
 - [ ] Cursor namespace filter + session reload tests
 - [ ] Property: promoted ⊆ enabled switchable ids

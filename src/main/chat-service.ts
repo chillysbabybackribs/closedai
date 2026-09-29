@@ -484,7 +484,8 @@ export class ChatService extends EventEmitter {
       setThreadId: (id) => { this.threadId = id },
       setThreadName: (name) => { this.threadName = name },
       setThreadToolCatalog: (catalog) => { this.threadToolCatalog = catalog },
-      setActiveTurnId: (id) => { this.activeTurnId = id }
+      setActiveTurnId: (id) => { this.activeTurnId = id },
+      surfaceContext: () => this.surfaceContext()
     }
   }
 

@@ -8,6 +8,19 @@ import type { AppSettings } from '../shared/types.ts'
 import { ChatTranscript } from './chat-transcript.ts'
 import { ToolRegistry } from './tools/registry.ts'
 import { dynamicToolSpecs } from './tools/app-server-tools.ts'
+import { resolveCodexToolCatalog } from './tools/codex-tool-catalog.ts'
+import { appTools } from './tools/app/index.ts'
+import { batchTools } from './tools/batch/index.ts'
+import { browserTools } from './tools/browser/index.ts'
+import { cdpTools } from './tools/cdp/index.ts'
+import { captureTools } from './tools/capture/index.ts'
+import { createToolRegistry } from './tools/index.ts'
+import { nativeInstrumentTools } from './tools/native-instrument/index.ts'
+import { mediaTools } from './tools/media/index.ts'
+import { credentialVaultTools } from './tools/credential-vault/index.ts'
+import { peerChatTools } from './tools/peer-chats/index.ts'
+import { searchTools } from './tools/search/index.ts'
+import type { ResearchDependencies } from './tools/search/research/service.ts'
 import {
   CHAT_SERVICE_THREAD_CACHE_LIMIT,
   ensureCodexThread,
@@ -15,14 +28,46 @@ import {
   rememberThreadCache,
   type ChatServiceThreadHost
 } from './chat-service-thread-lifecycle.ts'
+
+const sliceTestRoot = '/tmp/closedai-thread-slice'
+
+function sliceTestRegistry() {
+  const stubHost = (): null => null
+  const research: ResearchDependencies = {
+    owner: (caller) => ({
+      paneId: caller.paneId!, threadId: caller.threadId!, turnId: caller.turnId, workspace: sliceTestRoot
+    }),
+    collect: async () => ({
+      url: 'https://example.com/', title: 'x', text: 'x', contentType: 'text/plain',
+      sha256: 'hash', incomplete: false, representation: 'static_text' as const
+    }),
+    read: async () => 'x',
+    remove: async () => {},
+    openLive: () => 'tab-stub'
+  }
+  let registry = createToolRegistry([])
+  registry = createToolRegistry([
+    nativeInstrumentTools(stubHost as never, () => false),
+    credentialVaultTools(stubHost, stubHost),
+    appTools(stubHost, stubHost),
+    mediaTools({ app: stubHost, ui: stubHost, page: stubHost, record: stubHost as never }),
+    browserTools(() => stubHost(), () => stubHost(), () => stubHost()),
+    cdpTools(stubHost),
+    captureTools(stubHost, stubHost as never),
+    searchTools({ research }),
+    peerChatTools(stubHost),
+    batchTools(() => registry, { maxCalls: 16 })
+  ])
+  return registry
+}
 import { ContextCompactor } from './chat-context/context-compaction.ts'
 import { SessionRotator } from './chat-context/session-rotation.ts'
 import { ChatModelState } from './chat-model-state.ts'
 
-async function mockHost(t: test.TestContext, tools: ToolRegistry) {
+async function mockHost(t: test.TestContext, tools: ToolRegistry, settingsPatch: Partial<AppSettings> = {}) {
   const directory = await mkdtemp(join(tmpdir(), 'closedai-thread-lifecycle-'))
   t.after(() => rm(directory, { recursive: true, force: true }))
-  let saved: AppSettings = { ...DEFAULT_APP_SETTINGS, chatSeamlessRotation: false }
+  let saved: AppSettings = { ...DEFAULT_APP_SETTINGS, chatSeamlessRotation: false, ...settingsPatch }
   let threadId: string | null = 'live-thread'
   let threadToolCatalog: unknown = dynamicToolSpecs(tools)
   const requests: Array<{ method: string; params: unknown }> = []
@@ -99,6 +144,7 @@ async function mockHost(t: test.TestContext, tools: ToolRegistry) {
     setThreadName: () => {},
     setThreadToolCatalog: (catalog) => { threadToolCatalog = catalog },
     setActiveTurnId: () => {},
+    surfaceContext: () => null
   }
   return { host, requests, getSaved: () => saved, setThreadToolCatalog: (c: unknown) => { threadToolCatalog = c } }
 }
@@ -143,6 +189,19 @@ test('readCachedThread serves non-live reads from a bounded cache', async (t) =>
   assert.equal(host.threadCache.size, 1)
   const second = await readCachedThread(host, 'cached-thread')
   assert.equal(second, first)
+})
+
+test('ensureCodexThread rotates when task slice changes the dynamic catalog', async (t) => {
+  const tools = sliceTestRegistry()
+  const { host, requests, setThreadToolCatalog } = await mockHost(t, tools, { chatToolSliceEnabled: true })
+  host.transcript.addOptimisticUser('pending-user', 'Summarize this page', [])
+  const coreBundle = await resolveCodexToolCatalog(tools, { chatToolSliceEnabled: true }, { prompt: 'Fix tests', surface: null })
+  setThreadToolCatalog(coreBundle.dynamicTools)
+  assert.equal(await ensureCodexThread(host, 'pending-user'), 'new-thread')
+  assert.equal(requests.filter((r) => r.method === 'thread/start').length, 1)
+  const startParams = requests.find((r) => r.method === 'thread/start')!.params as Record<string, unknown>
+  const browserBundle = await resolveCodexToolCatalog(tools, { chatToolSliceEnabled: true }, { prompt: 'Summarize this page', surface: null })
+  assert.deepEqual(startParams.dynamicTools, browserBundle.dynamicTools)
 })
 
 test('rememberThreadCache evicts the oldest entry at the limit', () => {

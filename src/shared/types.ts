@@ -210,6 +210,11 @@ export type AppSettings = {
    * commands through `.closedai/work.lock`. Default on.
    */
   chatWorkLockEnabled: boolean
+  /**
+   * When true, Codex thread/start advertises a task-scoped eager tool slice instead of the
+   * registry default pair. Slice changes rotate the thread like a catalog drift.
+   */
+  chatToolSliceEnabled: boolean
 }
 
 /** A still of the page the user is looking at; `imageUrl` is a data URL. */
