@@ -12,7 +12,7 @@ export type MenuAction =
   | 'new-chat' | 'history' | 'settings' | 'close-tab' | 'close-window' | 'search-chats'
   | 'toggle-browser' | 'saved-sites' | 'layout' | 'toggle-fullscreen'
   | 'agents' | 'tools' | 'compact' | 'stop-turn'
-  | 'trace' | 'reload' | 'devtools' | 'overview' | 'tile-windows'
+  | 'trace' | 'reload' | 'devtools' | 'overview' | 'tile-windows' | 'notepad'
 
 type MenuControlUi = { control: 'layout.dock-preset' | 'layout.preset-menu-custom'; item?: string }
 
@@ -71,6 +71,7 @@ export const MENUS: Menu[] = [
     label: 'View',
     rows: [
       { key: 'toggle-browser-pane', label: 'Toggle browser pane', action: 'toggle-browser' },
+      { key: 'notepad', label: 'Notepad', shortcut: 'Ctrl+Shift+N', action: 'notepad' },
       { key: 'overview', label: 'Workspace overview', shortcut: 'Ctrl+Shift+O', action: 'overview' },
       { key: 'tile-windows', label: 'Tile windows', shortcut: 'Ctrl+Shift+L', action: 'tile-windows' },
       SEP,

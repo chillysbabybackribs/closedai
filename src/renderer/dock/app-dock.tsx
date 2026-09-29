@@ -21,6 +21,7 @@ import { DockLayoutSection } from './dock-layout-menu.js'
 import type { LayoutPreset } from '../chat-layout/layout-presets.js'
 import type { MinimizedWindow } from '../chat-layout/floating/minimized-windows.js'
 import { useDockReveal } from './use-dock-reveal.js'
+import { useNotes } from '../notepad/notes-client.js'
 
 const SLIDE_MS = 200
 
@@ -74,6 +75,7 @@ export function AppDock({ menu, nav, chats, chatTitle, browserVisible, prefs, on
   const runs = useAgentRuns()
   const downloads = useBrowserDownloadsController().downloads
   const savedSites = useSavedSitesList(true)
+  const notes = useNotes()
   const apps = useMemo(() => {
     const tiles = dockTiles(runs, chats, [])
     return trayApps({
@@ -83,10 +85,11 @@ export function AppDock({ menu, nav, chats, chatTitle, browserVisible, prefs, on
       runningAgentRuns: runs.filter((run) => run.status === 'running').length,
       agentSummary: dockSummary(tiles),
       savedSites: savedSites.length,
+      notes: notes.length,
       downloads: downloads.length,
       activeDownloads: downloads.filter((download) => download.state === 'progressing').length
     })
-  }, [runs, chats, browserVisible, savedSites.length, downloads])
+  }, [runs, chats, browserVisible, savedSites.length, notes.length, downloads])
   const location = dockLocation({ overview: nav.overview, space: nav.spaceName, chat: chatTitle })
   const where = dockLocationLabel(location)
 

@@ -133,6 +133,9 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
       } else if (shortcut === 'tile-windows') {
         event.preventDefault()
         workspaceRef.current?.tileWindows()
+      } else if (shortcut === 'notepad') {
+        event.preventDefault()
+        workspaceRef.current?.openNotepad().catch(report('Could not open the notepad'))
       } else if (shortcut === 'tools' || shortcut === 'trace') {
         event.preventDefault()
         workspaceRef.current?.openView(shortcut)
@@ -229,6 +232,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
       case 'close-tab': workspaceRef.current?.closeFocused().catch(report('Could not close the chat')); break
       case 'close-window': window.closedai.window.close().catch(report('Could not close the window')); break
       case 'agents': case 'tools': case 'trace': case 'saved-sites': workspaceRef.current?.openView(action); break
+      case 'notepad': workspaceRef.current?.openNotepad().catch(report('Could not open the notepad')); break
       case 'compact': chatRef.current.compactConversation().catch(report('Could not compact the conversation')); break
       case 'stop-turn': chatRef.current.interrupt().catch(report('Could not pause the task')); break
       case 'reload': window.location.reload(); break
@@ -289,6 +293,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
             onLaunch={(id) => {
               if (id === 'chats') workspaceRef.current?.toggleView('history').catch(report('Could not open chat history'))
               else if (id === 'browser') workspaceRef.current?.toggleBrowser()
+              else if (id === 'note') workspaceRef.current?.openNotepad().catch(report('Could not open the notepad'))
               else workspaceRef.current?.openView('agents')
             }}
             onOpenSite={(url) => { workspaceRef.current?.openSite(url).catch(report('Could not open the saved site')) }}

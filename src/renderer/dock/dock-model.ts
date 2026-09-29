@@ -70,7 +70,7 @@ export function pointerReveal(y: number, height: number, shown: boolean): 'show'
   return 'leave'
 }
 
-export type TrayAppId = Extract<AppIconId, 'chats' | 'browser' | 'agents' | 'saved-sites' | 'downloads'>
+export type TrayAppId = Extract<AppIconId, 'chats' | 'browser' | 'note' | 'agents' | 'saved-sites' | 'downloads'>
 
 export type TrayApp = {
   id: TrayAppId
@@ -90,6 +90,7 @@ export type TrayInput = {
   runningAgentRuns: number
   agentSummary: string
   savedSites: number
+  notes: number
   downloads: number
   activeDownloads: number
 }
@@ -103,6 +104,8 @@ export function trayApps(input: TrayInput): TrayApp[] {
       note: input.runningChats > 0 ? `${input.runningChats} running · open chat history` : 'Open chat history' },
     { id: 'browser', label: 'Browser', stack: false, active: input.browserVisible,
       note: input.browserVisible ? 'Showing · click to hide' : 'Hidden · click to show' },
+    { id: 'note', label: 'Notes', stack: false, active: false,
+      note: input.notes > 0 ? `${count(input.notes, 'note')} · open the notepad` : 'Start a note' },
     { id: 'agents', label: 'Agent runs', stack: false, active: input.runningAgentRuns > 0,
       note: input.agentRuns > 0 ? input.agentSummary : 'No runs · open Agents' },
     { id: 'saved-sites', label: 'Saved sites', stack: true, active: false,
