@@ -3,6 +3,7 @@ import { registerHooks } from 'node:module'
 import test from 'node:test'
 import { DEFAULT_APP_SETTINGS } from '../app-settings-store.js'
 import type { AcpMcpServer } from './cursor-acp.js'
+import { JsonRpcPeerError } from '../stdio-json-rpc.js'
 import type { CursorSession } from './cursor-session.js'
 import type { CursorToolBridge } from './cursor-mcp.js'
 
@@ -16,6 +17,8 @@ function toolBridge(): CursorToolBridge & { listening: boolean; starts: number }
     listening: false,
     starts: 0,
     async start() { bridge.starts += 1; bridge.listening = true },
+    bind: () => {},
+    takeCallId: () => null,
     servers: (key: string): AcpMcpServer[] => bridge.listening
       ? [{ type: 'http', name: 'embedded_browser', url: `http://127.0.0.1:1/mcp/${key}/embedded_browser`, headers: [] }]
       : []
@@ -176,4 +179,88 @@ test('a session already open without tools is reopened once they exist', async (
   await session.warm()
 
   assert.deepEqual(attached, [[], ['closedai_app']], 'the pane repairs itself instead of staying toolless')
+})
+
+function historyClient(session: CursorSession, fail: () => Error | null, prompts: string[]) {
+  return {
+    connected: true,
+    capabilities: { loadSession: true, image: false },
+    stop() {},
+    async loadSession(sessionId: string) {
+      const error = fail()
+      if (error) throw error
+      const update = (session as unknown as { onUpdate(params: unknown): void }).onUpdate.bind(session)
+      update({ sessionId, update: { sessionUpdate: 'user_message_chunk', content: { type: 'text', text: 'Earlier question' } } })
+      update({ sessionId, update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'Earlier answer' } } })
+      return { sessionId, models: [{ modelId: 'default[]', name: 'Auto' }], modes: [],
+        currentModelId: 'default[]', currentModeId: null, modelConfigId: 'model', modeConfigId: 'mode' }
+    },
+    async newSession() {
+      return { sessionId: 'fresh', models: [{ modelId: 'default[]', name: 'Auto' }], modes: [],
+        currentModelId: 'default[]', currentModeId: null, modelConfigId: 'model', modeConfigId: 'mode' }
+    },
+    async prompt(_sessionId: string, blocks: Array<{ type: string; text?: string }>) {
+      prompts.push(blocks.map((block) => block.text ?? '').join('\n'))
+      return 'end_turn'
+    }
+  }
+}
+
+function serviceWith(chatCursorSessionId: string) {
+  const state: { saved: typeof DEFAULT_APP_SETTINGS } = { saved: { ...DEFAULT_APP_SETTINGS, chatCursorSessionId } }
+  const service = new CursorChatService('/workspace', {
+    get: () => state.saved,
+    set: async (patch) => { state.saved = { ...state.saved, ...patch }; return state.saved },
+    checkpoint: () => null,
+    sessionRotations: () => []
+  }, toolBridge(), '/unused')
+  const session = (service as unknown as { createSession(): CursorSession }).createSession()
+  Object.assign(service, { session, readAccount: async () => {}, refreshPlanUsage: async () => {} })
+  return { service, session, state }
+}
+
+test('a relaunch keeps the saved session through a failed load unless the agent says it is gone', async () => {
+  const warn = console.warn
+  console.warn = () => {}
+  try {
+    const transient = serviceWith('saved')
+    Object.assign(transient.session, { client: historyClient(transient.session, () => new Error('Cursor ACP request timed out: session/load'), []) })
+    await transient.service.start({ warm: true })
+    assert.equal(transient.state.saved.chatCursorSessionId, 'saved')
+
+    const gone = serviceWith('saved')
+    const notFound = new JsonRpcPeerError('Invalid params', -32602, { message: 'Session "saved" not found' })
+    Object.assign(gone.session, { client: historyClient(gone.session, () => notFound, []) })
+    await gone.service.start({ warm: true })
+    assert.equal(gone.state.saved.chatCursorSessionId, null)
+  } finally {
+    console.warn = warn
+  }
+})
+
+test('a conversation whose session the agent lost reaches the replacement as a handoff', async () => {
+  const { service, session, state } = serviceWith('saved')
+  let gone = false
+  const prompts: string[] = []
+  Object.assign(session, { client: historyClient(session, () => gone
+    ? new JsonRpcPeerError('Invalid params', -32602, { message: 'Session "saved" not found' })
+    : null, prompts) })
+  await service.start({ warm: true })
+  // The idle process closed; the agent that answers next no longer holds the session.
+  gone = true
+  Object.assign(session, { loadedSessionId: null })
+  const warn = console.warn
+  console.warn = () => {}
+  try {
+    await service.send('Next question')
+  } finally {
+    console.warn = warn
+  }
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(prompts.length, 1)
+  assert.match(prompts[0]!, /Earlier question/)
+  assert.match(prompts[0]!, /Next question/)
+  assert.equal(state.saved.chatCursorSessionId, 'fresh')
+  assert.equal(state.saved.chatContinuation?.handoff ?? null, null)
+  assert.match(JSON.stringify(service.snapshot().items), /continues in a new session/)
 })

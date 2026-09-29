@@ -102,6 +102,10 @@ until the pane leaves that conversation (a new chat, a thread opened from histor
 clearing itself); they are in memory only and a relaunch shows just the new provider's thread. The
 chat the destination left stays in history. Opening another provider's thread from history is the
 other direction and shows that thread. History merges the providers' workspace catalogs.
+A Cursor pane saves its ACP session id only once the session has taken a turn: cursor-agent
+forgets a `session/new` that was never prompted, so a warmed-but-unused session is not reopened
+on relaunch. A saved session the agent no longer holds is replaced by a new one, and the visible
+transcript goes with that turn as a handoff; any other load failure keeps the saved id.
 Changing models or providers is refused while that pane has an active turn. Picking a model is a
 UI act that writes the choice to the chat record and repaints the pane at once — ready, on that
 model, with the transcript it had. When the pick targets a provider whose catalog is already
