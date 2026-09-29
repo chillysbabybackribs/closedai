@@ -151,13 +151,14 @@ export function runMenuItem(row: MenuItem, menu: Pick<TitlebarMenuProps,
  * menu greys it out, and refused for rows that act on the selected chat while that is the caller.
  */
 export function runMenuKey(key: string, menu: TitlebarMenuProps,
-  chat: { selectedPaneId: string | null; callerPaneId: string | null }): AppMenuRunResult {
+  chat: { selectedPaneId: string | null; callerPaneId: string | null; closeTargetId?: string | null }): AppMenuRunResult {
   const owner = MENUS.find(candidate => candidate.rows.some(row => 'key' in row && row.key === key))
   const row = owner?.rows.find((candidate): candidate is MenuItem => 'key' in candidate && candidate.key === key)
   if (!owner || !row) return { key, ran: false, refused: `No menu row has the key ${key}` }
   const found = { key, label: row.label, menu: owner.label }
   if (menuItemDisabled(row, menu)) return { ...found, ran: false, disabled: true }
-  if (MENU_KEYS_ON_SELECTED_CHAT.has(row.key) && chat.callerPaneId && chat.selectedPaneId === chat.callerPaneId) {
+  const target = row.key === 'close-tab' ? chat.closeTargetId ?? chat.selectedPaneId : chat.selectedPaneId
+  if (MENU_KEYS_ON_SELECTED_CHAT.has(row.key) && chat.callerPaneId && target === chat.callerPaneId) {
     return { ...found, ran: false, refused: `${row.label} acts on the selected chat, which is the calling chat; select another pane with command open_chat first` }
   }
   runMenuItem(row, menu)

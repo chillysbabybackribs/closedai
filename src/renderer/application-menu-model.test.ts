@@ -55,4 +55,9 @@ test('a model run fires the row handler only when the menu would allow the click
   assert.equal(self.ran, false)
   assert.match(self.refused ?? '', /calling chat/)
   assert.deepEqual(fired, [['action', 'tools'], ['zoom', 'reset'], ['search'], ['action', 'stop-turn']])
+  const focusedView = { selectedPaneId: 'pane-b', callerPaneId: 'pane-b', closeTargetId: 'closedai:view:tools:1' }
+  assert.equal(runMenuKey('close-tab', menu, focusedView).ran, true)
+  assert.deepEqual(fired.at(-1), ['action', 'close-tab'])
+  assert.equal(runMenuKey('stop-turn', menu, focusedView).ran, false)
+  assert.equal(runMenuKey('close-tab', menu, { ...focusedView, closeTargetId: 'pane-b' }).ran, false)
 })

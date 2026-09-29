@@ -35,6 +35,7 @@ export type ChatLayoutHandle = {
   toggleBrowser: () => void
   /** Show the browser and load `url` in it (the dock's saved sites). */
   openSite: (url: string) => Promise<void>
+  focusedCloseTarget: () => string
   closeFocused: () => Promise<void>
   openLayoutPresets: () => void
   applyPreset: (preset: LayoutPreset) => void
@@ -169,6 +170,7 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, on
       revealBrowser()
       await savedSites.open(url)
     },
+    focusedCloseTarget: layout.focusedCloseTarget,
     closeFocused: () => layout.closeFocused(),
     openLayoutPresets: () => setPresetsOpen(true),
     applyPreset: (preset) => {
@@ -180,7 +182,7 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, on
       setBrowserRevealVersion((value) => value + 1)
       layout.windows.tileAll()
     }
-  }), [layout.windows, layout.dock, layout.activateTab, layout.openView, layout.toggleView, toggleBrowserHere, revealBrowser, savedSites, layout.closeFocused, layout.arrange, chat.selectedPaneId])
+  }), [layout.windows, layout.dock, layout.activateTab, layout.openView, layout.toggleView, toggleBrowserHere, revealBrowser, savedSites, layout.closeFocused, layout.focusedCloseTarget, layout.arrange, chat.selectedPaneId])
   const select = useCallback((id: string): void => { void layout.focusPane(id) }, [layout.focusPane])
   const onDock = useCallback((id: string | null, target: string, edge: import('./layout-tree.js').DockEdge | null, singleTab?: boolean) => {
     return layout.dock(id, target, edge, singleTab)

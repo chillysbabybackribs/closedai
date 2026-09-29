@@ -247,7 +247,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
     tileEnabled: windowsFloating,
     onApplyLayoutPreset: (preset) => workspaceRef.current?.applyPreset(preset)
   }
-  useMenuRunBridge(applicationMenu, chat.selectedPaneId)
+  useMenuRunBridge(applicationMenu, chat.selectedPaneId, () => workspaceRef.current?.focusedCloseTarget() ?? chat.selectedPaneId)
 
   return (
     <div className="shell" data-ui-surface="shell">

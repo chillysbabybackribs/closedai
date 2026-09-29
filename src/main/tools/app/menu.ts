@@ -22,8 +22,8 @@ export function appMenuTool(ui: () => AppUiHost | null): ToolDefinition {
       'lists the same rows) by key: the handler a click fires, in one call instead of opening the menu through ' +
       'closedai_app.ui. Opens views (agents, tools, turn-trace, saved-sites, manage-chat-history), dialogs (settings, ' +
       'workspace-layout), and the overview; applies layout presets, zoom, tiling, and browser visibility. A row greyed ' +
-      'out right now is not run and returns disabled: true. close-tab and stop-turn act on the selected chat and are ' +
-      'refused while that is the calling chat. A row that ran returns the ui state once it changes (views in front ' +
+      'out right now is not run and returns disabled: true. close-tab acts on the focused tab (including views); stop-turn acts on the selected chat. Both are ' +
+      'refused when their target is the calling chat. A row that ran returns the ui state once it changes (views in front ' +
       'under ui.layout.views, ui.overviewOpen, ui.chatZoom, ui.fullScreen, open dialogs), waiting up to a second; uiChanged false means the effect is not part of ' +
       'ui state (for example search focus).',
     inputSchema: objectSchema({

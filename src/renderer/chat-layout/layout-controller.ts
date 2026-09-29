@@ -375,14 +375,18 @@ export function useChatLayout(
     setLayout((value) => ({ ...value, tree: resizeSplit(value.tree, id, ratio) }))
   }, [])
   // Ctrl+W acts on what the selected tile shows: a view in front closes before the chat behind it.
+  const focusedCloseTarget = useCallback((): string => {
+    const owner = tabOwner(current.current.tree, selected.current)
+    return owner && isViewTabId(owner) ? owner : selected.current
+  }, [])
   const closeFocused = useCallback(async (): Promise<void> => {
     const tree = current.current.tree
     const owner = tabOwner(tree, selected.current)
-    const id = owner && isViewTabId(owner) ? owner : selected.current
+    const id = focusedCloseTarget()
     const action = focusedCloseAction(tree, id)
     if (action === 'close-tab') await closeTab(id)
     else if (action === 'hide-pane' && owner) await hide(owner)
-  }, [closeTab, hide])
+  }, [closeTab, hide, focusedCloseTarget])
   /** Title-bar toggle: close the selected tile's view of this kind when it is in front, else open it there. */
   const toggleView = useCallback(async (kind: ViewKind): Promise<void> => {
     const tree = current.current.tree
@@ -514,7 +518,7 @@ export function useChatLayout(
   return {
     ...layout, browserVisible: self.main && layout.browserVisible, detached: !self.main,
     error: error?.text ?? '', notice: notice?.text ?? '', busy, dock, newChat, continueChat, focusPane,
-    activateTab, openView, toggleView, pinView, moveTabToTile, closeTab, hide, closeFocused, resize, arrange,
+    activateTab, openView, toggleView, pinView, moveTabToTile, closeTab, hide, closeFocused, focusedCloseTarget, resize, arrange,
     toggleBrowser, showBrowser, detachTab, returnTab, windows: windowActions,
     maximized: layout.maximized ?? null, setMaximized
   }
