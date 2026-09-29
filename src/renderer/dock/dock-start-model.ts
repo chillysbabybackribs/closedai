@@ -1,5 +1,7 @@
 import type { AppMenuKey } from '../../shared/app-menu-run.js'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
+import { basename } from '../chat-history/history-format.js'
+import { listableChat, sortByActivity, type ChatActivityHit } from '../chat-history/history-search.js'
 import { launcherGroups, MENUS, type MenuItem } from '../application-menu-model.js'
 import type { AppIconId } from '../app-icons.js'
 
@@ -66,7 +68,25 @@ export function allStartMenuGroups(): Array<{ menu: string; rows: MenuItem[] }> 
 
 const RECENT_LIMIT = 6
 
-/** Newest chats for the Recommended section (any project). */
-export function recentChatsForStart(chats: readonly ChatRowSummary[], limit = RECENT_LIMIT): ChatRowSummary[] {
-  return [...chats].sort((left, right) => right.updatedAt - left.updatedAt).slice(0, limit)
+function startChatStatus(row: ChatRowSummary): ChatActivityHit['status'] {
+  if (row.running) return 'running'
+  if (row.paused) return 'paused'
+  return row.attached ? 'open' : 'closed'
+}
+
+/**
+ * Last-used listable chats for Start, newest activity first. Omits blank detached tabs the same
+ * way as header search and History; returns nothing when there is nothing worth listing.
+ */
+export function recentChatsForStart(chats: readonly ChatRowSummary[], limit = RECENT_LIMIT): ChatActivityHit[] {
+  return sortByActivity(chats.filter(listableChat))
+    .slice(0, Math.max(0, limit))
+    .map((row) => ({
+      row,
+      titleRanges: [],
+      folder: basename(row.cwd),
+      score: 0,
+      status: startChatStatus(row),
+      completedAt: null
+    }))
 }

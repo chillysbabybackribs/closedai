@@ -772,7 +772,7 @@ are disabled at either end and while a zoom is moving; their tooltips name where
 on either side (`dock.app`, item is the surface), 48 px and growing to 64 px under the pointer.
 **Start** (`dock.start`) opens a panel above the tray with search
 (`dock.start-search`), a **Pinned** grid of common commands (`dock.start-pin`, item is the menu
-row key), **Recommended** recent chats (`dock.start-chat`, item is the pane id), and **All apps**
+row key), **Recent chats** when any listable history exists (`dock.start-chat`, item is the pane id), and **All apps**
 (`dock.start-all-apps`) listing every File, View, Agent, and Developer row with the same disabled
 rules as the menus. The footer names the current workspace and **All workspaces**
 (`dock.overview`, pressed while zoomed out) toggles the workspace overview. Menu definitions and

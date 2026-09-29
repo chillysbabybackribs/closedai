@@ -7,7 +7,7 @@ import {
   menuItemDisabled, runMenuItem, type MenuItem, type TitlebarMenuProps
 } from '../application-menu-model.js'
 import { formatChatTime } from '../chat-history/history-format.js'
-import { activityAt } from '../chat-history/history-search.js'
+import { chatSearchMeta } from '../chat-history/history-search.js'
 import {
   allStartMenuGroups, recentChatsForStart, searchStartMenu, startPinVisual, startPins, type StartPinKey, type StartPinVisual
 } from './dock-start-model.js'
@@ -30,7 +30,7 @@ export function DockStartPanel({ menu, chats, spaceName, overviewActive, overvie
   const now = useMemo(() => Date.now(), [])
   const searchHits = useMemo(() => searchStartMenu(query), [query])
   const pins = useMemo(() => startPins(), [])
-  const recommended = useMemo(() => query.trim() ? [] : recentChatsForStart(chats), [chats, query])
+  const recentChats = useMemo(() => query.trim() ? [] : recentChatsForStart(chats), [chats, query])
 
   const run = (row: MenuItem): void => {
     runMenuItem(row, menu)
@@ -62,15 +62,14 @@ export function DockStartPanel({ menu, chats, spaceName, overviewActive, overvie
                 {pins.map((row) => <StartPin key={row.key} row={row} menu={menu} onRun={run} />)}
               </div>}
           </StartSection>
-          {recommended.length > 0 && <StartSection title="Recommended">
+          {recentChats.length > 0 && <StartSection title="Recent chats">
             <ul className="chat-history-list">
-              {recommended.map((chat) => <li key={chat.paneId} className="chat-history-row">
-                <button type="button" className="chat-history-open" data-ui="dock.start-chat" data-ui-key={chat.paneId}
-                  onClick={() => { onOpenChat(chat.paneId); onClose() }}>
-                  <span className="chat-history-title">{chat.title}</span>
+              {recentChats.map((hit) => <li key={hit.row.paneId} className="chat-history-row">
+                <button type="button" className="chat-history-open" data-ui="dock.start-chat" data-ui-key={hit.row.paneId}
+                  onClick={() => { onOpenChat(hit.row.paneId); onClose() }}>
+                  <span className="chat-history-title">{hit.row.title}</span>
                   <span className="chat-history-meta">
-                    <span>{chat.preview || 'Chat'}</span>
-                    <span>{formatChatTime(activityAt(chat), now)}</span>
+                    <span>{chatSearchMeta(hit, (timestamp) => formatChatTime(timestamp, now))}</span>
                   </span>
                 </button>
               </li>)}
