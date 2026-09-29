@@ -1,5 +1,5 @@
 /** Where a pointer press may start moving a tiled or floating window. */
-const CHAT_MOVE_BLOCK = '.chat-layout-tab, .chat-window-controls, .chat-layout-new-chat'
+const CHAT_MOVE_BLOCK = '.chat-layout-tab, .chat-window-controls, .chat-layout-new-chat, .chat-layout-tab-new'
 const BROWSER_MOVE_BLOCK = '.browser-tab, .browser-tab-new'
 
 function isElement(target: EventTarget): target is HTMLElement {

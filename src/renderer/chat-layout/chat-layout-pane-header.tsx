@@ -51,6 +51,14 @@ function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset
   // A view in front has no chat actions: rename, pin, pause belong to the chat it follows, not the tab.
   const view = isViewTabId(activeId)
   const noteTile = isNoteTab(activeId)
+  const newTabButton = (className: string) => (
+    <button type="button" className={className}
+      data-ui="layout.new-chat" data-ui-key={activeId} disabled={busy}
+      title={noteTile ? 'New note tab' : 'New chat tab'} aria-label={noteTile ? 'New note tab' : 'New chat tab'}
+      onClick={() => onNewChat(activeId)}>
+      <Plus size={14} aria-hidden="true" />
+    </button>
+  )
   return <ContextMenu.Root>
     <ContextMenu.Trigger asChild>
       <header className="chat-layout-header"
@@ -71,15 +79,10 @@ function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset
         <ChatTabs ids={tabs} activeId={activeId} busy={busy} canClose={tabs.length > 1 || chatCount > 1}
           title={title} activity={activity} reviewQueue={reviewQueue}
           onSelect={(tab) => { tabFocus.current = tab; onSelectTab(tab) }} onClose={onCloseTab}
-          onDrag={(tab) => setDragging({ id: tab, singleTab: true })} />
+          onDrag={(tab) => setDragging({ id: tab, singleTab: true })} trailing={noteTile ? newTabButton('chat-layout-tab-new') : undefined} />
         {toolsPreset === 'read-only' && <span className="chat-layout-preset" data-ui="layout.tools-preset"
           title="Tools are in Read-only: the model can look but not act. Change it in Agent → Tools & capabilities.">Read-only</span>}
-        <button type="button" className="chat-layout-new-chat"
-          data-ui="layout.new-chat" data-ui-key={activeId} disabled={busy}
-          title={noteTile ? 'New note tab' : 'New chat tab'} aria-label={noteTile ? 'New note tab' : 'New chat tab'}
-          onClick={() => onNewChat(activeId)}>
-          <Plus size={14} aria-hidden="true" />
-        </button>
+        {!noteTile && newTabButton('chat-layout-new-chat')}
         <WindowControls id={activeId} busy={busy} maximized={isThisTileSolo} floating={Boolean(onTile)} canMinimize={canMinimize}
           canMaximize={canMaximize} closeLabel={`Close window · ${hideHint}`} canClose={chatCount >= 2}
           onMinimize={() => {

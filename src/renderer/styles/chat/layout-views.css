@@ -6,7 +6,8 @@
 .chat-layout-tab[data-kind] > [role='tab'] .chat-tab-indicator svg { width: 13px; height: 13px; }
 
 /* The + stays lit while its menu (components/ui/dropdown-menu.tsx) is open. */
-.chat-layout-header button.chat-layout-new-chat[data-state='open'] { color: var(--chrome-fg-strong); background: var(--surface-control-hover); }
+.chat-layout-header button.chat-layout-new-chat[data-state='open'],
+.chat-layout-header button.chat-layout-tab-new[data-state='open'] { color: var(--chrome-fg-strong); background: var(--surface-control-hover); }
 
 /* Body: toolbar then the panel, both inside the tile card. */
 .workspace-view {

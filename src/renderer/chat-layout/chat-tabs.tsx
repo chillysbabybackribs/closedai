@@ -1,4 +1,4 @@
-import { useEffect, useRef, type RefObject } from 'react'
+import { useEffect, useRef, type ReactNode, type RefObject } from 'react'
 import { CircleAlert, LoaderCircle, Pause, X } from 'lucide-react'
 import type { ChatReviewQueue } from '../chat-history/review-queue.js'
 import type { TabActivity } from './tab-activity.js'
@@ -9,7 +9,7 @@ import { viewKindOf, type ViewKind } from './layout-views.js'
 import { usePaneTabActivity } from './chat-pane-tab-activity.js'
 import { AppIconMark } from '../app-icons.js'
 
-export function ChatTabs({ ids, activeId, busy, canClose, title, activity, reviewQueue, onSelect, onClose, onDrag }: {
+export function ChatTabs({ ids, activeId, busy, canClose, title, activity, reviewQueue, onSelect, onClose, onDrag, trailing }: {
   ids: string[]
   activeId: string
   busy: boolean
@@ -20,6 +20,8 @@ export function ChatTabs({ ids, activeId, busy, canClose, title, activity, revie
   onSelect: (id: string) => void
   onClose: (id: string) => void
   onDrag: (id: string) => void
+  /** Sits after the last tab in the strip (notepad's new-note control). */
+  trailing?: ReactNode
 }) {
   const list = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -49,6 +51,7 @@ export function ChatTabs({ ids, activeId, busy, canClose, title, activity, revie
           title={title} reviewQueue={reviewQueue} list={list} onSelect={onSelect} onClose={onClose} onDrag={onDrag} />
       : <ChatTabRow key={id} id={id} index={index} ids={ids} activeId={activeId} busy={busy} canClose={canClose}
           title={title} activity={activity} list={list} onSelect={onSelect} onClose={onClose} onDrag={onDrag} />)}
+    {trailing}
   </div>
 }
 
