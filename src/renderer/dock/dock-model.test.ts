@@ -94,7 +94,7 @@ describe('pointerReveal', () => {
 describe('trayApps', () => {
   it('lists the surfaces in tray order with stacks marked', () => {
     const apps = trayApps(quiet)
-    assert.deepEqual(apps.map((app) => app.id), ['chats', 'browser', 'agents', 'saved-sites', 'downloads'])
+    assert.deepEqual(apps.map((app) => app.id), ['chats', 'browser', 'note', 'agents', 'saved-sites', 'downloads'])
     assert.deepEqual(apps.filter((app) => app.stack).map((app) => app.id), ['saved-sites', 'downloads'])
     assert.ok(apps.every((app) => !app.active))
   })

@@ -26,7 +26,8 @@ test('ctrl and meta match the implemented application commands', () => {
 test('unmodified and conflicting modified keys are left to the focused control', () => {
   assert.equal(press('h'), null)
   assert.equal(press('h', { ctrlKey: true, altKey: true }), null)
-  assert.equal(press('n', { ctrlKey: true, shiftKey: true }), null)
+  assert.equal(press('k', { ctrlKey: true, shiftKey: true }), null)
+  assert.equal(press('n', { ctrlKey: true, shiftKey: true }), 'notepad')
   assert.equal(press('F11', { ctrlKey: true }), null)
   assert.equal(press('Escape', { ctrlKey: true }), null)
   assert.equal(press('Escape', { altKey: true }), null)
