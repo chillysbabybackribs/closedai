@@ -6,7 +6,7 @@ import type {
   AppUiTarget,
   AppWaitOptions
 } from './tools/app/host.js'
-import { APP_REVEAL_BROWSER_EVENT, APP_REVEAL_CHAT_TAB_EVENT } from '../shared/app-ui-events.js'
+import { APP_REVEAL_BROWSER_EVENT, APP_REVEAL_CHAT_TAB_EVENT, VIEW_TAB_PREFIX } from '../shared/app-ui-events.js'
 import { APP_MENU_RUN_EVENT, type AppMenuRunDetail } from '../shared/app-menu-run.js'
 
 // Renderer-side expressions for the ui host. Every function below that runs in the page is
@@ -82,7 +82,12 @@ export function uiStateExpression(): string {
       layout: {
         // Tiles stay mounted while a view tab or another tile covers them; only shown ones count.
         visiblePaneIds: Array.from(document.querySelectorAll('[data-pane-id]')).filter(visible).map((element) => element.getAttribute('data-pane-id')),
-        browserVisible: document.querySelector('.workspace-right[data-mode="browser"]')?.getAttribute('data-with-browser') === 'yes'
+        browserVisible: document.querySelector('.workspace-right[data-mode="browser"]')?.getAttribute('data-with-browser') === 'yes',
+        // View tabs (Tools, Trace, History, Agents, Saved sites) in front of their tile; tab is the layout.tab-close item.
+        views: Array.from(document.querySelectorAll('[data-ui="layout.tab"][aria-selected="true"]')).filter(visible)
+          .map((element) => element.getAttribute('data-ui-key') || '')
+          .filter((tab) => tab.startsWith(${JSON.stringify(VIEW_TAB_PREFIX)}))
+          .map((tab) => ({ kind: tab.slice(${VIEW_TAB_PREFIX.length}).split(':')[0], tab }))
       },
       historyOpen: Boolean(byId('chat.history')),
       downloadsOpen: Boolean(document.querySelector('[data-ui-surface="browser-downloads"]')),

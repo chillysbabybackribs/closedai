@@ -50,7 +50,7 @@ export type AppControlsResult = {
 }
 
 export type AppUiState = {
-  layout?: { visiblePaneIds: string[]; browserVisible: boolean }
+  layout?: { visiblePaneIds: string[]; browserVisible: boolean; views?: Array<{ kind: string; tab: string }> }
   chatSearchOpen: boolean
   historyOpen: boolean
   downloadsOpen: boolean

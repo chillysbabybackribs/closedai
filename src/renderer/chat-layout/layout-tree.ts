@@ -1,5 +1,6 @@
 import { layoutGroups, tiledTree } from './layout-docking.js'
 import { MAIN_WINDOW_ID } from '../../shared/app-windows.js'
+import { VIEW_TAB_PREFIX } from '../../shared/app-ui-events.js'
 export type DockEdge = 'left' | 'right' | 'top' | 'bottom'
 /** A floating window's place on the canvas; `z` orders floating windows, higher in front. */
 export type FloatRect = { x: number; y: number; width: number; height: number; z: number }
@@ -19,7 +20,7 @@ export const CHAT_DRAG_TYPE = 'application/x-closedai-chat'
 export const BROWSER_PANE_ID = 'closedai:shared-browser'
 export const WORKSPACE_DOCK_ID = 'closedai:workspace-edge'
 /** View tabs (trace, tools, …) share the tab strip with chats but are never chat ids for main. */
-export const VIEW_TAB_PREFIX = 'closedai:view:'
+export { VIEW_TAB_PREFIX }
 
 export function isReservedPaneId(id: string): boolean {
   return id === BROWSER_PANE_ID
