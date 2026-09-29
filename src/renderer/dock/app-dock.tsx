@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type JSX } from 'react'
 import { ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-react'
 import { Button } from '../../components/ui/button.js'
-import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover.js'
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from '../../components/ui/popover.js'
 import { Switch } from '../../components/ui/switch.js'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../components/ui/tooltip.js'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
@@ -12,7 +12,8 @@ import { useSavedSitesList } from '../browser-saved-sites-controller.js'
 import type { SpacesDockNav } from '../spaces/spaces-stage.js'
 import { DOCK_HEIGHT, DOCK_REACH, TRAY_LIFT, dockLocation, dockLocationLabel, trayApps, type DockPrefs, type TrayAppId } from './dock-model.js'
 import { DockSurface } from './dock-surface.js'
-import { DockTray } from './dock-tray.js'
+import { DockStartPanel } from './dock-start-panel.js'
+import { DockTray, StartTrayButton } from './dock-tray.js'
 import type { TitlebarMenuProps } from '../application-menu-model.js'
 import { DockLayoutMenu } from './dock-layout-menu.js'
 import type { LayoutPreset } from '../chat-layout/layout-presets.js'
@@ -103,27 +104,30 @@ export function AppDock({ menu, nav, chats, chatTitle, browserVisible, prefs, on
             <ChevronRight aria-hidden="true" />
           </DockIconButton>
         </div>
-        <div ref={setTray} className="absolute left-1/2 -translate-x-1/2" style={{ bottom: TRAY_LIFT }}>
-          <DockTray start={{
-            open: openList === 'start',
-            onOpenChange: (open) => setOpenList(open ? 'start' : null),
-            menu,
-            chats,
-            spaceName: nav.spaceName,
-            overviewActive: nav.overview,
-            overviewDisabled: nav.moving,
-            onToggleOverview: nav.toggleOverview,
-            onOpenChat
-          }} apps={apps} magnify={prefs.magnify}
-            openStack={openList === 'saved-sites' || openList === 'downloads' ? openList : null}
-            onOpenStack={(id) => setOpenList(id)}
-            onLaunch={(id) => { if (id !== 'saved-sites' && id !== 'downloads') onLaunch(id) }}
-            savedSites={savedSites} downloads={downloads}
-            onOpenSite={(url) => { setOpenList(null); onOpenSite(url) }}
-            onAllSavedSites={() => { setOpenList(null); onAllSavedSites() }}
-            onRevealDownload={(id) => { void window.closedai.browserDownloads.reveal(id) }}
-            minimized={minimized} onRestoreWindow={onRestoreWindow} />
-        </div>
+        <Popover open={openList === 'start'} onOpenChange={(open) => setOpenList(open ? 'start' : null)}>
+          <div ref={setTray} className="absolute left-1/2 flex -translate-x-1/2 flex-col items-center" style={{ bottom: TRAY_LIFT }}>
+            <PopoverAnchor asChild>
+              <div className="h-0 w-full self-stretch" aria-hidden="true" />
+            </PopoverAnchor>
+            <DockTray startTrigger={
+              <StartTrayButton open={openList === 'start'} overviewActive={nav.overview} />
+            } apps={apps} magnify={prefs.magnify}
+              openStack={openList === 'saved-sites' || openList === 'downloads' ? openList : null}
+              onOpenStack={(id) => setOpenList(id)}
+              onLaunch={(id) => { if (id !== 'saved-sites' && id !== 'downloads') onLaunch(id) }}
+              savedSites={savedSites} downloads={downloads}
+              onOpenSite={(url) => { setOpenList(null); onOpenSite(url) }}
+              onAllSavedSites={() => { setOpenList(null); onAllSavedSites() }}
+              onRevealDownload={(id) => { void window.closedai.browserDownloads.reveal(id) }}
+              minimized={minimized} onRestoreWindow={onRestoreWindow} />
+          </div>
+          <PopoverContent side="top" align="center" sideOffset={20} className="dock-start-shell border p-0 shadow-none"
+            onCloseAutoFocus={(event) => event.preventDefault()}>
+            <DockStartPanel menu={menu} chats={chats} spaceName={nav.spaceName} overviewActive={nav.overview}
+              overviewDisabled={nav.moving} onToggleOverview={nav.toggleOverview} onOpenChat={onOpenChat}
+              onClose={() => setOpenList(null)} />
+          </PopoverContent>
+        </Popover>
         <div className="flex items-center gap-0.5">
           <DockLayoutMenu open={openList === 'layout'} onOpenChange={(open) => setOpenList(open ? 'layout' : null)}
             canTile={canTile} onTileWindows={onTileWindows} onApplyPreset={onApplyPreset} onOpenLayouts={onOpenLayouts} />
