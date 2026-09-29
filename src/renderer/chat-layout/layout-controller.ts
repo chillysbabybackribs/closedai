@@ -6,6 +6,7 @@ import { BROWSER_PANE_ID, WORKSPACE_DOCK_ID, chatPaneIds, isViewTabId, withBrows
 import { addTab, chatTabIds, focusChatTabInLayout, focusedCloseAction, isChatTabActive, moveTab, neighborTile, pruneTabs, removeTab, selectTab, tabIds, tabOwner, type TileDirection } from './layout-tabs.js'
 import { isWorkspaceViewKind, pinOnMove, pruneViewScopes, tileView, viewScope, viewTabId, workspaceView, type ViewKind } from './layout-views.js'
 import { removalNotice } from './layout-copy.js'
+import { readQuickChatModel, rememberQuickChatModel } from './quick-chat-model.js'
 import { adoptTabs, initialWindowTree } from './layout-windows.js'
 import { adoptsUnheldChats, appWindow, isFrontWindow, onAppWindowCommand, tabsHeldElsewhere, useAppWindows } from '../app-windows/app-window-store.js'
 import { floatBeside, groupWindow, minimizeWindow, raiseWindow, restoreWindow } from './floating/window-layout.js'
@@ -77,6 +78,10 @@ export function useChatLayout(
   // The browser's quick chat is visible too, so main keeps it attached and streams it.
   const browserChat = self.main && layout.browserChat && snapshot.chats.some((chat) => chat.paneId === layout.browserChat)
     ? layout.browserChat : null
+  const browserChatModel = browserChat ? snapshot.chats.find((chat) => chat.paneId === browserChat)?.modelId ?? null : null
+  useEffect(() => {
+    if (browserChatModel) rememberQuickChatModel(window.localStorage, browserChatModel)
+  }, [browserChatModel])
   const idsKey = JSON.stringify([...new Set([...chatPaneIds(layout.tree), ...(browserChat ? [browserChat] : [])])])
   const tabsKey = JSON.stringify(chatTabIds(layout.tree))
   const hasTiles = paneIds(layout.tree).length > 0
@@ -544,8 +549,9 @@ export function useChatLayout(
     return maximized === current ? value : { ...value, maximized: maximized ?? undefined }
   }), [])
   const toggleBrowser = useCallback(() => setLayout((value) => ({ ...value, browserVisible: !value.browserVisible })), [])
-  // The quick chat is created unselected and reported visible before main could discard it as blank.
-  // A fresh one replaces it: the previous chat goes back to history (or away, when blank).
+  // The quick chat is created unselected and reported visible before main could discard it as blank,
+  // on the model the quick chat last used. A fresh one replaces it: the previous chat goes back to
+  // history (or away, when blank).
   const openBrowserChat = useCallback(async (fresh = false): Promise<void> => {
     const previous = current.current.browserChat
     const available = latestSnapshot.current().chats.some((chat) => chat.paneId === previous)
@@ -557,7 +563,8 @@ export function useChatLayout(
     pending.current = true
     try {
       const anchor = chatPaneIds(current.current.tree).includes(selected.current) ? selected.current : undefined
-      const id = await window.closedai.chat.newPeer(anchor, { select: false })
+      const modelId = readQuickChatModel(window.localStorage)
+      const id = await window.closedai.chat.newPeer(anchor, { select: false, ...(modelId ? { modelId } : {}) })
       await window.closedai.chat.setVisiblePanes(cwd, [...new Set([...chatPaneIds(current.current.tree), id])], chatTabIds(current.current.tree))
       setLayout((value) => ({ ...value, browserChat: id, browserChatOpen: true }))
       if (previous && available) await window.closedai.chat.closePeer(previous)

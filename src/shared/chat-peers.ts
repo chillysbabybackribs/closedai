@@ -65,8 +65,11 @@ export type ChatRowSummary = ChatPeerSummary & {
   lastTurnEndedAt: number | null
 }
 
-/** `select: false` creates the chat without selecting it; the caller reports it visible (the browser's quick chat). */
-export type ChatNewPeerOptions = { select?: boolean }
+/**
+ * `select: false` creates the chat without selecting it; the caller reports it visible (the browser's
+ * quick chat). `modelId` starts it on that model instead of the anchor's (the quick chat keeps its own).
+ */
+export type ChatNewPeerOptions = { select?: boolean; modelId?: string }
 
 export type ChatContinuationSource = {
   /** Include conversation only through this completed assistant message. */

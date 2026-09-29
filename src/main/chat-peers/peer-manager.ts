@@ -367,13 +367,11 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
 
   async newPeer(anchorPaneId?: ChatPaneId, options?: ChatNewPeerOptions): Promise<ChatPaneId> {
     this.projectSwitch.assertAvailable()
-    if (anchorPaneId) {
-      const anchor = this.lifecycle.require(anchorPaneId).surface.snapshot({ limit: 0 })
-      return this.newChat(anchor.selectedModel, anchor.selectedReasoningEffort, null, this.store.require(anchorPaneId),
-        { selectPane: options?.select })
-    }
-    const current = this.lifecycle.require(this.selectedPaneId).surface.snapshot({ limit: 0 })
-    return this.newChat(current.selectedModel, current.selectedReasoningEffort, null, undefined, { selectPane: options?.select })
+    const base = this.lifecycle.require(anchorPaneId ?? this.selectedPaneId).surface.snapshot({ limit: 0 })
+    // A requested model starts on its provider's default effort unless it is the anchor's own.
+    const model = options?.modelId ?? base.selectedModel
+    const effort = model === base.selectedModel ? base.selectedReasoningEffort : null
+    return this.newChat(model, effort, null, anchorPaneId ? this.store.require(anchorPaneId) : undefined, { selectPane: options?.select })
   }
 
   private async newChat(modelId: string | null, reasoningEffort: string | null, continuation: ChatContinuation | null,

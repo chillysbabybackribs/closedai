@@ -46,7 +46,8 @@ export function registerChatIpc(ipcMain: IpcMain, getService: () => ChatWorkspac
   ipcMain.handle(IPC.invoke.chat.listChats, () => requireService().listChats())
   ipcMain.handle(IPC.invoke.chat.newPeer, (_event, anchorPaneId?: string, options?: ChatNewPeerOptions) => {
     if (options !== undefined && (typeof options !== 'object' || options === null
-      || (options.select !== undefined && typeof options.select !== 'boolean'))) throw new Error('Choose valid new chat options')
+      || (options.select !== undefined && typeof options.select !== 'boolean')
+      || (options.modelId !== undefined && (typeof options.modelId !== 'string' || !options.modelId)))) throw new Error('Choose valid new chat options')
     return requireService().newPeer(anchorPaneId, options)
   })
   ipcMain.handle(IPC.invoke.chat.closePeer, (_event, paneId: string) => requireService().closePeer(paneId))
