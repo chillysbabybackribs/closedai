@@ -30,7 +30,7 @@ import {
 } from '../chat-context/session-guide.js'
 import {
   buildTurnAdditionalContext,
-  type ActiveBrowserContext
+  type TurnSurfaceContext
 } from '../chat-context/turn-context.js'
 import { reasoningEffortForModel } from '../chat-model-catalog.js'
 import { ChatModelState } from '../chat-model-state.js'
@@ -89,7 +89,7 @@ export class CursorChatService extends EventEmitter {
     private readonly settings: RotationSettingsAccess,
     private readonly bridge: CursorToolBridge,
     stateDir: string,
-    private readonly activeBrowserContext: () => ActiveBrowserContext | null = () => null,
+    private readonly surfaceContext: () => TurnSurfaceContext | null = () => null,
     private readonly screenshots: Pick<ScreenshotStore, 'get'> | null = null,
     private readonly paneId: string | null = null,
     private readonly catalogs: WorkspaceCatalogs | null = null
@@ -522,9 +522,9 @@ export class CursorChatService extends EventEmitter {
 
   private turnAdditionalContext(prompt: string): ReturnType<typeof buildTurnAdditionalContext> {
     try {
-      return buildTurnAdditionalContext(prompt, this.activeBrowserContext())
+      return buildTurnAdditionalContext(prompt, this.surfaceContext())
     } catch (error) {
-      console.warn('[chat-context] could not capture active browser state:', messageOf(error))
+      console.warn('[chat-context] could not capture the pane's browser or note state:', messageOf(error))
       return undefined
     }
   }

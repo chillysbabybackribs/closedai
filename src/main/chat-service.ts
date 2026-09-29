@@ -22,7 +22,7 @@ import { routeChatNotification } from './chat-notification-router.js'
 import { ChatTranscript } from './chat-transcript.js'
 import {
   buildTurnAdditionalContext,
-  type ActiveBrowserContext
+  type TurnSurfaceContext
 } from './chat-context/turn-context.js'
 import { resumeThreadParams } from './chat-context/thread-params.js'
 import {
@@ -99,7 +99,7 @@ export class ChatService extends EventEmitter {
     readonly cwd: string,
     private readonly settings: RotationSettingsAccess,
     private readonly tools: ToolRegistry = new ToolRegistry([]),
-    private readonly activeBrowserContext: () => ActiveBrowserContext | null = () => null,
+    private readonly surfaceContext: () => TurnSurfaceContext | null = () => null,
     screenshots: Pick<ScreenshotStore, 'get'> | null = null,
     runtime: CodexWorkspaceRuntime,
     private readonly paneId: string | null = null
@@ -491,9 +491,9 @@ export class ChatService extends EventEmitter {
   /** Context is optional enrichment: stale UI state must never prevent a send. */
   private turnAdditionalContext(prompt: string): ReturnType<typeof buildTurnAdditionalContext> {
     try {
-      return buildTurnAdditionalContext(prompt, this.activeBrowserContext())
+      return buildTurnAdditionalContext(prompt, this.surfaceContext())
     } catch (error) {
-      console.warn('[chat-context] could not capture active browser state:', messageOf(error))
+      console.warn('[chat-context] could not capture the pane's browser or note state:', messageOf(error))
       return undefined
     }
   }

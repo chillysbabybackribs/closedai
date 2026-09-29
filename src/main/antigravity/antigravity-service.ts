@@ -23,7 +23,7 @@ import {
 import {
   buildTurnAdditionalContext,
   mergeTurnAdditionalContext,
-  type ActiveBrowserContext
+  type TurnSurfaceContext
 } from '../chat-context/turn-context.js'
 import { buildCompactionSeed, compactedAdditionalContext } from '../chat-context/provider-compaction.js'
 import { PROVIDER_CATALOG_TTL_MS, type WorkspaceCatalogs } from '../chat-context/provider-catalog-cache.js'
@@ -104,7 +104,7 @@ export class AntigravityChatService extends EventEmitter {
     private readonly settings: RotationSettingsAccess,
     private readonly bridge: AntigravityToolBridge,
     private readonly stateDir: string,
-    private readonly activeBrowserContext: () => ActiveBrowserContext | null = () => null,
+    private readonly surfaceContext: () => TurnSurfaceContext | null = () => null,
     private readonly screenshots: Pick<ScreenshotStore, 'get'> | null = null,
     private readonly paneId: string | null = null,
     private readonly catalogs: WorkspaceCatalogs | null = null
@@ -454,9 +454,9 @@ export class AntigravityChatService extends EventEmitter {
 
   private turnAdditionalContext(prompt: string): ReturnType<typeof buildTurnAdditionalContext> {
     try {
-      return buildTurnAdditionalContext(prompt, this.activeBrowserContext())
+      return buildTurnAdditionalContext(prompt, this.surfaceContext())
     } catch (error) {
-      console.warn('[chat-context] could not capture active browser state:', messageOf(error))
+      console.warn('[chat-context] could not capture the pane's browser or note state:', messageOf(error))
       return undefined
     }
   }

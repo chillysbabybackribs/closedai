@@ -5,12 +5,26 @@ export type ActiveBrowserContext = {
   isLoading: boolean
 }
 
+/**
+ * A notepad window's chat: the note the user is looking at and the window's other tabs. Unlike the
+ * browser tab this is the subject of every message, so it is attached on every turn.
+ */
+export type NotepadTurnContext = {
+  surface: 'notepad'
+  activeNote: { id: string; title: string; lines: number; revision: number; text: string; truncated?: string } | null
+  otherTabs: Array<{ id: string; title: string; lines: number }>
+}
+
+/** What a pane is working over: the browser's active tab, or its notepad window. */
+export type TurnSurfaceContext = ActiveBrowserContext | NotepadTurnContext
+
 export type AdditionalContext = Record<string, {
   kind: 'application' | 'untrusted'
   value: string
 }>
 
 const ACTIVE_BROWSER_CONTEXT = 'closedai.browser.active-tab'
+const NOTEPAD_CONTEXT = 'closedai.notepad'
 export const CLOCK_CONTEXT = 'closedai.clock'
 const CONTEXT_ENVELOPE_TAG = /<(\/?)closedai_context\b/gi
 
@@ -65,9 +79,13 @@ export function buildClockAdditionalContext(now = new Date()): AdditionalContext
 /** Build an ephemeral app-server context fragment without altering the user's message. */
 export function buildTurnAdditionalContext(
   text: string,
-  activeBrowser: ActiveBrowserContext | null,
+  surface: TurnSurfaceContext | null,
   capturedAt = new Date().toISOString()
 ): AdditionalContext | undefined {
+  if (surface && 'surface' in surface) {
+    return { [NOTEPAD_CONTEXT]: { kind: 'untrusted', value: JSON.stringify({ ...surface, contextRole: 'subject', capturedAt }) } }
+  }
+  const activeBrowser = surface
   if (!activeBrowser || !needsActiveBrowserContext(text)) return undefined
   return {
     [ACTIVE_BROWSER_CONTEXT]: {

@@ -10,7 +10,7 @@ import type { CursorToolBridge } from './cursor/cursor-mcp.js'
 import type { WorkspaceCatalogs } from './chat-context/provider-catalog-cache.js'
 import type { ToolRegistry } from './tools/registry.js'
 import type { ScreenshotStore } from './tools/capture/screenshot-store.js'
-import type { ActiveBrowserContext } from './chat-context/turn-context.js'
+import type { ActiveBrowserContext, TurnSurfaceContext } from './chat-context/turn-context.js'
 import type { AppSettingsStore } from './app-settings-store.js'
 import type { ChatStore } from './chat-store/chat-store.js'
 import type { ChatRecord } from '../shared/chat-store.js'
@@ -24,6 +24,8 @@ export function createPaneChatHub(deps: {
   toolRegistry: ToolRegistry
   screenshots: ScreenshotStore
   activeBrowserContext: () => ActiveBrowserContext | null
+  /** A notepad window's chat works over its note instead of the browser tab. */
+  notepadContext: (paneId: string) => TurnSurfaceContext | null
   antigravityBridge: AntigravityToolBridge
   antigravityStateDir: string
   cursorBridge: CursorToolBridge
@@ -37,18 +39,20 @@ export function createPaneChatHub(deps: {
     codexRuntime = new CodexWorkspaceRuntime(deps.record.cwd, deps.settings, { clientVersion: deps.app.getVersion() })
     deps.codexRuntimes.set(deps.record.cwd, codexRuntime)
   }
+  const surfaceContext = (): TurnSurfaceContext | null =>
+    deps.notepadContext(deps.peerSettings.paneId) ?? deps.activeBrowserContext()
   return new ChatHub({
     codex: new ChatService(
-      deps.record.cwd, deps.peerSettings, deps.toolRegistry, deps.activeBrowserContext, deps.screenshots, codexRuntime, deps.peerSettings.paneId
+      deps.record.cwd, deps.peerSettings, deps.toolRegistry, surfaceContext, deps.screenshots, codexRuntime, deps.peerSettings.paneId
     ),
     claude: new ClaudeChatService(
-      deps.record.cwd, deps.peerSettings, deps.toolRegistry, deps.activeBrowserContext, deps.screenshots, deps.peerSettings.paneId
+      deps.record.cwd, deps.peerSettings, deps.toolRegistry, surfaceContext, deps.screenshots, deps.peerSettings.paneId
     ),
     antigravity: new AntigravityChatService(
-      deps.record.cwd, deps.peerSettings, deps.antigravityBridge, deps.antigravityStateDir, deps.activeBrowserContext, deps.screenshots, deps.peerSettings.paneId, deps.catalogs
+      deps.record.cwd, deps.peerSettings, deps.antigravityBridge, deps.antigravityStateDir, surfaceContext, deps.screenshots, deps.peerSettings.paneId, deps.catalogs
     ),
     cursor: new CursorChatService(
-      deps.record.cwd, deps.peerSettings, deps.cursorBridge, deps.cursorStateDir, deps.activeBrowserContext, deps.screenshots, deps.peerSettings.paneId, deps.catalogs
+      deps.record.cwd, deps.peerSettings, deps.cursorBridge, deps.cursorStateDir, surfaceContext, deps.screenshots, deps.peerSettings.paneId, deps.catalogs
     )
   }, deps.record.modelId, deps.peerSettings, {
     provider: deps.record.provider,
