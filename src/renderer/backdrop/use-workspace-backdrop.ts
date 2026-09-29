@@ -7,7 +7,8 @@ import { resolveBackdropSource } from './resolve-backdrop-source.js'
 export type BackdropStatus =
   | { state: 'off' }
   | { state: 'loading' }
-  | { state: 'ready'; name: string }
+  /** `image` is the prepared screen-sized copy, valid until the backdrop changes. */
+  | { state: 'ready'; name: string; image: string }
   | { state: 'unavailable' }
 
 /** Paints the chosen backdrop behind the shell: `data-backdrop` on the root plus the image and tone variables the glass styles read. */
@@ -37,7 +38,7 @@ export function useWorkspaceBackdrop(mode: WorkspaceBackdrop): BackdropStatus {
       }
       prepared = backdrop
       applyWorkspaceBackdrop(document.documentElement, mode, backdrop)
-      setStatus({ state: 'ready', name: backdrop.name })
+      setStatus({ state: 'ready', name: backdrop.name, image: backdrop.image })
     })()
     return () => {
       cancelled = true

@@ -35,12 +35,29 @@ export async function prepareBackdrop(wallpaper: DesktopWallpaper, screenWidth: 
   }
 }
 
+const THUMBNAIL_WIDTH = 480
+
+/** A small JPEG of an uploaded image for its picker tile. Decoding it here also proves the file is an image before main stores it. */
+export async function wallpaperThumbnail(file: Blob): Promise<Uint8Array> {
+  const bitmap = await createImageBitmap(file)
+  try {
+    const blob = await encodeBlob(bitmap, Math.min(THUMBNAIL_WIDTH, bitmap.width), 0, 0.82)
+    return new Uint8Array(await blob.arrayBuffer())
+  } finally {
+    bitmap.close()
+  }
+}
+
 export function releaseBackdrop(backdrop: PreparedBackdrop): void {
   URL.revokeObjectURL(backdrop.image)
   URL.revokeObjectURL(backdrop.blurred)
 }
 
 async function encode(bitmap: ImageBitmap, width: number, blur: number, quality: number): Promise<string> {
+  return URL.createObjectURL(await encodeBlob(bitmap, width, blur, quality))
+}
+
+async function encodeBlob(bitmap: ImageBitmap, width: number, blur: number, quality: number): Promise<Blob> {
   const height = Math.max(1, Math.round(bitmap.height * (width / bitmap.width)))
   const canvas = new OffscreenCanvas(width, height)
   const context = canvas.getContext('2d')!
@@ -53,7 +70,7 @@ async function encode(bitmap: ImageBitmap, width: number, blur: number, quality:
   } else {
     context.drawImage(bitmap, 0, 0, width, height)
   }
-  return URL.createObjectURL(await canvas.convertToBlob({ type: 'image/jpeg', quality }))
+  return canvas.convertToBlob({ type: 'image/jpeg', quality })
 }
 
 function sampleTone(bitmap: ImageBitmap): Pick<PreparedBackdrop, 'luminance' | 'accent' | 'topLuminance' | 'bottomLuminance'> {
