@@ -1098,7 +1098,7 @@ that paints above everything the app shell draws, so the quick chat runs in a tr
 of its own: `QuickChatOverlay` (`src/main/quick-chat-overlay/`) adds a `WebContentsView` with a
 transparent background above the page views, loads the renderer with `?surface=quick-chat`
 (`src/renderer/quick-chat-overlay/`), and fits the view to the box the layer reports
-(`quickChat.setSize`), centred on the page's foot. `BrowserService` emits `page` with every bounds
+(`quickChat.setSize`), in the page's bottom-right corner. `BrowserService` emits `page` with every bounds
 report and `pageViewAttached` whenever it adds a page view, so the layer follows the page and is
 re-stacked above it. While the page is covered (menus, dialogs, drags) or the browser is away, the
 layer is parked one pixel inside the window corner like a covered page; it is transparent there, stays
@@ -1106,30 +1106,35 @@ loaded, and keeps following its chat. The layer is not a window: `AppWindowRegis
 routes it workspace-wide events and the transcript of the chat it shows, and it takes no window
 commands.
 
-Closed, the layer is a round button (`browser.quick-chat`, a spinner while the chat runs). Open, it is
-the chat's own `ChatPane` in a card. While the user types, the card is the whole chat (header with
-**New quick chat** `browser.quick-chat-new` and shrink `browser.quick-chat-compact`); when a turn
-starts it retracts to the compact composer with a running feed above it (`quick-chat-feed.ts`: the
-latest steps of the turn in plain words from `feed-phrase.ts`, such as "Opened espn.com", newest last,
-then a two-line preview of what the model last said). Typing into the composer or clicking the card
-brings the whole chat back (`browser.quick-chat-expand`); focus alone does not, because the composer
-takes focus back after a send. Escape shrinks it, and from the compact card closes it
-(`browser.quick-chat-collapse`). A click on the page retracts the card; an unused chat closes to the
-button. The page's view takes focus without the layer's document seeing a blur, so main tracks the
-layer's focus from its `WebContents` and sends it in the view (`focused`). While a composer panel is
-open, the layer grows upward so the panel fits; inside the layer (`data-composer-panels="viewport"`)
-composer panels use the viewport, not the chat pane, as their collision boundary
-(`composerPanelBoundary`).
+Closed, the layer is a round button (`browser.quick-chat`). While its chat runs, the button carries
+a progress ring and the name of the site the browser shows (`quickChat` view `site`, from the active
+tab's address); a turn that ends while the chat is closed leaves "Done on espn.com" beside it until
+the chat is opened. Open, it is the chat's own `ChatPane` in a card with two shapes. Whole is the
+chat under a header with shrink `browser.quick-chat-compact` (once there is a transcript), a menu
+`browser.quick-chat-menu` holding **Clear chat** `browser.quick-chat-new` (disabled while a task
+runs), and hide `browser.quick-chat-close`. Compact is the composer under one status line, such as
+"Working on espn.com · Opened espn.com" (`quick-chat-feed.ts`: the turn's latest step in plain words
+from `feed-phrase.ts`), with expand `browser.quick-chat-expand` and hide; once the turn ends the line
+reads "Done on …" with a two-line preview of the reply. Only the user's controls and a turn starting
+change the shape: a turn starting shrinks it to compact; expand, shrink and hide do what they say;
+Escape shrinks a running whole chat and otherwise hides it; opening shows compact while a task runs
+and whole otherwise. Clicks on the page, typing, and focus changes leave it alone. Ctrl+J (Cmd+J)
+toggles it from the page, the layer, or the app window while the page is on screen: main catches it
+in `before-input-event` on each (`BrowserServiceOptions.pageKeys` for tabs, `isQuickChatShortcut`)
+and sends a `toggle` request, and opening focuses the layer so typing lands in the composer. While
+a composer panel or the menu is open, the layer grows upward so it fits; inside the layer
+(`data-composer-panels="viewport"`) composer panels use the viewport, not the chat pane, as their
+collision boundary (`composerPanelBoundary`).
 
 The main window's layout owns which chat it is and whether it is open, and reports both with
-`quickChat.setState`; the layer's requests (`quickChat.request`: open, new, close) reach the layout as
+`quickChat.setState`; the layer's requests (`quickChat.request`: open, new, close, toggle) reach the layout as
 a `quickChat` window command (`chat-layout/use-quick-chat-overlay.ts`). It is a real chat:
 `chat.newPeer(anchor, { select: false })` creates it with the focused tile's model and folder without
 changing the selection, and main skips its early wake so the blank chat is not discarded before the
 layout reports it. The layout saves it per space (`SavedChatLayout.browserChat`/`browserChatOpen`),
 adds it to the ids sent to `setVisiblePanes` so main keeps it attached and streaming while closed, and
 never pulls it into a tile: main selecting it leaves the tree alone, and opening it from History,
-search, or Start (`activateTab`) shows the browser with the card open. **New quick chat** creates a fresh one and closes the
+search, or Start (`activateTab`) shows the browser with the card open. **Clear chat** creates a fresh one and closes the
 previous one through `closePeer`, which leaves a used chat in history and discards a blank one. The
 layer's controls live in its own page, so `closedai_app.ui` (which drives the main window's page) does
 not reach them.
