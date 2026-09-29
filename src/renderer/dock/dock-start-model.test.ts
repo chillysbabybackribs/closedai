@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { menuItemByKey, recentChatsForStart, searchStartMenu, startPins } from './dock-start-model.ts'
+import { menuItemByKey, recentChatsForStart, searchStartMenu, startPins, startScreenForRow } from './dock-start-model.ts'
 import type { ChatRowSummary } from '../../shared/chat-peers.ts'
 
 describe('startPins', () => {
@@ -9,6 +9,21 @@ describe('startPins', () => {
     assert.deepEqual(keys, [
       'new-chat', 'search-chats', 'manage-chat-history', 'toggle-browser-pane', 'agents', 'tools', 'settings'
     ])
+  })
+})
+
+describe('startScreenForRow', () => {
+  it('opens history, agents, tools, settings and chat search inside Start', () => {
+    const screens = startPins().map((row) => [row.key, startScreenForRow(row)])
+    assert.deepEqual(screens, [
+      ['new-chat', null], ['search-chats', 'search-chats'], ['manage-chat-history', 'history'],
+      ['toggle-browser-pane', null], ['agents', 'agents'], ['tools', 'tools'], ['settings', 'settings']
+    ])
+  })
+
+  it('leaves command and layout rows running directly', () => {
+    assert.equal(startScreenForRow(menuItemByKey('toggle-devtools')!), null)
+    assert.equal(startScreenForRow(menuItemByKey('zoom-in')!), null)
   })
 })
 

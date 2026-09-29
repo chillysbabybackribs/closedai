@@ -34,6 +34,34 @@ export function startPinVisual(key: StartPinKey): StartPinVisual {
   return PIN_VISUAL[key]
 }
 
+/** Screens Start shows in its own body instead of handing off to the header, a view tab, or a dialog. */
+export type StartView = 'home' | 'search-chats' | 'history' | 'agents' | 'tools' | 'settings'
+export type StartScreen = Exclude<StartView, 'home'>
+
+const SCREEN_FOR_ACTION: Partial<Record<string, StartScreen>> = {
+  'search-chats': 'search-chats',
+  history: 'history',
+  agents: 'agents',
+  tools: 'tools',
+  settings: 'settings'
+}
+
+export const START_SCREEN_TITLES: Record<StartScreen, string> = {
+  'search-chats': 'Search chats',
+  history: 'Chat history',
+  agents: 'Agents',
+  tools: 'Tools & capabilities',
+  settings: 'Settings'
+}
+
+/**
+ * The Start screen a menu row opens when chosen from Start (pins, All apps, command search), or
+ * null for rows that just run. The same rows from the title-bar menus and shortcuts are unchanged.
+ */
+export function startScreenForRow(row: MenuItem): StartScreen | null {
+  return row.action ? SCREEN_FOR_ACTION[row.action] ?? null : null
+}
+
 export function menuItemByKey(key: string): MenuItem | undefined {
   for (const menu of MENUS) {
     const row = menu.rows.find((candidate): candidate is MenuItem => 'key' in candidate && candidate.key === key)
