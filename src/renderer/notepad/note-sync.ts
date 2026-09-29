@@ -39,6 +39,11 @@ export class NoteSync {
     return !this.pending.empty
   }
 
+  /** Where a position in main's text sits in the buffer, past any unsaved typing. */
+  toBuffer(position: number): number {
+    return this.pending.mapPos(position, 1)
+  }
+
   /** The user changed the buffer. */
   typed(changes: ChangeSet): void {
     this.pending = this.pending.compose(changes)
