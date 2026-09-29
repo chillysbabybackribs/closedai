@@ -36,6 +36,19 @@ export function notepadChats(tree: ChatLayout | null): string[] {
   return panes(tree).flatMap((pane) => pane.notepadChat ? [pane.notepadChat] : [])
 }
 
+/** Drop the chat of any window whose chat main no longer has (archived, deleted). */
+export function pruneNotepadChats(tree: ChatLayout | null, available: Set<string>): ChatLayout | null {
+  if (!tree) return tree
+  if (tree.kind === 'pane') {
+    if (!tree.notepadChat || available.has(tree.notepadChat)) return tree
+    const { notepadChat: _gone, ...rest } = tree
+    return rest
+  }
+  const first = pruneNotepadChats(tree.first, available)!
+  const second = pruneNotepadChats(tree.second, available)!
+  return first === tree.first && second === tree.second ? tree : { ...tree, first, second }
+}
+
 /** The chat of the window that holds `tabId`. */
 export function tileNotepadChat(tree: ChatLayout | null, tabId: string): string | null {
   const owner = tabOwner(tree, tabId)

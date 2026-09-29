@@ -7,6 +7,7 @@ import { addTab, chatTabIds, focusChatTabInLayout, focusedCloseAction, isChatTab
 import { isWorkspaceViewKind, pinOnMove, pruneViewScopes, tileView, viewScope, viewTabId, workspaceView, type ViewKind } from './layout-views.js'
 import { removalNotice } from './layout-copy.js'
 import { readQuickChatModel, rememberQuickChatModel } from './quick-chat-model.js'
+import { notepadChats, pruneNotepadChats } from '../notepad/notepad-layout.js'
 import { adoptTabs, initialWindowTree } from './layout-windows.js'
 import { adoptsUnheldChats, appWindow, isFrontWindow, onAppWindowCommand, tabsHeldElsewhere, useAppWindows } from '../app-windows/app-window-store.js'
 import { floatBeside, groupWindow, minimizeWindow, raiseWindow, restoreWindow } from './floating/window-layout.js'
@@ -75,14 +76,16 @@ export function useChatLayout(
   const current = useRef(layout)
   current.current = layout
   // Main hears about chats only: a tile showing a view has no visible chat, its chats are retained.
-  // The browser's quick chat is visible too, so main keeps it attached and streams it.
+  // The browser's quick chat and each notepad window's chat are visible too, so main keeps them
+  // attached and streams them.
   const browserChat = self.main && layout.browserChat && snapshot.chats.some((chat) => chat.paneId === layout.browserChat)
     ? layout.browserChat : null
   const browserChatModel = browserChat ? snapshot.chats.find((chat) => chat.paneId === browserChat)?.modelId ?? null : null
   useEffect(() => {
     if (browserChatModel) rememberQuickChatModel(window.localStorage, browserChatModel)
   }, [browserChatModel])
-  const idsKey = JSON.stringify([...new Set([...chatPaneIds(layout.tree), ...(browserChat ? [browserChat] : [])])])
+  const sideChats = (value: typeof layout): string[] => [...notepadChats(value.tree), ...(value.browserChat ? [value.browserChat] : [])]
+  const idsKey = JSON.stringify([...new Set([...chatPaneIds(layout.tree), ...notepadChats(layout.tree), ...(browserChat ? [browserChat] : [])])])
   const tabsKey = JSON.stringify(chatTabIds(layout.tree))
   const hasTiles = paneIds(layout.tree).length > 0
   const release = useCallback(() => {
@@ -130,7 +133,7 @@ export function useChatLayout(
   useEffect(() => {
     const available = new Set(chatIdsKey.split('\0').filter(Boolean))
     setLayout((value) => {
-      const pruned = pruneTabs(value.tree, available)
+      const pruned = pruneNotepadChats(pruneTabs(value.tree, available), available)
       const tree = pruned ? ensureExpandedGroup(pruned) : pruned
       const staleBrowserChat = value.browserChat !== undefined && !available.has(value.browserChat)
       if (tree === value.tree && !staleBrowserChat) return value
@@ -552,6 +555,15 @@ export function useChatLayout(
   // The quick chat is created unselected and reported visible before main could discard it as blank,
   // on the model the quick chat last used. A fresh one replaces it: the previous chat goes back to
   // history (or away, when blank).
+  // A chat that is not a tab (the quick chat, a notepad window's chat): created unselected and
+  // reported visible at once, before main could discard it as a blank unselected chat.
+  const newSideChat = useCallback(async (modelId: string | null): Promise<string> => {
+    const anchor = chatPaneIds(current.current.tree).includes(selected.current) ? selected.current : undefined
+    const id = await window.closedai.chat.newPeer(anchor, { select: false, ...(modelId ? { modelId } : {}) })
+    const visible = [...chatPaneIds(current.current.tree), ...sideChats(current.current), id]
+    await window.closedai.chat.setVisiblePanes(cwd, [...new Set(visible)], chatTabIds(current.current.tree))
+    return id
+  }, [cwd])
   const openBrowserChat = useCallback(async (fresh = false): Promise<void> => {
     const previous = current.current.browserChat
     const available = latestSnapshot.current().chats.some((chat) => chat.paneId === previous)
@@ -562,10 +574,7 @@ export function useChatLayout(
     if (pending.current) return
     pending.current = true
     try {
-      const anchor = chatPaneIds(current.current.tree).includes(selected.current) ? selected.current : undefined
-      const modelId = readQuickChatModel(window.localStorage)
-      const id = await window.closedai.chat.newPeer(anchor, { select: false, ...(modelId ? { modelId } : {}) })
-      await window.closedai.chat.setVisiblePanes(cwd, [...new Set([...chatPaneIds(current.current.tree), id])], chatTabIds(current.current.tree))
+      const id = await newSideChat(readQuickChatModel(window.localStorage))
       setLayout((value) => ({ ...value, browserChat: id, browserChatOpen: true }))
       if (previous && available) await window.closedai.chat.closePeer(previous)
     } catch (reason) {
@@ -573,7 +582,7 @@ export function useChatLayout(
     } finally {
       pending.current = false
     }
-  }, [cwd, fail])
+  }, [fail, newSideChat])
   const setBrowserChatOpen = useCallback((open: boolean) => setLayout((value) => ({ ...value, browserChatOpen: open })), [])
   const showBrowser = useCallback(() => setLayout((value) => value.browserVisible ? value : { ...value, browserVisible: true }), [])
   return {
@@ -582,7 +591,7 @@ export function useChatLayout(
     activateTab, openView, toggleView, pinView, moveTabToTile, closeTab, hide, closeFocused, focusedCloseTarget, resize, arrange,
     toggleBrowser, showBrowser, detachTab, returnTab, windows: windowActions,
     maximized: layout.maximized ?? null, setMaximized,
-    browserChat, browserChatOpen: Boolean(browserChat && layout.browserChatOpen), openBrowserChat, setBrowserChatOpen
+    browserChat, browserChatOpen: Boolean(browserChat && layout.browserChatOpen), openBrowserChat, setBrowserChatOpen, newSideChat
   }
 }
 
