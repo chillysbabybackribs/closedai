@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Notepad window + note chat — wireframe 2026-09-29</title>
+<!-- Behaviour wireframe (HTML/CSS). Visual treatment comes from the real registry components
+     (ai-elements prompt-input, shadcn) when this is built; judge flows here, not pixels. -->
+<style>
+  :root {
+    color-scheme: dark;
+    --font-sans: "Inter Variable", Inter, ui-sans-serif, system-ui, sans-serif;
+    --font-mono: "JetBrains Mono", "Cascadia Code", ui-monospace, monospace;
+    --desk: #0b0b0c;
+    --chrome: #1a1a1c;
+    --canvas: #111113;
+    --raised: #1f1f23;
+    --hairline: rgb(255 255 255 / 8%);
+    --hairline-strong: rgb(255 255 255 / 14%);
+    --ink: #eeeef0;
+    --muted: #98989c;
+    --faint: #5c5c61;
+    --tab-accent: #4f8cff;
+    --ok-ink: #65b98a;
+    --ease: cubic-bezier(.2, .7, .2, 1);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 22px 26px 40px; background: var(--desk); color: var(--ink);
+    font: 13px/1.45 var(--font-sans); -webkit-font-smoothing: antialiased;
+  }
+  h1 { font-size: 15px; font-weight: 600; margin: 0 0 4px; }
+  .lede { color: var(--muted); margin: 0 0 18px; max-width: 900px; }
+  .layout { display: grid; grid-template-columns: minmax(640px, 900px) 300px; gap: 20px; align-items: start; }
+  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+  svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* Window frame: same chrome as a chat tile, tabs are notes. */
+  .win {
+    position: relative; height: 600px; display: flex; flex-direction: column; overflow: hidden;
+    border-radius: 10px; background: var(--canvas); box-shadow: 0 0 0 1px var(--hairline-strong), 0 18px 50px rgb(0 0 0 / 50%);
+  }
+  .titlebar {
+    height: 30px; display: flex; align-items: center; padding: 0 10px; gap: 8px;
+    background: var(--chrome); color: var(--muted); font-size: 12px; border-bottom: 1px solid var(--hairline);
+  }
+  .titlebar .wm { margin-left: auto; display: flex; gap: 14px; color: var(--faint); letter-spacing: .1em; }
+  .tabs { display: flex; align-items: stretch; height: 34px; background: var(--chrome); border-bottom: 1px solid var(--hairline); }
+  .tab {
+    position: relative; padding: 0 14px; display: flex; align-items: center; gap: 7px;
+    color: var(--muted); border-right: 1px solid var(--hairline); font-size: 12.5px;
+  }
+  .tab:hover { color: var(--ink); }
+  .tab[aria-selected="true"] { color: var(--ink); background: var(--canvas); box-shadow: inset 0 -2px 0 var(--tab-accent); }
+  .tab .working { width: 7px; height: 7px; border-radius: 50%; background: var(--tab-accent); animation: pulse 1.1s infinite; }
+  .tab-new { padding: 0 12px; color: var(--faint); }
+  .tab-new:hover { color: var(--ink); }
+  @keyframes pulse { 50% { opacity: .25; } }
+
+  .editor { position: relative; flex: 1; display: flex; min-height: 0; }
+  .gutter {
+    width: 46px; padding: 12px 8px 0 0; text-align: right; overflow: hidden; user-select: none;
+    color: var(--faint); font: 12.5px/20px var(--font-mono); border-right: 1px solid var(--hairline);
+  }
+  .gutter div { height: 20px; }
+  .gutter div.edited { color: var(--tab-accent); box-shadow: inset -2px 0 0 var(--tab-accent); }
+  .editor textarea {
+    flex: 1; resize: none; border: 0; outline: 0; background: transparent; color: var(--ink);
+    font: 12.5px/20px var(--font-mono); padding: 12px 14px 180px; white-space: pre; overflow: auto; tab-size: 4;
+  }
+  .statusbar {
+    height: 24px; display: flex; align-items: center; gap: 14px; padding: 0 12px;
+    background: var(--chrome); border-top: 1px solid var(--hairline); color: var(--faint); font-size: 11.5px;
+  }
+  .statusbar .right { margin-left: auto; }
+
+  /* Overlay: the button and the card float over the editor, bottom-right. */
+  .fab {
+    position: absolute; right: 18px; bottom: 18px; width: 42px; height: 42px; border-radius: 50%;
+    display: grid; place-items: center; background: var(--raised); color: var(--ink);
+    box-shadow: 0 0 0 1px var(--hairline-strong), 0 8px 24px rgb(0 0 0 / 45%);
+    transition: opacity 250ms, transform 200ms var(--ease);
+  }
+  .fab:hover { transform: scale(1.06); }
+  .fab.quiet { opacity: .22; }
+  .fab[data-running="true"]::before {
+    content: ""; position: absolute; inset: -3px; border-radius: 50%;
+    background: conic-gradient(var(--tab-accent) 0 25%, transparent 25% 100%);
+    -webkit-mask: radial-gradient(circle, transparent 22px, #000 23px); mask: radial-gradient(circle, transparent 22px, #000 23px);
+    animation: spin 1s linear infinite;
+  }
+  .fab .badge {
+    position: absolute; right: 48px; white-space: nowrap; font-size: 11px; padding: 3px 8px; border-radius: 999px;
+    background: var(--raised); color: var(--muted); box-shadow: 0 0 0 1px var(--hairline);
+  }
+  @keyframes spin { to { transform: rotate(1turn); } }
+
+  .card {
+    position: absolute; right: 18px; bottom: 18px; width: min(440px, calc(100% - 36px));
+    display: flex; flex-direction: column; border-radius: 16px; overflow: hidden;
+    background: rgb(28 28 32 / 82%); backdrop-filter: blur(18px) saturate(1.2);
+    box-shadow: 0 0 0 1px var(--hairline-strong), 0 16px 44px rgb(0 0 0 / 55%);
+    transition: max-height 260ms var(--ease);
+  }
+  .card[data-mode="full"] { max-height: 78%; }
+  .card[data-mode="compact"] { max-height: 150px; }
+  .card-head { display: flex; align-items: center; gap: 6px; padding: 8px 8px 6px 12px; border-bottom: 1px solid var(--hairline); }
+  .card-head .title { font-weight: 600; font-size: 12.5px; }
+  .card-head .sub { color: var(--faint); font-size: 11.5px; }
+  .card-head .acts { margin-left: auto; display: flex; gap: 2px; position: relative; }
+  .icon-btn { width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; color: var(--muted); }
+  .icon-btn:hover { background: rgb(255 255 255 / 7%); color: var(--ink); }
+  .menu {
+    position: absolute; right: 28px; top: 28px; z-index: 3; min-width: 170px; padding: 4px; border-radius: 9px;
+    background: #232327; box-shadow: 0 0 0 1px var(--hairline-strong), 0 10px 30px rgb(0 0 0 / 50%);
+  }
+  .menu button { display: block; width: 100%; text-align: left; padding: 6px 10px; border-radius: 6px; }
+  .menu button:hover:not(:disabled) { background: rgb(255 255 255 / 7%); }
+  .menu button:disabled { color: var(--faint); cursor: default; }
+  .menu .hint { padding: 2px 10px 6px; color: var(--faint); font-size: 11px; }
+
+  .transcript { flex: 1; overflow: auto; padding: 10px 12px; display: flex; flex-direction: column; gap: 10px; min-height: 80px; }
+  .empty { color: var(--faint); text-align: center; margin: auto 0; font-size: 12px; }
+  .msg-user { align-self: flex-end; max-width: 86%; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+  .note-ref {
+    font-size: 10.5px; color: var(--muted); padding: 1px 7px; border-radius: 999px; box-shadow: 0 0 0 1px var(--hairline);
+  }
+  .note-ref:hover { color: var(--ink); box-shadow: 0 0 0 1px var(--hairline-strong); }
+  .bubble { background: rgb(255 255 255 / 7%); padding: 7px 11px; border-radius: 12px; }
+  .msg-ai { color: #d6d6da; max-width: 94%; }
+  .steps { color: var(--faint); font-size: 11.5px; margin-top: 4px; }
+
+  .feed { display: flex; align-items: center; gap: 8px; padding: 9px 8px 4px 12px; font-size: 12px; min-width: 0; }
+  .feed .spin { width: 12px; height: 12px; border-radius: 50%; border: 2px solid rgb(79 140 255 / 25%); border-top-color: var(--tab-accent); animation: spin .8s linear infinite; flex: none; }
+  .feed .done { color: var(--ok-ink); flex: none; }
+  .feed .what { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
+  .feed .what b { color: var(--ink); font-weight: 500; }
+  .feed .acts { margin-left: auto; display: flex; gap: 2px; flex: none; }
+  .elsewhere { padding: 0 12px 2px 32px; font-size: 11.5px; color: var(--faint); }
+  .elsewhere button { color: var(--tab-accent); padding: 0; }
+
+  .composer { margin: 8px; padding: 6px 6px 6px 8px; border-radius: 12px; background: rgb(255 255 255 / 5%); box-shadow: 0 0 0 1px var(--hairline); display: flex; align-items: flex-end; gap: 6px; }
+  .ctx { flex: none; align-self: center; font-size: 11px; color: var(--muted); padding: 2px 8px; border-radius: 999px; box-shadow: 0 0 0 1px var(--hairline-strong); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .composer textarea { flex: 1; resize: none; border: 0; outline: 0; background: transparent; color: var(--ink); font: inherit; padding: 5px 2px; height: 30px; max-height: 90px; }
+  .composer textarea::placeholder { color: var(--faint); }
+  .send { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--ink); color: #111; flex: none; }
+  .send:disabled { opacity: .3; cursor: default; }
+  .send.stop { background: rgb(255 255 255 / 12%); color: var(--ink); }
+  .toast { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); padding: 6px 12px; border-radius: 8px; background: #232327; box-shadow: 0 0 0 1px var(--hairline-strong); font-size: 12px; color: var(--muted); }
+
+  /* Side panel: script to try + live state readout. */
+  .guide { background: #151517; border-radius: 12px; padding: 14px 16px; box-shadow: 0 0 0 1px var(--hairline); position: sticky; top: 16px; }
+  .guide h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 8px; font-weight: 600; }
+  .guide h2:not(:first-child) { margin-top: 16px; }
+  .guide ol { margin: 0; padding-left: 18px; color: #cfcfd3; }
+  .guide li { margin-bottom: 5px; }
+  .guide kbd { font: 11px var(--font-mono); padding: 0 4px; border-radius: 4px; box-shadow: 0 0 0 1px var(--hairline-strong); }
+  dl.state { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; margin: 0; font-size: 12px; }
+  dl.state dt { color: var(--faint); }
+  dl.state dd { margin: 0; font-family: var(--font-mono); font-size: 11.5px; }
+  .log { font: 11px/1.5 var(--font-mono); color: var(--muted); max-height: 190px; overflow: auto; }
+</style>
+</head>
+<body>
+  <h1>Notepad window with its note chat (wireframe)</h1>
+  <p class="lede">
+    This is a behaviour wireframe drawn in HTML/CSS. Each window has one chat, and every message goes to the note in the active tab.
+    A running task stays on the note it started on. Switching tabs while a task runs shrinks the chat to its compact form.
+    The <b>×</b> hides the chat behind the round button, and clicking the button or pressing <kbd>Ctrl</kbd>+<kbd>J</kbd> brings it back.
+  </p>
+
+  <div class="layout">
+    <section class="win" id="win">
+      <div class="titlebar">Notes<span class="wm">─ □ ×</span></div>
+      <nav class="tabs" id="tabs" role="tablist"></nav>
+      <div class="editor">
+        <div class="gutter" id="gutter"></div>
+        <textarea id="editor" spellcheck="false"></textarea>
+        <button class="fab" id="fab" title="Chat about this note (Ctrl+J)"></button>
+        <div class="card" id="card" hidden></div>
+        <div class="toast" id="toast" hidden></div>
+      </div>
+      <div class="statusbar"><span id="pos">Ln 1, Col 1</span><span>Markdown</span><span class="right">Saved locally</span></div>
+    </section>
+
+    <aside class="guide">
+      <h2>Try this</h2>
+      <ol>
+        <li>Open the chat with the round button. The chip in the composer shows the active note.</li>
+        <li>On <b>plan.md</b>, send any request. The card shrinks to the compact form and the model edits plan.md line by line.</li>
+        <li>While it runs, switch to <b>scratch</b>. The task stays on plan.md, and the tab keeps its working dot.</li>
+        <li>Expand the card, then switch tabs again. It goes back to compact.</li>
+        <li>Press <b>×</b>. The button shows a progress ring and the note name. Open the chat again.</li>
+        <li>When it's done, open the <b>⋯</b> menu and choose <b>Clear chat</b>. The notes stay as they are.</li>
+      </ol>
+      <h2>State</h2>
+      <dl class="state" id="state"></dl>
+      <h2>Events</h2>
+      <div class="log" id="log"></div>
+    </aside>
+  </div>
+
+<script>
+  const I = {
+    chat: '<svg viewBox="0 0 24 24"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>',
+    x: '<svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+    more: '<svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>',
+    expand: '<svg viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>',
+    compact: '<svg viewBox="0 0 24 24"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/></svg>',
+    up: '<svg viewBox="0 0 24 24"><path d="m5 12 7-7 7 7M12 19V5"/></svg>',
+    stop: '<svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1.5" fill="currentColor" stroke="none"/></svg>',
+    check: '<svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>',
+  }
+  const notes = {
+    plan: { name: 'plan.md', edited: new Set(), text: '# Migration plan\n\nMove the chat store to per-workspace files.\n\n- snapshot the current chats.json\n- write the per-workspace reader\n- migrate on first launch\n- keep the old file for one release\n- add a restore command\n- drop the legacy path\n\nOpen: what happens to detached windows?' },
+    scratch: { name: 'scratch', edited: new Set(), text: 'tail -f ~/.config/closedai/logs/main.log\nnpm run build && npm run preview\n\nremember: rebuild before preview' },
+    api: { name: 'api-notes', edited: new Set(), text: 'notes.read(id, range)      read a slice\nnotes.edit(id, range, text) replace a slice\nnotes.list(windowId)        tabs in a window' },
+  }
+  const order = ['plan', 'scratch', 'api']
+  const s = {
+    active: 'plan', overlay: 'closed', running: false, taskNote: null, step: '', lastDone: null, menu: false, runId: 0,
+    messages: [
+      { role: 'user', note: 'scratch', text: 'what does the first line do?' },
+      { role: 'ai', text: 'It follows the main-process log as new lines are written, so you can watch errors while the app runs.' },
+    ],
+  }
+  const $ = (id) => document.getElementById(id)
+  const esc = (t) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+  let draft = ''
+  let untitled = 1
+
+  function log(text) {
+    const t = new Date().toLocaleTimeString([], { hour12: false })
+    $('log').insertAdjacentHTML('afterbegin', `<div>${t} ${esc(text)}</div>`)
+  }
+
+  function renderTabs() {
+    $('tabs').innerHTML = order.map((id) => `<button class="tab" role="tab" data-tab="${id}" aria-selected="${id === s.active}">
+      ${s.running && s.taskNote === id ? '<span class="working" title="The model is editing this note"></span>' : ''}${esc(notes[id].name)}</button>`).join('')
+      + '<button class="tab-new" id="newTab" title="New note">+</button>'
+  }
+
+  function renderEditor(keepValue) {
+    const n = notes[s.active]
+    if (!keepValue) $('editor').value = n.text
+    const count = n.text.split('\n').length
+    $('gutter').innerHTML = Array.from({ length: count }, (_, i) => `<div class="${n.edited.has(i) ? 'edited' : ''}">${i + 1}</div>`).join('')
+    $('gutter').scrollTop = $('editor').scrollTop
+  }
+
+  function composerHtml() {
+    const busy = s.running
+    const ph = busy ? `Working on ${notes[s.taskNote].name}. Stop to send something new.` : `Ask about ${notes[s.active].name}…`
+    return `<div class="composer">
+      <span class="ctx" title="Messages go to the active note">${esc(notes[s.active].name)}</span>
+      <textarea id="draft" rows="1" placeholder="${esc(ph)}" ${busy ? 'disabled' : ''}>${esc(draft)}</textarea>
+      ${busy ? `<button class="send stop" id="stop" title="Stop">${I.stop}</button>`
+             : `<button class="send" id="send" title="Send" ${draft.trim() ? '' : 'disabled'}>${I.up}</button>`}
+    </div>`
+  }
+
+  function feedHtml() {
+    if (s.running) {
+      return `<div class="feed"><span class="spin"></span><span class="what">Working on <b>${esc(notes[s.taskNote].name)}</b> · ${esc(s.step)}</span>
+        <span class="acts"><button class="icon-btn" data-act="expand" title="Show the whole chat">${I.expand}</button><button class="icon-btn" data-act="close" title="Hide to button">${I.x}</button></span></div>`
+        + (s.active !== s.taskNote ? `<div class="elsewhere">You're on ${esc(notes[s.active].name)}. The task stays on ${esc(notes[s.taskNote].name)}. <button data-goto="${s.taskNote}">Go to it</button></div>` : '')
+    }
+    const d = s.lastDone
+    return `<div class="feed"><span class="done">${I.check}</span><span class="what">${d ? `Done in <b>${esc(notes[d].name)}</b>` : 'Idle'}</span>
+      <span class="acts"><button class="icon-btn" data-act="expand" title="Show the whole chat">${I.expand}</button><button class="icon-btn" data-act="close" title="Hide to button">${I.x}</button></span></div>`
+  }
+
+  function transcriptHtml() {
+    if (!s.messages.length) return '<div class="empty">New chat for this window. Your notes are unchanged.</div>'
+    return s.messages.map((m) => m.role === 'user'
+      ? `<div class="msg-user"><button class="note-ref" data-goto="${m.note}" title="Switch to this note">${esc(notes[m.note].name)}</button><div class="bubble">${esc(m.text)}</div></div>`
+      : `<div class="msg-ai">${esc(m.text)}${m.steps ? `<div class="steps">${esc(m.steps)}</div>` : ''}</div>`).join('')
+      + (s.running ? `<div class="msg-ai"><div class="steps">Working on ${esc(notes[s.taskNote].name)} · ${esc(s.step)}</div></div>` : '')
+  }
+
+  function renderOverlay() {
+    const card = $('card'), fab = $('fab')
+    const open = s.overlay !== 'closed'
+    card.hidden = !open
+    fab.hidden = open
+    fab.dataset.running = s.running
+    fab.innerHTML = I.chat + (s.running ? `<span class="badge">${esc(notes[s.taskNote].name)}</span>` : '')
+    if (!open) return
+    card.dataset.mode = s.overlay
+    if (s.overlay === 'full') {
+      card.innerHTML = `<div class="card-head"><span class="title">Chat</span><span class="sub">this window</span>
+        <span class="acts">
+          ${s.running ? `<button class="icon-btn" data-act="compact" title="Compact">${I.compact}</button>` : ''}
+          <button class="icon-btn" data-act="menu" title="More">${I.more}</button>
+          <button class="icon-btn" data-act="close" title="Hide to button">${I.x}</button>
+          ${s.menu ? `<div class="menu"><button data-act="clear" ${s.running ? 'disabled' : ''}>Clear chat</button>
+            ${s.running ? '<div class="hint">Stop the task first</div>' : '<div class="hint">Starts a new chat. The old one stays in History.</div>'}</div>` : ''}
+        </span></div>
+        <div class="transcript" id="transcript">${transcriptHtml()}</div>${composerHtml()}`
+      const tr = $('transcript'); tr.scrollTop = tr.scrollHeight
+    } else {
+      card.innerHTML = feedHtml() + composerHtml()
+    }
+  }
+
+  function renderState() {
+    const row = (k, v) => `<dt>${k}</dt><dd>${esc(String(v))}</dd>`
+    $('state').innerHTML = row('active tab', notes[s.active].name) + row('overlay', s.overlay)
+      + row('task', s.running ? `running on ${notes[s.taskNote].name}` : 'none')
+      + row('chat', `1 per window · ${s.messages.length} msgs`)
+  }
+
+  function render(keepEditor) {
+    const focused = document.activeElement?.id === 'draft'
+    renderTabs(); renderEditor(keepEditor); renderOverlay(); renderState()
+    if (focused && $('draft') && !$('draft').disabled) { const d = $('draft'); d.focus(); d.setSelectionRange(d.value.length, d.value.length) }
+  }
+
+  function setOverlay(mode, why) {
+    if (s.overlay === mode) return
+    s.overlay = mode; s.menu = false
+    log(`overlay → ${mode}${why ? ` (${why})` : ''}`)
+    render(true)
+    if (mode !== 'closed') $('draft')?.focus()
+  }
+
+  function switchTab(id) {
+    if (id === s.active) return
+    notes[s.active].text = $('editor').value
+    s.active = id
+    log(`tab → ${notes[id].name}`)
+    if (s.running && s.overlay === 'full') { s.overlay = 'compact'; s.menu = false; log('overlay → compact (tab switched during task)') }
+    render()
+  }
+
+  async function runTask(noteId) {
+    const id = ++s.runId
+    const alive = () => s.running && s.runId === id
+    const n = notes[noteId]
+    const step = async (text, ms) => {
+      s.step = text
+      if (s.active === noteId && $('editor').value !== n.text) {
+        const top = $('editor').scrollTop; $('editor').value = n.text; $('editor').scrollTop = top
+      }
+      render(true); await sleep(ms); return alive()
+    }
+    n.edited.clear()
+    if (!await step(`reading ${n.name}`, 1100)) return
+    if (!await step('planning the edit', 1200)) return
+    const lines = n.text.split('\n')
+    const targets = lines.map((l, i) => (/^- (?!\[)/.test(l) ? i : -1)).filter((i) => i >= 0)
+    if (targets.length) {
+      for (const i of targets) {
+        const cur = n.text.split('\n')
+        cur[i] = cur[i].replace(/^- /, '- [ ] ')
+        n.text = cur.join('\n'); n.edited.add(i)
+        if (!await step(`editing line ${i + 1}`, 900)) return
+      }
+    } else {
+      const add = ['', '## Summary', `- ${lines.filter((l) => l.trim()).length} non-empty lines, starts with "${lines[0].slice(0, 28)}"`]
+      for (const l of add) {
+        n.text += '\n' + l; n.edited.add(n.text.split('\n').length - 1)
+        if (!await step(`appending line ${n.text.split('\n').length}`, 900)) return
+      }
+    }
+    if (!await step('checking the result', 1000)) return
+    s.running = false; s.lastDone = noteId
+    const summary = targets.length ? `Turned the ${targets.length} steps in ${n.name} into a checklist.` : `Added a short summary to the end of ${n.name}.`
+    s.messages.push({ role: 'ai', text: summary, steps: `Edited ${n.edited.size} lines in ${n.name}` })
+    log(`task done in ${n.name}`)
+    render(true)
+  }
+
+  function send() {
+    const text = draft.trim()
+    if (!text || s.running) return
+    notes[s.active].text = $('editor').value
+    s.messages.push({ role: 'user', note: s.active, text })
+    draft = ''
+    s.running = true; s.taskNote = s.active; s.step = 'starting'
+    log(`sent about ${notes[s.active].name}; task pinned to it`)
+    s.overlay = 'compact'; s.menu = false
+    log('overlay → compact (task running)')
+    render(true)
+    runTask(s.taskNote)
+  }
+
+  function stop() {
+    if (!s.running) return
+    s.running = false; s.lastDone = s.taskNote
+    s.messages.push({ role: 'ai', text: `Stopped. Edits made so far stay in ${notes[s.taskNote].name}.` })
+    log('task stopped')
+    render(true)
+  }
+
+  function clearChat() {
+    if (s.running) return
+    s.messages = []; s.lastDone = null; s.menu = false
+    log('chat cleared (old chat → History)')
+    const t = $('toast'); t.textContent = 'New chat for this window. The previous chat is in History.'; t.hidden = false
+    setTimeout(() => { t.hidden = true }, 2400)
+    render(true)
+  }
+
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest('button')
+    if (!t) { if (s.menu && !e.target.closest('.menu')) { s.menu = false; render(true) } return }
+    if (t.dataset.tab) return switchTab(t.dataset.tab)
+    if (t.dataset.goto) return switchTab(t.dataset.goto)
+    if (t.id === 'newTab') {
+      const id = `u${untitled}`; notes[id] = { name: `untitled-${untitled++}`, edited: new Set(), text: '' }
+      order.push(id); return switchTab(id)
+    }
+    if (t.id === 'fab') return setOverlay(s.running ? 'compact' : 'full', 'button')
+    if (t.id === 'send') return send()
+    if (t.id === 'stop') return stop()
+    const act = t.dataset.act
+    if (act === 'close') return setOverlay('closed', '×')
+    if (act === 'expand') return setOverlay('full', 'expand')
+    if (act === 'compact') return setOverlay('compact', 'compact button')
+    if (act === 'menu') { s.menu = !s.menu; return render(true) }
+    if (act === 'clear') return clearChat()
+  })
+
+  document.addEventListener('input', (e) => {
+    if (e.target.id === 'draft') {
+      draft = e.target.value
+      const b = $('send'); if (b) b.disabled = !draft.trim()
+    }
+  })
+
+  document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.key.toLowerCase() === 'j') {
+      e.preventDefault()
+      return setOverlay(s.overlay === 'closed' ? (s.running ? 'compact' : 'full') : 'closed', 'Ctrl+J')
+    }
+    if (e.target.id === 'draft' && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
+    if (e.key === 'Escape' && s.overlay !== 'closed') setOverlay(s.running && s.overlay === 'full' ? 'compact' : 'closed', 'Esc')
+  })
+
+  // The editor: typing fades the button; the caret position feeds the status bar.
+  const ed = $('editor')
+  let quietTimer = 0
+  ed.addEventListener('input', () => {
+    notes[s.active].text = ed.value
+    renderEditor(true)
+    $('fab').classList.add('quiet')
+    clearTimeout(quietTimer); quietTimer = setTimeout(() => $('fab').classList.remove('quiet'), 1400)
+  })
+  document.querySelector('.editor').addEventListener('mousemove', () => $('fab').classList.remove('quiet'))
+  ed.addEventListener('scroll', () => { $('gutter').scrollTop = ed.scrollTop })
+  const caret = () => {
+    const before = ed.value.slice(0, ed.selectionStart).split('\n')
+    $('pos').textContent = `Ln ${before.length}, Col ${before[before.length - 1].length + 1}`
+  }
+  ed.addEventListener('keyup', caret); ed.addEventListener('click', caret)
+
+  render()
+</script>
+</body>
+</html>
