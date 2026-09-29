@@ -283,7 +283,8 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
             minimized={minimizedWindows} onRestoreWindow={(id) => workspaceRef.current?.restoreWindow(id)}
             canTile={windowsFloating} onTileWindows={() => workspaceRef.current?.tileWindows()}
             onApplyPreset={(preset) => workspaceRef.current?.applyPreset(preset)}
-            onOpenLayouts={() => workspaceRef.current?.openLayoutPresets()} />}>
+            onOpenLayouts={() => workspaceRef.current?.openLayoutPresets()}
+            onOpenChat={(paneId) => { void workspaceRef.current?.activateChat(paneId) }} />}>
           {({ browserHeld, spaceId }) => <DesktopWorkspace
             key={spaceId ?? chat.workspace?.cwd ?? chat.state.cwd}
             spaceId={spaceId}

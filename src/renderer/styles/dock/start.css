@@ -1,0 +1,14 @@
+/* Start panel above the dock tray: workspace glass, flush to the footer when aligned. */
+.dock-start {
+  background: var(--surface-card);
+  color: var(--foreground);
+  border-color: var(--hairline-strong);
+  box-shadow: inset 0 1px 0 var(--surface-highlight), 0 -12px 40px rgb(0 0 0 / 28%);
+}
+
+:root[data-backdrop] .dock-start {
+  background: rgb(var(--glass-ink) / 72%);
+  border-color: var(--glass-edge);
+  box-shadow: inset 0 1px 0 var(--glass-sheen), 0 -12px 40px rgb(0 0 0 / 38%);
+  backdrop-filter: blur(24px);
+}

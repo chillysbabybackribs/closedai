@@ -13,7 +13,6 @@ import type { SpacesDockNav } from '../spaces/spaces-stage.js'
 import { DOCK_HEIGHT, DOCK_REACH, TRAY_LIFT, dockLocation, dockLocationLabel, trayApps, type DockPrefs, type TrayAppId } from './dock-model.js'
 import { DockSurface } from './dock-surface.js'
 import { DockTray } from './dock-tray.js'
-import { DockLauncher } from './dock-launcher.js'
 import type { TitlebarMenuProps } from '../application-menu-model.js'
 import { DockLayoutMenu } from './dock-layout-menu.js'
 import type { LayoutPreset } from '../chat-layout/layout-presets.js'
@@ -40,15 +39,16 @@ export type AppDockProps = {
   onTileWindows: () => void
   onApplyPreset: (preset: LayoutPreset) => void
   onOpenLayouts: () => void
+  onOpenChat: (paneId: string) => void
 }
 
 /**
- * The dock along the bottom of the main window. Left: launcher and back/forward through where you
- * have zoomed. Centre: workspace overview and the app tray. Right: layout and dock settings. It
- * hides until the pointer reaches the bottom edge unless Keep visible is on.
+ * The dock along the bottom of the main window. Left: back/forward through where you have zoomed.
+ * Centre: Start and the app tray. Right: layout and dock settings. It hides until the pointer
+ * reaches the bottom edge unless Keep visible is on.
  */
-export function AppDock({ menu, nav, chats, chatTitle, browserVisible, prefs, onPrefsChange, onLaunch, onOpenSite, onAllSavedSites, minimized, onRestoreWindow, canTile, onTileWindows, onApplyPreset, onOpenLayouts }: AppDockProps): JSX.Element {
-  const [openList, setOpenList] = useState<TrayAppId | 'settings' | 'layout' | 'launcher' | null>(null)
+export function AppDock({ menu, nav, chats, chatTitle, browserVisible, prefs, onPrefsChange, onLaunch, onOpenSite, onAllSavedSites, minimized, onRestoreWindow, canTile, onTileWindows, onApplyPreset, onOpenLayouts, onOpenChat }: AppDockProps): JSX.Element {
+  const [openList, setOpenList] = useState<TrayAppId | 'settings' | 'layout' | 'start' | null>(null)
   const [keyboard, setKeyboard] = useState(false)
   const { shown, show } = useDockReveal({ pinned: prefs.keepVisible, held: openList !== null || keyboard })
   // The freeze reads data-state: the page stays a still until the dock has slid fully away.
@@ -92,8 +92,10 @@ export function AppDock({ menu, nav, chats, chatTitle, browserVisible, prefs, on
         className="pointer-events-auto absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 px-3 transition-transform duration-200 ease-out motion-reduce:transition-none">
         {/* Behind the strip's controls: the strip's transform keeps -z-10 inside the dock. */}
         <DockSurface tray={tray} />
+        {openList !== 'start' && <button type="button" tabIndex={-1} aria-hidden="true"
+          className="pointer-events-none absolute size-0 overflow-hidden opacity-0"
+          data-ui="dock.overview" aria-pressed={nav.overview} onClick={nav.toggleOverview} />}
         <div className="flex items-center gap-0.5">
-          <DockLauncher menu={menu} open={openList === 'launcher'} onOpenChange={(open) => setOpenList(open ? 'launcher' : null)} />
           <DockIconButton control="dock.back" label="Back (Alt+Left)" detail={where} disabled={!nav.canBack || nav.moving} onClick={() => nav.step(-1)}>
             <ChevronLeft aria-hidden="true" />
           </DockIconButton>
@@ -102,9 +104,19 @@ export function AppDock({ menu, nav, chats, chatTitle, browserVisible, prefs, on
           </DockIconButton>
         </div>
         <div ref={setTray} className="absolute left-1/2 -translate-x-1/2" style={{ bottom: TRAY_LIFT }}>
-          <DockTray overview={{ active: nav.overview, disabled: nav.moving, onToggle: nav.toggleOverview }} apps={apps} magnify={prefs.magnify}
+          <DockTray start={{
+            open: openList === 'start',
+            onOpenChange: (open) => setOpenList(open ? 'start' : null),
+            menu,
+            chats,
+            spaceName: nav.spaceName,
+            overviewActive: nav.overview,
+            overviewDisabled: nav.moving,
+            onToggleOverview: nav.toggleOverview,
+            onOpenChat
+          }} apps={apps} magnify={prefs.magnify}
             openStack={openList === 'saved-sites' || openList === 'downloads' ? openList : null}
-            onOpenStack={setOpenList}
+            onOpenStack={(id) => setOpenList(id)}
             onLaunch={(id) => { if (id !== 'saved-sites' && id !== 'downloads') onLaunch(id) }}
             savedSites={savedSites} downloads={downloads}
             onOpenSite={(url) => { setOpenList(null); onOpenSite(url) }}

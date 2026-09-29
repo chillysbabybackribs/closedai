@@ -764,29 +764,21 @@ turns off the tray's magnification. Both are saved in localStorage (`closedai.do
 reads the spaces it navigates through `SpacesStage`'s `dock` render prop, so it exists only where
 the overview does: in the main window, once a chat is selected.
 
-Left: **Launcher** (`dock.launcher`) opens a compact menu joined flush to the footer's top edge,
-with square bottom corners and a full-height footer trigger, using the
-workspace card surface and existing menu styling. With wallpaper enabled, the menu and its
-submenus use a dark translucent tint and live backdrop blur, picking up the local wallpaper or
-window content directly beneath each menu. This avoids fitting the whole wallpaper into the
-transformed positioning wrapper used by the popup.
-Initially only Home, File, View, Agent, and Developer appear. Hovering or clicking a category
-(`dock.launcher-section`) opens its actions in a side submenu. Home offers common actions;
-the other categories retain the former header menu actions, separators, and eligibility rules.
-Up/Down navigate items, Right/Enter open a submenu, and Left returns to its category.
-Escape or an outside click dismisses the menu; selecting a command closes it before opening
-its destination. The launcher keeps the dock visible. The main-window header keeps chat
-search; detached windows and startup retain the header menus because no dock is available there.
-Menu definitions and disabled-state rules are shared in `application-menu-model.ts`.
-
-**Workspace overview** (`dock.overview`, first tile in the app tray, pressed while zoomed out)
-toggles the workspace overview. Back and forward (`dock.back`, `dock.forward`) step through the same
-zoom history as Alt+←/→ and are disabled at either end and while a zoom is moving; their tooltips
-name where you are (workspace and selected chat, or "All workspaces"). Right: Layout and dock
-settings (`dock.settings`). Centre: the
-**app tray**, Magic UI's `Dock` (`src/components/ui/dock.tsx`, `@magicui/dock`), with one
+Left: back and forward (`dock.back`, `dock.forward`) step through the zoom history as Alt+←/→ and
+are disabled at either end and while a zoom is moving; their tooltips name where you are
+(workspace and selected chat, or "All workspaces"). Right: Layout and dock settings
+(`dock.settings`). Centre: the **app tray**, Magic UI's `Dock` (`src/components/ui/dock.tsx`,
+`@magicui/dock`), with **Start** as the first tile and one
 rounded-square tile per ClosedAI surface (`dock.app`, item is the surface), 48 px and growing to 64 px
-under the pointer. Each tile holds the surface's icon from the shared list in
+under the pointer. **Start** (`dock.start`) opens a panel above the tray with search
+(`dock.start-search`), a **Pinned** grid of common commands (`dock.start-pin`, item is the menu
+row key), **Recommended** recent chats (`dock.start-chat`, item is the pane id), and **All apps**
+(`dock.start-all-apps`) listing every File, View, Agent, and Developer row with the same disabled
+rules as the menus. The footer names the current workspace and **All workspaces**
+(`dock.overview`, pressed while zoomed out) toggles the workspace overview. Menu definitions and
+`runMenuItem` are shared in `application-menu-model.ts`. The main-window header keeps chat search;
+detached windows and startup retain the header menus because no dock is available there. Each tray
+tile after Start holds the surface's icon from the shared list in
 `src/renderer/app-icons.tsx`, which the view tabs use too. The strip is 44 px tall and a step lighter than the workspace
 (`--surface-raised`); the tray sits in a tab that rises out of its centre, drawn with the strip as
 one shape and one outline (`dock-surface.tsx`). The dock's box reaches as high as a magnified tile, so a browser under any of it is covered. **Chats** opens chat history. **Browser** shows or hides the

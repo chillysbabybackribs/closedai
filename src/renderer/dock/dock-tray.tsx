@@ -1,5 +1,5 @@
 import type { JSX, ReactNode } from 'react'
-import { LayoutGrid } from 'lucide-react'
+import { Grid2X2 } from 'lucide-react'
 import { cn } from '../../lib/utils.js'
 import { Dock, DockIcon } from '../../components/ui/dock.js'
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar.js'
@@ -14,17 +14,17 @@ import type { MinimizedWindow } from '../chat-layout/floating/minimized-windows.
 import { BrowserSiteIcon } from '../browser-site-icon.js'
 import { downloadActions, downloadDetail } from '../browser-downloads-model.js'
 import { TRAY_ICON, TRAY_MAGNIFIED, type TrayApp, type TrayAppId } from './dock-model.js'
+import { DockStartPanel, type DockStartPanelProps } from './dock-start-panel.js'
 
 const STACK_ROWS = 8
 
-export type DockTrayOverview = {
-  active: boolean
-  disabled: boolean
-  onToggle: () => void
+export type DockTrayStart = Omit<DockStartPanelProps, 'onClose'> & {
+  open: boolean
+  onOpenChange: (open: boolean) => void
 }
 
 export type DockTrayProps = {
-  overview: DockTrayOverview
+  start: DockTrayStart
   apps: readonly TrayApp[]
   magnify: boolean
   /** The stack whose list is open above its icon. */
@@ -47,14 +47,21 @@ export type DockTrayProps = {
  * never changes the tray's size or spacing. The dot, tooltip and lists stay neutral.
  */
 export function DockTray(props: DockTrayProps): JSX.Element {
-  const { overview, apps, magnify, openStack, onOpenStack, onLaunch, minimized, onRestoreWindow } = props
+  const { start, apps, magnify, openStack, onOpenStack, onLaunch, minimized, onRestoreWindow } = props
+  const { open: startOpen, onOpenChange: onStartOpenChange, ...startPanel } = start
   return <Dock data-slot="app-dock-tray" direction="bottom" iconSize={TRAY_ICON} iconMagnification={TRAY_MAGNIFIED}
     disableMagnification={!magnify}
     // The tab behind it is DockSurface, so the tray itself draws nothing. It fills the tab above the
     // strip: height TRAY_ICON + TAB_PADDING, and p-2.5 is TAB_PADDING at the sides and top.
     className="mx-0 mt-0 h-[58px] gap-2 rounded-none border-0 bg-transparent p-2.5 pb-0 backdrop-blur-none">
     <DockIcon padding={0} className="relative rounded-[22%]">
-      <OverviewTrayButton {...overview} />
+      <Popover open={startOpen} onOpenChange={onStartOpenChange}>
+        <StartTrayButton open={startOpen} overviewActive={start.overviewActive} />
+        <PopoverContent side="top" align="center" sideOffset={12} className="w-auto border-0 p-0 shadow-none"
+          onCloseAutoFocus={(event) => event.preventDefault()}>
+          <DockStartPanel {...startPanel} onClose={() => onStartOpenChange(false)} />
+        </PopoverContent>
+      </Popover>
     </DockIcon>
     {apps.map((app) => <DockIcon key={app.id} padding={0} className="relative rounded-[22%]">
       {app.stack
@@ -73,24 +80,25 @@ export function DockTray(props: DockTrayProps): JSX.Element {
   </Dock>
 }
 
-function OverviewTrayButton({ active, disabled, onToggle }: DockTrayOverview): JSX.Element {
-  const note = active ? 'Showing all workspaces · click to zoom in' : 'Zoom out to all workspaces'
+function StartTrayButton({ open, overviewActive }: { open: boolean; overviewActive: boolean }): JSX.Element {
   return <Tooltip>
     <TooltipTrigger asChild>
-      <button type="button" className={cn('relative size-full rounded-[22%] outline-none focus-visible:ring-2 focus-visible:ring-ring',
-        active && 'ring-2 ring-ring ring-offset-2 ring-offset-background')}
-        data-ui="dock.overview" aria-pressed={active} aria-label={`Workspace overview: ${note}`} disabled={disabled} onClick={onToggle}>
-        <Avatar className="size-full rounded-[22%] border border-border">
-          <AvatarFallback className={cn('rounded-[22%] bg-secondary text-foreground', active && 'bg-accent text-accent-foreground')}>
-            <LayoutGrid className="size-[50%]" aria-hidden="true" />
-          </AvatarFallback>
-        </Avatar>
-      </button>
+      <PopoverTrigger asChild>
+        <button type="button" className={cn('relative size-full rounded-[22%] outline-none focus-visible:ring-2 focus-visible:ring-ring',
+          overviewActive && 'ring-2 ring-ring ring-offset-2 ring-offset-background')}
+          data-ui="dock.start" aria-expanded={open} aria-haspopup="dialog" aria-label="Open Start">
+          <Avatar className="size-full rounded-[22%] border border-border">
+            <AvatarFallback className="rounded-[22%] bg-secondary text-foreground">
+              <Grid2X2 className="size-[50%]" aria-hidden="true" />
+            </AvatarFallback>
+          </Avatar>
+        </button>
+      </PopoverTrigger>
     </TooltipTrigger>
-    <TooltipContent side="top" sideOffset={10} className="flex flex-col gap-0.5">
-      <span className="font-medium">Workspace overview</span>
-      <span className="text-muted-foreground">{note}</span>
-    </TooltipContent>
+    {!open && <TooltipContent side="top" sideOffset={10} className="flex flex-col gap-0.5">
+      <span className="font-medium">Start</span>
+      <span className="text-muted-foreground">Apps, search, and workspace</span>
+    </TooltipContent>}
   </Tooltip>
 }
 
