@@ -1080,6 +1080,17 @@ renderer on `browser:permissionRequests` with the tab id, origin, and kind, `bro
 answers it, and an unanswered request is denied after 60 s. The policy is read per request, so a
 settings change applies to the next request without a restart. Nothing else is remembered per origin.
 
+The main window's browser has a quick chat under the page (`chat-layout/workspace-browser-chat.tsx`).
+Collapsed, it is a slim strip with one centered button (`browser.quick-chat`); expanded, it is a full
+`ChatPane` in its own grid row of `.browser-stage`, so the native page gets shorter rather than being
+covered. It is a real chat: `chat.newPeer(anchor, { select: false })` creates it with the focused
+tile's model and folder without changing the selection, and main skips its early wake so the blank
+chat is not discarded before the layout reports it. The layout saves it per space
+(`SavedChatLayout.browserChat`/`browserChatOpen`), adds it to the ids sent to `setVisiblePanes` so
+main keeps it attached and streaming while collapsed, and never pulls it into a tile when main
+selects it. **New quick chat** (`browser.quick-chat-new`) creates a fresh one and closes the previous
+one through `closePeer`, which leaves a used chat in history and discards a blank one.
+
 On Linux, startup disables accelerated video decode by default because affected driver stacks can
 accept and advance H.264 playback while compositing blank frames. This leaves GPU compositing and
 WebGL available; only media decoding falls back to software. A known-good machine can opt back in
