@@ -1,0 +1,38 @@
+import assert from 'node:assert/strict'
+import test from 'node:test'
+
+import type { ChatLayout } from '../chat-layout/layout-tree.js'
+import { tabIds, tabOwner } from '../chat-layout/layout-tabs.js'
+import { findWindow } from '../chat-layout/floating/window-layout.js'
+import { noteIdOfTab, noteTabId, notepadChats, openNoteInTree, tileNoteIds, tileNotepadChat, withNotepadChat } from './notepad-layout.js'
+
+const chatTile: ChatLayout = { kind: 'pane', id: 'chat-a', tabs: ['chat-a', 'chat-b'] }
+
+test('the first note opens in a floating window of its own and the chat tile keeps its front tab', () => {
+  const tree = openNoteInTree(chatTile, 'n1', null, 'split-1')
+  const tab = noteTabId('n1')
+  assert.equal(noteIdOfTab(tab), 'n1')
+  assert.equal(tabOwner(tree, 'chat-a'), 'chat-a')
+  assert.equal(tabOwner(tree, tab), tab)
+  assert.ok(findWindow(tree, tab)?.float)
+})
+
+test('later notes join the notepad window, and an open note is only selected', () => {
+  let tree = openNoteInTree(chatTile, 'n1', null, 'split-1')
+  tree = openNoteInTree(tree, 'n2', 'chat-a', 'split-2')
+  assert.equal(tabOwner(tree, noteTabId('n2')), noteTabId('n2'))
+  assert.deepEqual(tileNoteIds(tree, noteTabId('n1')), ['n1', 'n2'])
+  tree = openNoteInTree(tree, 'n1', null, 'split-3')
+  assert.equal(tabOwner(tree, noteTabId('n1')), noteTabId('n1'))
+  assert.equal(tabIds(tree).length, 4)
+})
+
+test('the window keeps its chat while its notes change', () => {
+  let tree = openNoteInTree(chatTile, 'n1', null, 'split-1')
+  tree = withNotepadChat(tree, noteTabId('n1'), 'pad-chat')
+  tree = openNoteInTree(tree, 'n2', noteTabId('n1'), 'split-2')
+  assert.equal(tileNotepadChat(tree, noteTabId('n2')), 'pad-chat')
+  assert.equal(tileNotepadChat(tree, noteTabId('n1')), 'pad-chat')
+  assert.deepEqual(notepadChats(tree), ['pad-chat'])
+  assert.deepEqual(notepadChats(withNotepadChat(tree, noteTabId('n2'), null)), [])
+})

@@ -4,7 +4,7 @@ import { tabIds, tabOwner } from './layout-tabs.js'
 // A view is a tab with a kind, not a chat and not a dialog: it shares the strip, drag, close and
 // split with chats, and shows something about one chat (its scope) or about the workspace.
 
-export const VIEW_KINDS = ['trace', 'agents', 'history', 'tools', 'saved-sites'] as const
+export const VIEW_KINDS = ['trace', 'agents', 'history', 'tools', 'saved-sites', 'note'] as const
 export type ViewKind = typeof VIEW_KINDS[number]
 
 /** Views that show workspace-wide content: one tab for the whole layout, opened or focused from anywhere. */
@@ -20,7 +20,8 @@ export const VIEW_LABELS: Record<ViewKind, string> = {
   agents: 'Agents',
   history: 'History',
   tools: 'Tools',
-  'saved-sites': 'Saved sites'
+  'saved-sites': 'Saved sites',
+  note: 'Note'
 }
 
 export type ViewTab = { id: string; kind: ViewKind }

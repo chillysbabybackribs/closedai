@@ -8,7 +8,11 @@ export type FloatRect = { x: number; y: number; width: number; height: number; z
  * `docked` is a minimized window; `float` lifts a tile out of the tiled layer into its own rect;
  * `onTop` keeps the window above every window without it (Keep on top).
  */
-export type ChatLayout = { kind: 'pane'; id: string; tabs?: string[]; docked?: boolean; dockNumber?: number; float?: FloatRect; onTop?: boolean } | {
+export type ChatLayout = {
+  kind: 'pane'; id: string; tabs?: string[]; docked?: boolean; dockNumber?: number; float?: FloatRect; onTop?: boolean
+  /** A notepad window's chat (renderer notepad/): one per window, kept when its notes change. */
+  notepadChat?: string
+} | {
   kind: 'split'; id: string; axis: 'horizontal' | 'vertical'; ratio: number
   first: ChatLayout; second: ChatLayout
 }
@@ -220,6 +224,8 @@ export function readLayout(storage: Pick<Storage, 'getItem'>, key: string, windo
         if (node.onTop !== undefined && typeof node.onTop !== 'boolean') return false
         if (node.docked !== undefined && typeof node.docked !== 'boolean') return false
         if (node.dockNumber !== undefined && (!Number.isSafeInteger(node.dockNumber) || node.dockNumber < 1)) return false
+        if (node.notepadChat !== undefined && (typeof node.notepadChat !== 'string' || !node.notepadChat
+          || isViewTabId(node.notepadChat) || isReservedPaneId(node.notepadChat))) return false
         const tabs = node.tabs ?? [node.id]
         if (!Array.isArray(tabs) || !tabs.includes(node.id) || !tabs.length) return false
         for (const id of tabs) {
