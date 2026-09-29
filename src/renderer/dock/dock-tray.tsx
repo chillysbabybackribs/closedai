@@ -39,7 +39,7 @@ export type DockTrayProps = {
  * a fixed slot between two dock groups so pointer magnification does not keep it larger than its neighbours.
  */
 export function DockTray(props: DockTrayProps): JSX.Element {
-  const { startTrigger, apps, magnify, openStack, onOpenStack, onLaunch, minimized, onRestoreWindow } = props
+  const { startTrigger, apps, magnify, minimized, onRestoreWindow } = props
   const split = Math.floor(apps.length / 2)
   const leftApps = apps.slice(0, split)
   const rightApps = apps.slice(split)
