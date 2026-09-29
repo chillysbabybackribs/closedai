@@ -24,6 +24,7 @@ import type { AppAutomationAccess } from './app-automation-access.js'
 import type { NativeInstrumentService } from './native-instrument/service.js'
 import { QuickChatOverlay } from './quick-chat-overlay/quick-chat-overlay.js'
 import type { AppSurfaceHandle, SurfaceContents } from './windows/app-window-registry.js'
+import type { QuickChatOverlayRequest } from '../shared/quick-chat-overlay.js'
 export type MainWindowHost = {
   downloadsRoot: () => string
   /** Every window, except browser channels, which only the main window renders. */
@@ -53,6 +54,8 @@ export type MainWindowHost = {
   /** Routes events to a layer inside the main window; null before the window registry exists. */
   attachSurface: (contents: SurfaceContents) => AppSurfaceHandle | null
   setQuickChatOverlay: (overlay: QuickChatOverlay | null) => void
+  /** Carries the quick chat's request to the main window's layout. */
+  quickChatRequest: (request: QuickChatOverlayRequest) => void
   getQuickChatOverlay: () => QuickChatOverlay | null
 }
 
@@ -65,7 +68,8 @@ export function openMainWindow(host: MainWindowHost): BrowserWindow {
     permissions: {
       policy: () => host.securitySettings.get().webPermissions,
       ask: (request) => host.permissionRequests.ask(request)
-    }
+    },
+    pageKeys: (input) => host.getQuickChatOverlay()?.shortcut(input) ?? false
   })
   host.setBrowserService(browserService)
   browserService.on('popup', (opener: string, child: string) => host.toolRegistry?.browserCoordination?.inherit(opener, child))
@@ -73,12 +77,17 @@ export function openMainWindow(host: MainWindowHost): BrowserWindow {
   const quickChat = new QuickChatOverlay({
     window,
     attachSurface: (contents) => host.attachSurface(contents),
-    openLinkInNewTab: (url) => host.getBrowserService()?.openNewTab(url, false)
+    openLinkInNewTab: (url) => host.getBrowserService()?.openNewTab(url, false),
+    request: (request) => host.quickChatRequest(request)
   })
   host.setQuickChatOverlay(quickChat)
+  window.webContents.on('before-input-event', (event, input) => {
+    if (quickChat.shortcut(input)) event.preventDefault()
+  })
   // The quick chat floats over the page: it follows the page's box and stays stacked above it.
   browserService.on('page', (bounds: BrowserBounds, visible: boolean) => quickChat.setPage(bounds, visible))
   browserService.on('pageViewAttached', () => quickChat.raise())
+  browserService.on('state', (state: BrowserState) => quickChat.setUrl(state.url))
   const browserDownloads = new BrowserDownloadService({ workspaceRoot: host.downloadsRoot })
   host.setBrowserDownloads(browserDownloads)
   browserDownloads.install(session.fromPartition(PARTITION))

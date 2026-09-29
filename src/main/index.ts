@@ -481,6 +481,7 @@ function mainWindowHost(): MainWindowHost {
     setCdpAccess: (access) => { cdpAccess = access },
     attachSurface: (contents) => windows?.attachSurface(contents) ?? null,
     setQuickChatOverlay: (overlay) => { quickChatOverlay = overlay },
+    quickChatRequest: (request) => windows?.quickChat(request),
     getQuickChatOverlay: () => quickChatOverlay
   }
 }

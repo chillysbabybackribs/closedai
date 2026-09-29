@@ -1,20 +1,28 @@
-import { Menu, WebContentsView, type BaseWindow, type WebContents } from 'electron'
+import { Menu, WebContentsView, type BaseWindow, type Input, type WebContents } from 'electron'
 import { join } from 'node:path'
 import {
-  QUICK_CHAT_SURFACE, type QuickChatOverlaySize, type QuickChatOverlayState, type QuickChatOverlayView
+  QUICK_CHAT_SURFACE, type QuickChatOverlayRequest, type QuickChatOverlaySize, type QuickChatOverlayState,
+  type QuickChatOverlayView
 } from '../../shared/quick-chat-overlay.js'
 import { IPC } from '../../shared/ipc-channels.js'
 import type { BrowserBounds } from '../../shared/types.js'
 import { installAppContextMenu } from '../app-context-menu.js'
 import { loadAppSurface } from '../main-window.js'
 import type { AppSurfaceHandle, SurfaceContents } from '../windows/app-window-registry.js'
-import { quickChatOverlayBounds } from './overlay-placement.js'
+import { pageSite, quickChatOverlayBounds } from './overlay-placement.js'
 
 export type QuickChatOverlayHost = {
   window: BaseWindow
   /** Routes workspace events and the shown chat's stream to the layer. */
   attachSurface: (contents: SurfaceContents) => AppSurfaceHandle | null
   openLinkInNewTab: (url: string) => void
+  /** Carries a request to the main window's layout, which owns whether the quick chat is open. */
+  request: (request: QuickChatOverlayRequest) => void
+}
+
+/** Ctrl+J (Cmd+J on macOS) opens and closes the quick chat from the page, the layer, or the app. */
+export function isQuickChatShortcut(input: Pick<Input, 'type' | 'key' | 'control' | 'meta' | 'alt' | 'shift'>): boolean {
+  return input.type === 'keyDown' && (input.control || input.meta) && !input.alt && !input.shift && input.key.toLowerCase() === 'j'
 }
 
 /**
@@ -33,7 +41,7 @@ export class QuickChatOverlay {
   private page: BrowserBounds = { x: 0, y: 0, width: 0, height: 0 }
   private pageVisible = false
   private size: QuickChatOverlaySize | null = null
-  private focused = false
+  private site: string | null = null
   private disposed = false
 
   constructor(private readonly host: QuickChatOverlayHost) {}
@@ -41,9 +49,31 @@ export class QuickChatOverlay {
   /** The main window's layout: which chat, and whether its card is open. */
   setState(state: QuickChatOverlayState): void {
     const paneId = typeof state?.paneId === 'string' && state.paneId ? state.paneId : null
+    const opened = this.state !== null && !this.state.open
     this.state = { paneId, open: Boolean(state?.open) && paneId !== null }
     this.surface?.show(paneId ? [paneId] : [])
     this.update(true)
+    // Opening lands in the composer wherever it was asked from (Ctrl+J on the page, History). The
+    // state restored at launch is not an opening, so it leaves focus where the window put it.
+    if (opened && this.state.open && this.view && !this.view.webContents.isDestroyed()) this.view.webContents.focus()
+  }
+
+  /** The address the browser shows; the layer names its site. */
+  setUrl(url: string): void {
+    const site = pageSite(url)
+    if (site === this.site) return
+    this.site = site
+    this.publish()
+  }
+
+  /**
+   * A key pressed in the page, the layer, or the app window; true when it was the quick chat's own
+   * shortcut and was used. It only acts while the page is on screen, where the layer can show.
+   */
+  shortcut(input: Pick<Input, 'type' | 'key' | 'control' | 'meta' | 'alt' | 'shift'>): boolean {
+    if (!isQuickChatShortcut(input) || !this.pageVisible || !this.state) return false
+    this.host.request('toggle')
+    return true
   }
 
   /** The browser's page box and whether it is on screen, uncovered. */
@@ -68,7 +98,7 @@ export class QuickChatOverlay {
   current(): QuickChatOverlayView | null {
     if (!this.state) return null
     const page = { width: Math.round(this.page.width), height: Math.round(this.page.height) }
-    return { ...this.state, page, focused: this.focused }
+    return { ...this.state, page, site: this.site }
   }
 
   /** Keep the layer above the page views; re-adding a child view only reorders it to the top. */
@@ -118,19 +148,14 @@ export class QuickChatOverlay {
     // The layer is the app's own page: it never navigates or opens windows of its own.
     contents.setWindowOpenHandler(() => ({ action: 'deny' }))
     contents.on('will-navigate', (event) => event.preventDefault())
-    contents.on('focus', () => this.setFocused(true))
-    contents.on('blur', () => this.setFocused(false))
+    contents.on('before-input-event', (event, input) => {
+      if (this.shortcut(input)) event.preventDefault()
+    })
     contents.on('render-process-gone', () => {
       if (!this.disposed && !contents.isDestroyed()) contents.reload()
     })
     installAppContextMenu(contents, Menu, { openLinkInNewTab: this.host.openLinkInNewTab })
     loadAppSurface(contents, QUICK_CHAT_SURFACE)
-  }
-
-  private setFocused(focused: boolean): void {
-    if (focused === this.focused) return
-    this.focused = focused
-    this.publish()
   }
 
   private publish(): void {

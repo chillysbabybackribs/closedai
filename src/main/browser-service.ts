@@ -46,6 +46,8 @@ type BrowserServiceOptions = {
    * UI, paints while this settles instead of waiting behind it.
    */
   readyToLoad?: Promise<unknown>
+  /** App shortcuts that work on a page (the quick chat's Ctrl+J); true when the key was used. */
+  pageKeys?: (input: Electron.Input) => boolean
 }
 
 // How long a reveal waits for the page's first frame before showing it anyway. A parked page
@@ -72,6 +74,7 @@ export class BrowserService extends EventEmitter {
   private readonly pageBackgrounds = new PageBackgroundMemory()
   private readonly partitionSession: Electron.Session
   private readonly permissions: Pick<PermissionPolicyDeps, 'policy' | 'ask'>
+  private readonly pageKeys: (input: Electron.Input) => boolean
   private readonly persistentSessionCookies: PersistentSessionCookies
   // What the app records about every tab without a debugger: network traffic and rules on
   // the session, console output per tab. Exposed to the model tools through the access classes.
@@ -103,6 +106,7 @@ export class BrowserService extends EventEmitter {
     super()
     this.on('error', () => {})
     this.permissions = options.permissions ?? { policy: () => 'allow', ask: async () => true }
+    this.pageKeys = options.pageKeys ?? (() => false)
     this.partitionSession = session.fromPartition(PARTITION)
     this.configureSession(this.partitionSession)
     this.persistentSessionCookies = new PersistentSessionCookies(this.partitionSession)
@@ -159,6 +163,7 @@ export class BrowserService extends EventEmitter {
       popupOptions
     )
     tab.permissionPolicy = this.permissions.policy
+    tab.pageKeys = this.pageKeys
     if (!activate) tab.applyBounds({ ...this.bounds, occluded: true }, false)
     this.observers.watchTab(tab.id, tab.view.webContents)
     this.registerTab(tab, index)
