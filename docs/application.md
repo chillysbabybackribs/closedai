@@ -785,8 +785,8 @@ search (`startScreenForRow` in `dock-start-model.ts`); the same rows from the ti
 Ctrl+H, and Ctrl+, keep their header palette, view tab, or dialog. A screen has a back header
 (`dock.start-back`; Escape does the same) over the same component its view tab or dialog shows
 (`dock-start-views.tsx`: `ChatHistory`, `AgentLibraryView`, `ToolsPanel`, and `SettingsSections`,
-which the Settings dialog also wraps), and the panel grows to 1120 px wide and up to 900 px tall,
-bounded by the room above the dock. Search chats (`dock.start-chat-search`) is the title-bar
+which the Settings dialog also wraps). The panel is one fixed size for the home and every screen,
+1120 px wide and up to 900 px tall, bounded by the room above the dock. Search chats (`dock.start-chat-search`) is the title-bar
 palette's list (`chat-search-results.tsx`, row ids `titlebar.chat-search-*`) in Start's body.
 Anything that leaves Start closes it: opening a chat, a Tools repair draft (sent to the selected
 chat), starting an agent (docked beside the selected chat), or the wallpaper picker. Start always
