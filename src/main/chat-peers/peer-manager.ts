@@ -63,6 +63,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   private selectedPaneId: ChatPaneId
   private visiblePaneIds = new Set<ChatPaneId>()
   private retainedTabIds = new Set<ChatPaneId>()
+  private stopped = false
   private readonly windowVisibility = new PeerWindowVisibility()
   private visibilityRevision = 0
   private selectingProject = false
@@ -232,6 +233,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   }
 
   stop(): void {
+    this.stopped = true
     this.archives.stop()
     this.projectChanges.stop()
     this.projectSwitch.stop()
@@ -288,7 +290,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
 
   /** Register one window's tiles without changing focus or stopping hidden turns. */
   async setVisiblePanes(cwd: string, paneIds: ChatPaneId[], retainedTabIds: ChatPaneId[] = [], windowId = MAIN_WINDOW_ID): Promise<void> {
-    if (cwd !== this.workspace().cwd) return
+    if (this.stopped || cwd !== this.workspace().cwd) return
     if (!Array.isArray(paneIds) || paneIds.length > 32 || paneIds.some((id) => typeof id !== 'string')) {
       throw new Error('Choose up to 32 visible chats')
     }
@@ -587,6 +589,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       selectedPaneId: () => this.selectedPaneId,
       visiblePaneIds: () => this.visiblePaneIds,
       retainedTabIds: () => this.retainedTabIds,
+      stopped: () => this.stopped,
       emitWorkspaceEvent: (event) => { this.emit('event', event) },
       chatRowsCache: this.chatRowsCache,
       chatRowsEmitState: this.chatRowsEmitState

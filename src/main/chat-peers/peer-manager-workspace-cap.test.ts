@@ -47,6 +47,30 @@ test('detaching never closes a running pane or one holding an undelivered handof
   assert.equal(kept.includes('pane-2'), false)
 })
 
+test('startup keeps blank background tabs attached so their strip slot survives a relaunch', async () => {
+  const records = manyChats(10)
+  records[1] = { ...records[1]!, codexThreadId: null, threadId: null, messageSentAt: null }
+  const { manager, settings } = harnessWith(records, 'pane-9')
+
+  await manager.start()
+
+  assert.ok(attached(manager).includes('pane-1'), 'a blank chat is listed only while attached')
+  assert.ok(settings.get().chatOpenIds.includes('pane-1'))
+})
+
+test('nothing rewrites the open chats once shutdown has detached them', async () => {
+  const { manager, settings } = harnessWith(manyChats(3), 'pane-2')
+  await manager.start()
+  const saved = [...settings.get().chatOpenIds]
+
+  manager.stop()
+  await manager.setVisiblePanes('/workspace', ['pane-0'])
+  await manager.selectPane('pane-0').catch(() => {})
+
+  assert.deepEqual(settings.get().chatOpenIds, saved)
+  assert.equal(settings.get().chatSelectedPaneId, 'pane-2')
+})
+
 test('a new chat detaches the oldest pane instead of growing the workspace', async () => {
   const { manager, surfaces } = harnessWith(manyChats(8), 'pane-7')
 

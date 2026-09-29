@@ -43,6 +43,8 @@ export type PeerManagerSupportHost = {
   selectedPaneId: () => ChatPaneId
   visiblePaneIds: () => Set<ChatPaneId>
   retainedTabIds: () => Set<ChatPaneId>
+  /** True once the app is quitting and every chat was detached; open ids are final by then. */
+  stopped: () => boolean
   emitWorkspaceEvent: (event: ChatWorkspaceEvent) => void
   chatRowsCache?: PeerChatRowsCache
   /** Skips redundant drawer IPC when throttled emits rebuild the same row summaries. */
@@ -67,9 +69,14 @@ export function peerManagerWorkspace(host: PeerManagerSupportHost): ChatWorkspac
 export async function peerManagerTrimAttached(host: PeerManagerSupportHost): Promise<void> {
   const pending = host.projectSwitch.state()
   const switching = pending && (pending.status === 'pending' || pending.status === 'switching') ? [pending.paneId] : []
+  // A blank chat is listed only while attached, so detaching a blank background tab would drop
+  // it from the strip, at launch before any window has registered its tabs too. It holds no
+  // thread, so keeping it attached costs nothing; blank chats outside a strip are discarded elsewhere.
+  const blankTabs = host.lifecycle.ids().filter((id) => host.lifecycle.isBlank(id))
   const detached = host.lifecycle.trim([
     host.selectedPaneId(),
     ...host.visiblePaneIds(),
+    ...blankTabs,
     ...switching
   ])
   if (detached.length === 0) return
@@ -80,6 +87,8 @@ export async function peerManagerTrimAttached(host: PeerManagerSupportHost): Pro
 }
 
 export async function peerManagerPersistOpenChats(host: PeerManagerSupportHost): Promise<void> {
+  // Shutdown detaches every chat; a late write would save that empty set as the next launch's.
+  if (host.stopped()) return
   const records = host.lifecycle.ids().map((id) => host.store.require(id))
   await host.settings.set(openChatsPatch(records, host.store.require(host.selectedPaneId())))
 }

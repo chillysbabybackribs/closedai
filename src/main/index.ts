@@ -127,6 +127,7 @@ const COOKIE_IMPORT_LOAD_GATE_MS = 5000
 /** Long enough after the window's first load that the check cannot compete with the mount. */
 const COOKIE_REPAIR_IDLE_MS = 10_000
 let quitting = false
+let quitFlushed = false
 const liveVerifyHandle: LiveVerifyHandle = {
   requested: false,
   pending: null,
@@ -475,9 +476,16 @@ app.on('window-all-closed', () => {
 })
 
 app.on('before-quit', (event) => {
-  if (quitting) return
+  // A second quit (another signal, the last window closing) during the flush must wait for it,
+  // not exit mid-write; only the quit issued after the flush settles goes through.
+  if (quitting) {
+    if (!quitFlushed) event.preventDefault()
+    return
+  }
   event.preventDefault()
   quitting = true
+  // Scroll offsets reach a tab's page state without a strip change, so read the live strip once more.
+  if (browserService) browserTabSession?.save(browserService.persistTabs())
   // Detached windows close with the app and reopen at the next launch.
   windows?.shutdown()
   nativeInstrument?.dispose()
@@ -512,6 +520,7 @@ app.on('before-quit', (event) => {
     if (outcome === 'timed-out') console.warn(`[main] shutdown flush exceeded ${QUIT_SETTLE_TIMEOUT_MS} ms; quitting anyway`)
     // Provider processes were asked to stop above; none may outlive the app.
     stopAllProcessGroups()
+    quitFlushed = true
     app.quit()
   })
 })

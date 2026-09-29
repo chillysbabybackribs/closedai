@@ -85,6 +85,16 @@ describe('selectPersistableTabs', () => {
     assert.equal(session.activeIndex, 1)
   })
 
+  it('shows the left neighbour of an unrestorable active tab, not the first tab', () => {
+    const session = selectPersistableTabs([
+      tab('https://a.example/'),
+      tab('https://b.example/'),
+      tab('about:blank', { active: true }),
+      tab('https://c.example/')
+    ])
+    assert.equal(session.tabs[session.activeIndex].url, 'https://b.example/')
+  })
+
   it('returns an empty session when nothing is restorable', () => {
     assert.deepEqual(selectPersistableTabs([tab('about:blank', { active: true })]), {
       tabs: [],

@@ -25,7 +25,7 @@ export function restoreBrowserTabs(host: BrowserRestoreHost, restored: RestoredT
     const id = record.id && !seen.has(record.id) ? record.id : undefined
     if (id) seen.add(id)
     const tab = host.createTab(false, undefined, id)
-    tab.seedRestoredState(record.url, record.title, record.customTitle)
+    tab.seedRestoredState(record.url, record.title, record.customTitle, record.stack)
     return { tab, record }
   })
   host.setActive(tabs[plan.activeIndex].tab.id)

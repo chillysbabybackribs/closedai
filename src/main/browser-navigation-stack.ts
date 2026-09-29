@@ -24,24 +24,37 @@ export function isRestorableNavigationUrl(url: string): boolean {
   }
 }
 
-/** Serialize a live navigation stack for session restore. Returns null when a URL load suffices. */
+/**
+ * Serialize a live navigation stack for session restore. A single page is kept when it carries
+ * page state (its scroll offset and form contents); returns null when a plain URL load suffices.
+ */
 export function exportNavigationStack(
   entries: NavigationEntry[],
   activeIndex: number
 ): PersistedNavigationStack | null {
-  const kept = entries
-    .filter((entry) => isRestorableNavigationUrl(entry.url))
-    .slice(-MAX_PERSISTED_NAVIGATION_ENTRIES)
-    .map((entry) => ({
-      url: entry.url,
-      title: typeof entry.title === 'string' ? entry.title.slice(0, 300) : '',
-      ...(typeof entry.pageState === 'string' && entry.pageState.length > 0
-        ? { pageState: entry.pageState }
-        : {})
-    }))
-  if (kept.length <= 1) return null
-  const index = Math.min(Math.max(activeIndex, 0), kept.length - 1)
+  // Dropping entries renumbers the stack, so the active entry is tracked through the filter:
+  // the saved index must name the page the tab was showing, not whatever slid into its slot.
+  const restorable = entries
+    .map((entry, index) => ({ entry, index }))
+    .filter(({ entry }) => isRestorableNavigationUrl(entry.url))
+  const windowed = restorable.slice(-MAX_PERSISTED_NAVIGATION_ENTRIES)
+  const kept = windowed.map(({ entry }) => ({
+    url: entry.url,
+    title: typeof entry.title === 'string' ? entry.title.slice(0, 300) : '',
+    ...(typeof entry.pageState === 'string' && entry.pageState.length > 0
+      ? { pageState: entry.pageState }
+      : {})
+  }))
+  if (!worthRestoring(kept)) return null
+  // The active page itself when it survived, else the nearest kept page before it.
+  let index = 0
+  windowed.forEach(({ index: original }, position) => { if (original <= activeIndex) index = position })
   return { entries: kept, index }
+}
+
+/** More than one page to go back through, or one page whose state (scroll offset) a URL load would lose. */
+function worthRestoring(entries: PersistedNavigationEntry[]): boolean {
+  return entries.length > 1 || (entries.length === 1 && entries[0].pageState !== undefined)
 }
 
 /** Re-validate a stack read from disk; malformed stacks fall back to a plain URL load. */
@@ -53,7 +66,7 @@ export function normalizeNavigationStack(value: unknown): PersistedNavigationSta
     .map(normalizeEntry)
     .filter((entry): entry is PersistedNavigationEntry => entry !== null)
     .slice(-MAX_PERSISTED_NAVIGATION_ENTRIES)
-  if (entries.length <= 1) return null
+  if (!worthRestoring(entries)) return null
   const rawIndex = typeof parsed.index === 'number' ? Math.floor(parsed.index) : entries.length - 1
   const index = Math.min(Math.max(rawIndex, 0), entries.length - 1)
   return { entries, index }

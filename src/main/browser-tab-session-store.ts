@@ -141,7 +141,11 @@ export function selectPersistableTabs(tabs: TabPersistRecord[]): RestoredTabSess
   const kept: PersistedTab[] = []
   let activeIndex = 0
   for (const tab of tabs) {
-    if (!isRestorableUrl(tab.url)) continue
+    if (!isRestorableUrl(tab.url)) {
+      // A blank, file or image tab in front does not come back; its left neighbour does.
+      if (tab.active) activeIndex = Math.max(kept.length - 1, 0)
+      continue
+    }
     if (tab.active) activeIndex = kept.length
     const stack = normalizeNavigationStack(tab.stack ?? null)
     kept.push({

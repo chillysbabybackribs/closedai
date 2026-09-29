@@ -67,6 +67,8 @@ export class BrowserTab extends EventEmitter {
   private visible = false
   private favicon: string | null = null
   private customTitle: string | null = null
+  /** The stack last exported (or restored from disk), kept while the live history cannot be read. */
+  private lastStack: PersistedNavigationStack | null = null
   private liveness: TabLiveness = { alive: true }
   // What the view paints where the page does not. Always kept equal to what is on screen now
   // or what is about to be — see applyBaseColor.
@@ -129,14 +131,19 @@ export class BrowserTab extends EventEmitter {
   }
 
   exportNavigationStack(): PersistedNavigationStack | null {
-    if (!this.liveness.alive || this.view.webContents.isDestroyed()) return null
+    // A tab still queued for restore has no history yet and a crashed one has none to read;
+    // both keep the stack last seen, so a quit before they load does not save them shorter.
+    if (!this.liveness.alive || this.view.webContents.isDestroyed()) return this.lastStack
     const history = this.view.webContents.navigationHistory
-    return exportNavigationStack(history.getAllEntries(), history.getActiveIndex())
+    const entries = history.getAllEntries()
+    if (entries.length === 0) return this.lastStack
+    this.lastStack = exportNavigationStack(entries, history.getActiveIndex())
+    return this.lastStack
   }
 
   // The first real navigation IS the bootstrap; no about:blank preload.
   start(url: string, options?: LoadURLOptions, restoredStack?: PersistedNavigationStack | null): Promise<void> {
-    if (restoredStack && restoredStack.entries.length > 1) {
+    if (restoredStack && restoredStack.entries.length > 0) {
       return this.restoreNavigationStack(restoredStack, url, options)
     }
     return this.navigate(url, options)
@@ -172,8 +179,9 @@ export class BrowserTab extends EventEmitter {
 
   // Adopt a persisted tab's identity before anything loads, so a restored strip shows the
   // real page labels on the first frame instead of a row of "New Tab".
-  seedRestoredState(url: string, title: string, customTitle?: string | null): void {
+  seedRestoredState(url: string, title: string, customTitle?: string | null, stack?: PersistedNavigationStack | null): void {
     this.state = { ...this.state, url, title: title || this.state.title }
+    this.lastStack = stack ?? null
     this.customTitle = normalizeCustomTitle(customTitle)
   }
 
