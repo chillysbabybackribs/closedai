@@ -126,7 +126,7 @@ export function AppDock({ menu, nav, chats, chatTitle, browserVisible, prefs, on
               minimized={minimized} onRestoreWindow={onRestoreWindow} />
           </div>
           <PopoverContent side="top" align="center" sideOffset={16} collisionPadding={12}
-            className="dock-start-shell z-[100] border p-0 shadow-none motion-reduce:animate-none" data-start-view={startView}
+            className="dock-panel dock-start-shell z-[100] border p-0 shadow-none motion-reduce:animate-none" data-start-view={startView}
             onCloseAutoFocus={(event) => event.preventDefault()}
             onEscapeKeyDown={(event) => {
               if (startView === 'home') return
@@ -149,7 +149,7 @@ export function AppDock({ menu, nav, chats, chatTitle, browserVisible, prefs, on
               </TooltipTrigger>
               {openList !== 'settings' && <TooltipContent side="top">Dock and layout</TooltipContent>}
             </Tooltip>
-            <PopoverContent side="top" align="end" sideOffset={10} className="flex w-72 flex-col gap-3 p-3"
+            <PopoverContent side="top" align="end" sideOffset={10} className="dock-panel flex w-72 flex-col gap-3 p-3"
               onCloseAutoFocus={(event) => event.preventDefault()}>
               <div className="text-xs font-medium text-muted-foreground">Layout</div>
               <DockLayoutSection canTile={canTile} onTileWindows={onTileWindows} onApplyPreset={onApplyPreset}

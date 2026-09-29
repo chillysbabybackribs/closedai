@@ -1,11 +1,5 @@
-/* Start panel above the dock tray: same card surface and list patterns as chat history. One fixed
-   size for the home and every screen, so switching views never resizes the panel; it never grows
-   past the room above the dock. */
-.dock-start-shell {
-  width: min(96vw, 1120px);
-  max-width: none;
-  max-height: min(var(--radix-popover-content-available-height, 90vh), 900px);
-  overflow: hidden;
+/* Surface shared by every panel the dock opens (Start, Dock and layout, tray stacks). */
+.dock-panel {
   border-radius: 12px;
   border-color: var(--hairline-strong, var(--border));
   background: var(--surface-card, var(--card));
@@ -15,7 +9,7 @@
     0 16px 48px rgb(0 0 0 / 28%);
 }
 
-:root[data-backdrop] .dock-start-shell {
+:root[data-backdrop] .dock-panel {
   /* Popper wraps this in a transformed layer, so --glass-fill would misalign; blur what is actually
      behind (tiles, browser still, wallpaper) like Win11 acrylic over the desktop. */
   /* Lighter than chat tiles: Win11-style acrylic over whatever is behind the panel. */
@@ -26,6 +20,20 @@
     inset 0 1px 0 var(--glass-sheen),
     0 1px 2px rgb(0 0 0 / 40%),
     0 16px 44px rgb(0 0 0 / 38%);
+}
+
+:root[data-backdrop] .dock-panel [role='separator'] {
+  background: var(--glass-edge);
+}
+
+/* Start panel above the dock tray: same list patterns as chat history. One fixed size for the home
+   and every screen, so switching views never resizes the panel; it never grows past the room above
+   the dock. */
+.dock-start-shell {
+  width: min(96vw, 1120px);
+  max-width: none;
+  max-height: min(var(--radix-popover-content-available-height, 90vh), 900px);
+  overflow: hidden;
 }
 
 :root[data-backdrop] .dock-start-footer {
