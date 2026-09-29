@@ -2,7 +2,7 @@
 
 /* The quick chat floats over the live page in a transparent native layer of its own (main
    quick-chat-overlay/). Its document is see-through; the layer is fitted to .quick-chat-layer,
-   whose padding is the shadow's room, and main rests it on the page's foot. */
+   whose padding is the shadow's room, and main rests it in the page's bottom-right corner. */
 html.quick-chat-surface,
 html.quick-chat-surface body,
 html.quick-chat-surface #root {
@@ -10,62 +10,106 @@ html.quick-chat-surface #root {
 }
 
 .quick-chat-layer {
-  --quick-chat-margin: 14px;
+  --quick-chat-margin: 16px;
   position: fixed;
+  right: 0;
   bottom: 0;
-  left: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-end;
   padding: var(--quick-chat-margin);
 }
 
-/* Closed: one round button. */
+/* Closed: one round button, with the task's site beside it while it runs or once it ends. */
 .quick-chat-fab {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--chrome-fg-strong);
+}
+
+.quick-chat-fab-disc {
+  position: relative;
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
+  width: 42px;
+  height: 42px;
   border: 1px solid var(--hairline);
   border-radius: 50%;
   background: var(--surface-raised);
   box-shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 22px rgb(0 0 0 / 34%);
-  color: var(--chrome-fg-strong);
   transition:
     background 110ms var(--ease-chrome),
     transform 110ms var(--ease-chrome);
 }
 
-.quick-chat-fab:hover {
+.quick-chat-fab:hover .quick-chat-fab-disc {
   background: var(--surface-control-hover, #343434);
-  transform: translateY(-1px);
+  transform: scale(1.05);
 }
 
 .quick-chat-fab:focus-visible {
+  outline: none;
+}
+
+.quick-chat-fab:focus-visible .quick-chat-fab-disc {
   outline: 2px solid var(--tab-accent, #8ab4f8);
   outline-offset: 2px;
 }
 
-.quick-chat-fab.is-running {
-  color: var(--tab-accent, #8ab4f8);
+/* The progress ring: a quarter arc turning around the disc while the task runs. */
+.quick-chat-fab.is-running .quick-chat-fab-disc::before {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: conic-gradient(var(--tab-accent, #8ab4f8) 0 25%, transparent 25% 100%);
+  content: "";
+  animation: work-spin 1s linear infinite;
+  mask: radial-gradient(circle, transparent 23px, #000 24px);
 }
 
-/* Open: the card. Compact is the composer (with the running feed above it); whole is the chat. */
+.quick-chat-fab-label {
+  max-width: 220px;
+  overflow: hidden;
+  padding: 3px 9px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: var(--surface-raised);
+  box-shadow: 0 4px 14px rgb(0 0 0 / 28%);
+  color: color-mix(in srgb, var(--chrome-fg) 85%, transparent);
+  font-size: 11.5px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quick-chat-fab-label.is-done {
+  color: var(--ok-ink, #65b98a);
+}
+
+.quick-chat-fab-label.is-failed {
+  color: var(--danger, #f28b82);
+}
+
+/* Open: the card. Compact is the status line over the composer; whole is the chat. */
 .quick-chat-card {
   display: flex;
   flex-direction: column;
-  width: min(620px, calc(var(--page-width, 640px) - 2 * var(--quick-chat-margin)));
+  width: min(480px, calc(var(--page-width, 520px) - 2 * var(--quick-chat-margin)));
   min-width: 0;
   overflow: hidden;
   border: 1px solid var(--hairline);
-  border-radius: 18px;
+  border-radius: 16px;
   background: var(--surface-card);
-  box-shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 10px 28px rgb(0 0 0 / 38%);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 16px 40px rgb(0 0 0 / 42%);
 }
 
 .quick-chat-card.is-whole {
-  width: min(720px, calc(var(--page-width, 760px) - 2 * var(--quick-chat-margin)));
-  height: min(660px, calc(var(--page-height, 700px) * 0.74));
+  width: min(520px, calc(var(--page-width, 560px) - 2 * var(--quick-chat-margin)));
+  height: min(680px, calc(var(--page-height, 700px) * 0.78));
 }
 
 .quick-chat-header {
@@ -74,7 +118,7 @@ html.quick-chat-surface #root {
   align-items: center;
   gap: 2px;
   min-width: 0;
-  height: 34px;
+  height: 36px;
   padding: 0 6px 0 14px;
   box-shadow: inset 0 -1px 0 var(--hairline);
 }
@@ -91,88 +135,80 @@ html.quick-chat-surface #root {
 
 .quick-chat-icon-button {
   display: grid;
+  flex: none;
   place-items: center;
   width: 26px;
   height: 26px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 7px;
   background: transparent;
   color: var(--chrome-fg);
   transition: background 110ms var(--ease-chrome), color 110ms var(--ease-chrome);
 }
 
-.quick-chat-icon-button:hover {
+.quick-chat-icon-button:hover,
+.quick-chat-icon-button[data-state="open"] {
   background: color-mix(in srgb, var(--chrome-fg) 12%, transparent);
   color: var(--chrome-fg-strong);
 }
 
-/* The running feed: the latest steps, newest last, then the reply once the task ends. */
-.quick-chat-feed {
-  display: flex;
+/* The status line: what the task is doing and where, then the reply once it ends. */
+.quick-chat-status {
   flex: none;
-  gap: 6px;
-  align-items: flex-start;
-  padding: 10px 6px 2px 16px;
-  cursor: pointer;
+  padding: 7px 6px 0 14px;
 }
 
-.quick-chat-feed-lines {
+.quick-chat-status-line {
   display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: 3px;
-  min-width: 0;
-}
-
-.quick-chat-feed-line {
-  display: flex;
-  gap: 7px;
+  gap: 8px;
   align-items: center;
   min-width: 0;
-  color: color-mix(in srgb, var(--chrome-fg) 70%, transparent);
-  font-size: 12px;
-  line-height: 18px;
 }
 
-.quick-chat-feed-line > span {
+.quick-chat-status-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  color: var(--ok-ink, #65b98a);
+}
+
+.quick-chat-status.is-working .quick-chat-status-icon {
+  color: var(--tab-accent, #8ab4f8);
+}
+
+.quick-chat-status.is-failed .quick-chat-status-icon {
+  color: var(--danger, #f28b82);
+}
+
+.quick-chat-status.is-paused .quick-chat-status-icon {
+  color: var(--chrome-fg);
+}
+
+.quick-chat-status-text {
+  flex: 1;
   min-width: 0;
   overflow: hidden;
+  color: color-mix(in srgb, var(--chrome-fg) 80%, transparent);
+  font-size: 12px;
+  line-height: 18px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.quick-chat-feed-line > svg {
-  flex: none;
-}
-
-.quick-chat-feed-line.is-live {
+.quick-chat-status-text b {
   color: var(--chrome-fg-strong);
+  font-weight: 500;
 }
 
-.quick-chat-feed-line.is-live > svg {
-  color: var(--tab-accent, #8ab4f8);
-}
-
-.quick-chat-feed-line.is-failed > svg {
-  color: var(--danger, #f28b82);
-}
-
-.quick-chat-feed-reply {
+.quick-chat-status-reply {
   display: -webkit-box;
-  margin: 3px 0 0;
+  margin: 2px 8px 0 21px;
   overflow: hidden;
   color: var(--chrome-fg-strong);
   font-size: 13px;
   line-height: 19px;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
-}
-
-.quick-chat-feed-actions {
-  display: flex;
-  flex: none;
-  gap: 2px;
-  cursor: default;
 }
 
 .quick-chat-body {
