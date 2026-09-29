@@ -69,6 +69,10 @@ test('IPC invoke constants cover the typed invoke registry', () => {
     'localFiles:file',
     'localFiles:revealFile',
     'localFiles:setView',
+    'quickChat:setState',
+    'quickChat:view',
+    'quickChat:setSize',
+    'quickChat:request',
     'savedSites:list',
     'savedSites:save',
     'savedSites:update',
@@ -149,7 +153,8 @@ test('IPC event constants cover the typed event registry', () => {
     'tools:event',
     'trace:event',
     'models:event',
-    'windows:event'
+    'windows:event',
+    'quickChat:view'
   ]
   assert.equal(channels.size, typed.length)
   for (const channel of typed) assert.ok(channels.has(channel), channel)
