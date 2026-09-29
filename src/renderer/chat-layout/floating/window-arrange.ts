@@ -1,6 +1,7 @@
-import { BROWSER_PANE_ID, DIVIDER_SIZE, WORKSPACE_DOCK_ID, type ChatLayout, type Rect } from '../layout-tree.js'
-import { tabOwner } from '../layout-tabs.js'
-import { findWindow, floatWindow, mapWindow, snapWindow, windowMinimum, windowPanes, withoutFloat, type WindowSize } from './window-layout.js'
+import { layoutGroups } from '../layout-docking.js'
+import { BROWSER_PANE_ID, DIVIDER_SIZE, WORKSPACE_DOCK_ID, isViewTabId, type ChatLayout, type Rect } from '../layout-tree.js'
+import { moveTab, tabIds, tabOwner } from '../layout-tabs.js'
+import { WINDOW_HEADER, findWindow, floatWindow, mapWindow, snapWindow, windowMinimum, windowPanes, withoutFloat, type WindowSize } from './window-layout.js'
 import type { WindowTile } from './window-targets.js'
 
 // Arranging windows as a desktop does: moving one window never resizes another. A window torn out
@@ -27,6 +28,36 @@ export function tearOffWindow(tree: ChatLayout, id: string, rect: Rect, tiled: r
     next = mapWindow(next, tile.id, (pane) => ({ ...pane, float: { x, y, width, height, z: 0 } }))
   }
   return floatWindow(next, id, rect)
+}
+
+/** Chat windows a workspace holds at once, as the layout controller enforces for splits. */
+const MAX_CHAT_WINDOWS = 32
+
+/**
+ * A tab dropped on free space becomes its own floating window at `rect`, in front. Its slot in the
+ * tree sits beside the window it left, so Tile windows gives it a place; the tiled layout does not
+ * change. A window's only tab moves the whole window, as dragging its title bar would.
+ */
+export function tearOffTab(tree: ChatLayout, id: string, rect: Rect, tiled: readonly WindowTile[], splitId: string): ChatLayout {
+  const owner = tabOwner(tree, id)
+  if (!owner || owner === BROWSER_PANE_ID) return tree
+  const alone = tabIds(tree).every((tab) => tab === id || tabOwner(tree, tab) !== owner)
+  if (alone) return findWindow(tree, owner)?.float ? floatWindow(tree, owner, rect) : tearOffWindow(tree, owner, rect, tiled)
+  if (!isViewTabId(id) && layoutGroups(tree).filter((group) => !isViewTabId(group.id)).length >= MAX_CHAT_WINDOWS) return tree
+  const split = moveTab(tree, id, owner, 'right', splitId)
+  return split === tree ? tree : floatWindow(split, id, rect)
+}
+
+/**
+ * Where a torn-off tab's window opens: the size of the window it left (a tiled one's comfortable
+ * share of the canvas), with the new window's tab under the pointer.
+ */
+export function tabTearOffRect(source: Rect, floating: boolean, canvas: WindowSize, pointer: { x: number; y: number }, id: string): Rect {
+  const minimum = windowMinimum(id)
+  const width = Math.max(minimum.width, floating ? source.width : Math.min(source.width, canvas.width * 0.45))
+  const height = Math.max(minimum.height, floating ? source.height : Math.min(source.height, canvas.height * 0.75))
+  return { x: Math.round(pointer.x - Math.min(96, width / 4)), y: Math.round(pointer.y - WINDOW_HEADER / 2),
+    width: Math.round(width), height: Math.round(height) }
 }
 
 /** Every window back into its slot of the tiled layout, minimized ones included for when they return. */
