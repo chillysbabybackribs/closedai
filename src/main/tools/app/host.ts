@@ -51,6 +51,7 @@ export type AppControlsResult = {
 
 export type AppUiState = {
   layout?: { visiblePaneIds: string[]; browserVisible: boolean; views?: Array<{ kind: string; tab: string }> }
+  fullScreen: boolean
   chatZoom: number | null
   overviewOpen: boolean
   chatSearchOpen: boolean

@@ -24,8 +24,8 @@ export function appMenuTool(ui: () => AppUiHost | null): ToolDefinition {
       'workspace-layout), and the overview; applies layout presets, zoom, tiling, and browser visibility. A row greyed ' +
       'out right now is not run and returns disabled: true. close-tab and stop-turn act on the selected chat and are ' +
       'refused while that is the calling chat. A row that ran returns the ui state once it changes (views in front ' +
-      'under ui.layout.views, ui.overviewOpen, ui.chatZoom, open dialogs), waiting up to a second; uiChanged false means the effect is not part of ' +
-      'ui state (full screen, search focus).',
+      'under ui.layout.views, ui.overviewOpen, ui.chatZoom, ui.fullScreen, open dialogs), waiting up to a second; uiChanged false means the effect is not part of ' +
+      'ui state (for example search focus).',
     inputSchema: objectSchema({
       key: { type: 'string', enum: [...MODEL_MENU_KEYS], description: 'Stable menu row key.' }
     }, ['key']),
@@ -47,6 +47,6 @@ export function appMenuTool(ui: () => AppUiHost | null): ToolDefinition {
 
 /** What a menu row can change; focus and viewport move for unrelated reasons. */
 function surfaceOf(state: AppUiState): string {
-  const { layout, dialogs, menus, chatZoom, overviewOpen, chatSearchOpen, historyOpen, downloadsOpen } = state
-  return JSON.stringify({ layout, dialogs, menus, chatZoom, overviewOpen, chatSearchOpen, historyOpen, downloadsOpen })
+  const { layout, dialogs, menus, fullScreen, chatZoom, overviewOpen, chatSearchOpen, historyOpen, downloadsOpen } = state
+  return JSON.stringify({ layout, dialogs, menus, fullScreen, chatZoom, overviewOpen, chatSearchOpen, historyOpen, downloadsOpen })
 }

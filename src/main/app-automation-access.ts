@@ -55,8 +55,9 @@ export class AppAutomationAccess implements AppUiHost {
   }
 
   async uiState(): Promise<AppUiState> {
-    const { contents } = this.resolve()
-    return await contents.executeJavaScript(uiStateExpression(), true) as AppUiState
+    const { window, contents } = this.resolve()
+    const state = await contents.executeJavaScript(uiStateExpression(), true) as AppUiState
+    return { ...state, fullScreen: window.isFullScreen() }
   }
 
   async click(target: AppClickTarget): Promise<unknown> {

@@ -19,7 +19,7 @@ function harness(overrides: { ui?: Partial<AppUiHost>; app?: Partial<AppCommandH
     uiState: async () => {
       calls.push(['uiState'])
       return {
-        chatZoom: 100, overviewOpen: false, chatSearchOpen: true, historyOpen: false, downloadsOpen: false, dialogs: [], menus: [],
+        fullScreen: false, chatZoom: 100, overviewOpen: false, chatSearchOpen: true, historyOpen: false, downloadsOpen: false, dialogs: [], menus: [],
         composer: { enabled: true, running: false, canSend: false, draftLength: 0 }, focused: null,
         viewport: { width: 1920, height: 1048 }
       }
@@ -181,7 +181,7 @@ test('menu runs a row by key for the caller and returns the ui state once it cha
   const { calls, call } = harness({ ui: {
     uiState: async () => {
       calls.push(['uiState'])
-      return { chatZoom: 100, overviewOpen: false, chatSearchOpen: false, historyOpen: false, downloadsOpen: false, dialogs, menus: [], composer: null, focused: null, viewport: { width: 1, height: 1 } }
+      return { fullScreen: false, chatZoom: 100, overviewOpen: false, chatSearchOpen: false, historyOpen: false, downloadsOpen: false, dialogs, menus: [], composer: null, focused: null, viewport: { width: 1, height: 1 } }
     },
     runMenu: async (key, callerPaneId) => {
       calls.push(['runMenu', key, callerPaneId])
@@ -257,7 +257,7 @@ test('menu detects overview visibility changes without a second model lookup', a
     uiState: async () => {
       reads += 1
       return {
-        chatZoom: 100, overviewOpen, chatSearchOpen: false, historyOpen: false, downloadsOpen: false,
+        fullScreen: false, chatZoom: 100, overviewOpen, chatSearchOpen: false, historyOpen: false, downloadsOpen: false,
         dialogs: [], menus: [], composer: null, focused: null, viewport: { width: 1, height: 1 }
       }
     },
@@ -278,7 +278,7 @@ test('menu detects chat zoom changes without waiting for unrelated UI changes', 
     uiState: async () => {
       reads += 1
       return {
-        chatZoom, overviewOpen: false, chatSearchOpen: false, historyOpen: false, downloadsOpen: false,
+        fullScreen: false, chatZoom, overviewOpen: false, chatSearchOpen: false, historyOpen: false, downloadsOpen: false,
         dialogs: [], menus: [], composer: null, focused: null, viewport: { width: 1, height: 1 }
       }
     },
@@ -292,6 +292,28 @@ test('menu detects chat zoom changes without waiting for unrelated UI changes', 
   assert.equal(reads, 4)
 })
 
+test('menu detects native full-screen changes', async () => {
+  let fullScreen = false
+  let reads = 0
+  const { call } = harness({ ui: {
+    uiState: async () => {
+      reads += 1
+      return {
+        fullScreen, chatZoom: 100, overviewOpen: false, chatSearchOpen: false,
+        historyOpen: false, downloadsOpen: false, dialogs: [], menus: [],
+        composer: null, focused: null, viewport: { width: 1, height: 1 }
+      }
+    },
+    runMenu: async (key) => { fullScreen = !fullScreen; return { key, ran: true } }
+  } })
+  for (const expected of [true, false]) {
+    const result = JSON.parse(textOf(await call('menu', { key: 'toggle-full-screen' })))
+    assert.equal(result.uiChanged, true)
+    assert.equal(result.ui.fullScreen, expected)
+  }
+  assert.equal(reads, 4)
+})
+
 test('preview_html resolves workspace html and reveals the browser when hidden', async () => {
   const cwd = await mkdtemp(path.join(os.tmpdir(), 'closedai-app-preview-'))
   await writeFile(path.join(cwd, 'mock.html'), '<!doctype html><title>mock</title>')
@@ -301,7 +323,7 @@ test('preview_html resolves workspace html and reveals the browser when hidden',
     },
     ui: {
       uiState: async () => ({
-        chatZoom: 100, overviewOpen: false, chatSearchOpen: false, historyOpen: false, downloadsOpen: false, dialogs: [], menus: [],
+        fullScreen: false, chatZoom: 100, overviewOpen: false, chatSearchOpen: false, historyOpen: false, downloadsOpen: false, dialogs: [], menus: [],
         layout: { visiblePaneIds: ['pane-caller'], browserVisible: false },
         composer: null, focused: null, viewport: { width: 1200, height: 800 }
       })
@@ -328,7 +350,7 @@ test('preview_html reports browserRevealed when opening the tab already showed t
         const layout = { visiblePaneIds: ['pane-caller'], browserVisible: visible }
         visible = true // the renderer shows the pane as soon as the new tab appears
         return {
-          chatZoom: 100, overviewOpen: false, chatSearchOpen: false, historyOpen: false, downloadsOpen: false, dialogs: [], menus: [],
+          fullScreen: false, chatZoom: 100, overviewOpen: false, chatSearchOpen: false, historyOpen: false, downloadsOpen: false, dialogs: [], menus: [],
           layout, composer: null, focused: null, viewport: { width: 1200, height: 800 }
         }
       }
@@ -347,7 +369,7 @@ test('preview_html leaves a visible browser pane alone', async () => {
     app: { state: (sections) => (sections.includes('chat') ? { chat: { cwd } } : {}) },
     ui: {
       uiState: async () => ({
-        chatZoom: 100, overviewOpen: false, chatSearchOpen: false, historyOpen: false, downloadsOpen: false, dialogs: [], menus: [],
+        fullScreen: false, chatZoom: 100, overviewOpen: false, chatSearchOpen: false, historyOpen: false, downloadsOpen: false, dialogs: [], menus: [],
         layout: { visiblePaneIds: ['pane-caller'], browserVisible: true },
         composer: null, focused: null, viewport: { width: 1200, height: 800 }
       })
