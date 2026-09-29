@@ -11,7 +11,7 @@ const request = (value: 'new' | 'close'): void => { void window.closedai.quickCh
 /**
  * The open quick chat. While the user types it is the whole chat over the page; once a task runs
  * it retracts to the compact composer with a running feed, so the page the model is driving stays
- * in view. Typing into the composer, or a click on the feed, brings the whole chat back.
+ * in view. Typing into the composer, or a click on the card, brings the whole chat back.
  */
 export const QuickChatCard = memo(function QuickChatCard({ paneId, focused, dispatch, appearance }: {
   paneId: string
@@ -62,7 +62,13 @@ export const QuickChatCard = memo(function QuickChatCard({ paneId, focused, disp
     if (expanded && hasTranscript) setExpanded(false)
     else request('close')
   }
-  // In the compact card, anything but Send and Stop opens the whole chat (typing included).
+  // Typing brings the whole chat back. Focus alone does not: the composer takes focus back itself
+  // after a send, which would undo the retract the send just caused.
+  const onKeyDownCapture = (event: KeyboardEvent): void => {
+    if (expanded || event.key === 'Escape' || event.key === 'Enter' || event.ctrlKey || event.metaKey || event.altKey) return
+    if ((event.target as Element).tagName === 'TEXTAREA') setExpanded(true)
+  }
+  // In the compact card, a click anywhere but Send, Stop and the feed's buttons opens the whole chat.
   const onPointerDown = (event: PointerEvent): void => {
     if (expanded) return
     const target = event.target as Element
@@ -73,8 +79,7 @@ export const QuickChatCard = memo(function QuickChatCard({ paneId, focused, disp
   const whole = expanded && hasTranscript
   return (
     <div ref={cardRef} className={`quick-chat-card${whole ? ' is-whole' : ' is-compact'}`}
-      onKeyDown={onKeyDown} onPointerDownCapture={onPointerDown}
-      onFocusCapture={(event) => { if ((event.target as Element).tagName === 'TEXTAREA') setExpanded(true) }}>
+      onKeyDown={onKeyDown} onKeyDownCapture={onKeyDownCapture} onPointerDownCapture={onPointerDown}>
       {whole ? (
         <div className="quick-chat-header">
           <span className="quick-chat-title" title={title}>{title}</span>
