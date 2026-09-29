@@ -37,21 +37,47 @@ function DropdownMenuGroup(props: React.ComponentProps<typeof DropdownMenuPrimit
   return <DropdownMenuPrimitive.Group data-slot="dropdown-menu-group" {...props} />
 }
 
+const menuItemClasses = cn(
+  'relative flex h-8 cursor-default select-none items-center gap-2.5 rounded-md px-2 text-[13px] leading-none outline-none',
+  '[&_svg]:size-[15px] [&_svg]:shrink-0 [&_svg]:text-[var(--menu-glyph)]',
+  'data-[highlighted]:bg-[var(--menu-highlight)] data-[highlighted]:text-[var(--menu-ink-strong)]',
+  'data-[highlighted]:[&_svg]:text-[var(--menu-ink-strong)]',
+  'data-[disabled]:pointer-events-none data-[disabled]:text-[var(--menu-quiet)]',
+)
+
 function DropdownMenuItem({ className, ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Item>) {
   return (
     <DropdownMenuPrimitive.Item
       data-slot="dropdown-menu-item"
       className={cn(
-        'relative flex h-8 cursor-default select-none items-center gap-2.5 rounded-md px-2 text-[13px] leading-none outline-none',
-        '[&_svg]:size-[15px] [&_svg]:shrink-0 [&_svg]:text-[var(--menu-glyph)]',
-        'data-[highlighted]:bg-[var(--menu-highlight)] data-[highlighted]:text-[var(--menu-ink-strong)]',
-        'data-[highlighted]:[&_svg]:text-[var(--menu-ink-strong)]',
-        'data-[disabled]:pointer-events-none data-[disabled]:text-[var(--menu-quiet)]',
+        menuItemClasses,
         className
       )}
       {...props}
     />
   )
+}
+
+function DropdownMenuSub(props: React.ComponentProps<typeof DropdownMenuPrimitive.Sub>) {
+  return <DropdownMenuPrimitive.Sub {...props} />
+}
+
+function DropdownMenuSubTrigger({ className, ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.SubTrigger>) {
+  return <DropdownMenuPrimitive.SubTrigger
+    data-slot="dropdown-menu-sub-trigger" className={cn(menuItemClasses, className)} {...props} />
+}
+
+function DropdownMenuSubContent({ className, ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.SubContent>) {
+  return <DropdownMenuPrimitive.Portal>
+    <DropdownMenuPrimitive.SubContent data-slot="dropdown-menu-sub-content"
+      collisionPadding={8}
+      className={cn(
+        'dropdown-menu-content z-[60] min-w-[200px] overflow-hidden rounded-lg p-1',
+        'border border-[var(--menu-edge)] bg-[var(--menu-surface)] text-[var(--menu-ink)]',
+        'shadow-[0_0_0_1px_rgb(0_0_0/40%),0_12px_32px_rgb(0_0_0/55%)] outline-none',
+        className
+      )} {...props} />
+  </DropdownMenuPrimitive.Portal>
 }
 
 function DropdownMenuLabel({ className, ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Label>) {
@@ -93,5 +119,8 @@ export {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuShortcut,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent
 }

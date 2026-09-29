@@ -1,10 +1,11 @@
-import { useRef, useState, type JSX } from 'react'
-import { Command as CommandPrimitive } from 'cmdk'
-import { Tabs } from 'radix-ui'
-import { Grid2X2, Search } from 'lucide-react'
+import { useRef, type JSX } from 'react'
+import { ChevronRight, Grid2X2 } from 'lucide-react'
 import { Button } from '../../components/ui/button.js'
-import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from '../../components/ui/command.js'
-import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from '../../components/ui/popover.js'
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
+  DropdownMenuSeparator, DropdownMenuShortcut, DropdownMenuSub,
+  DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger
+} from '../../components/ui/dropdown-menu.js'
 import { MENUS, launcherGroups, menuItemDisabled, type MenuItem, type TitlebarMenuProps } from '../application-menu-model.js'
 
 export function DockLauncher({ open, onOpenChange, menu }: {
@@ -12,11 +13,11 @@ export function DockLauncher({ open, onOpenChange, menu }: {
   onOpenChange: (open: boolean) => void
   menu: TitlebarMenuProps
 }): JSX.Element {
-  const [section, setSection] = useState('home')
-  const [query, setQuery] = useState('')
-  const input = useRef<HTMLInputElement>(null)
   const pending = useRef<MenuItem | null>(null)
-  const groups = launcherGroups(section, query)
+  const sections = [
+    { key: 'home', label: 'Home', rows: launcherGroups('home', '').flatMap(group => group.rows) },
+    ...MENUS
+  ]
 
   function execute(row: MenuItem): void {
     if (row.command) menu.onChatZoomChange(row.command)
@@ -25,65 +26,45 @@ export function DockLauncher({ open, onOpenChange, menu }: {
     else menu.onAction(row.action)
   }
 
-  return <Popover open={open} onOpenChange={(next) => {
-    if (next) { setQuery(''); setSection('home') }
-    onOpenChange(next)
-  }}>
-    <PopoverTrigger asChild>
+  return <DropdownMenu open={open} onOpenChange={onOpenChange} modal={false}>
+    <DropdownMenuTrigger asChild>
       <Button variant="ghost" size="icon-sm" data-ui="dock.launcher" aria-label="Open launcher">
         <Grid2X2 aria-hidden="true" />
       </Button>
-    </PopoverTrigger>
-    {/* Register after the trigger so Radix retains this anchor when its trigger anchor unmounts. */}
-    <PopoverAnchor className="pointer-events-none absolute left-0 top-0 h-px w-px" />
-    <PopoverContent side="top" align="start" sideOffset={0} avoidCollisions={false}
+    </DropdownMenuTrigger>
+    <DropdownMenuContent side="top" align="start" sideOffset={8}
       className="dock-launcher" aria-label="Application launcher"
-      onOpenAutoFocus={(event) => { event.preventDefault(); input.current?.focus() }}
       onCloseAutoFocus={(event) => {
         const row = pending.current
         if (!row) return
         event.preventDefault()
         pending.current = null
-        // Let the closing popover release focus before an action opens another surface.
+        // Let the closing menu release focus before an action opens another surface.
         execute(row)
       }}>
-      <Tabs.Root value={section} onValueChange={(value) => { setSection(value); setQuery('') }} className="dock-launcher-tabs">
-        <Tabs.List className="titlebar-nav-group" aria-label="Launcher sections">
-          {[{ key: 'home', label: 'Home' }, ...MENUS].map(tab => <Tabs.Trigger key={tab.key}
-            value={tab.key} className="titlebar-nav-tab" data-ui="dock.launcher-section" data-ui-key={tab.key}>
-            {tab.label}
-          </Tabs.Trigger>)}
-        </Tabs.List>
-        <Tabs.Content value={section} className="dock-launcher-command">
-          <Command shouldFilter={false} loop className="dock-launcher-command" label="Application commands">
-            <CommandList className="dock-launcher-list">
-              <CommandEmpty>No commands found.</CommandEmpty>
-              {groups.map(group => <CommandGroup key={group.key} heading={group.label}>
-                {group.rows.map(row => {
-                  if (!('key' in row)) return null
-                  return <CommandItem key={row.key} value={row.key}
-                    data-ui={row.ui?.control ?? 'titlebar.menu-item'} data-ui-key={row.ui?.item ?? row.key}
-                    disabled={menuItemDisabled(row, menu)}
-                    onSelect={() => { pending.current = row; onOpenChange(false) }}>
-                    <span>{row.label}</span>
-                    {row.shortcut && <span className="titlebar-menu-shortcut">
-                      {row.command === 'reset' ? `${menu.chatZoom}%  ` : ''}{row.shortcut}
-                    </span>}
-                  </CommandItem>
-                })}
-              </CommandGroup>)}
-            </CommandList>
-            {section === 'agent' && !query && <p className="dock-launcher-context">
-              Selected chat: {menu.selectedChatTitle ?? 'No chat selected'}
-            </p>}
-            <div className="dock-launcher-search">
-              <Search size={15} aria-hidden="true" />
-              <CommandPrimitive.Input ref={input} value={query} onValueChange={setQuery}
-                data-ui="dock.launcher-search" placeholder="Search commands…" aria-label="Search launcher commands" />
-            </div>
-          </Command>
-        </Tabs.Content>
-      </Tabs.Root>
-    </PopoverContent>
-  </Popover>
+      {sections.map(section => <DropdownMenuSub key={section.key}>
+        <DropdownMenuSubTrigger data-ui="dock.launcher-section" data-ui-key={section.key}>
+          <span>{section.label}</span>
+          <ChevronRight className="ml-auto" aria-hidden="true" />
+        </DropdownMenuSubTrigger>
+        <DropdownMenuSubContent className="dock-launcher-submenu" sideOffset={4}>
+          {section.rows.map((row, index) => {
+            if (row.kind === 'separator') return <DropdownMenuSeparator key={`separator-${index}`} />
+            if (row.kind === 'heading') return <DropdownMenuLabel key={`heading-${index}`}>
+              {row.label}{section.key === 'agent' ? `: ${menu.selectedChatTitle ?? 'No chat selected'}` : ''}
+            </DropdownMenuLabel>
+            return <DropdownMenuItem key={row.key}
+              data-ui={row.ui?.control ?? 'titlebar.menu-item'} data-ui-key={row.ui?.item ?? row.key}
+              disabled={menuItemDisabled(row, menu)}
+              onSelect={() => { pending.current = row }}>
+              <span>{row.label}</span>
+              {row.shortcut && <DropdownMenuShortcut>
+                {row.command === 'reset' ? `${menu.chatZoom}%  ` : ''}{row.shortcut}
+              </DropdownMenuShortcut>}
+            </DropdownMenuItem>
+          })}
+        </DropdownMenuSubContent>
+      </DropdownMenuSub>)}
+    </DropdownMenuContent>
+  </DropdownMenu>
 }

@@ -749,14 +749,14 @@ turns off the tray's magnification. Both are saved in localStorage (`closedai.do
 reads the spaces it navigates through `SpacesStage`'s `dock` render prop, so it exists only where
 the overview does: in the main window, once a chat is selected.
 
-Left: **Launcher** (`dock.launcher`) opens a fixed-width drawer flush with the top of the footer,
-using the workspace card surface (chat glass when wallpaper is enabled), existing buttons,
-and menu styling. Home offers common actions;
-File, View, Agent, and Developer retain the former header menu actions and eligibility rules.
-The bottom search field (`dock.launcher-search`) searches commands across all categories;
-category controls use `dock.launcher-section`. Arrow keys and Enter navigate/select commands,
-Escape or an outside click dismisses the drawer, and selecting a command closes it before
-opening its destination. The drawer keeps the dock visible. The main-window header keeps chat
+Left: **Launcher** (`dock.launcher`) opens a compact menu above the footer, using the
+workspace card surface (chat glass when wallpaper is enabled) and existing menu styling.
+Initially only Home, File, View, Agent, and Developer appear. Hovering or clicking a category
+(`dock.launcher-section`) opens its actions in a side submenu. Home offers common actions;
+the other categories retain the former header menu actions, separators, and eligibility rules.
+Up/Down navigate items, Right/Enter open a submenu, and Left returns to its category.
+Escape or an outside click dismisses the menu; selecting a command closes it before opening
+its destination. The launcher keeps the dock visible. The main-window header keeps chat
 search; detached windows and startup retain the header menus because no dock is available there.
 Menu definitions and disabled-state rules are shared in `application-menu-model.ts`.
 
