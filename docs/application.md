@@ -28,6 +28,18 @@ build. It skips the reload and logs `[renderer-build] … restart the app` once 
 differs from the bundle the process launched with, because main-process changes still need a
 restart (`src/main/renderer-build-reload.ts`).
 
+## Find a workflow
+
+| If you want to… | Start here |
+|---|---|
+| Find, reopen, or organize a chat across projects | [Workspace layout](#workspace-layout) |
+| Arrange chats and the browser, or use multiple windows | [Windows on the canvas](#windows-on-the-canvas) and [Windows](#windows) |
+| Switch workspaces or return to a saved arrangement | [Workspace overview](#workspace-overview-spaces) |
+| Change a chat's folder or continue work in another project | [Projects, chats, panes, and conversations](#projects-chats-panes-and-conversations) |
+| Open the browser quick chat or understand its controls | [Browser quick chat](#browser-quick-chat) |
+| Understand what context models receive | [Model context](model-context.md) |
+| Find a tool's arguments, limits, or trust boundary | [Tools](tools.md) |
+
 ## Native instrumentation
 
 The initial local Linux backend offers process discovery, finite native inspection and custom
@@ -1092,6 +1104,8 @@ the rest stay granted as Chrome grants them without a prompt. `ask` routes those
 renderer on `browser:permissionRequests` with the tab id, origin, and kind, `browser.resolvePermission`
 answers it, and an unanswered request is denied after 60 s. The policy is read per request, so a
 settings change applies to the next request without a restart. Nothing else is remembered per origin.
+
+### Browser quick chat
 
 The main window's browser has a quick chat floating over the page. The live page is a native view
 that paints above everything the app shell draws, so the quick chat runs in a transparent native layer

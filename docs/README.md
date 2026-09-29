@@ -25,8 +25,8 @@ What models pay for every turn:
 
 | Cost | Owner | Maintainer rule |
 |---|---|---|
-| Provider-native chat behavior | Provider session adapters | ClosedAI currently adds no behavioral prompt; see [Model context](model-context.md) |
-| Turn data, handoff, and session guide | `src/main/chat-context/` | Keep context scoped to the relevant turn; edit `scripts/agent-guide-outline.json` for guide text |
+| Provider-native chat behavior | Provider session adapters | Native behavior stays provider-specific; ClosedAI adds a session guide on new threads or handoff and a clock every turn; see [Model context](model-context.md) |
+| Turn data, handoff, clock, and session guide | `src/main/chat-context/` | Keep context scoped to the relevant turn; edit `scripts/agent-guide-outline.json` for guide text |
 | Tool schemas and descriptions | `src/main/tools/**` | Defaults and limits here; cross-link from guides instead of copying |
 | Human guides | `docs/application.md`, `docs/tools.md` | Behavior and contracts for people; not automatically sent to chats |
 
