@@ -43,6 +43,7 @@
 @import "./styles/settings/security.css";
 @import "./styles/settings/models.css";
 @import "./styles/backdrop/glass.css";
+@import "./styles/backdrop/wallpaper-dialog.css";
 @source "../components";
 
 /* Antigravity accent: the card design's signature blue, used for the focused composer

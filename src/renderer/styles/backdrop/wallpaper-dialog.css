@@ -1,0 +1,298 @@
+/* Workspace wallpaper picker (renderer/backdrop/wallpaper-dialog.tsx): the current wallpaper card,
+   Curated and Your uploads grids, and a drop target over the whole dialog. The heading reuses the
+   Settings dialog's (settings/appearance.css). Sizes sit on containers: the app's unlayered
+   `button { font: inherit }` outranks utilities on buttons. */
+.wallpaper-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(720px, calc(100vw - 32px));
+  max-height: min(720px, calc(100vh - 32px));
+  padding: 0;
+  overflow: hidden;
+}
+
+.wallpaper-dialog-body {
+  flex: 1;
+  min-height: 0;
+  padding: 16px 20px 4px;
+  overflow-y: auto;
+}
+
+/* Current wallpaper */
+.wallpaper-current {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding: 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  background: var(--surface-card);
+}
+
+.wallpaper-current-preview {
+  position: relative;
+  flex: none;
+  width: 216px;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  border-radius: 7px;
+  background: center / cover no-repeat var(--surface-control);
+}
+
+.wallpaper-current-glass {
+  position: absolute;
+  top: 16%;
+  left: 9%;
+  width: 38%;
+  height: 52%;
+  border: 1px solid rgb(255 255 255 / 20%);
+  border-radius: 5px;
+  background: rgb(255 255 255 / 10%);
+  backdrop-filter: blur(10px);
+}
+
+.wallpaper-current-glass + .wallpaper-current-glass {
+  top: 26%;
+  left: 52%;
+  width: 40%;
+  height: 56%;
+}
+
+.wallpaper-current-preview[data-empty] .wallpaper-current-glass {
+  border-color: var(--hairline);
+  background: var(--surface-raised);
+  backdrop-filter: none;
+}
+
+.wallpaper-current-copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  padding-block: 2px;
+}
+
+.wallpaper-current-eyebrow {
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.wallpaper-current-name {
+  margin-top: 2px;
+  overflow: hidden;
+  color: var(--foreground);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wallpaper-current-source {
+  margin-top: 4px;
+  overflow: hidden;
+  color: var(--muted-foreground);
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wallpaper-modes {
+  margin-top: auto;
+  font-size: 12px;
+}
+
+/* Sections and tiles */
+.wallpaper-section { margin-bottom: 20px; }
+
+.wallpaper-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.wallpaper-section-head h3 {
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.wallpaper-section-head span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted-foreground);
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wallpaper-section-head .wallpaper-error { color: var(--destructive); }
+
+.wallpaper-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.wallpaper-tile {
+  position: relative;
+  font-size: 11.5px;
+}
+
+.wallpaper-tile-select {
+  display: block;
+  width: 100%;
+  text-align: left;
+  outline: none;
+}
+
+.wallpaper-tile-frame {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  border-radius: 7px;
+  background: center / cover no-repeat var(--surface-control);
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.wallpaper-tile:hover .wallpaper-tile-frame { border-color: var(--hairline-strong); }
+.wallpaper-tile-select:focus-visible .wallpaper-tile-frame { box-shadow: 0 0 0 2px var(--ring); }
+
+.wallpaper-tile[data-selected] .wallpaper-tile-frame {
+  border-color: transparent;
+  box-shadow: 0 0 0 2px var(--primary), 0 0 0 4px color-mix(in srgb, var(--primary) 25%, transparent);
+}
+
+.wallpaper-tile-label {
+  display: block;
+  margin-top: 6px;
+  padding-inline: 2px;
+  overflow: hidden;
+  color: var(--muted-foreground);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wallpaper-tile[data-selected] .wallpaper-tile-label {
+  color: var(--foreground);
+  font-weight: 500;
+}
+
+.wallpaper-tile-check {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: 0 0 0 2px var(--popover);
+  pointer-events: none;
+}
+
+.wallpaper-tile-remove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: rgb(0 0 0 / 55%);
+  color: rgb(255 255 255 / 90%);
+  opacity: 0;
+  backdrop-filter: blur(4px);
+  transition: opacity 120ms ease, background 120ms ease;
+}
+
+.wallpaper-tile:hover .wallpaper-tile-remove,
+.wallpaper-tile-remove:focus-visible { opacity: 1; }
+.wallpaper-tile-remove:hover { background: var(--destructive); }
+
+.wallpaper-add .wallpaper-tile-frame {
+  border-style: dashed;
+  border-color: var(--hairline-strong);
+  background: var(--surface-card);
+  color: var(--muted-foreground);
+}
+
+.wallpaper-add:hover:not(:disabled) .wallpaper-tile-frame {
+  background: var(--surface-control-hover);
+  color: var(--foreground);
+}
+
+.wallpaper-add:disabled { cursor: progress; }
+
+.wallpaper-add-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 999px;
+  background: var(--surface-control);
+}
+
+/* Footer and drop target */
+.wallpaper-dialog-footer {
+  display: flex;
+  flex: none;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+}
+
+.wallpaper-drop-overlay {
+  position: absolute;
+  inset: 8px;
+  z-index: 10;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  border: 2px dashed var(--primary);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--popover) 88%, var(--primary));
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+.wallpaper-dialog[data-dragging] .wallpaper-drop-overlay { opacity: 1; }
+
+.wallpaper-drop-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid color-mix(in srgb, var(--primary) 40%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary) 15%, transparent);
+  color: var(--primary);
+}
+
+.wallpaper-drop-title {
+  margin-top: 12px;
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.wallpaper-drop-hint {
+  margin-top: 4px;
+  color: var(--muted-foreground);
+  font-size: 11.5px;
+}
