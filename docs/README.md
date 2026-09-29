@@ -21,14 +21,15 @@ Run **`npm run audit:docs`** to write a timestamped report under [docs/reports/]
 
 ## Model context and tool token ownership
 
-What models pay for every turn:
+What reaches a provider, and when:
 
-| Cost | Owner | Maintainer rule |
+| Context | Owner | When / maintainer rule |
 |---|---|---|
-| Provider-native chat behavior | Provider session adapters | Native behavior stays provider-specific; ClosedAI adds a session guide on new threads or handoff and a clock every turn; see [Model context](model-context.md) |
-| Turn data, handoff, clock, and session guide | `src/main/chat-context/` | Keep context scoped to the relevant turn; edit `scripts/agent-guide-outline.json` for guide text |
-| Tool schemas and descriptions | `src/main/tools/**` | Defaults and limits here; cross-link from guides instead of copying |
-| Human guides | `docs/application.md`, `docs/tools.md` | Behavior and contracts for people; not automatically sent to chats |
+| Provider-native chat behavior | Provider session adapters | Provider-specific; native project instructions may also load through that provider. |
+| Session guide | `src/main/chat-context/`, `scripts/agent-guide-outline.json` | Attached to a new provider thread or handoff, not every turn. Edit the outline and regenerate the guide. |
+| Turn context and handoffs | `src/main/chat-context/` | The clock is attached every turn; ambient browser context and historical handoffs are conditional. Keep data scoped to the relevant turn. |
+| Tool schemas and descriptions | `src/main/tools/**` | Provider-specific delivery and discovery. Schemas own arguments, defaults, and limits; link to them instead of copying. |
+| Human guides | `docs/application.md`, `docs/tools.md` | Reference for people; guide text is not automatically sent to chats. |
 
 The Tools modal **advertised tokens** sum enabled tool descriptions (see `toolManifest`). Deferred
 tools (`deferLoading: true`) ship stubs until discovered — keep eager tool text minimal.
