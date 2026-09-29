@@ -749,7 +749,8 @@ turns off the tray's magnification. Both are saved in localStorage (`closedai.do
 reads the spaces it navigates through `SpacesStage`'s `dock` render prop, so it exists only where
 the overview does: in the main window, once a chat is selected.
 
-Left: **Launcher** (`dock.launcher`) opens a compact menu above the footer, using the
+Left: **Launcher** (`dock.launcher`) opens a compact menu joined flush to the footer's top edge,
+with square bottom corners and a full-height footer trigger, using the
 workspace card surface (chat glass when wallpaper is enabled) and existing menu styling.
 Initially only Home, File, View, Agent, and Developer appear. Hovering or clicking a category
 (`dock.launcher-section`) opens its actions in a side submenu. Home offers common actions;

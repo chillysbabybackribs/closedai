@@ -5,6 +5,7 @@ import {
   type ChatZoomCommand
 } from './chat-zoom.js'
 import { QUICK_LAYOUT_PRESETS, type LayoutPreset } from './chat-layout/layout-presets.js'
+import { MENU_KEYS_ON_SELECTED_CHAT, type AppMenuKey, type AppMenuRunResult } from '../shared/app-menu-run.js'
 
 /** Everything a menu row can do besides zoom. */
 export type MenuAction =
@@ -19,7 +20,7 @@ type MenuControlUi = { control: 'layout.dock-preset' | 'layout.preset-menu-custo
 export type MenuRow =
   | { kind: 'separator' }
   | { kind: 'heading'; label: string }
-  | ({ kind?: 'item'; key: string; label: string; shortcut?: string; ui?: MenuControlUi }
+  | ({ kind?: 'item'; key: AppMenuKey; label: string; shortcut?: string; ui?: MenuControlUi }
     & ({ command: ChatZoomCommand; action?: never; layoutPreset?: never }
       | { action: MenuAction; command?: never; layoutPreset?: never }
       | { layoutPreset: LayoutPreset; action?: never; command?: never }))
@@ -41,7 +42,7 @@ function zoomCommandIsDisabled(command: ChatZoomCommand, chatZoom: number): bool
  */
 const VIEW_LAYOUT_ROWS: MenuRow[] = [
   ...QUICK_LAYOUT_PRESETS.map(({ key, label, preset }) => ({
-    key: `layout-preset-${key}`,
+    key: `layout-preset-${key}` as AppMenuKey,
     label,
     layoutPreset: preset,
     ui: { control: 'layout.dock-preset' as const, item: key }
@@ -134,6 +135,33 @@ export function menuItemDisabled(row: MenuItem, state: Pick<TitlebarMenuProps,
   if (row.action === 'compact') return !state.compactEnabled
   if (row.action === 'stop-turn') return !state.stopEnabled
   return false
+}
+
+/** What choosing a row does; the title bar menu, the dock launcher, and model runs share it. */
+export function runMenuItem(row: MenuItem, menu: Pick<TitlebarMenuProps,
+  'onChatZoomChange' | 'onApplyLayoutPreset' | 'onSearchChats' | 'onAction'>): void {
+  if (row.command) menu.onChatZoomChange(row.command)
+  else if (row.layoutPreset) menu.onApplyLayoutPreset(row.layoutPreset)
+  else if (row.action === 'search-chats') menu.onSearchChats()
+  else menu.onAction(row.action)
+}
+
+/**
+ * A model's `closedai_app.command run`: the row by key, refused when it is disabled exactly as the
+ * menu greys it out, and refused for rows that act on the selected chat while that is the caller.
+ */
+export function runMenuKey(key: string, menu: TitlebarMenuProps,
+  chat: { selectedPaneId: string | null; callerPaneId: string | null }): AppMenuRunResult {
+  const owner = MENUS.find(candidate => candidate.rows.some(row => 'key' in row && row.key === key))
+  const row = owner?.rows.find((candidate): candidate is MenuItem => 'key' in candidate && candidate.key === key)
+  if (!owner || !row) return { key, ran: false, refused: `No menu row has the key ${key}` }
+  const found = { key, label: row.label, menu: owner.label }
+  if (menuItemDisabled(row, menu)) return { ...found, ran: false, disabled: true }
+  if (MENU_KEYS_ON_SELECTED_CHAT.has(row.key) && chat.callerPaneId && chat.selectedPaneId === chat.callerPaneId) {
+    return { ...found, ran: false, refused: `${row.label} acts on the selected chat, which is the calling chat; select another pane with command open_chat first` }
+  }
+  runMenuItem(row, menu)
+  return { ...found, ran: true }
 }
 
 export const HOME_ACTIONS = new Set(['new-chat', 'search-chats', 'toggle-browser-pane', 'agents', 'tools', 'settings'])

@@ -34,6 +34,10 @@ function harness(overrides: { ui?: Partial<AppUiHost>; app?: Partial<AppCommandH
     },
     revealChatTab: async (paneId) => { calls.push(['revealChatTab', paneId]) },
     revealBrowser: async () => { calls.push(['revealBrowser']) },
+    runMenu: async (key, callerPaneId) => {
+      calls.push(['runMenu', key, callerPaneId])
+      return key === 'tile-windows' ? { key, label: 'Tile windows', menu: 'View', ran: false, disabled: true } : { key, label: 'Tools', menu: 'Agent', ran: true }
+    },
     ...overrides.ui
   }
   const app: AppCommandHost = {
@@ -54,9 +58,9 @@ function harness(overrides: { ui?: Partial<AppUiHost>; app?: Partial<AppCommandH
       calls.push(['agentRun', request])
       if (request.op === 'stop') return null
       return {
-        chatId: request.paneId, prompt: request.op === 'start' ? request.options.prompt ?? 'saved' : 'standing', status: request.op === 'pause' ? 'paused' : 'running',
+        chatId: request.paneId, prompt: request.op === 'start' ? request.options.prompt ?? 'saved' : 'standing', status: request.op === 'pause' || request.op === 'finish' ? 'paused' : 'running',
         cycle: 1, maxCycles: request.op === 'start' ? request.options.maxCycles ?? null : null,
-        startedAt: 1, updatedAt: 1, lastTurnEndedAt: null, reason: null, failures: 0, threadId: null,
+        startedAt: 1, updatedAt: 1, lastTurnEndedAt: null, reason: request.op === 'finish' ? `Finished: ${request.summary}` : null, failures: 0, threadId: null,
         agentId: request.op === 'start' ? request.agentId : null, name: null, stats: emptyAgentRunStats()
       }
     },
@@ -101,9 +105,9 @@ test('namespace advertises state, deterministic commands, and control-level ui a
   const [state, command, agent, ui] = registry.namespaces[0]!.tools
   assert.equal(state!.actions, undefined)
   assert.deepEqual(command!.actions?.map((action) => action.name), [
-    'project_switch', 'new_chat', 'send_message', 'stop_agent', 'open_chat', 'close_chat', 'select_model', 'browser_tab'
+    'project_switch', 'new_chat', 'run', 'send_message', 'stop_agent', 'open_chat', 'close_chat', 'select_model', 'browser_tab'
   ])
-  assert.deepEqual(agent!.actions?.map((action) => action.name), ['start', 'pause', 'resume', 'stop'])
+  assert.deepEqual(agent!.actions?.map((action) => action.name), ['start', 'pause', 'resume', 'finish', 'stop'])
   assert.deepEqual(ui!.actions?.map((action) => action.name), [
     'controls', 'click', 'type', 'press_key', 'scroll', 'wait_for'
   ])
@@ -172,6 +176,34 @@ test('commands route to the host with the selected pane as the default target', 
     ['selectModel', 'pane-selected', 'gpt-5', 'high'],
     ['browserTab', { op: 'rename', tabId: '3', url: undefined, title: 'Docs' }]
   ])
+})
+
+test('run fires a menu row by key for the caller and reads ui state only after a row ran', async () => {
+  const { calls, call } = harness()
+  const ran = await call('command', { action: 'run', key: 'tools' })
+  assert.equal(ran.isError, undefined)
+  assert.match(textOf(ran), /"ran": true/)
+  assert.match(textOf(ran), /"chatSearchOpen": true/)
+  assert.deepEqual(calls, [['runMenu', 'tools', 'pane-caller'], ['uiState']])
+  calls.length = 0
+  const greyed = await call('command', { action: 'run', key: 'tile-windows' })
+  assert.match(textOf(greyed), /"disabled": true/)
+  assert.deepEqual(calls, [['runMenu', 'tile-windows', 'pane-caller']])
+  for (const key of ['reload-renderer', 'close-window', 'no-such-row']) {
+    const refused = await call('command', { action: 'run', key })
+    assert.equal(refused.isError, true, key)
+  }
+})
+
+test('finish ends only the calling pane\'s own run', async () => {
+  const { calls, call } = harness()
+  const finished = await call('agent', { action: 'finish', summary: 'ledger complete' })
+  assert.equal(finished.isError, undefined)
+  assert.match(textOf(finished), /Finished: ledger complete/)
+  assert.deepEqual(calls, [['agentRun', { op: 'finish', paneId: 'pane-caller', summary: 'ledger complete' }]])
+  const anonymous = await call('agent', { action: 'finish', summary: 'done' }, null)
+  assert.equal(anonymous.isError, true)
+  assert.match(textOf(anonymous), /calling chat/)
 })
 
 test('agent actions drive another pane\'s run and refuse the calling pane', async () => {

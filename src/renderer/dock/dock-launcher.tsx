@@ -1,12 +1,13 @@
 import { useRef, type JSX } from 'react'
 import { ChevronRight, Grid2X2 } from 'lucide-react'
 import { Button } from '../../components/ui/button.js'
+import { DOCK_HEIGHT } from './dock-model.js'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
   DropdownMenuSeparator, DropdownMenuShortcut, DropdownMenuSub,
   DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger
 } from '../../components/ui/dropdown-menu.js'
-import { MENUS, launcherGroups, menuItemDisabled, type MenuItem, type TitlebarMenuProps } from '../application-menu-model.js'
+import { MENUS, launcherGroups, menuItemDisabled, runMenuItem, type MenuItem, type TitlebarMenuProps } from '../application-menu-model.js'
 
 export function DockLauncher({ open, onOpenChange, menu }: {
   open: boolean
@@ -19,20 +20,16 @@ export function DockLauncher({ open, onOpenChange, menu }: {
     ...MENUS
   ]
 
-  function execute(row: MenuItem): void {
-    if (row.command) menu.onChatZoomChange(row.command)
-    else if (row.layoutPreset) menu.onApplyLayoutPreset(row.layoutPreset)
-    else if (row.action === 'search-chats') menu.onSearchChats()
-    else menu.onAction(row.action)
-  }
+  const execute = (row: MenuItem): void => runMenuItem(row, menu)
 
   return <DropdownMenu open={open} onOpenChange={onOpenChange} modal={false}>
     <DropdownMenuTrigger asChild>
-      <Button variant="ghost" size="icon-sm" data-ui="dock.launcher" aria-label="Open launcher">
+      <Button variant="ghost" size="icon-sm" data-ui="dock.launcher" aria-label="Open launcher"
+        style={{ height: DOCK_HEIGHT }}>
         <Grid2X2 aria-hidden="true" />
       </Button>
     </DropdownMenuTrigger>
-    <DropdownMenuContent side="top" align="start" sideOffset={8}
+    <DropdownMenuContent side="top" align="start" sideOffset={-1}
       className="dock-launcher" aria-label="Application launcher"
       onCloseAutoFocus={(event) => {
         const row = pending.current

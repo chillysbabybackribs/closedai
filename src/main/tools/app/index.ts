@@ -35,7 +35,8 @@ export function appTools(
         deferLoading: true,
         description:
           'Drive the agent run of another pane: start attaches the main-process cycle loop with standing instructions; ' +
-          'pause, resume, and stop act on an existing run. state.chat.agentRun reports status, cycle, and pause reason.',
+          'pause, resume, and stop act on an existing run; finish lets a run end itself when its work is complete. ' +
+          'state.chat.agentRun reports status, cycle, and pause reason.',
         actions: appAgentActions(app)
       }),
       defineActionTool({

@@ -179,6 +179,10 @@ export class AppCommandAccess implements AppCommandHost {
         if (!resumed) throw new Error(`Pane ${request.paneId} has no agent run to resume`)
         return resumed
       }
+      case 'finish': {
+        if (runs.get(request.paneId)?.status !== 'running') throw new Error(`Pane ${request.paneId} has no running agent run to finish`)
+        return runs.pauseRun(request.paneId, `Finished: ${request.summary.trim()}`)
+      }
       case 'stop':
         if (!runs.get(request.paneId)) throw new Error(`Pane ${request.paneId} has no agent run to stop`)
         await runs.stopRun(request.paneId)

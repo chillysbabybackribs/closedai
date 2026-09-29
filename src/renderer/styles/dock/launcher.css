@@ -10,6 +10,10 @@
 .dock-launcher {
   width: 208px;
   padding: 6px;
+  /* Meet the footer edge without a floating gap or a rounded bottom seam. */
+  border-bottom: 0;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
 }
 
 .dock-launcher-submenu {

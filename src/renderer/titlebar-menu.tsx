@@ -1,6 +1,6 @@
 import { memo, useRef, type JSX } from 'react'
 import { Menubar } from 'radix-ui'
-import { MENUS, menuItemDisabled, type MenuRow, type TitlebarMenuProps } from './application-menu-model.js'
+import { MENUS, menuItemDisabled, runMenuItem, type MenuRow, type TitlebarMenuProps } from './application-menu-model.js'
 export type { MenuAction, TitlebarMenuProps } from './application-menu-model.js'
 
 /** The shell's File / View / Agent / Developer bar, sitting in the title bar's drag region. */
@@ -51,17 +51,9 @@ export const TitlebarMenu = memo(function TitlebarMenu({
                     )
                   }
                   const onSelect = (): void => {
-                    if (row.command) {
-                      onChatZoomChange(row.command)
-                      return
-                    }
-                    if (row.layoutPreset) {
-                      onApplyLayoutPreset(row.layoutPreset)
-                      return
-                    }
                     // The search field is focused after the menu's own close-focus, not before it.
                     if (row.action === 'search-chats') searchOnClose.current = true
-                    else onAction(row.action)
+                    else runMenuItem(row, { onChatZoomChange, onApplyLayoutPreset, onSearchChats, onAction })
                   }
                   const itemLabel = (
                     <>

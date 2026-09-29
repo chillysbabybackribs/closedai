@@ -19,6 +19,7 @@ import { AppStartup } from './app-startup.js'
 import { errorMessage } from './error-message.js'
 import { providerSupportsContextShrink } from './context-shrink-eligibility.js'
 import { TitlebarMenu, type MenuAction, type TitlebarMenuProps } from './titlebar-menu.js'
+import { useMenuRunBridge } from './menu-run-bridge.js'
 import { DesktopWorkspace, type ChatLayoutHandle } from './chat-layout/desktop-workspace.js'
 import { ChatRenameDialog } from './chat-rename-dialog.js'
 import { SpacesStage, type SpacesHandle } from './spaces/spaces-stage.js'
@@ -246,6 +247,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
     tileEnabled: windowsFloating,
     onApplyLayoutPreset: (preset) => workspaceRef.current?.applyPreset(preset)
   }
+  useMenuRunBridge(applicationMenu, chat.selectedPaneId)
 
   return (
     <div className="shell" data-ui-surface="shell">

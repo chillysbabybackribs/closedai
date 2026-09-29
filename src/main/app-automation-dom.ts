@@ -7,6 +7,7 @@ import type {
   AppWaitOptions
 } from './tools/app/host.js'
 import { APP_REVEAL_BROWSER_EVENT, APP_REVEAL_CHAT_TAB_EVENT } from '../shared/app-ui-events.js'
+import { APP_MENU_RUN_EVENT, type AppMenuRunDetail } from '../shared/app-menu-run.js'
 
 // Renderer-side expressions for the ui host. Every function below that runs in the page is
 // stringified into the expression, so each takes its helpers as parameters instead of closing
@@ -395,6 +396,27 @@ export function revealChatTabExpression(paneId: string): string {
 /** Ask the renderer to show the browser pane in its saved position, the way the dock's Browser icon does. */
 export function revealBrowserExpression(): string {
   return `window.dispatchEvent(new CustomEvent(${JSON.stringify(APP_REVEAL_BROWSER_EVENT)}))`
+}
+
+/**
+ * Run an application menu row by key through the renderer's own menu handler. The listener fills
+ * the event detail synchronously; a row that ran gets one frame to commit before the result
+ * returns, so the ui state read after it reflects the change.
+ */
+export function menuRunExpression(key: string, callerPaneId: string | null): string {
+  const detail: AppMenuRunDetail = { key, callerPaneId }
+  return `(async () => {
+    const detail = ${JSON.stringify(detail)}
+    window.dispatchEvent(new CustomEvent(${JSON.stringify(APP_MENU_RUN_EVENT)}, { detail }))
+    const result = detail.result ?? { key: detail.key, ran: false, refused: 'The app window has no menu yet; open a chat first' }
+    if (result.ran) {
+      await new Promise((resolve) => {
+        const fallback = setTimeout(resolve, 150)
+        requestAnimationFrame(() => setTimeout(() => { clearTimeout(fallback); resolve() }, 0))
+      })
+    }
+    return result
+  })()`
 }
 
 export type { AppUiState, AppConditionProbe }

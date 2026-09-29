@@ -11,7 +11,8 @@ const paneField: JsonObject = {
 
 /**
  * Drive the agent run of another pane: the same main-process loop the agent builder's Start uses,
- * so a chat keeps cycling after every finished turn until someone pauses or stops it.
+ * so a chat keeps cycling after every finished turn until someone pauses or stops it. The one
+ * verb that targets the caller is finish: a run may end itself once its work is complete.
  */
 export function appAgentActions(app: () => AppCommandHost | null): ToolAction[] {
   const target = (input: JsonObject, context: ToolContext, verb: string) => {
@@ -64,6 +65,22 @@ export function appAgentActions(app: () => AppCommandHost | null): ToolAction[] 
       run: async (input, context) => {
         const { host, paneId } = target(input, context, 'resume the agent of')
         return respond(host, paneId, context, await host.agentRun({ op: 'resume', paneId }))
+      }
+    },
+    {
+      action: 'finish',
+      description:
+        'End your own run: the calling pane\'s run pauses with "Finished: <summary>" on its strip and sends no further cycles; ' +
+        'the current turn finishes normally. Call it when your standing instructions\' work is done (for example a ledger ' +
+        'reports complete), not to take a break. Refused when the calling pane has no running run.',
+      inputSchema: objectSchema({
+        summary: { type: 'string', minLength: 1, maxLength: 200, description: 'One line: what was completed.' }
+      }, ['summary']),
+      run: async (input, context) => {
+        const host = requireHost(app, 'agent runs')
+        if (!context.paneId) throw new Error('agent finish ends the calling chat\'s own run; no calling chat was identified')
+        const run = await host.agentRun({ op: 'finish', paneId: context.paneId, summary: stringArg(input, 'summary')! })
+        return jsonResult({ run: run && { status: run.status, cycle: run.cycle, reason: run.reason } })
       }
     },
     {

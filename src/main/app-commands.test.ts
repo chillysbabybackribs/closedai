@@ -132,7 +132,8 @@ function access(workspace = new FakeWorkspace(), tabs = browser(), ui: AppUiHost
     scroll: async () => ({}),
     waitFor: async (options) => ({ ...options, targetVisible: null, targetEnabled: null, textMatched: null, reached: true, elapsedMs: 0 }),
     revealChatTab: async (paneId) => { revealCalls.push(paneId) },
-    revealBrowser: async () => {}
+    revealBrowser: async () => {},
+    runMenu: async (key) => ({ key, ran: true })
   }
   return {
     workspace, tabs, revealCalls,

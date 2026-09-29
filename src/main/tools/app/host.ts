@@ -3,6 +3,7 @@ import type { AgentRun, AgentRunStartOptions } from '../../../shared/agent-runs.
 import type { ProjectSwitchRequest, ProjectSwitchStatus } from '../../../shared/chat-peers.js'
 import type { ChatAttachment, ChatSnapshot, ChatThreadSummary } from '../../../shared/chat.js'
 import type { BrowserDownload, BrowserState, BrowserTabInfo } from '../../../shared/types.js'
+import type { AppMenuRunResult } from '../../../shared/app-menu-run.js'
 
 // Three hosts back the closedai_app namespace: deterministic state and commands come from the
 // main process (the same services the renderer's IPC uses); the ui host drives real controls in
@@ -87,6 +88,8 @@ export type AppUiHost = {
   revealChatTab(paneId: string): Promise<void>
   /** Show the browser pane; it keeps its saved position and tabs. */
   revealBrowser(): Promise<void>
+  /** Run an application menu row by key through the menu's own handler and eligibility. */
+  runMenu(key: string, callerPaneId: string | null): Promise<AppMenuRunResult>
 }
 
 export type AppStateSection = 'workspace' | 'chat' | 'browser' | 'downloads' | 'window'
@@ -138,6 +141,8 @@ export type AppBrowserTabRequest = {
 export type AppAgentRunRequest =
   | { op: 'start'; paneId: string; agentId: string | null; options: Partial<AgentRunStartOptions> }
   | { op: 'pause' | 'resume' | 'stop'; paneId: string }
+  /** The calling pane ends its own running run; it pauses with the summary as its reason. */
+  | { op: 'finish'; paneId: string; summary: string }
 
 export type AppCommandHost = {
   state(sections: readonly AppStateSection[], paneId: string | undefined, callerPaneId: string | null): Record<string, unknown>

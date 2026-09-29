@@ -12,6 +12,7 @@ import type {
   AppWaitOptions,
   AppWaitResult
 } from './tools/app/host.js'
+import type { AppMenuRunResult } from '../shared/app-menu-run.js'
 import { dispatchAppClick } from './app-automation-input.js'
 import {
   conditionProbeExpression,
@@ -25,6 +26,7 @@ import {
   uiStateExpression,
   revealChatTabExpression,
   revealBrowserExpression,
+  menuRunExpression,
   type AppPreparedClick
 } from './app-automation-dom.js'
 import { CdpSession } from './cdp/cdp-session.js'
@@ -109,6 +111,11 @@ export class AppAutomationAccess implements AppUiHost {
   async revealBrowser(): Promise<void> {
     const { contents } = this.resolve()
     await contents.executeJavaScript(revealBrowserExpression(), true)
+  }
+
+  async runMenu(key: string, callerPaneId: string | null): Promise<AppMenuRunResult> {
+    const { contents } = this.resolve()
+    return await contents.executeJavaScript(menuRunExpression(key, callerPaneId), true) as AppMenuRunResult
   }
 
   async waitFor(options: AppWaitOptions, signal: AbortSignal): Promise<AppWaitResult> {
