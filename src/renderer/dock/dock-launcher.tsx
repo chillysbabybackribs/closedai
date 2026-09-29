@@ -29,13 +29,13 @@ export function DockLauncher({ open, onOpenChange, menu }: {
     if (next) { setQuery(''); setSection('home') }
     onOpenChange(next)
   }}>
-    {/* Align to the strip's upper left edge, independent of the button's padding. */}
-    <PopoverAnchor className="pointer-events-none absolute left-0 top-0 h-px w-px" />
     <PopoverTrigger asChild>
       <Button variant="ghost" size="icon-sm" data-ui="dock.launcher" aria-label="Open launcher">
         <Grid2X2 aria-hidden="true" />
       </Button>
     </PopoverTrigger>
+    {/* Register after the trigger so Radix retains this anchor when its trigger anchor unmounts. */}
+    <PopoverAnchor className="pointer-events-none absolute left-0 top-0 h-px w-px" />
     <PopoverContent side="top" align="start" sideOffset={0} avoidCollisions={false}
       className="dock-launcher" aria-label="Application launcher"
       onOpenAutoFocus={(event) => { event.preventDefault(); input.current?.focus() }}
