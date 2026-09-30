@@ -72,7 +72,7 @@ export const UI_CONTROLS = {
   'dock.overview': 'Start panel footer or dock mirror: zoom out to the workspace overview, or back into the current workspace (same as Ctrl+Shift+O)',
   'dock.back': 'Dock: step back through where you have zoomed this session (same as Alt+Left)',
   'dock.forward': 'Dock: step forward through where you have zoomed this session (same as Alt+Right)',
-  'dock.app': 'Dock tray icon; item is chats (chat history), browser (show or hide), note (the notepad: its window, else the latest note, else a new one), agents (Agents view), saved-sites or downloads (open a list above the icon)',
+  'dock.app': 'Dock tray icon; item is chats (starts a new chat; history lives in the title bar chat search), browser (show or hide), note (the notepad: its window, else the latest note, else a new one), agents (Agents view), saved-sites or downloads (open a list above the icon)',
   'dock.saved-site': 'Dock Saved sites list: show the browser and open this site; item is the saved site id',
   'dock.all-saved-sites': 'Dock Saved sites list: open the Saved sites view',
   'dock.download': 'Dock Downloads list: show a finished file in its folder; item is the download id',

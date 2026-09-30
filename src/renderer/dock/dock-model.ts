@@ -96,7 +96,7 @@ const count = (n: number, one: string, many = `${one}s`): string => `${n} ${n ==
 export function trayApps(input: TrayInput): TrayApp[] {
   return [
     { id: 'chats', label: 'Chats', stack: false, active: input.runningChats > 0,
-      note: input.runningChats > 0 ? `${input.runningChats} running · open chat history` : 'Open chat history' },
+      note: input.runningChats > 0 ? `${input.runningChats} running · start a new chat` : 'Start a new chat' },
     { id: 'browser', label: 'Browser', stack: false, active: input.browserVisible,
       note: input.browserVisible ? 'Showing · click to hide' : 'Hidden · click to show' },
     { id: 'note', label: 'Notes', stack: false, active: false,

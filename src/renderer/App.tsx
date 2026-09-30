@@ -298,11 +298,11 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
     settings: { appearance, onAppearanceChange: updateAppearance, backdropStatus, onOpenWallpaper: openWallpaper }
   }), [chat.chats, history, chat.selectedPaneId, selectedBusy, chat.listChats, openHistoryChat, sendToChat, startAgent, appearance, updateAppearance, backdropStatus, openWallpaper])
   const onDockLaunch = useCallback<AppDockProps['onLaunch']>((id) => {
-    if (id === 'chats') workspaceRef.current?.toggleView('history').catch(report('Could not open chat history'))
+    if (id === 'chats') history.newChat()
     else if (id === 'browser') workspaceRef.current?.toggleBrowser()
     else if (id === 'note') workspaceRef.current?.openNotepad().catch(report('Could not open the notepad'))
     else workspaceRef.current?.openView('agents')
-  }, [report])
+  }, [history.newChat, report])
   const onOpenSite = useCallback((url: string) => { workspaceRef.current?.openSite(url).catch(report('Could not open the saved site')) }, [report])
   const onAllSavedSites = useCallback(() => workspaceRef.current?.openView('saved-sites'), [])
   const onRestoreWindow = useCallback((id: string) => workspaceRef.current?.restoreWindow(id), [])
