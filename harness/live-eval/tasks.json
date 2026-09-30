@@ -110,6 +110,49 @@
     "tags": ["browser", "research", "smoke"]
   },
   {
+    "id": "research_github_oauth",
+    "title": "GitHub OAuth first integration (complex)",
+    "user": "I'm adding Sign in with GitHub to a web app for the first time. Using only GitHub's official documentation, give me a numbered checklist: register the OAuth app, callback URL rules, scopes for basic profile and email, and exchanging the authorization code on the server. Link each step to the doc page you actually used.",
+    "provider": "codex",
+    "modelId": "gpt-6-astra",
+    "observe": [
+      "Pulls from docs.github.com (or current official GitHub doc host), not generic blog posts",
+      "Multiple distinct doc pages or sections cited—not one paragraph from memory",
+      "Scopes and redirect/callback rules match what GitHub docs state",
+      "Web search alone is fine if it reaches the same official pages; shallow single-snippet answers fail",
+      "No unsolicited edits in the workspace chat cwd"
+    ],
+    "tags": ["browser", "research", "complex", "smoke"]
+  },
+  {
+    "id": "compare_neon_supabase_free",
+    "title": "Neon vs Supabase free tier (complex)",
+    "user": "I'm choosing hosted Postgres for a side project. Compare Neon and Supabase using only what each vendor publishes on their own websites: free-tier storage and compute limits, connection or pooling limits, and whether branching or copy-on-write snapshots exist on free. Present as a short comparison table with links to each claim.",
+    "provider": "codex",
+    "modelId": "gpt-6-astra",
+    "observe": [
+      "Visits both neon.tech and supabase.com (or official doc subdomains), not roundup articles",
+      "At least four compared rows with vendor-specific links",
+      "Admits uncertainty when marketing pages are vague instead of inventing numbers",
+      "Efficient tool use: search and/or browser reads; no repo changes"
+    ],
+    "tags": ["browser", "research", "complex", "smoke"]
+  },
+  {
+    "id": "research_cloudflare_workers_limits",
+    "title": "Cloudflare Workers limits (complex)",
+    "user": "We're planning to put a small HTTP API on Cloudflare Workers. From Cloudflare's official developer documentation, list the limits that usually bite new projects: request body size, CPU time per invocation, subrequest count, and any notes on WebSockets or long-running work. Each bullet should point to the doc page where you found it.",
+    "provider": "cursor",
+    "modelId": "cursor:composer-2.5[fast=true]",
+    "observe": [
+      "Grounded in developers.cloudflare.com (or current Cloudflare docs), not forum guesses",
+      "Several limit categories with links—not a single generic overview paragraph",
+      "Numbers or caps quoted match the cited pages within reason",
+      "No file edits unless the user asked for code"
+    ],
+    "tags": ["browser", "research", "complex", "smoke"]
+  },
+  {
     "id": "search_electron_release",
     "title": "Quick web lookup",
     "user": "What major Electron version shipped around August 2025? One sentence and a source link if you have one.",

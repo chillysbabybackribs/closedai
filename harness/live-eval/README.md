@@ -10,6 +10,11 @@ then expand” recipes. Put expected tool choice and process in the human **`obs
 only (for example: site discovery before blind navigation, embedded browser instead of OS open).
 Contract probes (orientation, peer recall) may still name tools when the test *is* the tool.
 
+**Complexity:** Simple one-fact lookups may legitimately finish with fast web search. Tasks tagged
+`complex` expect multi-page or multi-site research from official sources—watch whether the model
+still tries to answer from memory, uses one shallow fetch, or works through linked docs efficiently
+(search, discovery, browser reads, or a sensible mix).
+
 ## Start: mission loop pilot (no UI changes)
 
 1. In your **home** chat (director), read or attach `harness/live-eval/director-charter.md`.
