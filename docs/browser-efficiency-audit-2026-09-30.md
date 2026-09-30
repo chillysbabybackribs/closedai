@@ -87,7 +87,7 @@ The old live comparison has no valid “after” wall-clock number until the app
 - Final text-window refinement and search fixture correction: 12 tests passed (session + grounding hints).
 - Typecheck passed after fixing the two pre-existing shared-search blockers.
 - Hygiene passed; size advisories were non-blocking.
-- Guide generation/check passed. Workspace map regeneration/check and final whitespace checks are recorded at completion.
+- Guide generation/check, workspace map regeneration/check, and tracked/new-file whitespace checks passed.
 - No renderer changes or visual claims. Main-process functionality requires a rebuilt app and restart.
 - The audit itself incurred one invalid peer-read budget request (90k where the handler allows 16k), then used bounded pagination. Some candidate-file searches found no file; filenames were corrected. These are audit acquisition overhead, not silently added to browser benchmark timings.
 - Full result recovery is limited by historical retention. Peer reads clip individual outputs; native result bodies were used for Astra/Claude size totals. Cursor generation/timing data remain unavailable.
@@ -99,4 +99,3 @@ The old live comparison has no valid “after” wall-clock number until the app
 3. **Discovery depth and waste.** Bootstrap probes all channels by default and root llms candidates miss advertised paths such as Neon's `/docs/llms.txt`. Reason deferred: htmx discovery succeeded in 1.17 s; test a broader site corpus before changing channel defaults or adding bounded hint following.
 4. **Captured-body/result handles for larger investigations.** Projection removes the immediate JSON problem, but long-lived snapshots would avoid repeated acquisition and changing text offsets. Reason deferred: retention, lifetime and private-session data policy need an explicit shared contract.
 5. **Persist canonical tool identity and pass boundaries in history.** UI aliases and sampled spine evidence produced demonstrably wrong prior audit counts. Reason deferred: spans transcript/telemetry storage beyond the browser handler fixes; unavailable fields are marked rather than inferred.
-
