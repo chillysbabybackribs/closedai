@@ -18,20 +18,30 @@ export function ProviderUsage({ chats, visible, open, onOpenChange }: {
   const [now, setNow] = useState(Date.now)
   const [width, setWidth] = useState(0)
   const root = useRef<HTMLDivElement>(null)
+  const lastTrigger = useRef<HTMLButtonElement | null>(null)
+  const attempts = useRef(new Map<string, number>())
+  const inFlight = useRef(new Set<string>())
   const latest = useRef(entries)
   latest.current = entries
   useEffect(() => {
     if (!visible) return
-    let busy = false
     const refresh = async (): Promise<void> => {
-      if (busy || document.hidden) return
-      busy = true
-      try {
-        await Promise.allSettled(latest.current
-          .filter((item) => item.provider !== 'cursor' && item.source.providerUsage?.connection.state === 'ready'
-            && Date.now() - (item.usage?.updatedAt ?? 0) >= 60_000)
-          .map((item) => window.closedai.chat.refreshPlanUsage(item.source.paneId)))
-      } finally { busy = false }
+      if (document.hidden) return
+      const now = Date.now()
+      await Promise.allSettled(latest.current
+        .filter((item) => {
+          const observedAt = Math.min(item.usage?.updatedAt ?? 0,
+            ...(item.usage?.windows.map((window) => window.updatedAt ?? item.usage!.updatedAt) ?? []))
+          return item.provider !== 'cursor' && item.source.providerUsage?.connection.state === 'ready'
+            && !inFlight.current.has(item.key) && now - (attempts.current.get(item.key) ?? 0) >= 60_000
+            && now - observedAt >= 60_000
+        })
+        .map(async (item) => {
+          attempts.current.set(item.key, now)
+          inFlight.current.add(item.key)
+          try { await window.closedai.chat.refreshPlanUsage(item.source.paneId) }
+          finally { inFlight.current.delete(item.key) }
+        }))
     }
     void refresh()
     const timer = window.setInterval(() => { void refresh() }, 60_000)
@@ -58,7 +68,7 @@ export function ProviderUsage({ chats, visible, open, onOpenChange }: {
     return <Tooltip key={item.key}>
       <TooltipTrigger asChild><Button variant="ghost" className="provider-usage-chip" data-ui="dock.provider-usage"
         data-ui-item={item.key} data-level={headline.level} aria-label={detail} aria-expanded={open && entry.key === item.key}
-        onClick={() => { setSelected(item.key); onOpenChange(!(open && entry.key === item.key)) }}>
+        onClick={(event) => { lastTrigger.current = event.currentTarget; setSelected(item.key); onOpenChange(!(open && entry.key === item.key)) }}>
         <ProviderMark provider={item.provider} />
         <span>{headline.text}</span>
       </Button></TooltipTrigger>
@@ -70,7 +80,7 @@ export function ProviderUsage({ chats, visible, open, onOpenChange }: {
       <PopoverTrigger asChild>
         <Button variant="ghost" className={`provider-usage-chip${compact ? '' : ' provider-usage-anchor'}`}
           data-ui="dock.provider-usage-all" aria-label="Provider subscription usage" tabIndex={compact ? 0 : -1}
-          aria-hidden={compact ? undefined : true}>
+          aria-hidden={compact ? undefined : true} onClick={(event) => { lastTrigger.current = event.currentTarget }}>
           <Gauge aria-hidden="true" /><span>Usage</span>
           {entries.some((item) => ['low', 'critical', 'exhausted'].includes(usageHeadline(item.usage, now).level))
             && <CircleAlert aria-hidden="true" className="provider-usage-warning" />}
@@ -79,7 +89,11 @@ export function ProviderUsage({ chats, visible, open, onOpenChange }: {
       {!compact && entries.map(trigger)}
       <PopoverContent side="top" align="end" sideOffset={12} collisionPadding={12}
         className="dock-panel provider-usage-panel" aria-label="Provider subscription usage"
-        onCloseAutoFocus={(event) => event.preventDefault()}>
+        onCloseAutoFocus={(event) => {
+          event.preventDefault()
+          const target = lastTrigger.current?.isConnected ? lastTrigger.current : root.current?.querySelector<HTMLButtonElement>('button')
+          target?.focus({ preventScroll: true })
+        }}>
         <div className="provider-usage-tabs" aria-label="Providers">
           {entries.map((item) => <Button key={item.key} variant="ghost" className="provider-usage-tab"
             data-ui="dock.provider-usage-tab" data-ui-item={item.key} aria-pressed={item.key === entry.key}
@@ -125,7 +139,7 @@ function ProviderUsageDetail({ entry, now }: { entry: ProviderUsageEntry; now: n
           </dd>
           <p>{window.resetsAt ? window.resetsAt <= now ? 'Reset passed · awaiting provider reading' :
             `Resets in ${resetNote(window.resetsAt, now)} · ${new Date(window.resetsAt).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' })}` : 'Reset time not reported'}</p>
-          <p>{state.observedAt > 0 ? `Read ${ageNote(Math.max(0, now - state.observedAt))}` : 'Observation time unavailable'}</p>
+          <p>{state.observedAt > 0 ? now - state.observedAt < 60_000 ? 'Updated just now' : `Read ${ageNote(Math.max(0, now - state.observedAt))}` : 'Observation time unavailable'}</p>
         </div>
       })}</dl> : <p className="provider-usage-note">No provider reading yet. Refresh to request available usage.</p>}
     {usage?.note && <p className="provider-usage-note">{usage.note}</p>}

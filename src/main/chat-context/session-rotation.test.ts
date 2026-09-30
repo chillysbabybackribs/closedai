@@ -71,6 +71,30 @@ test('task-aware pressure can schedule rotation without token usage', async (t) 
   assert.equal(rotator.scheduledForIdle, false)
 })
 
+test('an idle rotation exposes its trigger only while it is in flight', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const seen: Array<string | null> = []
+  const rotator: SessionRotator = new SessionRotator({
+    enabled: () => true,
+    thresholdPercent: () => 0,
+    thresholdTokens: () => 0,
+    idleDelayMs: 0,
+    threadId: () => 'thread-1',
+    turnActive: () => false,
+    pressureTrigger: () => 'items',
+    rotate: async () => {
+      seen.push(rotator.rotationReason)
+      rotator.complete()
+    }
+  })
+  assert.equal(rotator.rotationReason, null)
+  rotator.turnFinished()
+  t.mock.timers.tick(1)
+  await flushAsync()
+  assert.deepEqual(seen, ['items'])
+  assert.equal(rotator.rotationReason, null)
+})
+
 test('rotation stays off when seamless rotation is disabled', async (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] })
   const h = harness(false, 80, 15_000)

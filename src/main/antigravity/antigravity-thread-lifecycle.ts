@@ -62,7 +62,8 @@ export async function rotateAntigravityProviderSession(host: AntigravityThreadHo
     provider: 'antigravity',
     threadId: conversationId ? antigravityThreadId(conversationId) : null,
     threadName: host.threadName(),
-    items: host.transcript.snapshot()
+    items: host.transcript.snapshot(),
+    reason: host.rotator.rotationReason ?? 'manual'
   }, async () => {
     const previous = host.session()?.conversationId ?? null
     if (!host.session()) host.setSession(host.createSession())

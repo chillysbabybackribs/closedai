@@ -2,6 +2,7 @@ import { isDeepStrictEqual } from 'node:util'
 import { readThreadMetadata } from './chat-thread-origin.js'
 import type { ChatSnapshot, ChatThreadContent, ChatEvent } from '../shared/chat.js'
 import { applyProviderRotation, type RotationSettingsAccess } from './chat-context/rotate-provider-session.js'
+import type { ChatSessionRotationReason } from '../shared/session-rotation.js'
 import { resumeThreadParams, startThreadParams, type ThreadResponse } from './chat-context/thread-params.js'
 import { nullableString, recordOf } from './chat-normalizers.js'
 import { messageOf } from './error-message.js'
@@ -114,14 +115,19 @@ export async function resumePersistedCodexThread(host: ChatServiceThreadHost): P
   }
 }
 
-export async function rotateCodexProviderSession(host: ChatServiceThreadHost, excludeItemId?: string): Promise<void> {
+export async function rotateCodexProviderSession(
+  host: ChatServiceThreadHost,
+  excludeItemId?: string,
+  reason?: ChatSessionRotationReason
+): Promise<void> {
   try {
     await applyProviderRotation(host.settings, {
       paneId: host.paneId,
       provider: 'codex',
       threadId: host.threadId(),
       threadName: host.threadName(),
-      items: host.transcript.snapshot().filter((item) => item.id !== excludeItemId)
+      items: host.transcript.snapshot().filter((item) => item.id !== excludeItemId),
+      reason: reason ?? host.rotator.rotationReason ?? 'manual'
     }, async () => {
       host.setThreadId(null)
       host.compactor.reset()
@@ -153,7 +159,7 @@ export async function ensureCodexThread(host: ChatServiceThreadHost, clientUserM
     })
   }
   if (host.threadId() && !isDeepStrictEqual(host.threadToolCatalog(), catalog)) {
-    await rotateCodexProviderSession(host, clientUserMessageId ? `user:${clientUserMessageId}` : undefined)
+    await rotateCodexProviderSession(host, clientUserMessageId ? `user:${clientUserMessageId}` : undefined, 'toolCatalog')
     if (host.threadId()) {
       await host.settings.set({ chatThreadId: null })
       host.setThreadId(null)

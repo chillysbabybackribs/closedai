@@ -14,12 +14,16 @@ export function traceSessionRotated(
     kind: 'event',
     label: 'session.rotated',
     summary: usage
-      ? `Rotated provider session at ${usagePercent(usage)}% context (epoch ${rotation.epoch})`
-      : `Rotated provider session (epoch ${rotation.epoch})`,
+      ? `Rotated provider session at ${usagePercent(usage)}% context (epoch ${rotation.epoch}${reasonSuffix(rotation)})`
+      : `Rotated provider session (epoch ${rotation.epoch}${reasonSuffix(rotation)})`,
     detail: {
       rotation,
       usage: usage ? describeUsage(usage) : null,
       ...(elapsedMs !== undefined && Number.isFinite(elapsedMs) ? { elapsedMs: Math.max(0, Math.round(elapsedMs)) } : {})
     }
   })
+}
+
+function reasonSuffix(rotation: ChatSessionRotation): string {
+  return rotation.reason ? `, ${rotation.reason}` : ''
 }

@@ -108,7 +108,8 @@ export async function rotateClaudeProviderSession(host: ClaudeThreadHost, sessio
       provider: 'claude',
       threadId: session?.sessionId ? claudeThreadId(session.sessionId) : null,
       threadName: host.threadName(),
-      items: host.transcript.snapshot()
+      items: host.transcript.snapshot(),
+      reason: host.rotator.rotationReason ?? 'manual'
     }, async () => {
       await session?.reset()
       host.setContextUsage(null)

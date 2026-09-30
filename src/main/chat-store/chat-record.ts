@@ -3,7 +3,7 @@ import { chatProviderOfId, isChatProvider } from '../../shared/chat-providers.js
 import type { ChatPeerRecord } from '../../shared/types.js'
 import { normalizeContinuation } from '../app-settings-store.js'
 import { normalizeMemoryCheckpoint } from '../chat-context/memory-checkpoint.js'
-import { MAX_SESSION_ROTATIONS, type ChatSessionRotation } from '../../shared/session-rotation.js'
+import { MAX_SESSION_ROTATIONS, SESSION_ROTATION_REASONS, type ChatSessionRotation, type ChatSessionRotationReason } from '../../shared/session-rotation.js'
 import { normalizeAgentRun } from '../../shared/agent-runs.js'
 
 // Shape checks for records read back from disk, and the one-way translation from the pane
@@ -112,7 +112,10 @@ function normalizeSessionRotations(value: unknown): ChatSessionRotation[] {
       epoch: Number(record.epoch),
       sourceThroughItemId: optionalString(record.sourceThroughItemId),
       providerThreadId: optionalString(record.providerThreadId),
-      at: Math.floor(record.at)
+      at: Math.floor(record.at),
+      ...(SESSION_ROTATION_REASONS.includes(record.reason as ChatSessionRotationReason)
+        ? { reason: record.reason as ChatSessionRotationReason }
+        : {})
     })
   }
   return rotations.slice(-MAX_SESSION_ROTATIONS)

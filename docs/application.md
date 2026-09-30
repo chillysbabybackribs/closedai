@@ -341,13 +341,14 @@ archive is introduced. When `chatSeamlessRotation` is enabled (default on; set f
 on Codex, Claude, Cursor, and Antigravity can rotate the provider session invisibly: the visible
 transcript stays put, a thin seed is queued for the next send, and each rotation appends metadata
 to the chat record for later recall-chain work. Triggers include the saved percentage and token
-budgets (`chatCompactAtPercent`, `chatCompactAtTokens`), plus task-aware defaults in app settings:
-transcript item count since the latest rotation boundary (`chatRotateAtItems`, default 100), tool calls since the latest user message
-(`chatRotateAtToolCallsSinceUser`, default 24), and tool-output characters in that span
-(`chatRotateAtToolOutputChars`, default 280000). Set any of those to `0` to disable that trigger. Token pressure defaults to off; the window
+budgets (`chatCompactAtPercent`, `chatCompactAtTokens`), plus a task-aware default in app settings:
+transcript item count since the latest rotation boundary (`chatRotateAtItems`, default 100; `0` disables it).
+Tool calls and tool output are not triggers: providers record tool work differently, and a busy
+turn at low context would lose its working evidence for nothing. Each rotation record saves its
+`reason` (`percent`, `tokens`, `items`, `manual` for an explicit compact, or `toolCatalog` when a
+Codex tool-catalog change needs a new thread). Token pressure defaults to off; the window
 percentage remains 80. Explicit saved values (including opt-outs and older token thresholds)
-survive loading and unrelated writes. Tool pressure stops at the rotation boundary as well as
-the latest user message.
+survive loading and unrelated writes. Item pressure counts only items after the rotation boundary.
 Queued rotations stay invisible in the transcript; Turn trace records `session.rotated` when one completes. Source recall
 on the same pane after rotation reads the in-memory transcript through the frozen boundary so tool
 output remains recoverable without reopening the dropped provider thread. With seamless rotation on,

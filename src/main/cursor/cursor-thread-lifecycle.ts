@@ -78,7 +78,8 @@ export async function rotateCursorProviderSession(host: CursorThreadHost, sessio
     provider: 'cursor',
     threadId: session?.sessionId ? cursorThreadId(session.sessionId) : null,
     threadName: host.threadName(),
-    items: host.transcript.snapshot()
+    items: host.transcript.snapshot(),
+    reason: host.rotator.rotationReason ?? 'manual'
   }, async () => {
     await session?.reset()
     host.rotator.reset()

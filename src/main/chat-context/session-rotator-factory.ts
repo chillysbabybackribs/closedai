@@ -11,11 +11,7 @@ import {
 import { SessionRotator } from './session-rotation.js'
 
 export function rotationPressureThresholds(settings: AppSettings): RotationPressureThresholds {
-  return {
-    atItems: settings.chatRotateAtItems,
-    atToolCallsSinceUser: settings.chatRotateAtToolCallsSinceUser,
-    atToolOutputChars: settings.chatRotateAtToolOutputChars
-  }
+  return { atItems: settings.chatRotateAtItems }
 }
 
 type CreateSessionRotatorInput = {

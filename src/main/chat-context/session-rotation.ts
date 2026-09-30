@@ -1,16 +1,17 @@
+import type { ChatSessionRotationReason } from '../../shared/session-rotation.js'
 import { idleDelayForContextTrigger, type ContextUsage, usagePercent } from './context-compaction.js'
 
 // Invisible session rotation: same idle thresholds as compaction, but the provider thread is
 // reset with a thin seed on the next send instead of calling native compact.
 
-export type RotationTriggerReason = 'percent' | 'tokens' | 'items' | 'toolCalls' | 'toolOutputChars'
+export type RotationTriggerReason = Extract<ChatSessionRotationReason, 'percent' | 'tokens' | 'items'>
 
 export type SessionRotatorDeps = {
   enabled: () => boolean
   thresholdPercent: () => number
   thresholdTokens?: () => number
   /** Task-aware triggers from the visible transcript (works without token usage). */
-  pressureTrigger?: () => 'items' | 'toolCalls' | 'toolOutputChars' | null
+  pressureTrigger?: () => 'items' | null
   hasPressureThresholds?: () => boolean
   now?: () => number
   idleDelayMs?: number
@@ -31,6 +32,7 @@ export class SessionRotator {
   private armed = false
   private scheduled: NodeJS.Timeout | null = null
   private lastTokenAttempt: { at: number; tokens: number; budget: number } | null = null
+  private startedFor: RotationTriggerReason | null = null
 
   constructor(private readonly deps: SessionRotatorDeps) {}
 
@@ -44,6 +46,11 @@ export class SessionRotator {
 
   get scheduledForIdle(): boolean {
     return this.scheduled !== null
+  }
+
+  /** Trigger of the idle rotation in flight; null means the rotation was requested directly. */
+  get rotationReason(): RotationTriggerReason | null {
+    return this.startedFor
   }
 
   noteUsage(usage: ContextUsage): void {
@@ -117,6 +124,7 @@ export class SessionRotator {
     const budget = this.deps.thresholdTokens?.() ?? 0
     if (budget > 0 && this.usage) this.lastTokenAttempt = { at: this.now(), tokens: this.usage.usedTokens, budget }
     const pending = this.begin()
+    this.startedFor = reason
     try {
       await this.deps.rotate()
     } catch (error) {
@@ -159,6 +167,7 @@ export class SessionRotator {
   private settle(): void {
     const pending = this.pending
     this.pending = null
+    this.startedFor = null
     pending?.settle()
   }
 }

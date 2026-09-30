@@ -51,8 +51,6 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   chatSeamlessRotation: true,
   chatHandoffTargetChars: 24_000,
   chatRotateAtItems: 100,
-  chatRotateAtToolCallsSinceUser: 24,
-  chatRotateAtToolOutputChars: 280_000,
   chatClaudePrecomputeCompaction: true,
   chatWorkLockEnabled: true,
   chatToolSliceEnabled: false,
@@ -67,8 +65,6 @@ const RETIRED_COMPACT_AT_TOKENS = 28_000
 const MIN_AUTO_COMPACT_TOKENS = 20_000
 const MAX_AUTO_COMPACT_TOKENS = 2_000_000
 const MAX_ROTATE_AT_ITEMS = 10_000
-const MAX_ROTATE_AT_TOOL_CALLS = 500
-const MAX_ROTATE_AT_TOOL_OUTPUT_CHARS = 10_000_000
 
 function normalize(parsed: unknown): AppSettings {
   if (!parsed || typeof parsed !== 'object') return { ...DEFAULT_APP_SETTINGS }
@@ -132,20 +128,10 @@ function normalize(parsed: unknown): AppSettings {
 
 function normalizeRotationPressure(record: Record<string, unknown>): Pick<
   AppSettings,
-  'chatRotateAtItems' | 'chatRotateAtToolCallsSinceUser' | 'chatRotateAtToolOutputChars' | 'chatClaudePrecomputeCompaction'
+  'chatRotateAtItems' | 'chatClaudePrecomputeCompaction'
 > {
   return {
     chatRotateAtItems: normalizeRotationThreshold(record.chatRotateAtItems, DEFAULT_APP_SETTINGS.chatRotateAtItems, MAX_ROTATE_AT_ITEMS),
-    chatRotateAtToolCallsSinceUser: normalizeRotationThreshold(
-      record.chatRotateAtToolCallsSinceUser,
-      DEFAULT_APP_SETTINGS.chatRotateAtToolCallsSinceUser,
-      MAX_ROTATE_AT_TOOL_CALLS
-    ),
-    chatRotateAtToolOutputChars: normalizeRotationThreshold(
-      record.chatRotateAtToolOutputChars,
-      DEFAULT_APP_SETTINGS.chatRotateAtToolOutputChars,
-      MAX_ROTATE_AT_TOOL_OUTPUT_CHARS
-    ),
     chatClaudePrecomputeCompaction: record.chatClaudePrecomputeCompaction !== false
   }
 }

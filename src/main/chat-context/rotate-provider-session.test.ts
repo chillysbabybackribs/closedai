@@ -32,10 +32,12 @@ test('planProviderRotation builds continuation metadata and increments epoch', (
     items,
     checkpoint: null,
     existingContinuation: null,
-    existingRotations: [{ epoch: 1, sourceThroughItemId: 'a-0', providerThreadId: 'old', at: 1 }]
+    existingRotations: [{ epoch: 1, sourceThroughItemId: 'a-0', providerThreadId: 'old', at: 1 }],
+    reason: 'percent'
   })
   assert.ok(planned)
   assert.equal(planned.rotation.epoch, 2)
+  assert.equal(planned.rotation.reason, 'percent')
   assert.equal(planned.continuation.sourceThreadId, 'thread-a')
   assert.equal(planned.continuation.sourceThroughItemId, 'a-1')
   assert.match(planned.continuation.handoff ?? '', /rotated to reduce context/i)
@@ -49,7 +51,8 @@ test('applyProviderRotation persists continuation and rotation without clearing 
     provider: 'claude',
     threadId: 'claude:abc',
     threadName: 'Hello',
-    items
+    items,
+    reason: 'manual'
   }, async () => {
     assert.equal(settings.saved.chatContinuation?.sourceThreadId, 'claude:abc')
     assert.equal(settings.saved.chatSessionRotations?.length, 1)
@@ -68,7 +71,8 @@ test('applyProviderRotation returns false when there is nothing to rotate', asyn
     provider: 'codex',
     threadId: null,
     threadName: null,
-    items: []
+    items: [],
+    reason: 'manual'
   }, async () => { settings.released = true }, null)
   assert.equal(rotated, false)
   assert.equal(settings.released, false)
@@ -82,7 +86,7 @@ test('rotation reads the configured handoff target rather than a fixed per-messa
     { type: 'user', id: 'u2', turnId: 't-2', text: 'Next' },
     { type: 'assistant', id: 'a2', turnId: 't-2', text: 'Latest', streaming: false, phase: 'final_answer' }]
   await applyProviderRotation(settings, {
-    paneId: 'p', provider: 'codex', threadId: 'thread', threadName: null, items
+    paneId: 'p', provider: 'codex', threadId: 'thread', threadName: null, items, reason: 'items'
   }, async () => {}, null)
   assert.ok(settings.saved.chatContinuation?.handoff?.includes('preserve'.repeat(3_000)))
 })

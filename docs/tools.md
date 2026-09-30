@@ -589,7 +589,7 @@ turn, and only compacts by itself near the context limit. Several mechanisms kee
   Claude, Cursor, and Antigravity to a fresh provider thread with a thin seed instead of calling
   native compact; mid-turn Codex overrides and Claude auto-compaction are skipped. Claude can
   still precompute compaction summaries in the background (`chatClaudePrecomputeCompaction`,
-  default on). The Turn trace records `session.rotated` (including release elapsed ms) and the UI
+  default on). The Turn trace records `session.rotated` (including the saved reason and release elapsed ms) and the UI
   stays unchanged. See `src/main/chat-context/session-rotation.ts`.
 - Opt-in: `chatMidTurnCompactTokens` (default 0) launches the app-server with
   `-c model_auto_compact_token_limit=<n>` so Codex compacts mid-turn past `n` tokens. At 100k it

@@ -203,10 +203,6 @@ export type AppSettings = {
   chatHandoffTargetChars: number
   /** Rotate after this many transcript items since the latest rotation boundary. 0 disables. */
   chatRotateAtItems: number
-  /** Rotate after this many tool calls since the latest user message. 0 disables. */
-  chatRotateAtToolCallsSinceUser: number
-  /** Rotate after this many tool-output characters since the latest user message. 0 disables. */
-  chatRotateAtToolOutputChars: number
   /**
    * When seamless rotation is on, still let Claude Code precompute compaction summaries in the
    * background. Default on.

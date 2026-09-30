@@ -1,6 +1,6 @@
 import type { ChatProvider, ChatTranscriptItem } from '../../shared/chat.js'
 import type { ChatMemoryCheckpoint } from '../../shared/chat-memory.js'
-import { MAX_SESSION_ROTATIONS, type ChatSessionRotation } from '../../shared/session-rotation.js'
+import { MAX_SESSION_ROTATIONS, type ChatSessionRotation, type ChatSessionRotationReason } from '../../shared/session-rotation.js'
 import type { AppSettingsAccess } from '../app-settings-store.js'
 import type { ChatContinuation } from '../../shared/types.js'
 import type { ContextUsage } from './context-compaction.js'
@@ -23,6 +23,7 @@ export type PlanProviderRotationInput = {
   existingContinuation: ChatContinuation | null
   handoffTargetChars?: number
   existingRotations: readonly ChatSessionRotation[]
+  reason: ChatSessionRotationReason
 }
 
 export type PlannedProviderRotation = {
@@ -52,7 +53,8 @@ export function planProviderRotation(input: PlanProviderRotationInput): PlannedP
     epoch: nextRotationEpoch(input.existingRotations),
     sourceThroughItemId,
     providerThreadId: input.threadId,
-    at: Date.now()
+    at: Date.now(),
+    reason: input.reason
   }
   return {
     continuation,
