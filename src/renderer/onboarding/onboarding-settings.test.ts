@@ -14,10 +14,10 @@ import {
 import { ONBOARDING_STORAGE_KEY } from '../../shared/onboarding.js'
 
 test('createLocalUser trims the display name and assigns a stable hue', () => {
-  const user = createLocalUser('  Ada  ', 'user-1', 100)
+  const user = createLocalUser('  Ada  ', 'user-1', 'hash-a', 100)
   assert.equal(user.displayName, 'Ada')
   assert.equal(user.avatarHue, user.avatarHue)
-  assert.equal(createLocalUser('user-1', 'user-1', 100).avatarHue, user.avatarHue)
+  assert.equal(createLocalUser('user-1', 'user-1', 'hash-b', 100).avatarHue, user.avatarHue)
 })
 
 test('normalizeOnboardingSettings drops unknown providers and invalid active users', () => {
@@ -38,7 +38,7 @@ test('normalizeOnboardingSettings drops unknown providers and invalid active use
 test('signOutSession returns to the gate without deleting profiles', () => {
   const signedIn = {
     phase: 'done' as const,
-    users: [createLocalUser('Ada', 'id-1')],
+    users: [createLocalUser('Ada', 'id-1', 'hash')],
     activeUserId: 'id-1',
     keepSignedIn: true,
     sessionUnlocked: true,
@@ -99,7 +99,7 @@ test('read and write round-trip onboarding settings', () => {
   assert.equal(readOnboardingSettings(store), null)
   writeOnboardingSettings(store, {
     phase: 'done',
-    users: [createLocalUser('Test', 'id-1')],
+    users: [createLocalUser('Test', 'id-1', 'hash')],
     activeUserId: 'id-1',
     keepSignedIn: true,
     sessionUnlocked: true,

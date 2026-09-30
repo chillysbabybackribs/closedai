@@ -74,7 +74,8 @@ chat starts a provider; resolution follows each lane's spawn order (env override
 `~/.local/bin`, then PATH; Claude is the bundled SDK and always present).
 
 First-run onboarding (renderer). Before the workspace is used on a fresh install, the shell shows
-a full-screen **session gate** (local profiles: sign in, create account, keep signed in) persisted
+a full-screen **session gate** (Ubuntu-style local profiles: pick a user, enter a password, create
+account with username/password confirmation, keep signed in) persisted
 in `localStorage` under `closedai.onboarding.v1` (`src/shared/onboarding.ts`). Existing installs
 with chat history skip the flow automatically and receive an implicit **Local profile** so the
 title-bar account menu and sign-out stay available. After the gate, the normal title bar,

@@ -7,6 +7,8 @@ export type LocalUser = {
   /** 0–360 hue for the avatar ring; stable per id. */
   avatarHue: number
   createdAt: number
+  /** PBKDF2 hash from `hashLocalProfilePassword`; absent on profiles created before passwords. */
+  passwordHash?: string
 }
 
 export type OnboardingPhase = 'gate' | 'providers' | 'done'

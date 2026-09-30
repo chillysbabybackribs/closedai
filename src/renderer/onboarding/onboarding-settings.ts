@@ -16,13 +16,19 @@ export function avatarHueForUserId(id: string): number {
   return hash
 }
 
-export function createLocalUser(displayName: string, id: string, createdAt = Date.now()): LocalUser {
+export function createLocalUser(
+  displayName: string,
+  id: string,
+  passwordHash: string,
+  createdAt = Date.now()
+): LocalUser {
   const trimmed = displayName.trim()
   return {
     id,
     displayName: trimmed.length > 0 ? trimmed : 'User',
     avatarHue: avatarHueForUserId(id),
-    createdAt
+    createdAt,
+    passwordHash
   }
 }
 
@@ -49,7 +55,9 @@ function normalizeUsers(value: unknown): LocalUser[] {
     const avatarHue = typeof record.avatarHue === 'number' && Number.isFinite(record.avatarHue)
       ? record.avatarHue
       : avatarHueForUserId(id)
-    users.push({ id, displayName, avatarHue, createdAt })
+    const rawHash = typeof record.passwordHash === 'string' ? record.passwordHash.trim() : ''
+    const passwordHash = rawHash.length > 0 ? rawHash : undefined
+    users.push({ id, displayName, avatarHue, createdAt, passwordHash })
   }
   return users
 }
@@ -95,7 +103,7 @@ export function writeOnboardingSettings(storage: StorageLike, settings: Onboardi
 export const LEGACY_BYPASS_PROFILE_ID = 'closedai-legacy-bypass-profile'
 
 export function legacyBypassProfileUser(): LocalUser {
-  return createLocalUser('Local profile', LEGACY_BYPASS_PROFILE_ID, 0)
+  return createLocalUser('Local profile', LEGACY_BYPASS_PROFILE_ID, '', 0)
 }
 
 /** Unlocked sessions must expose a local profile for the title-bar account menu and sign-out. */

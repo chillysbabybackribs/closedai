@@ -28,14 +28,24 @@
   backdrop-filter: blur(12px);
 }
 
-.onboarding-gate-card {
+.onboarding-gate-shell {
   position: relative;
-  width: min(420px, 100%);
-  padding: 28px 28px 24px;
-  border-radius: 16px;
-  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
-  background: color-mix(in srgb, var(--popover) 92%, transparent);
-  box-shadow: 0 24px 80px color-mix(in srgb, var(--foreground) 12%, transparent);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: min(380px, 100%);
+  min-height: min(520px, calc(100vh - 48px));
+  padding: 8px 0 40px;
+}
+
+.onboarding-gate-panel {
+  width: 100%;
+}
+
+.onboarding-gate-panel-auth,
+.onboarding-gate-panel-create {
+  padding: 0 4px;
 }
 
 .onboarding-gate-eyebrow {
@@ -44,26 +54,29 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--muted-foreground);
+  text-align: center;
 }
 
 .onboarding-gate-title {
-  margin: 0 0 8px;
+  margin: 0 0 20px;
   font-size: 22px;
   font-weight: 600;
   letter-spacing: -0.02em;
+  text-align: center;
 }
 
 .onboarding-gate-lede {
   margin: 0 0 20px;
   font-size: 13px;
   line-height: 1.45;
-  color: var(--muted-foreground);
+  color: color-mix(in srgb, var(--foreground) 72%, transparent);
+  text-align: center;
 }
 
 .onboarding-gate-users {
   display: grid;
-  gap: 8px;
-  margin: 0 0 20px;
+  gap: 10px;
+  margin: 0 0 16px;
   padding: 0;
   list-style: none;
 }
@@ -71,35 +84,64 @@
 .onboarding-gate-user {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   width: 100%;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-  background: color-mix(in srgb, var(--background) 60%, transparent);
+  padding: 12px 16px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--foreground) 12%, transparent);
+  background: color-mix(in srgb, var(--background) 42%, transparent);
+  backdrop-filter: blur(8px);
   text-align: left;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .onboarding-gate-user:hover,
 .onboarding-gate-user:focus-visible {
-  background: color-mix(in srgb, var(--accent) 50%, transparent);
-  border-color: var(--border);
+  background: color-mix(in srgb, var(--background) 58%, transparent);
+  border-color: color-mix(in srgb, var(--foreground) 22%, transparent);
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--foreground) 8%, transparent);
+  outline: none;
+}
+
+.onboarding-gate-not-listed {
+  display: inline-flex;
+  margin-top: 4px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: none;
+  background: color-mix(in srgb, var(--background) 38%, transparent);
+  color: color-mix(in srgb, var(--foreground) 78%, transparent);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.onboarding-gate-not-listed:hover,
+.onboarding-gate-not-listed:focus-visible {
+  background: color-mix(in srgb, var(--background) 55%, transparent);
   outline: none;
 }
 
 .onboarding-gate-avatar {
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
   border-radius: 999px;
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 600;
   color: var(--foreground);
-  background: hsl(calc(var(--avatar-hue, 220)) 55% 42% / 0.22);
-  box-shadow: inset 0 0 0 1px hsl(calc(var(--avatar-hue, 220)) 50% 50% / 0.35);
+  background: hsl(calc(var(--avatar-hue, 220)) 40% 38% / 0.35);
+  box-shadow: inset 0 0 0 1px hsl(calc(var(--avatar-hue, 220)) 45% 55% / 0.4);
+}
+
+.onboarding-gate-avatar-large {
+  width: 88px;
+  height: 88px;
+  font-size: 32px;
+  margin: 0 auto;
 }
 
 .onboarding-gate-user-name {
@@ -107,47 +149,149 @@
   font-weight: 500;
 }
 
-.onboarding-gate-create {
-  margin-bottom: 16px;
+.onboarding-gate-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 20px;
+  padding: 6px 10px 6px 6px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: color-mix(in srgb, var(--foreground) 75%, transparent);
+  font-size: 13px;
+  cursor: pointer;
 }
 
-.onboarding-gate-label {
-  display: block;
-  margin-bottom: 8px;
+.onboarding-gate-back:hover,
+.onboarding-gate-back:focus-visible {
+  background: color-mix(in srgb, var(--background) 45%, transparent);
+  outline: none;
+}
+
+.onboarding-gate-auth-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.onboarding-gate-auth-name {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.onboarding-gate-auth-hint {
+  margin: 0;
+  max-width: 28ch;
+  font-size: 13px;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--foreground) 68%, transparent);
+}
+
+.onboarding-gate-auth-form,
+.onboarding-gate-create-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.onboarding-gate-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.onboarding-gate-field-label {
   font-size: 12px;
   font-weight: 500;
-  color: var(--muted-foreground);
-}
-
-.onboarding-gate-create-row {
-  display: flex;
-  gap: 8px;
+  color: color-mix(in srgb, var(--foreground) 65%, transparent);
 }
 
 .onboarding-gate-input {
-  flex: 1;
+  width: 100%;
   min-width: 0;
-  height: 36px;
+  height: 40px;
   padding: 0 12px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--background);
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--foreground) 18%, transparent);
+  background: color-mix(in srgb, var(--background) 55%, transparent);
   font-size: 14px;
+  color: var(--foreground);
 }
 
+.onboarding-gate-password-wrap {
+  position: relative;
+}
+
+.onboarding-gate-password-input {
+  padding-right: 40px;
+}
+
+.onboarding-gate-password-input:focus-visible,
 .onboarding-gate-input:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--ring) 45%, transparent);
-  outline-offset: 1px;
+  outline: none;
+  border-color: hsl(24 85% 52%);
+  box-shadow: 0 0 0 1px hsl(24 85% 52% / 0.45);
+}
+
+.onboarding-gate-password-peek {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  padding: 6px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: color-mix(in srgb, var(--foreground) 55%, transparent);
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+
+.onboarding-gate-password-peek:hover,
+.onboarding-gate-password-peek:focus-visible {
+  color: var(--foreground);
+  outline: none;
+}
+
+.onboarding-gate-submit {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.onboarding-gate-error {
+  margin: 0;
+  font-size: 13px;
+  color: hsl(0 70% 58%);
+  text-align: center;
 }
 
 .onboarding-gate-remember {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   font-size: 13px;
-  color: var(--muted-foreground);
+  color: color-mix(in srgb, var(--foreground) 65%, transparent);
   cursor: pointer;
   user-select: none;
+}
+
+.onboarding-gate-brand {
+  margin: auto 0 0;
+  padding-top: 32px;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: color-mix(in srgb, var(--foreground) 55%, transparent);
+  text-align: center;
 }
 
 .onboarding-provider-dialog {

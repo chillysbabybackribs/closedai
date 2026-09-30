@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import type { ChatProvider } from '../../shared/chat.js'
 import type { ChatSnapshot } from '../../shared/chat.js'
+import { hashLocalProfilePassword, verifyLocalProfilePassword } from '../../shared/local-profile-password.js'
 import type { OnboardingSettings } from '../../shared/onboarding.js'
 import {
   completedOnboardingSettings,
@@ -12,12 +13,21 @@ import {
   writeOnboardingSettings
 } from './onboarding-settings.js'
 
+export type SessionGateSignInResult =
+  | { ok: true }
+  | { ok: false; reason: 'unknown-user' | 'wrong-password' | 'password-required' }
+
+export type SessionGateCreateResult =
+  | { ok: true }
+  | { ok: false; reason: 'name-required' | 'password-required' | 'password-too-short' }
+
 export type OnboardingController = {
   settings: OnboardingSettings
   showSessionGate: boolean
   showProviderSetup: boolean
-  signIn: (userId: string) => void
-  createAccount: (displayName: string) => void
+  signIn: (userId: string, password: string) => Promise<SessionGateSignInResult>
+  createAccount: (displayName: string, password: string) => Promise<SessionGateCreateResult>
+  setProfilePassword: (userId: string, password: string) => Promise<SessionGateSignInResult>
   setKeepSignedIn: (value: boolean) => void
   completeProviderSetup: () => void
   skipProviderSetup: () => void
@@ -95,19 +105,50 @@ export function useOnboarding(chatSnapshot: ChatSnapshot, legacyBypass: boolean)
     })
   }, [])
 
-  const signIn = useCallback((userId: string) => {
-    setSettings((current) => {
-      if (!current.users.some((user) => user.id === userId)) return current
+  const signIn = useCallback(async (userId: string, password: string): Promise<SessionGateSignInResult> => {
+    const current = readOnboardingSettings(window.localStorage) ?? settings
+    const user = current.users.find((entry) => entry.id === userId)
+    if (!user) return { ok: false, reason: 'unknown-user' }
+    if (!user.passwordHash) return { ok: false, reason: 'password-required' }
+    if (!password) return { ok: false, reason: 'wrong-password' }
+    const valid = await verifyLocalProfilePassword(password, user.passwordHash)
+    if (!valid) return { ok: false, reason: 'wrong-password' }
+    setSettings(() => {
       const next = unlockSession(current, userId, current.keepSignedIn)
       writeOnboardingSettings(window.localStorage, next)
       return next
     })
-  }, [])
+    return { ok: true }
+  }, [settings])
 
-  const createAccount = useCallback((displayName: string) => {
-    setSettings((current) => {
-      const id = crypto.randomUUID()
-      const user = createLocalUser(displayName, id)
+  const setProfilePassword = useCallback(async (userId: string, password: string): Promise<SessionGateSignInResult> => {
+    if (!password.trim()) return { ok: false, reason: 'wrong-password' }
+    const current = readOnboardingSettings(window.localStorage) ?? settings
+    const user = current.users.find((entry) => entry.id === userId)
+    if (!user) return { ok: false, reason: 'unknown-user' }
+    if (user.passwordHash) return { ok: false, reason: 'wrong-password' }
+    const passwordHash = await hashLocalProfilePassword(password)
+    const users = current.users.map((entry) => (
+      entry.id === userId ? { ...entry, passwordHash } : entry
+    ))
+    setSettings(() => {
+      const next = unlockSession({ ...current, users }, userId, current.keepSignedIn)
+      writeOnboardingSettings(window.localStorage, next)
+      return next
+    })
+    return { ok: true }
+  }, [settings])
+
+  const createAccount = useCallback(async (displayName: string, password: string): Promise<SessionGateCreateResult> => {
+    const trimmed = displayName.trim()
+    if (!trimmed) return { ok: false, reason: 'name-required' }
+    if (!password) return { ok: false, reason: 'password-required' }
+    if (password.length < 4) return { ok: false, reason: 'password-too-short' }
+    const current = readOnboardingSettings(window.localStorage) ?? settings
+    const id = crypto.randomUUID()
+    const passwordHash = await hashLocalProfilePassword(password)
+    const user = createLocalUser(trimmed, id, passwordHash)
+    setSettings(() => {
       const next = unlockSession(
         { ...current, users: [...current.users, user] },
         id,
@@ -116,7 +157,8 @@ export function useOnboarding(chatSnapshot: ChatSnapshot, legacyBypass: boolean)
       writeOnboardingSettings(window.localStorage, next)
       return next
     })
-  }, [])
+    return { ok: true }
+  }, [settings])
 
   const setKeepSignedIn = useCallback((value: boolean) => {
     setSettings((current) => {
@@ -200,6 +242,7 @@ export function useOnboarding(chatSnapshot: ChatSnapshot, legacyBypass: boolean)
     showSessionGate,
     showProviderSetup,
     signIn,
+    setProfilePassword,
     createAccount,
     setKeepSignedIn,
     completeProviderSetup,

@@ -392,6 +392,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
           backdropStatus={backdropStatus}
           onKeepSignedInChange={onboarding.setKeepSignedIn}
           onSignIn={onboarding.signIn}
+          onSetProfilePassword={onboarding.setProfilePassword}
           onCreateAccount={onboarding.createAccount}
         />
       )}
