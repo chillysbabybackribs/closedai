@@ -305,3 +305,89 @@ test('spine returns turn-shaped history prose without loading when index covers 
   assert.equal(result.turns[0]?.assistant?.text, 'Answer two')
   await assert.rejects(h.memory.spine(caller, { scope: 'current', chatId: 'older' }), /history/)
 })
+
+function indexedHarness(threadId: string | null = null) {
+  const h = harness()
+  const target = addHistory(h.store, 'indexed', 30, { codexThreadId: threadId, threadId })
+  const index = ChatMemoryIndex.inMemory(DEFAULT_APP_SETTINGS)
+  index.upsert(target, [
+    { type: 'user', id: 'question', turnId: 'old', text: 'Retained question' },
+    { type: 'tool', id: 'evidence', turnId: 'old', label: 'Retained lookup', detail: '', status: 'completed', output: 'Raw evidence' },
+    { type: 'assistant', id: 'answer', turnId: 'old', text: 'Retained answer '.repeat(100), phase: 'final_answer', streaming: false }
+  ])
+  const memory = new ChatMemory(h.store, (id) => id === 'p' ? h.surface : null, index)
+  return { ...h, memory, index }
+}
+
+test('search hits with missing thread ids remain readable, with explicit evidence availability', async () => {
+  const h = indexedHarness()
+  const hits = h.index.search({ query: 'Retained' }, 'p', (id) => h.store.get(id)).hits
+  assert.equal(hits.length, 3)
+  for (const hit of hits) {
+    assert.deepEqual(hit.evidenceAvailability, { status: 'unavailable', reason: 'missing-thread' })
+    const recalled = await h.memory.recall(caller, { scope: 'history', chatId: hit.chatId, itemId: hit.itemId })
+    assert.equal(recalled.matches[0]?.itemId, hit.itemId)
+    assert.equal(recalled.provenance, 'index')
+    assert.equal(recalled.threadId, null)
+    assert.deepEqual(recalled.evidenceAvailability, hit.evidenceAvailability)
+  }
+  const spine = await h.memory.spine(caller, { scope: 'history', chatId: 'indexed' })
+  assert.equal(spine.turns[0]?.user, 'Retained question')
+  assert.equal(spine.evidenceAvailability?.reason, 'missing-thread')
+  const first = await h.memory.recall(caller, { scope: 'history', chatId: 'indexed', itemId: 'answer' })
+  const next = await h.memory.recall(caller, { scope: 'history', chatId: 'indexed', itemId: 'answer', offset: first.matches[0]!.nextOffset! })
+  assert.equal(next.matches[0]?.offset, 800)
+  assert.equal(h.reads(), 0)
+})
+
+test('provider failures and missing items fall back to retained text without inventing raw evidence', async () => {
+  const h = indexedHarness('provider-thread')
+  h.setRead(async () => { throw new Error('Provider history unavailable') })
+  h.store.update('indexed', { messageSentAt: 40 }) // Force the spine to try provider history.
+  const spine = await h.memory.spine(caller, { scope: 'history', chatId: 'indexed' })
+  assert.equal(spine.evidenceAvailability?.reason, 'provider-read-failed')
+  const recall = await h.memory.recall(caller, { scope: 'history', chatId: 'indexed', itemId: 'evidence' })
+  assert.equal(recall.matches[0]?.role, 'evidence')
+  assert.doesNotMatch(recall.matches[0]!.text, /Raw evidence/)
+  assert.equal(recall.evidenceAvailability?.reason, 'provider-read-failed')
+  h.setRead(async (threadId) => ({ threadId, threadName: null, items: [] }))
+  const missing = await h.memory.recall(caller, { scope: 'history', chatId: 'indexed', itemId: 'answer' })
+  assert.equal(missing.evidenceAvailability?.reason, 'item-not-found')
+  assert.equal(missing.matches[0]?.itemId, 'answer')
+})
+
+test('index fallback cannot bypass archival, cancellation, changed threads, or disabled memory', async () => {
+  const h = indexedHarness('provider-thread')
+  h.setRead(async () => {
+    h.store.update('indexed', { archived: true })
+    throw new Error('Provider unavailable')
+  })
+  await assert.rejects(h.memory.recall(caller, { scope: 'history', chatId: 'indexed' }), /History chat changed/)
+  assert.deepEqual(h.index.search({ query: 'Retained' }, 'p', (id) => h.store.get(id)).hits, [])
+  h.store.update('indexed', { archived: false })
+  const controller = new AbortController()
+  h.setRead(async () => { controller.abort(); throw new Error('Provider unavailable') })
+  await assert.rejects(h.memory.recall({ ...caller, signal: controller.signal }, { scope: 'history', chatId: 'indexed' }), /cancelled/)
+  h.setRead(async () => { h.store.update('indexed', { codexThreadId: 'replacement' }); throw new Error('Provider unavailable') })
+  await assert.rejects(h.memory.recall(caller, { scope: 'history', chatId: 'indexed' }), /History chat changed/)
+  h.store.update('indexed', { codexThreadId: null })
+  const disabled = new ChatMemory(h.store, () => h.surface, h.index, () => false)
+  await assert.rejects(disabled.recall(caller, { scope: 'history', chatId: 'indexed' }), /No matching conversation/)
+})
+
+test('mismatched provider responses never fall back to the index', async () => {
+  const h = indexedHarness('provider-thread')
+  h.store.update('indexed', { messageSentAt: 40 })
+  h.setRead(async () => ({ threadId: 'wrong-thread', threadName: null, items: [] }))
+  await assert.rejects(h.memory.recall(caller, { scope: 'history', chatId: 'indexed' }), /different history thread/)
+  await assert.rejects(h.memory.spine(caller, { scope: 'history', chatId: 'indexed' }), /different history thread/)
+})
+
+test('exact index recall reads orphaned lines after their user turn was trimmed', async () => {
+  const h = indexedHarness()
+  h.index.getRecord('indexed')!.lines = [{ itemId: 'orphan', role: 'assistant', text: 'Retained orphan answer' }]
+  const hit = h.index.search({ query: 'orphan' }, 'p', (id) => h.store.get(id)).hits[0]!
+  const result = await h.memory.recall(caller, { scope: 'history', chatId: hit.chatId, itemId: hit.itemId })
+  assert.equal(result.matches[0]?.text, 'Retained orphan answer')
+  assert.equal(result.evidenceAvailability?.reason, 'missing-thread')
+})

@@ -101,6 +101,7 @@ export function peerChatTools(getDirectory: () => PeerChatDirectory | null): Too
         name: 'search',
         deferLoading: true,
         description:
+          'Hits include evidenceAvailability: not-checked means source availability has not been verified; unavailable means retained index text only. Read exact hits with recall(scope=history, chat_id, item_id), including evidence labels. ' +
           'Cross-chat phrase search over the global hot memory index (default: the 10 most recently active chats). ' +
           'Matches conversation spine text (user/assistant/plan and compact tool/command labels), not raw tool output. ' +
           'Results are historical; use spine or recall(scope=history, chat_id=..., item_id=...) for depth (chat_id works for open ' +

@@ -11,6 +11,7 @@ const OMITTED_ANSWER = '[Older answer omitted'
 
 export type SpineTranscriptMeta = {
   threadId: string | null
+  evidenceAvailability?: ChatSpineResult['evidenceAvailability']
   title: string | null
   cwd: string
   lastActivityAt: number
@@ -50,6 +51,7 @@ export function spineFromTurns(
   const nextBeforeUserItemId = hasMore ? page[0]?.userItemId ?? null : null
   return {
     ...(meta.chatId ? { chatId: meta.chatId } : {}),
+    ...(meta.evidenceAvailability ? { evidenceAvailability: meta.evidenceAvailability } : {}),
     threadId: meta.threadId,
     title: meta.title,
     cwd: meta.cwd,
@@ -81,6 +83,7 @@ function fitSpineBudget(
   const draft = [...turns]
   const shell = (page: ChatSpineTurn[]) => JSON.stringify({
     ...(meta.chatId ? { chatId: meta.chatId } : {}),
+    ...(meta.evidenceAvailability ? { evidenceAvailability: meta.evidenceAvailability } : {}),
     threadId: meta.threadId,
     title: meta.title,
     cwd: meta.cwd,

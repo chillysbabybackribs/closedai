@@ -1,5 +1,5 @@
 import type { ChatTranscriptItem } from '../../shared/chat.js'
-import type { ChatMemoryCheckpoint, ChatRecallRequest, ChatRecallResult } from '../../shared/chat-memory.js'
+import type { ChatEvidenceAvailability, ChatMemoryCheckpoint, ChatRecallRequest, ChatRecallResult } from '../../shared/chat-memory.js'
 
 const MAX_RECALL_CHARS = 16_000
 const EXCERPT_CHARS = 800
@@ -26,17 +26,17 @@ export function recallTranscript(
     if (index < 0 || index >= end) throw new Error('Recall cursor is outside the available history')
     end = index
   }
-  return recallEntries(items.slice(0, end).flatMap((item) => {
-    const text = recallText(item)
-    return text === null ? [] : [{ id: item.id, turnId: item.turnId, type: item.type, text }]
-  }), threadId, checkpoint, { ...request, beforeItemId: undefined }, throughItemId)
+  return recallEntries(items.slice(0, end).map((item) => ({
+    id: item.id, turnId: item.turnId, type: item.type, text: () => recallText(item)
+  })), threadId, checkpoint, { ...request, beforeItemId: undefined }, throughItemId)
 }
 
 /** Shared excerpt budgeting for transcripts and retained index lines. */
 export function recallEntries(
-  items: Array<{ id: string; turnId: string | null; type: string; text: string }>,
+  items: Array<{ id: string; turnId: string | null; type: string; text: string | (() => string | null) }>,
   threadId: string | null, checkpoint: ChatMemoryCheckpoint | null,
-  request: ChatRecallRequest, throughItemId: string | null
+  request: ChatRecallRequest, throughItemId: string | null,
+  metadata?: { provenance: 'index'; evidenceAvailability: ChatEvidenceAvailability }
 ): ChatRecallResult {
   let end = items.length
   if (request.beforeItemId) {
@@ -50,7 +50,7 @@ export function recallEntries(
   const types = new Set<string>(request.types?.length ? request.types : ['user', 'assistant'])
   const result: ChatRecallResult = {
     ...(request.scope === 'history' && request.chatId ? { chatId: request.chatId } : {}),
-    threadId, checkpoint, matches: [], hasMore: false, nextBeforeItemId: null,
+    ...metadata, threadId, checkpoint, matches: [], hasMore: false, nextBeforeItemId: null,
     throughItemId, trust: 'historical-data'
   }
   for (let index = end - 1; index >= 0; index--) {
@@ -58,7 +58,8 @@ export function recallEntries(
     if (item.id.length > 256) continue
     if (request.itemId && item.id !== request.itemId) continue
     if (!request.itemId && !types.has(item.type)) continue
-    const text = item.text
+    const text = typeof item.text === 'function' ? item.text() : item.text
+    if (text === null) continue
     const match = query ? text.toLowerCase().indexOf(query) : 0
     if (match < 0) continue
     const offset = request.itemId ? Math.max(0, Math.floor(request.offset ?? 0)) : Math.max(0, match - 160)

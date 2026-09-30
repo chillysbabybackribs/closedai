@@ -103,3 +103,16 @@ test('ChatMemoryIndex persists manifest and chat files', async () => {
   await reopened.load()
   assert.equal(reopened.search({ query: 'persisted' }).hits[0]?.chatId, 'persist')
 })
+
+test('search excludes deleted and archived records before limiting and flags unverified evidence', () => {
+  const index = ChatMemoryIndex.inMemory(settings)
+  const available = record('available', 100)
+  const archived = { ...record('archived', 200), archived: true }
+  index.upsert(available, [userItem('a', 'needle')])
+  index.upsert({ ...archived, archived: false }, [userItem('b', 'needle')])
+  index.upsert(record('deleted', 300), [userItem('c', 'needle')])
+  const records = new Map([['available', available], ['archived', archived]])
+  const result = index.search({ query: 'needle', limit: 1 }, null, (id) => records.get(id))
+  assert.equal(result.hits[0]?.chatId, 'available')
+  assert.deepEqual(result.hits[0]?.evidenceAvailability, { status: 'not-checked' })
+})

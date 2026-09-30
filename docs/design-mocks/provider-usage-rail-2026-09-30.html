@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Provider usage rail — component options — 2026-09-30</title>
+<!--
+  Every chip below is the rendered output of a registry component the repo already uses or can
+  add from components.json (shadcn new-york, @kibo-ui, @magicui). The class names in the markup
+  are the real Tailwind classes those components emit; the <style> block below only reproduces
+  them so the page renders without a build. Tokens are copied from src/renderer/styles.css (dark).
+  Nothing here is hand-rolled chrome: no custom ring, no custom pill.
+-->
+<style>
+  :root {
+    color-scheme: dark;
+    --font-sans: "OpenAI Sans", "Inter Variable", Inter, ui-sans-serif, system-ui, sans-serif;
+    --surface-card: #1a1a1b;
+    --surface-raised: #232325;
+    --popover: #1c1c1e;
+    --foreground: #eeeef0;
+    --muted-foreground: #98989c;
+    --primary: #eeeef0;
+    --border: rgb(255 255 255 / 12%);
+    --hairline: rgb(255 255 255 / 8%);
+    --hairline-strong: rgb(255 255 255 / 14%);
+    --chrome-control-fg: #8c8c8e;
+    --chrome-control-strong: #f0f0f2;
+    --chrome-control-hover: rgb(255 255 255 / 7%);
+    --accent: rgb(255 255 255 / 7%);
+    --ok-ink: #65b98a;
+    --low-ink: #dfbd79;
+    --critical-ink: #eaa08d;
+    --tab-accent: #4f8cff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 28px 32px 80px; background: #070708; color: var(--foreground);
+    font-family: var(--font-sans); font-size: 13px; -webkit-font-smoothing: antialiased;
+  }
+  h1 { font-size: 15px; font-weight: 600; margin: 0 0 4px; }
+  .lede { color: var(--muted-foreground); margin: 0 0 22px; max-width: 860px; line-height: 1.45; }
+  .frame { margin: 0 0 26px; max-width: 1040px; }
+  .frame h2 { font-size: 12px; font-weight: 600; color: var(--muted-foreground); text-transform: uppercase; letter-spacing: .04em; margin: 0 0 6px; display: flex; gap: 10px; align-items: baseline; }
+  .frame h2 code { text-transform: none; letter-spacing: 0; font-size: 11px; color: #c7c7cb; background: rgb(255 255 255 / 6%); padding: 1px 6px; border-radius: 4px; font-weight: 500; }
+  .frame p.note { color: var(--muted-foreground); margin: 6px 0 0 2px; line-height: 1.45; max-width: 860px; }
+  .frame .good { color: var(--ok-ink); }
+  .frame .bad { color: var(--critical-ink); }
+  code { font-family: ui-monospace, "JetBrains Mono", monospace; }
+
+  /* ---- The stage: wallpaper + a tile edge behind the strip, so the glass reads as in the app. */
+  .stage {
+    position: relative; height: 118px; border-radius: 10px; overflow: hidden;
+    background:
+      radial-gradient(120% 90% at 78% 0%, #6b4a2e 0%, #3a2416 46%, #241710 100%);
+  }
+  .stage::before {
+    content: ""; position: absolute; left: 24px; right: 24px; top: 0; height: 74px;
+    background: #141416; border-radius: 0 0 10px 10px; border: 1px solid rgb(255 255 255 / 9%); border-top: 0;
+  }
+  /* The real dock strip: DOCK_HEIGHT 44, fill bg-popover/85 + backdrop-blur-md, hairline-strong edge. */
+  .dock {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 44px;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 12px;
+    background: rgb(28 28 30 / 85%); backdrop-filter: blur(12px);
+    border-top: 1px solid var(--hairline-strong);
+  }
+  .dock .left { display: flex; align-items: center; gap: 2px; }
+  .dock .rail { display: flex; align-items: center; gap: 2px; margin-left: 10px; margin-right: auto; }
+  .tray {
+    position: absolute; left: 58%; bottom: 12px; transform: translateX(-50%);
+    display: flex; gap: 5px; align-items: flex-end;
+  }
+  .tray .app { width: 40px; height: 40px; border-radius: 11px; background: rgb(255 255 255 / 8%); border: 1px solid rgb(255 255 255 / 10%); display: grid; place-items: center; color: #d0d0d3; }
+  .tray .app.start { background: rgb(79 140 255 / 22%); border-color: rgb(79 140 255 / 40%); }
+  .tray .app svg { width: 18px; height: 18px; }
+  .lucide { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* ---- shadcn Button ------------------------------------------------------------------------
+     variant="ghost": hover:bg-accent hover:text-accent-foreground
+     size="icon-sm": size-8         size="xs": h-6 gap-1 rounded-md px-2 text-xs
+     size="sm": h-8 gap-1.5 px-3    base: inline-flex items-center justify-center rounded-md font-medium */
+  [data-slot="button"] {
+    display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+    border: 0; border-radius: 6px; background: transparent; color: var(--chrome-control-fg);
+    font: inherit; font-weight: 500; white-space: nowrap; cursor: default; padding: 0;
+  }
+  [data-slot="button"]:hover { background: var(--accent); color: var(--chrome-control-strong); }
+  [data-size="icon-sm"] { width: 32px; height: 32px; }
+  [data-size="xs"] { height: 24px; gap: 4px; padding: 0 8px; font-size: 12px; }
+  [data-size="sm"] { height: 32px; gap: 6px; padding: 0 12px; font-size: 12px; }
+  [data-slot="button"] .mark { width: 14px; height: 14px; flex: none; }
+  [data-slot="button"][disabled] { opacity: .5; }
+  .num { font-variant-numeric: tabular-nums; font-size: 11px; letter-spacing: .01em; }
+  .num.big { font-size: 12px; }
+  .plan { font-size: 11px; color: var(--muted-foreground); }
+  /* level ink applied to the number only; the provider mark keeps its brand colour */
+  [data-level="low"] .num, [data-level="low"] .lvl { color: var(--low-ink); }
+  [data-level="critical"] .num, [data-level="critical"] .lvl,
+  [data-level="exhausted"] .num, [data-level="exhausted"] .lvl { color: var(--critical-ink); }
+  [data-level="stale"] .num { color: var(--muted-foreground); }
+
+  /* ---- shadcn Badge -----------------------------------------------------------------------
+     base: inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium
+     variant="secondary": bg-secondary text-secondary-foreground   variant="outline": border-border */
+  [data-slot="badge"] {
+    display: inline-flex; align-items: center; gap: 4px; border-radius: 9999px;
+    border: 1px solid transparent; padding: 1px 8px; font-size: 11px; font-weight: 500; line-height: 16px;
+    font-variant-numeric: tabular-nums;
+  }
+  [data-slot="badge"][data-variant="secondary"] { background: rgb(255 255 255 / 10%); color: var(--foreground); }
+  [data-slot="badge"][data-variant="outline"] { border-color: var(--border); color: var(--foreground); }
+
+  /* ---- shadcn Progress ----------------------------------------------------------------------
+     Root: relative h-2 w-full overflow-hidden rounded-full bg-primary/20 (className overrides h-1 w-6)
+     Indicator: h-full w-full bg-primary  style=translateX(-(100-value)%) */
+  [data-slot="progress"] { position: relative; overflow: hidden; border-radius: 9999px; background: rgb(238 238 240 / 20%); height: 3px; width: 20px; flex: none; }
+  [data-slot="progress-indicator"] { display: block; height: 100%; width: 100%; background: var(--primary); border-radius: 9999px; }
+  [data-level="low"] [data-slot="progress-indicator"] { background: var(--low-ink); }
+  [data-level="critical"] [data-slot="progress-indicator"], [data-level="exhausted"] [data-slot="progress-indicator"] { background: var(--critical-ink); }
+  [data-level="stale"] [data-slot="progress-indicator"] { background: var(--muted-foreground); opacity: .6; }
+
+  /* ---- shadcn Separator orientation="vertical": w-px h-full bg-border */
+  [data-slot="separator"][data-orientation="vertical"] { width: 1px; height: 16px; background: var(--border); flex: none; margin: 0 4px; }
+
+  /* ---- @kibo-ui Status › StatusIndicator: relative flex size-2 rounded-full + animate-ping halo */
+  .status-indicator { position: relative; display: inline-flex; width: 6px; height: 6px; flex: none; }
+  .status-indicator > span { position: absolute; inset: 0; border-radius: 9999px; }
+  .status-indicator .ping { animation: ping 1.4s cubic-bezier(0, 0, .2, 1) infinite; opacity: .75; }
+  .status-indicator .dot { position: relative; display: inline-flex; width: 6px; height: 6px; border-radius: 9999px; }
+  .degraded .status-indicator > span { background: var(--low-ink); }
+  .offline  .status-indicator > span { background: var(--critical-ink); }
+  .online   .status-indicator > span { background: var(--ok-ink); }
+  @keyframes ping { 75%, 100% { transform: scale(2.4); opacity: 0; } }
+
+  /* ---- @magicui AnimatedCircularProgressBar: viewBox 100, r=45, stroke 10, gap 5%.
+     Shown at className="size-4 text-[0px]" so it is a gauge beside the number, not around it. */
+  .gauge { width: 16px; height: 16px; flex: none; }
+  .gauge circle { fill: none; stroke-width: 12; stroke-linecap: round; }
+  .gauge .secondary { stroke: rgb(238 238 240 / 20%); }
+  .gauge .primary { stroke: var(--primary); }
+  [data-level="low"] .gauge .primary { stroke: var(--low-ink); }
+  [data-level="critical"] .gauge .primary, [data-level="exhausted"] .gauge .primary { stroke: var(--critical-ink); }
+  [data-level="stale"] .gauge .primary { stroke: var(--muted-foreground); }
+
+  /* ---- shadcn HoverCard content: bg-popover text-popover-foreground rounded-md border shadow-lg;
+     app adds .dock-panel (12px radius, hairline-strong edge, inset sheen) */
+  .hover-card {
+    position: absolute; left: 118px; bottom: 54px; width: 300px; padding: 12px;
+    background: var(--popover); border: 1px solid var(--hairline-strong); border-radius: 12px;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 3.5%), 0 16px 48px rgb(0 0 0 / 28%);
+    font-size: 12px;
+  }
+  .hover-card header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .hover-card header .mark { width: 16px; height: 16px; }
+  .hover-card header b { font-weight: 600; font-size: 13px; }
+  .hover-card header span { margin-left: auto; color: var(--muted-foreground); font-size: 11px; }
+  .hover-card .row { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; padding: 8px 0; border-top: 1px solid var(--hairline); align-items: center; }
+  .hover-card .row .num { font-size: 12px; }
+  .hover-card .row [data-slot="progress"] { grid-column: 1 / -1; width: 100%; height: 4px; }
+  .hover-card .row small { grid-column: 1 / -1; color: var(--muted-foreground); font-size: 11px; }
+  .hover-card footer { margin-top: 8px; color: var(--muted-foreground); font-size: 10.5px; line-height: 1.45; }
+  .stage.tall { height: 310px; }
+
+  /* Two-line chip (option E): plan over percent, still inside Button size="sm" */
+  .stack { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.1; gap: 1px; }
+  .stack .plan { font-size: 9.5px; letter-spacing: .02em; text-transform: uppercase; }
+  .stack .num { font-size: 11.5px; color: var(--chrome-control-strong); }
+
+  /* Current build, for comparison: the 22px ring with 8px digits */
+  .cur-ring { position: relative; width: 22px; height: 22px; display: inline-grid; place-items: center; }
+  .cur-ring svg { width: 22px; height: 22px; transform: rotate(-90deg); }
+  .cur-ring circle { fill: none; stroke-width: 1.5; }
+  .cur-ring .t { stroke: rgb(238 238 240 / 14%); }
+  .cur-ring .f { stroke: var(--muted-foreground); stroke-linecap: round; }
+  .cur-ring b { position: absolute; font-size: 8px; font-weight: 600; color: var(--chrome-control-strong); }
+
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; color: var(--muted-foreground); font-size: 11.5px; margin: 6px 0 0 2px; }
+  .legend b { color: var(--foreground); font-weight: 500; }
+  .verdict { max-width: 860px; margin-top: 26px; padding: 14px 16px; border: 1px solid var(--hairline-strong); border-radius: 10px; background: #111113; line-height: 1.5; }
+  .verdict h3 { margin: 0 0 6px; font-size: 13px; }
+</style>
+</head>
+<body>
+<h1>Provider subscription rail — options built from registry components</h1>
+<p class="lede">Each strip is the real dock (44 px, popover glass at 85 %, hairline top edge) with the back/forward
+buttons and tray in place. Chips are composed only from components in <code>components.json</code>:
+shadcn <b>Button</b>, <b>Badge</b>, <b>Progress</b>, <b>Separator</b>, <b>HoverCard</b>; @kibo-ui <b>Status</b>;
+@magicui <b>AnimatedCircularProgressBar</b> and <b>NumberTicker</b>. Every row shows the same data so the
+options compare directly: Codex 72 % (normal), Claude 18 % (low), Antigravity 6 % (critical), Cursor plan only.</p>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="gem" x1="2" y1="12" x2="22" y2="12" gradientUnits="userSpaceOnUse"><stop stop-color="#4285F4"/><stop offset=".5" stop-color="#9B72CB"/><stop offset="1" stop-color="#D96570"/></linearGradient>
+    <linearGradient id="cur" x1="12" y1="2" x2="12" y2="22" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#E4E4E7"/><stop offset="1" stop-color="#52525B"/></linearGradient>
+    <symbol id="m-codex" viewBox="0 0 256 260"><path fill="currentColor" d="M239.184 106.203a64.716 64.716 0 0 0-5.576-53.103C219.452 28.459 191 15.784 163.213 21.74A65.586 65.586 0 0 0 52.096 45.22a64.716 64.716 0 0 0-43.23 31.36c-14.31 24.602-11.061 55.634 8.033 76.74a64.665 64.665 0 0 0 5.525 53.102c14.174 24.65 42.644 37.324 70.446 31.36a64.72 64.72 0 0 0 48.754 21.744c28.481.025 53.714-18.361 62.414-45.481a64.767 64.767 0 0 0 43.229-31.36c14.137-24.558 10.875-55.423-8.083-76.483Zm-97.56 136.338a48.397 48.397 0 0 1-31.105-11.255l1.535-.87 51.67-29.825a8.595 8.595 0 0 0 4.247-7.367v-72.85l21.845 12.636c.218.111.37.32.409.563v60.367c-.056 26.818-21.783 48.545-48.601 48.601Zm-104.466-44.61a48.345 48.345 0 0 1-5.781-32.589l1.534.921 51.722 29.826a8.339 8.339 0 0 0 8.441 0l63.181-36.425v25.221a.87.87 0 0 1-.358.665l-52.335 30.184c-23.257 13.398-52.97 5.431-66.404-17.803ZM23.549 85.38a48.499 48.499 0 0 1 25.58-21.333v61.39a8.288 8.288 0 0 0 4.195 7.316l62.874 36.272-21.845 12.636a.819.819 0 0 1-.767 0L41.353 151.53c-23.211-13.454-31.171-43.144-17.804-66.405v.256Zm179.466 41.695-63.08-36.63L161.73 77.86a.819.819 0 0 1 .768 0l52.233 30.184a48.6 48.6 0 0 1-7.316 87.635v-61.391a8.544 8.544 0 0 0-4.4-7.213Zm21.742-32.69-1.535-.922-51.619-30.081a8.39 8.39 0 0 0-8.492 0L99.98 99.808V74.587a.716.716 0 0 1 .307-.665l52.233-30.133a48.652 48.652 0 0 1 72.236 50.391v.205ZM88.061 139.097l-21.845-12.585a.87.87 0 0 1-.41-.614V65.685a48.652 48.652 0 0 1 79.757-37.346l-1.535.87-51.67 29.825a8.595 8.595 0 0 0-4.246 7.367l-.051 72.697Zm11.868-25.58 28.138-16.217 28.188 16.218v32.434l-28.086 16.218-28.188-16.218-.052-32.434Z"/></symbol>
+    <symbol id="m-claude" viewBox="0 0 256 257"><path fill="#D97757" d="m50.228 170.321 50.357-28.257.843-2.463-.843-1.361h-2.462l-8.426-.518-28.775-.778-24.952-1.037-24.175-1.296-6.092-1.297L0 125.796l.583-3.759 5.12-3.434 7.324.648 16.202 1.101 24.304 1.685 17.629 1.037 26.118 2.722h4.148l.583-1.685-1.426-1.037-1.101-1.037-25.147-17.045-27.22-18.017-14.258-10.37-7.713-5.25-3.888-4.925-1.685-10.758 7-7.713 9.397.649 2.398.648 9.527 7.323 20.35 15.75L94.817 91.9l3.889 3.24 1.555-1.102.195-.777-1.75-2.917-14.453-26.118-15.425-26.572-6.87-11.018-1.814-6.61c-.648-2.723-1.102-4.991-1.102-7.778l7.972-10.823L71.42 0 82.05 1.426l4.472 3.888 6.61 15.101 10.694 23.786 16.591 32.34 4.861 9.592 2.592 8.879.973 2.722h1.685v-1.556l1.36-18.211 2.528-22.36 2.463-28.776.843-8.1 4.018-9.722 7.971-5.25 6.222 2.981 5.12 7.324-.713 4.73-3.046 19.768-5.962 30.98-3.889 20.739h2.268l2.593-2.593 10.499-13.934 17.628-22.036 7.778-8.749 9.073-9.657 5.833-4.601h11.018l8.1 12.055-3.628 12.443-11.342 14.388-9.398 12.184-13.48 18.147-8.426 14.518.778 1.166 2.01-.194 30.46-6.481 16.462-2.982 19.637-3.37 8.88 4.148.971 4.213-3.5 8.62-20.998 5.184-24.628 4.926-36.682 8.685-.454.324.519.648 16.526 1.555 7.065.389h17.304l32.21 2.398 8.426 5.574 5.055 6.805-.843 5.184-12.962 6.611-17.498-4.148-40.83-9.721-14-3.5h-1.944v1.167l11.666 11.406 21.387 19.314 26.767 24.887 1.36 6.157-3.434 4.86-3.63-.518-23.526-17.693-9.073-7.972-20.545-17.304h-1.36v1.814l4.73 6.935 25.017 37.59 1.296 11.536-1.814 3.76-6.481 2.268-7.13-1.297-14.647-20.544-15.1-23.138-12.185-20.739-1.49.843-7.194 77.448-3.37 3.953-7.778 2.981-6.48-4.925-3.436-7.972 3.435-15.749 4.148-20.544 3.37-16.333 3.046-20.285 1.815-6.74-.13-.454-1.49.194-15.295 20.999-23.267 31.433-18.406 19.702-4.407 1.75-7.648-3.954.713-7.064 4.277-6.286 25.47-32.405 15.36-20.092 9.917-11.6-.065-1.686h-.583L44.07 198.125l-12.055 1.555-5.185-4.86.648-7.972 2.463-2.593 20.35-13.999-.064.065Z"/></symbol>
+    <symbol id="m-gemini" viewBox="0 0 24 24"><path fill="url(#gem)" d="M12 1c.53 5.94 4.06 9.47 10 10-5.94.53-9.47 4.06-10 10-.53-5.94-4.06-9.47-10-10C7.94 10.47 11.47 6.94 12 1Z"/></symbol>
+    <symbol id="m-cursor" viewBox="0 0 24 24"><path fill="url(#cur)" opacity=".45" d="M3 7 12 2l9 5-9 5Z"/><path fill="url(#cur)" opacity=".75" d="M3 7l9 5v10l-9-5Z"/><path fill="url(#cur)" d="M21 7l-9 5v10l9-5Z"/></symbol>
+    <symbol id="i-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+    <symbol id="i-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"/></symbol>
+    <symbol id="i-gauge" viewBox="0 0 24 24"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+    <symbol id="i-chats" viewBox="0 0 24 24"><path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4c0-1.1.9-2 2-2h8a2 2 0 0 1 2 2z"/><path d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20M2 12h20"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M11.5 3.2a.5.5 0 0 1 1 0l2.1 5.2 5.6.4a.5.5 0 0 1 .3.9l-4.3 3.6 1.3 5.5a.5.5 0 0 1-.8.6L12 16.5l-4.8 2.9a.5.5 0 0 1-.8-.6l1.4-5.5-4.3-3.6a.5.5 0 0 1 .3-.9l5.6-.4z"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 15V3M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5"/></symbol>
+    <symbol id="i-note" viewBox="0 0 24 24"><path d="M15 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M15 3v5h5M8 13h8M8 17h5"/></symbol>
+  </defs>
+</svg>
+
+<template id="chrome">
+  <div class="left">
+    <button data-slot="button" data-variant="ghost" data-size="icon-sm" aria-label="Back"><svg class="lucide"><use href="#i-left"/></svg></button>
+    <button data-slot="button" data-variant="ghost" data-size="icon-sm" aria-label="Forward" disabled><svg class="lucide"><use href="#i-right"/></svg></button>
+  </div>
+  <div class="tray">
+    <div class="app start"><svg class="lucide"><use href="#i-grid"/></svg></div>
+    <div class="app"><svg class="lucide"><use href="#i-chats"/></svg></div>
+    <div class="app"><svg class="lucide"><use href="#i-globe"/></svg></div>
+    <div class="app"><svg class="lucide"><use href="#i-note"/></svg></div>
+    <div class="app"><svg class="lucide"><use href="#i-star"/></svg></div>
+    <div class="app"><svg class="lucide"><use href="#i-down"/></svg></div>
+  </div>
+  <button data-slot="button" data-variant="ghost" data-size="icon-sm" aria-label="Dock and layout" class="right"><svg class="lucide"><use href="#i-sliders"/></svg></button>
+</template>
+
+<!-- ======================================================================================= -->
+<div class="frame">
+  <h2>Current build (for comparison) <code>custom usage-meter-ring</code></h2>
+  <div class="stage"><div class="dock" data-chrome>
+    <div class="rail">
+      <button data-slot="button" data-variant="ghost" data-size="sm" style="padding:0 8px"><svg class="mark"><use href="#m-codex"/></svg><span class="cur-ring"><svg viewBox="0 0 14 14"><circle class="t" cx="7" cy="7" r="5.25"/><circle class="f" cx="7" cy="7" r="5.25" stroke-dasharray="23.75 33"/></svg><b>72</b></span></button>
+      <button data-slot="button" data-variant="ghost" data-size="sm" style="padding:0 8px"><svg class="mark"><use href="#m-claude"/></svg><span class="cur-ring"><svg viewBox="0 0 14 14"><circle class="t" cx="7" cy="7" r="5.25"/><circle class="f" cx="7" cy="7" r="5.25" stroke-dasharray="5.9 33" style="stroke:var(--low-ink)"/></svg><b>18</b></span></button>
+      <button data-slot="button" data-variant="ghost" data-size="sm" style="padding:0 8px"><svg class="mark"><use href="#m-gemini"/></svg><span class="cur-ring"><svg viewBox="0 0 14 14"><circle class="t" cx="7" cy="7" r="5.25"/><circle class="f" cx="7" cy="7" r="5.25" stroke-dasharray="2 33" style="stroke:var(--critical-ink)"/></svg><b>6</b></span></button>
+      <button data-slot="button" data-variant="ghost" data-size="sm" style="padding:0 8px"><svg class="mark"><use href="#m-cursor"/></svg><span class="cur-ring"><svg viewBox="0 0 14 14"><circle class="t" cx="7" cy="7" r="5.25" stroke-dasharray="2 2.5"/></svg><b style="font-weight:500;color:var(--muted-foreground)">—</b></span></button>
+    </div>
+  </div></div>
+  <p class="note"><span class="bad">8 px digits inside a 16 px ring.</span> The arc is the same ink as the digits, 72 and 18 read
+  as the same near-full circle, and Cursor is a dash whose meaning lives only in the tooltip.</p>
+</div>
+
+<!-- ======================================================================================= -->
+<div class="frame">
+  <h2>A · Mark + number <code>Button variant="ghost" size="xs"</code></h2>
+  <div class="stage"><div class="dock" data-chrome>
+    <div class="rail">
+      <button data-slot="button" data-variant="ghost" data-size="xs" data-level="normal"><svg class="mark"><use href="#m-codex"/></svg><span class="num">72%</span></button>
+      <button data-slot="button" data-variant="ghost" data-size="xs" data-level="low"><svg class="mark"><use href="#m-claude"/></svg><span class="num">18%</span></button>
+      <button data-slot="button" data-variant="ghost" data-size="xs" data-level="critical"><svg class="mark"><use href="#m-gemini"/></svg><span class="num">6%</span></button>
+      <button data-slot="button" data-variant="ghost" data-size="xs" data-level="normal"><svg class="mark"><use href="#m-cursor"/></svg><span class="plan">Pro</span></button>
+    </div>
+  </div></div>
+  <p class="note"><span class="good">The Sept 29 decision, on the stock button.</span> One component, 11 px tabular figures,
+  level ink on the number only so the brand marks stay themselves. Cursor shows its plan name instead of a
+  placeholder. ~52 px per chip; the row is 210 px wide.</p>
+</div>
+
+<!-- ======================================================================================= -->
+<div class="frame">
+  <h2>B · Mark + number + bar <code>Button ghost xs</code> <code>Progress className="h-[3px] w-6"</code></h2>
+  <div class="stage"><div class="dock" data-chrome>
+    <div class="rail">
+      <button data-slot="button" data-variant="ghost" data-size="xs" data-level="normal"><svg class="mark"><use href="#m-codex"/></svg><span class="num">72%</span><span data-slot="progress"><span data-slot="progress-indicator" style="transform:translateX(-28%)"></span></span></button>
+      <button data-slot="button" data-variant="ghost" data-size="xs" data-level="low"><svg class="mark"><use href="#m-claude"/></svg><span class="num">18%</span><span data-slot="progress"><span data-slot="progress-indicator" style="transform:translateX(-82%)"></span></span></button>
+      <button data-slot="button" data-variant="ghost" data-size="xs" data-level="critical"><svg class="mark"><use href="#m-gemini"/></svg><span class="num">6%</span><span data-slot="progress"><span data-slot="progress-indicator" style="transform:translateX(-94%)"></span></span></button>
+      <button data-slot="button" data-variant="ghost" data-size="xs" data-level="normal"><svg class="mark"><use href="#m-cursor"/></svg><span class="plan">Pro</span></button>
+    </div>
+  </div></div>
+  <p class="note"><span class="good">A readable number plus a linear hint.</span> The Radix Progress root is the same primitive
+  the composer's usage card uses, at 3 × 24 px. A bar length is far easier to compare across four chips than
+  arc sweep is, and 72 vs 18 is visible at a glance. Adds ~30 px per chip.</p>
+</div>
+
+<!-- ======================================================================================= -->
+<div class="frame">
+  <h2>C · Mark + number + status dot <code>Button ghost xs</code> <code>@kibo-ui Status › StatusIndicator</code></h2>
+  <div class="stage"><div class="dock" data-chrome>
+    <div class="rail">
+      <button data-slot="button" data-variant="ghost" data-size="xs" data-level="normal"><svg class="mark"><use href="#m-codex"/></svg><span class="num">72%</span></button>
+      <button data-slot="button" data-variant="ghost" data-size="xs" data-level="low" class="degraded"><svg class="mark"><use href="#m-claude"/></svg><span class="num">18%</span><span class="status-indicator"><span class="dot"></span></span></button>
+      <button data-slot="button" data-variant="ghost" data-size="xs" data-level="critical" class="offline"><svg class="mark"><use href="#m-gemini"/></svg><span class="num">6%</span><span class="status-indicator"><span class="ping"></span><span class="dot"></span></span></button>
+      <button data-slot="button" data-variant="ghost" data-size="xs" data-level="normal"><svg class="mark"><use href="#m-cursor"/></svg><span class="plan">Pro</span></button>
+    </div>
+  </div></div>
+  <p class="note"><span class="good">Quiet until it matters.</span> Normal chips are option A. At ≤20 % the kibo Status
+  indicator appears; at ≤10 % it pulses (the `animate-ping` halo, off under reduced motion). Nothing on the
+  rail moves while everything is healthy.</p>
+</div>
+
+<!-- ======================================================================================= -->
+<div class="frame">
+  <h2>D · Gauge beside the number <code>@magicui AnimatedCircularProgressBar className="size-4"</code> <code>NumberTicker</code></h2>
+  <div class="stage"><div class="dock" data-chrome>
+    <div class="rail">
+      <button data-slot="button" data-variant="ghost" data-size="xs" data-level="normal"><svg class="mark"><use href="#m-codex"/></svg><svg class="gauge" viewBox="0 0 100 100"><circle class="secondary" cx="50" cy="50" r="45"/><circle class="primary" cx="50" cy="50" r="45" stroke-dasharray="203.6 282.7" transform="rotate(-90 50 50)"/></svg><span class="num">72%</span></button>
+      <button data-slot="button" data-variant="ghost" data-size="xs" data-level="low"><svg class="mark"><use href="#m-claude"/></svg><svg class="gauge" viewBox="0 0 100 100"><circle class="secondary" cx="50" cy="50" r="45"/><circle class="primary" cx="50" cy="50" r="45" stroke-dasharray="50.9 282.7" transform="rotate(-90 50 50)"/></svg><span class="num">18%</span></button>
+      <button data-slot="button" data-variant="ghost" data-size="xs" data-level="critical"><svg class="mark"><use href="#m-gemini"/></svg><svg class="gauge" viewBox="0 0 100 100"><circle class="secondary" cx="50" cy="50" r="45"/><circle class="primary" cx="50" cy="50" r="45" stroke-dasharray="17 282.7" transform="rotate(-90 50 50)"/></svg><span class="num">6%</span></button>
+      <button data-slot="button" data-variant="ghost" data-size="xs" data-level="normal"><svg class="mark"><use href="#m-cursor"/></svg><span class="plan">Pro</span></button>
+    </div>
+  </div></div>
+  <p class="note">If a ring is wanted, this is the registry one, used as a 16 px gauge <em>next to</em> a full-size number rather
+  than as a container for a tiny one. The number stays 11 px and animates with the repo's existing
+  NumberTicker when a reading changes. Busiest of the four: mark, gauge and number compete at this size.</p>
+</div>
+
+<!-- ======================================================================================= -->
+<div class="frame">
+  <h2>E · Plan over number <code>Button variant="ghost" size="sm"</code></h2>
+  <div class="stage"><div class="dock" data-chrome>
+    <div class="rail">
+      <button data-slot="button" data-variant="ghost" data-size="sm" data-level="normal" style="padding:0 8px"><svg class="mark"><use href="#m-codex"/></svg><span class="stack"><span class="plan">Pro</span><span class="num">72%</span></span></button>
+      <button data-slot="button" data-variant="ghost" data-size="sm" data-level="low" style="padding:0 8px"><svg class="mark"><use href="#m-claude"/></svg><span class="stack"><span class="plan">Max</span><span class="num">18%</span></span></button>
+      <button data-slot="button" data-variant="ghost" data-size="sm" data-level="critical" style="padding:0 8px"><svg class="mark"><use href="#m-gemini"/></svg><span class="stack"><span class="plan">Ultra</span><span class="num">6%</span></span></button>
+      <button data-slot="button" data-variant="ghost" data-size="sm" data-level="normal" style="padding:0 8px"><svg class="mark"><use href="#m-cursor"/></svg><span class="stack"><span class="plan">Pro</span><span class="num" style="color:var(--muted-foreground)">—</span></span></button>
+    </div>
+  </div></div>
+  <p class="note">Answers "which plan am I on" without opening anything. Two lines fit the 32 px button, but the 9.5 px
+  plan label is at the edge of legibility on the glass and Cursor still needs a placeholder for its missing number.</p>
+</div>
+
+<!-- ======================================================================================= -->
+<div class="frame">
+  <h2>F · Collapsed rail and detail <code>Button ghost xs</code> <code>Badge variant="secondary"</code> <code>HoverCard</code> <code>Progress</code></h2>
+  <div class="stage tall"><div class="dock" data-chrome>
+    <div class="rail">
+      <button data-slot="button" data-variant="ghost" data-size="xs" data-level="critical" aria-expanded="true" style="background:var(--accent);color:var(--chrome-control-strong)">
+        <svg class="lucide" style="width:14px;height:14px"><use href="#i-gauge"/></svg><span>Usage</span>
+        <span data-slot="badge" data-variant="secondary"><svg class="lucide lvl" style="width:11px;height:11px"><use href="#i-alert"/></svg><span class="lvl">6%</span></span>
+      </button>
+    </div>
+  </div>
+  <div class="hover-card">
+    <header><svg class="mark"><use href="#m-gemini"/></svg><b>Antigravity</b><span>Ultra · read 40 s ago</span></header>
+    <div class="row" data-level="normal"><span>5-hour</span><span class="num">64% remaining</span><span data-slot="progress"><span data-slot="progress-indicator" style="transform:translateX(-36%)"></span></span><small>Resets in 2 h 10 m · Wed 2:50 AM</small></div>
+    <div class="row" data-level="critical"><span>Weekly (Gemini)</span><span class="num">6% remaining</span><span data-slot="progress"><span data-slot="progress-indicator" style="transform:translateX(-94%)"></span></span><small>Resets in 3 d 4 h · Sat 4:50 AM</small></div>
+    <div class="row" data-level="stale"><span>Weekly (Claude)</span><span class="num">41% stale <svg class="lucide" style="width:11px;height:11px;vertical-align:-2px"><use href="#i-clock"/></svg></span><span data-slot="progress"><span data-slot="progress-indicator" style="transform:translateX(-59%)"></span></span><small>Reset passed · awaiting provider reading</small></div>
+    <footer>Provider-reported. The rail shows the lowest window; every scope is listed here.</footer>
+  </div>
+  </div>
+  <p class="note">When the rail has no room, one button carries the worst reading in a stock <b>Badge</b> instead of the current
+  bare warning icon. The detail is the shadcn <b>HoverCard</b> in the app's <code>.dock-panel</code> skin, one
+  <b>Progress</b> row per window, and it opens for whichever option above is chosen.</p>
+</div>
+
+<div class="verdict">
+  <h3>Recommendation</h3>
+  <b>B</b> as the default (number + Progress bar), with <b>C</b>'s status indicator reserved for critical if you want a
+  pulse, and <b>F</b> as the collapsed state and detail card. Everything is a stock component with tokens only:
+  no ring module, no bespoke pill surface, and the rail returns to the "mark plus text on the existing rail"
+  rule from the 29th. If you prefer the quietest rail, <b>A</b> alone is the same thing without the bar.
+</div>
+
+<script>
+  // Stamp the shared dock chrome (arrows, tray, settings) into every strip.
+  const chrome = document.getElementById('chrome').content
+  for (const dock of document.querySelectorAll('[data-chrome]')) {
+    const c = chrome.cloneNode(true)
+    dock.prepend(c.querySelector('.left'))
+    dock.append(c.querySelector('.tray'), c.querySelector('.right'))
+  }
+</script>
+</body>
+</html>

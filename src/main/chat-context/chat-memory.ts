@@ -9,6 +9,7 @@ import { recallEntries, recallTranscript } from './memory-recall.js'
 
 export type MemoryCaller = { paneId?: string | null; threadId: string | null; turnId: string | null; signal?: AbortSignal }
 type MemorySurface = Pick<ChatSurface, 'snapshot' | 'readThread'>
+class HistoryThreadMismatch extends Error {}
 
 /** The chat records memory reads and writes; the store, or a stand-in in tests. */
 export type MemoryRecords = {
@@ -96,6 +97,7 @@ export class ChatMemory {
         content = await this.read(target.id, target.threadId, surface, target.cwd)
       } catch (error) {
         this.assertPendingHistory(caller, surface, target)
+        if (error instanceof HistoryThreadMismatch) throw error
         if (!this.retainedIndex(target.id)) throw error
         return this.recallFromIndex(target, request, 'provider-read-failed')
       }
@@ -149,6 +151,7 @@ export class ChatMemory {
       content = await this.read(target.id, target.threadId, surface, target.cwd)
     } catch (error) {
       this.assertPendingHistory(caller, surface, target)
+      if (error instanceof HistoryThreadMismatch) throw error
       const fallback = this.spineFromIndex(target, request, 'provider-read-failed')
       if (fallback) return fallback
       throw error
@@ -173,7 +176,10 @@ export class ChatMemory {
     const turns = conversationSpineTurnsFromIndexLines(indexed.lines)
     if (!turns.length) return null
     const changedFiles = request.includeChangedFiles === false ? undefined : indexed.changedFiles
-    const result = spineFromTurns(turns, {
+    return spineFromTurns(turns, {
+      evidenceAvailability: reason || !record.threadId
+        ? { status: 'unavailable', reason: reason ?? 'missing-thread' }
+        : { status: 'not-checked' },
       threadId: record.threadId,
       title: record.title,
       cwd: record.cwd,
@@ -181,9 +187,6 @@ export class ChatMemory {
       chatId: record.id,
       provenance: 'index'
     }, request, changedFiles)
-    return { ...result, evidenceAvailability: reason || !record.threadId
-      ? { status: 'unavailable', reason: reason ?? 'missing-thread' }
-      : { status: 'not-checked' } }
   }
 
   private retainedIndex(chatId: string) {
@@ -193,10 +196,11 @@ export class ChatMemory {
   private recallFromIndex(record: ChatRecord, request: ChatRecallRequest, reason: ChatEvidenceAvailability['reason']): ChatRecallResult {
     const indexed = this.retainedIndex(record.id)
     if (!indexed?.lines.length) throw new Error('Source evidence unavailable and no retained index text remains')
-    const result = recallEntries(indexed.lines.map((line) => ({
+    return recallEntries(indexed.lines.map((line) => ({
       id: line.itemId, turnId: null, type: line.role, text: line.text
-    })), record.threadId, null, { ...request, chatId: record.id }, null)
-    return { ...result, provenance: 'index', evidenceAvailability: { status: 'unavailable', reason } }
+    })), record.threadId, null, { ...request, chatId: record.id }, null, {
+      provenance: 'index', evidenceAvailability: { status: 'unavailable', reason }
+    })
   }
 
   private assertPendingHistory(caller: MemoryCaller, surface: MemorySurface, target: ChatRecord): void {
@@ -252,7 +256,7 @@ export class ChatMemory {
     const target = paneId ? this.surface(paneId) : null
     const live = target?.snapshot({ limit: 0 }).threadId === threadId ? target.snapshot() : null
     const content = live?.items.length ? live : await surface.readThread(threadId, cwd)
-    if (content.threadId !== threadId) throw new Error('Provider returned a different history thread')
+    if (content.threadId !== threadId) throw new HistoryThreadMismatch('Provider returned a different history thread')
     return content
   }
 

@@ -684,6 +684,19 @@ history discovery, `spine`, and `recall` (transcript load), not search. Search r
 default (max 8) with snippets up to 400 characters; each indexed chat keeps the newest spine lines
 within `chatMemoryIndexMaxCharsPerChat` (default 48,000).
 
+Search filters deleted and archived chat records before ranking/limiting. Each hit reports
+`evidenceAvailability`: `not-checked` when a provider thread id exists (not proof its history
+can still be loaded), or `unavailable` with reason `missing-thread`. Missing thread ids do not
+prevent reading retained index text. `spine` returns indexed turns where possible;
+`recall(scope=history, chat_id=..., item_id=...)` reads the exact retained line, including
+orphaned lines whose user turn was trimmed. Exact-item recall accepts any eligible item kind.
+Fallback results report `provenance: index`, a nullable `threadId`, and
+`evidenceAvailability: {status: unavailable, reason: ...}`. Reasons also include
+`provider-read-failed` and `item-not-found` (an exact hit absent from loaded history).
+Indexed `evidence` text contains compact labels, never raw tool output. Index excerpts retain
+offset pagination. Cancellation, archival, deleted records, changed threads, and mismatched
+provider responses still invalidate reads; eviction can remove retained text between calls.
+
 `peer_chats.spine` is read-only and accepts `scope: current|history`, optional `chat_id` for history
 (defaults to the most recent other conversation), `limit` (default 5, max 8), and
 `before_user_item_id` to page older turns newest-first. `include_evidence` adds up to three compact
