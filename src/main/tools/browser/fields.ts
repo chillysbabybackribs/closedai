@@ -9,6 +9,11 @@ export const MAX_WAIT_MS = 15_000
 export const DEFAULT_MAX_CHARS = 20_000
 export const MAX_CHARS = 100_000
 
+export const projectionFieldsField: JsonObject = {
+  type: 'array', maxItems: 40, items: { type: 'string', minLength: 1 },
+  description: 'Field paths kept from each item, for example ["name","revenue.mrr"]. Every field when omitted.'
+}
+
 export const tabIdField: JsonObject = {
   type: 'string',
   description: 'Tab id from navigate; default is this chat’s assigned tab. Other chats’ tabs are read-only.'

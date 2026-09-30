@@ -1,8 +1,9 @@
 import type { ToolAction } from '../action-tool.js'
 import { jsonResult } from '../json-result.js'
 import { booleanArg, numberArg, stringArg } from '../tool.js'
-import { selectorField, tabIdField } from './fields.js'
+import { projectionFieldsField, selectorField, tabIdField } from './fields.js'
 import { missingTabResult, requireBrowser, type BrowserHostProvider } from './host.js'
+import { projectJson } from './project.js'
 
 const DEFAULT_LIMIT = 20
 const MAX_LIMIT = 200
@@ -12,12 +13,13 @@ export function queryAction(browser: BrowserHostProvider): ToolAction {
   return {
     action: 'query',
     description:
-      'List elements matching a selector with tag, role, text, bounds, and named attributes.',
+      'List elements matching CSS and optional text_contains. Use fields:["text","href"] for compact data; omit fields for full element details. No evaluate needed for text filtering.',
     inputSchema: {
       type: 'object',
       properties: {
         tab_id: tabIdField,
         selector: selectorField,
+        fields: projectionFieldsField,
         text_contains: { type: 'string', minLength: 1, description: 'Case-insensitive substring the element text must contain.' },
         attributes: { type: 'array', maxItems: 20, items: { type: 'string', minLength: 1 }, description: 'Extra attribute names to report per element.' },
         visible_only: { type: 'boolean', description: 'Only elements with a non-empty box that are not hidden. Default false.' },
@@ -40,7 +42,8 @@ export function queryAction(browser: BrowserHostProvider): ToolAction {
         maxText: numberArg(input, 'max_text', DEFAULT_MAX_TEXT)
       })
       if (!result) return missingTabResult(host, tabId)
-      return jsonResult(result)
+      const fields = Array.isArray(input.fields) ? input.fields.map(String) : undefined
+      return jsonResult({ ...result, items: projectJson(result.items, { fields }).value })
     }
   }
 }

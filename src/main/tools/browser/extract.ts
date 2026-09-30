@@ -3,7 +3,7 @@ import type { ToolAction } from '../action-tool.js'
 import { jsonResult } from '../json-result.js'
 import { failureResult, numberArg, stringArg, type JsonObject } from '../tool.js'
 import { bodyField, FETCH_TIMEOUT_MS, headersField, methodField, parseBody, requestFrom } from './fetch.js'
-import { MAX_CHARS, tabIdField, urlField } from './fields.js'
+import { MAX_CHARS, projectionFieldsField, tabIdField, urlField } from './fields.js'
 import { missingTabResult, requireBrowser, type BrowserHostProvider } from './host.js'
 import { projectJson } from './project.js'
 
@@ -23,12 +23,7 @@ export function extractAction(browser: BrowserHostProvider): ToolAction {
           minLength: 1,
           description: 'Dot/bracket path to the subtree, for example `data.items` or `results[0].rows`. Defaults to the whole document.'
         },
-        fields: {
-          type: 'array',
-          maxItems: 40,
-          items: { type: 'string', minLength: 1 },
-          description: 'Field paths kept from each item, for example ["name","revenue.mrr"]. Every field when omitted.'
-        },
+        fields: projectionFieldsField,
         limit: {
           type: 'integer',
           minimum: 1,
