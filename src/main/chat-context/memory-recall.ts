@@ -26,6 +26,24 @@ export function recallTranscript(
     if (index < 0 || index >= end) throw new Error('Recall cursor is outside the available history')
     end = index
   }
+  return recallEntries(items.slice(0, end).flatMap((item) => {
+    const text = recallText(item)
+    return text === null ? [] : [{ id: item.id, turnId: item.turnId, type: item.type, text }]
+  }), threadId, checkpoint, { ...request, beforeItemId: undefined }, throughItemId)
+}
+
+/** Shared excerpt budgeting for transcripts and retained index lines. */
+export function recallEntries(
+  items: Array<{ id: string; turnId: string | null; type: string; text: string }>,
+  threadId: string | null, checkpoint: ChatMemoryCheckpoint | null,
+  request: ChatRecallRequest, throughItemId: string | null
+): ChatRecallResult {
+  let end = items.length
+  if (request.beforeItemId) {
+    const index = items.findIndex((item) => item.id === request.beforeItemId)
+    if (index < 0) throw new Error('Recall cursor is outside the available history')
+    end = index
+  }
   const limit = Math.max(1, Math.min(8, Math.floor(request.limit ?? 5)))
   const query = request.query?.trim().toLowerCase() ?? ''
   // Conversation is the useful default; callers can request tool evidence when needed.
@@ -39,9 +57,8 @@ export function recallTranscript(
     const item = items[index]!
     if (item.id.length > 256) continue
     if (request.itemId && item.id !== request.itemId) continue
-    if (!types.has(item.type)) continue
-    const text = recallText(item)
-    if (text === null) continue
+    if (!request.itemId && !types.has(item.type)) continue
+    const text = item.text
     const match = query ? text.toLowerCase().indexOf(query) : 0
     if (match < 0) continue
     const offset = request.itemId ? Math.max(0, Math.floor(request.offset ?? 0)) : Math.max(0, match - 160)

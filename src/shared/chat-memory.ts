@@ -1,3 +1,9 @@
+/** Availability of source evidence, independent of retained index text. */
+export type ChatEvidenceAvailability = {
+  status: 'not-checked' | 'unavailable'
+  reason?: 'missing-thread' | 'provider-read-failed' | 'item-not-found'
+}
+
 /** Model-authored working notes, never authority or proof that an action succeeded. */
 export type ChatMemoryState = {
   goal: string
@@ -54,7 +60,9 @@ export type ChatHistoryResult = {
 export type ChatRecallResult = {
   /** Present for history recall, including when the caller used the most-recent default. */
   chatId?: string
-  threadId: string
+  threadId: string | null
+  provenance?: 'index' | 'transcript'
+  evidenceAvailability?: ChatEvidenceAvailability
   checkpoint: ChatMemoryCheckpoint | null
   matches: Array<{ itemId: string; turnId: string | null; role: string; text: string; offset: number; nextOffset: number | null }>
   hasMore: boolean
@@ -87,7 +95,8 @@ export type ChatSpineRequest = {
 
 export type ChatSpineResult = {
   chatId?: string
-  threadId: string
+  threadId: string | null
+  evidenceAvailability?: ChatEvidenceAvailability
   title: string | null
   cwd: string
   lastActivityAt: number

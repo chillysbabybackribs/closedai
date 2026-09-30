@@ -179,7 +179,7 @@ export class ChatMemoryIndex {
     return this.records.get(chatId)
   }
 
-  search(request: ChatIndexSearchRequest, excludeChatId?: string | null): ChatIndexSearchResult {
+  search(request: ChatIndexSearchRequest, excludeChatId?: string | null, resolveChat?: (id: string) => ChatRecord | undefined): ChatIndexSearchResult {
     const settings = this.settings()
     const maxChats = settings.chatMemoryIndexMaxChats
     const empty: ChatIndexSearchResult = {
@@ -200,6 +200,8 @@ export class ChatMemoryIndex {
       if (excludeChatId && chatId === excludeChatId) continue
       const record = this.records.get(chatId)
       if (!record) continue
+      const chat = resolveChat?.(chatId)
+      if (resolveChat && (!chat || chat.archived)) continue
       if (cwd && record.cwd !== cwd) continue
       const recency = recencyFactor(now - record.lastActivityAt, halfLife)
       const pinBoost = record.pinnedAt ? 1.25 : 1
@@ -210,6 +212,9 @@ export class ChatMemoryIndex {
         const snippet = clip(line.text.slice(Math.max(0, index - 80), index + SEARCH_SNIPPET_CHARS), SEARCH_SNIPPET_CHARS)
         const matchQuality = query.length / Math.max(line.text.length, query.length)
         candidates.push({
+          ...(resolveChat ? { evidenceAvailability: chat?.threadId
+            ? { status: 'not-checked' as const }
+            : { status: 'unavailable' as const, reason: 'missing-thread' as const } } : {}),
           chatId: record.chatId,
           itemId: line.itemId,
           role: line.role,

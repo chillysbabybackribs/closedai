@@ -635,7 +635,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
         trust: 'historical-data'
       }
     }
-    return this.memoryIndex.search(request, callerPaneId ?? undefined)
+    return this.memoryIndex.search(request, callerPaneId ?? undefined, (id) => this.store.get(id))
   }
 
   private supportHost(): PeerManagerSupportHost {

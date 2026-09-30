@@ -1,3 +1,5 @@
+import type { ChatEvidenceAvailability } from './chat-memory.js'
+
 export const CHAT_MEMORY_INDEX_VERSION = 1 as const
 
 /** Default hot index size: recent cross-chat phrase search, not full history. */
@@ -40,6 +42,7 @@ export type ChatIndexSearchRequest = {
 }
 
 export type ChatIndexSearchHit = {
+  evidenceAvailability?: ChatEvidenceAvailability
   chatId: string
   itemId: string
   role: ChatIndexLine['role']

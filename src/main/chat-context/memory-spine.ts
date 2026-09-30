@@ -10,7 +10,7 @@ const MAX_EVIDENCE_PER_TURN = 3
 const OMITTED_ANSWER = '[Older answer omitted'
 
 export type SpineTranscriptMeta = {
-  threadId: string
+  threadId: string | null
   title: string | null
   cwd: string
   lastActivityAt: number
