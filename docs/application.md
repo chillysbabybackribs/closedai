@@ -215,7 +215,12 @@ uncaught exception or unhandled rejection after the window exists is logged with
 prefix and survived (`src/main/app-crash-guard.ts`). The app shell reloads once when its renderer
 is lost for a non-clean reason and reports a second loss within a minute instead of looping
 (`src/main/main-window-recovery.ts`). `before-quit` bounds its flush at 5 s and quits regardless
-(`src/main/app-quit.ts`); the MCP HTTP bridges drop open connections before closing their listener.
+(`src/main/app-quit.ts`); the MCP HTTP bridges drop open connections before closing their listener. Checkout `dev`/`preview`
+launches own a separate POSIX process group. The launcher forwards SIGINT/SIGTERM to that
+group and cleans it up when electron-vite exits, allowing seven seconds before killing
+survivors even if the group leader has already exited (`scripts/launch-process.mjs`).
+Electron account-switch relaunches start a separate process group and survive this cleanup.
+This containment requires the launcher to remain alive; SIGKILL of the launcher cannot run cleanup.
 
 Model browser tools assign tabs per chat, independently of directory and UI selection. Mutations
 expect an owned tab; observing verbs on any tab claim nothing; acting claims a tab and refuses
