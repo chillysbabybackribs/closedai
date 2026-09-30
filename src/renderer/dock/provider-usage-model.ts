@@ -74,3 +74,13 @@ export function usageHeadline(usage: ChatPlanUsage | null, now: number): {
   const stale = windows.some((entry) => usageWindowState(entry, usage, now).level === 'stale')
   return { text: stale ? 'Stale' : `${state.remaining}% left`, level: stale ? 'stale' : state.level, window }
 }
+
+/** Chip copy when a provider reports plan metadata but no usable quota windows. */
+export function usageChipText(provider: ChatProvider, usage: ChatPlanUsage | null, plan: string | null, now: number): string {
+  const headline = usageHeadline(usage, now)
+  if ((provider === 'cursor' || provider === 'codex') && headline.level === 'unknown') {
+    const label = usage?.plan ?? plan
+    return label ? `${label} · usage unavailable` : headline.text
+  }
+  return headline.text
+}

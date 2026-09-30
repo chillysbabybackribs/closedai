@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { ChatPlanUsage } from '../../shared/chat.js'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
-import { providerUsageEntries, usageHeadline, usageWindowState, USAGE_STALE_MS } from './provider-usage-model.js'
+import { providerUsageEntries, usageChipText, usageHeadline, usageWindowState, USAGE_STALE_MS } from './provider-usage-model.js'
 
 const NOW = 1_800_000_000_000
 function usage(percent = 38, updatedAt = NOW): ChatPlanUsage {
@@ -52,6 +52,13 @@ test('unknown, missing and invalid readings never become a healthy zero', () => 
   assert.equal(usageHeadline(usage(NaN), NOW).level, 'unknown')
   assert.equal(usageHeadline({ ...usage(), unavailable: 'No usage endpoint' }, NOW).level, 'unknown')
   assert.equal(usageHeadline(usage(0, 0), NOW).level, 'stale')
+})
+
+test('codex and cursor chips name the plan when quota windows are missing', () => {
+  const missing = { plan: 'Pro Lite', note: null, unavailable: 'No windows', updatedAt: NOW, windows: [] as const }
+  assert.equal(usageChipText('codex', missing, null, NOW), 'Pro Lite · usage unavailable')
+  assert.equal(usageChipText('cursor', { ...missing, plan: 'Pro' }, null, NOW), 'Pro · usage unavailable')
+  assert.equal(usageChipText('codex', usage(28), 'prolite', NOW), '72% left')
 })
 
 

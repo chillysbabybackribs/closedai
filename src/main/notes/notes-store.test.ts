@@ -51,7 +51,7 @@ test('an editor save built before a model edit is refused, never overwriting the
   await store.flush()
 })
 
-test('removing a note deletes its file; a corrupt index starts clean', async () => {
+test('removing a note deletes its file; a corrupt index brings back no removed note', async () => {
   const dir = await scratch()
   const store = await NotesStore.open(dir)
   const note = store.create({ text: 'gone soon' })
@@ -68,4 +68,23 @@ test('removing a note deletes its file; a corrupt index starts clean', async () 
   } finally {
     console.warn = warn
   }
+})
+
+test('a damaged index is kept aside and its notes are adopted back from their text files', async () => {
+  const dir = await scratch()
+  const store = await NotesStore.open(dir)
+  const note = store.create({ text: '# Groceries\n- eggs' })
+  await store.flush()
+  await writeFile(join(dir, 'index.json'), '{"version":1,"notes":[', 'utf8')
+
+  const warn = console.warn
+  console.warn = () => {}
+  const reopened = await NotesStore.open(dir).finally(() => { console.warn = warn })
+  assert.deepEqual(reopened.list().map((meta) => [meta.id, meta.title]), [[note.id, 'Groceries']])
+  assert.equal(reopened.read(note.id)?.text, '# Groceries\n- eggs')
+  const files = await readdir(dir)
+  assert.ok(files.some((file) => file.startsWith('index.json.corrupt-')))
+  await reopened.flush()
+  const index = JSON.parse(await readFile(join(dir, 'index.json'), 'utf8')) as { notes: Array<{ id: string }> }
+  assert.deepEqual(index.notes.map((entry) => entry.id), [note.id])
 })

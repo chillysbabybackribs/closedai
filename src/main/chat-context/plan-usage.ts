@@ -42,13 +42,25 @@ export function codexPlanUsage(value: unknown, now = Date.now()): ChatPlanUsage 
   const windows = [snapshot.primary, snapshot.secondary]
     .map((entry) => codexWindow(entry))
     .filter((entry): entry is ChatPlanUsageWindow => entry !== null)
+  const plan = planName(snapshot.planType)
+  if (!windows.length) {
+    return {
+      plan,
+      windows: [],
+      note: null,
+      unavailable: plan
+        ? 'Codex did not report any rate-limit windows for this account.'
+        : 'Codex did not report subscription usage.',
+      updatedAt: now
+    }
+  }
   const credits = recordOf(snapshot.credits)
   const note = credits?.unlimited === true
     ? 'Unlimited credits'
     : credits?.hasCredits === true && typeof credits.balance === 'string'
       ? `${credits.balance} credits`
       : null
-  return { plan: planName(snapshot.planType), windows, note, unavailable: null, updatedAt: now }
+  return { plan, windows, note, unavailable: null, updatedAt: now }
 }
 
 function codexWindow(value: unknown): ChatPlanUsageWindow | null {

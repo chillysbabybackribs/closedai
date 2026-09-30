@@ -914,9 +914,11 @@ names every provider window, including model-specific scopes, remaining allowanc
 observation age, plan and provider notes. Session connection is shown separately from quota.
 At <=20% remaining the quota is low, <=10% critical, and 0% exhausted; a reading older than five
 minutes or past its reported reset is stale, never assumed replenished. Partial Claude events
-retain each untouched window's observation time. Missing data says unavailable. Cursor's CLI
-currently supplies no quota percentages; its chip shows the reported plan followed by “usage unavailable”
-(for example, “Pro · usage unavailable”). Background chat summaries carry telemetry even
+retain each untouched window's observation time. Missing data says unavailable. Codex reads `account/rateLimits/read` only: zero, one, or two
+rolling windows (primary/secondary) plus optional credit metadata; the footer shows reported windows
+and plan, not inferred buckets. Credit balances appear in the composer usage card, not the footer
+chips. Cursor's CLI currently supplies no quota percentages; its chip shows the reported plan
+followed by “usage unavailable” (for example, “Pro · usage unavailable”). Background chat summaries carry telemetry even
 when their transcript is not subscribed. The footer also reads each signed-in CLI account through
 `chat:readProviderUsage`, independently of chat runtimes, on mount and every minute while the
 document is foregrounded. Reads are shared across windows for one minute, including failures;

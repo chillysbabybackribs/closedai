@@ -1,8 +1,9 @@
 import { EventEmitter } from 'node:events'
-import { mkdir, readFile, unlink } from 'node:fs/promises'
+import { mkdir, readFile, readdir, stat, unlink } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import { writeAtomic } from '../atomic-write.js'
+import { readStoreFile } from '../store-recovery.js'
 import {
   NOTE_TITLE_CHARS, derivedNoteTitle, noteLineCount,
   type NoteChange, type NoteDoc, type NoteMeta, type NoteSaveResult
@@ -189,14 +190,13 @@ export class NotesStore extends EventEmitter {
 
   private async load(): Promise<void> {
     await mkdir(this.dir, { recursive: true })
-    let index: PersistedIndex | null = null
-    try {
-      const parsed = JSON.parse(await readFile(join(this.dir, 'index.json'), 'utf8')) as Partial<PersistedIndex>
-      if (parsed.version === 1 && Array.isArray(parsed.notes)) index = parsed as PersistedIndex
-    } catch (error) {
-      const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : ''
-      if (code !== 'ENOENT') console.warn('[notes] unreadable notes index; starting clean', error)
-    }
+    // The text files are the notes; the index is only their names and times. A damaged index is
+    // set aside like any other store, and every note file it no longer lists is adopted back below.
+    const index = await readStoreFile(join(this.dir, 'index.json'), '[notes] index', (raw) => {
+      const parsed = JSON.parse(raw) as Partial<PersistedIndex>
+      if (parsed.version !== 1 || !Array.isArray(parsed.notes)) throw new Error('not a version 1 notes index')
+      return parsed as PersistedIndex
+    })
     for (const entry of index?.notes ?? []) {
       if (!entry || typeof entry.id !== 'string' || !ID_PATTERN.test(entry.id)) continue
       const text = await readFile(this.textPath(entry.id), 'utf8').catch(() => null)
@@ -213,6 +213,30 @@ export class NotesStore extends EventEmitter {
         text
       })
     }
+    await this.adoptUnlistedNotes()
+  }
+
+  private async adoptUnlistedNotes(): Promise<void> {
+    const files = await readdir(this.dir).catch(() => [] as string[])
+    for (const file of files) {
+      const id = file.endsWith('.txt') ? file.slice(0, -4) : ''
+      if (!ID_PATTERN.test(id) || this.notes.has(id) || this.notes.size >= MAX_NOTES) continue
+      const path = this.textPath(id)
+      const [text, info] = await Promise.all([readFile(path, 'utf8').catch(() => null), stat(path).catch(() => null)])
+      if (text === null || !info) continue
+      this.notes.set(id, {
+        id,
+        title: derivedNoteTitle(text),
+        named: false,
+        createdAt: info.birthtimeMs || info.mtimeMs,
+        updatedAt: info.mtimeMs,
+        revision: 1,
+        lineCount: noteLineCount(text),
+        text: text.slice(0, MAX_NOTE_CHARS)
+      })
+      this.indexDirty = true
+    }
+    if (this.indexDirty) this.scheduleWrite()
   }
 }
 

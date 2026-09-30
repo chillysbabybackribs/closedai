@@ -9,7 +9,7 @@ import { CHAT_PROVIDERS, CHAT_PROVIDER_LABELS } from '../../shared/chat-provider
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import { ageNote, resetNote } from '../context-meter.js'
 import { errorMessage } from '../error-message.js'
-import { providerUsageEntries, usageHeadline, usageWindowState, type ProviderUsageEntry } from './provider-usage-model.js'
+import { providerUsageEntries, usageChipText, usageHeadline, usageWindowState, type ProviderUsageEntry } from './provider-usage-model.js'
 
 export function ProviderUsage({ chats, open, onOpenChange }: {
   chats: readonly ChatRowSummary[]; visible: boolean; open: boolean; onOpenChange: (open: boolean) => void
@@ -55,9 +55,8 @@ export function ProviderUsage({ chats, open, onOpenChange }: {
   const trigger = (item: ProviderUsageEntry): JSX.Element => {
     const headline = usageHeadline(item.usage, now)
     const label = CHAT_PROVIDER_LABELS[item.provider]
-    const plan = item.usage?.plan ?? item.account?.planType
-    const text = item.provider === 'cursor' && headline.level === 'unknown'
-      ? `${plan ? `${plan} · ` : ''}usage unavailable` : headline.text
+    const plan = item.usage?.plan ?? item.account?.planType ?? null
+    const text = usageChipText(item.provider, item.usage, plan, now)
     const detail = `${label}: ${text}${headline.window ? ` · lowest reported: ${headline.window.label}` : ''}`
     return <Tooltip key={item.key}>
       <TooltipTrigger asChild><Button variant="ghost" className="provider-usage-chip" data-ui="dock.provider-usage"
@@ -136,8 +135,12 @@ function ProviderUsageDetail({ entry, now, refreshProvider }: { entry: ProviderU
           <p>{state.observedAt > 0 ? now - state.observedAt < 60_000 ? 'Updated just now' : `Read ${ageNote(Math.max(0, now - state.observedAt))}` : 'Observation time unavailable'}</p>
         </div>
       })}</dl> : <p className="provider-usage-note">No provider reading yet. Refresh to request available usage.</p>}
-    {usage?.note && <p className="provider-usage-note">{usage.note}</p>}
+    {usage?.note && entry.provider !== 'codex' && <p className="provider-usage-note">{usage.note}</p>}
     {error && <p role="status" className="provider-usage-note">{error}</p>}
-    <footer>Provider-reported · lowest reported window shown in the rail. Model-specific windows keep their original labels.</footer>
+    <footer>{entry.provider === 'codex'
+      ? 'Codex app-server · only primary and secondary rate-limit windows when reported. Credits stay in the composer usage card.'
+      : entry.provider === 'cursor'
+        ? 'Cursor CLI · plan from about; quota percentages are not exposed on the CLI.'
+        : 'Provider-reported · lowest reported window shown in the rail. Model-specific windows keep their original labels.'}</footer>
   </section>
 }

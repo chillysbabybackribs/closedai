@@ -50,6 +50,18 @@ test('a codex account with one window and no credits reports just that window', 
   assert.equal(usage?.note, null)
 })
 
+test('codex with no rate-limit windows says usage is unavailable while keeping the plan', () => {
+  const usage = codexPlanUsage({
+    primary: null,
+    secondary: null,
+    credits: { hasCredits: false, unlimited: false, balance: '0' },
+    planType: 'prolite'
+  }, NOW)
+  assert.equal(usage?.plan, 'Pro Lite')
+  assert.deepEqual(usage?.windows, [])
+  assert.match(usage?.unavailable ?? '', /rate-limit windows/)
+})
+
 test('claude usage windows keep their order and parse ISO resets', () => {
   const usage = claudePlanUsage({
     subscription_type: 'max',
