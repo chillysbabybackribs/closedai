@@ -82,8 +82,19 @@ test('the compaction threshold is clamped and bad values fall back', async () =>
   assert.match(await readFile(file, 'utf8'), /"chatCompactAtPercent": 72/)
 })
 
+test('retired compaction defaults migrate once, then explicit values persist', async () => {
+  const { store, file } = await storeWith(JSON.stringify({ chatCompactAtPercent: 60, chatCompactAtTokens: 28_000 }))
+  assert.equal(store.get().chatCompactAtPercent, 80)
+  assert.equal(store.get().chatCompactAtTokens, 0)
+  await store.set({ chatCompactAtPercent: 60, chatCompactAtTokens: 28_000 })
+  const reopened = (await AppSettingsStore.open(file)).get()
+  assert.equal(reopened.chatCompactAtPercent, 60)
+  assert.equal(reopened.chatCompactAtTokens, 28_000)
+})
+
 test('explicit token-off plus rotation-off survives load and unrelated writes', async () => {
   const { store, file } = await storeWith(JSON.stringify({
+    chatCompactionPolicyVersion: 1,
     chatCompactAtPercent: 60,
     chatCompactAtTokens: 0,
     chatSeamlessRotation: false

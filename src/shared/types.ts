@@ -184,6 +184,11 @@ export type AppSettings = {
   /** Opt-in Codex between-turn token threshold (not a hard cap). 0 disables; 20k–2M otherwise. */
   chatCompactAtTokens: number
   /**
+   * Version of the compaction defaults this file has been migrated to. Files written before
+   * version 1 may still carry the retired defaults (60% and a 28k token budget).
+   */
+  chatCompactionPolicyVersion: number
+  /**
    * Opt-in: have Codex compact in the middle of a turn once the context passes this many tokens.
    * 0 (default) keeps Codex's own near-limit compaction. Compaction can lose detail and delay
    * the next response; compare first-text timing and cache reuse before lowering this limit.

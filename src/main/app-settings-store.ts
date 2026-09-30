@@ -46,6 +46,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   // Window pressure is the default; absolute token thresholds are opt-in.
   chatCompactAtPercent: 80,
   chatCompactAtTokens: 0,
+  chatCompactionPolicyVersion: 1,
   chatMidTurnCompactTokens: 0,
   chatSeamlessRotation: true,
   chatHandoffTargetChars: 24_000,
@@ -59,6 +60,10 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
 }
 
 const MAX_COMPACT_AT_PERCENT = 95
+const COMPACTION_POLICY_VERSION = 1
+// Retired defaults that older files persisted verbatim. The 28k budget rotated nearly every turn.
+const RETIRED_COMPACT_AT_PERCENT = 60
+const RETIRED_COMPACT_AT_TOKENS = 28_000
 const MIN_AUTO_COMPACT_TOKENS = 20_000
 const MAX_AUTO_COMPACT_TOKENS = 2_000_000
 const MAX_ROTATE_AT_ITEMS = 10_000
@@ -153,13 +158,23 @@ function normalizeRotationThreshold(value: unknown, fallback: number, max: numbe
 }
 
 /** Explicit opt-outs survive loading and unrelated settings writes. */
-function normalizeCompactionPolicy(record: Record<string, unknown>): Pick<AppSettings, 'chatCompactAtPercent' | 'chatCompactAtTokens' | 'chatSeamlessRotation'> {
-  const chatCompactAtPercent = typeof record.chatCompactAtPercent === 'number' && Number.isFinite(record.chatCompactAtPercent)
+function normalizeCompactionPolicy(record: Record<string, unknown>): Pick<
+  AppSettings,
+  'chatCompactAtPercent' | 'chatCompactAtTokens' | 'chatCompactionPolicyVersion' | 'chatSeamlessRotation'
+> {
+  let chatCompactAtPercent = typeof record.chatCompactAtPercent === 'number' && Number.isFinite(record.chatCompactAtPercent)
     ? Math.min(MAX_COMPACT_AT_PERCENT, Math.max(0, Math.round(record.chatCompactAtPercent)))
     : DEFAULT_APP_SETTINGS.chatCompactAtPercent
+  let chatCompactAtTokens = normalizeAutoCompactTokens(record.chatCompactAtTokens, DEFAULT_APP_SETTINGS.chatCompactAtTokens)
+  // Once per file: values equal to the retired defaults were never chosen (no UI sets them).
+  if (record.chatCompactionPolicyVersion !== COMPACTION_POLICY_VERSION) {
+    if (chatCompactAtPercent === RETIRED_COMPACT_AT_PERCENT) chatCompactAtPercent = DEFAULT_APP_SETTINGS.chatCompactAtPercent
+    if (chatCompactAtTokens === RETIRED_COMPACT_AT_TOKENS) chatCompactAtTokens = DEFAULT_APP_SETTINGS.chatCompactAtTokens
+  }
   return {
     chatCompactAtPercent,
-    chatCompactAtTokens: normalizeAutoCompactTokens(record.chatCompactAtTokens, DEFAULT_APP_SETTINGS.chatCompactAtTokens),
+    chatCompactAtTokens,
+    chatCompactionPolicyVersion: COMPACTION_POLICY_VERSION,
     chatSeamlessRotation: record.chatSeamlessRotation !== false
   }
 }
