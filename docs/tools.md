@@ -683,7 +683,9 @@ index reasoning, screenshots, or raw tool output. Global retention is LRU by the
 ordering as history (`messageSentAt`, then turn end, then creation), capped by
 `chatMemoryIndexMaxChats` (default 10, max 100 in settings). Per-pane indexes are not subject to
 that cap; each keeps the newest spine lines up to the larger of 96,000 characters or
-`chatMemoryIndexMaxCharsPerChat`. Ranking applies
+`chatMemoryIndexMaxCharsPerChat`. On disk, pane search uses SQLite FTS5 (`search.sqlite`) with
+BM25 ranking; JSON pane files remain authoritative and repopulate FTS after schema changes.
+Ranking applies
 an exponential recency decay (`chatMemoryIndexHalfLifeDays`, default 7) and a modest boost for
 pinned chats. Disabled when `chatMemoryIndexEnabled` is false. Results are historical; use
 `peer_chats.spine` for turn-shaped reads of one chat or

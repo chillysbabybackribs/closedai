@@ -19,7 +19,7 @@ Behavior:
 
 Prefer **`scope: chat`** when the user or handoff references something “earlier in this chat” after rotation or Compact. Use **`scope: source`** when you need evidence intentionally dropped from the live thread. Use literal **`peer_chats.search`** across chats for cross-pane topics; within-pane fuzzy find is Tier C.
 
-## Tier C — lexical pane index (in progress, no embeddings)
+## Tier C — lexical pane index (shipped, no embeddings)
 
 **Product choice:** improve find-within-pane and post-rotation discovery with **tokenized lexical search** (FTS-style ranking, multi-term match, path/checkpoint facets). **No** remote embedding APIs and **no** local transformer models in the Electron app—those paths are out of scope unless explicitly revisited as opt-in experiments.
 
@@ -53,7 +53,7 @@ Implementation can start with **stronger multi-token matching** on the existing 
 1. **Indexer hook** (shipped) — queue jobs after turn end / transcript remember; index merged **`scope: chat`** lines via the same turn shaping as the hot index; persist under `chat-pane-lexical-index`.
 2. **`peer_chats.search` scope chat** (shipped) — caller-pane multi-term lexical hits with `itemId` + snippet + `rotationEpoch` / `indexPartial` when applicable; drill down with `recall(scope=chat|current, item_id=...)`.
 3. **Checkpoint facets** (shipped) — index `goal`, list fields, and `files` from the pane checkpoint and frozen continuation checkpoint; synthetic `cp.*` item ids drill down via `recall(item_id=...)`.
-4. **FTS5 (optional)** — swap scan loop for FTS when profiling says it matters; keep on-disk format versioned.
+4. **FTS5** (shipped) — `search.sqlite` beside JSON pane records powers `scope: chat` queries (BM25 rank); versioned FTS schema rebuilds from JSON when the schema version changes. In-memory scan remains the fallback when SQLite is unavailable.
 
 ## Tier D — materialized export (optional)
 

@@ -14,6 +14,7 @@ import {
 import type { ChatRecord } from '../../shared/chat-store.js'
 import type { AppSettings } from '../../shared/types.js'
 import { mergePaneIndexLines } from './chat-pane-index-lines.js'
+import { buildFtsMatchQuery, ChatPaneLexicalFts } from './chat-pane-lexical-fts.js'
 import { writeAtomic } from '../atomic-write.js'
 
 export type ChatPaneLexicalIndexSettings = Pick<AppSettings, 'chatMemoryIndexEnabled' | 'chatMemoryIndexMaxCharsPerChat'>
@@ -60,11 +61,14 @@ export class ChatPaneLexicalIndex {
   private writeTimer: NodeJS.Timeout | null = null
   private writing: Promise<void> = Promise.resolve()
   private loaded = false
+  private fts: ChatPaneLexicalFts | null = null
 
   constructor(
     private readonly dir: string | null,
     private readonly settings: () => ChatPaneLexicalIndexSettings
-  ) {}
+  ) {
+    if (dir) this.fts = new ChatPaneLexicalFts(dir)
+  }
 
   static inMemory(settings: ChatPaneLexicalIndexSettings, records: ChatPaneLexicalIndexRecord[] = []): ChatPaneLexicalIndex {
     const index = new ChatPaneLexicalIndex(null, () => settings)
@@ -92,6 +96,8 @@ export class ChatPaneLexicalIndex {
       const record = await this.readRecord(chatId)
       if (record) this.records.set(chatId, record)
     }
+    this.openFts()
+    for (const record of this.records.values()) this.syncFts(record)
     this.loaded = true
   }
 
@@ -104,11 +110,12 @@ export class ChatPaneLexicalIndex {
       this.drop(record.id)
       return
     }
-    if (!items.length) return
     const maxChars = Math.max(
       DEFAULT_CHAT_PANE_LEXICAL_MAX_CHARS,
       this.settings().chatMemoryIndexMaxCharsPerChat ?? 0
     )
+    const lines = mergePaneIndexLines(items, record, maxChars)
+    if (!lines.length) return
     const entry: ChatPaneLexicalIndexRecord = {
       version: CHAT_PANE_LEXICAL_INDEX_VERSION,
       chatId: record.id,
@@ -117,16 +124,19 @@ export class ChatPaneLexicalIndex {
       lastActivityAt: indexActivity(record),
       rotationEpoch: meta.rotationEpoch,
       partial: meta.partial,
-      lines: mergePaneIndexLines(items, record, maxChars),
+      lines,
       updatedAt: Date.now()
     }
     this.records.set(record.id, entry)
+    this.syncFts(entry)
     this.scheduleWrite()
   }
 
   drop(chatId: string): void {
-    if (!this.records.has(chatId)) return
-    this.records.delete(chatId)
+    const had = this.records.delete(chatId)
+    this.openFts()
+    this.fts?.removeChat(chatId)
+    if (!had && !this.dir) return
     this.scheduleWrite()
     if (this.dir) void unlink(join(this.dir, `${sanitizeChatFileName(chatId)}.json`)).catch(() => {})
   }
@@ -148,28 +158,10 @@ export class ChatPaneLexicalIndex {
     if (!query) return empty
     const record = this.records.get(chatId)
     if (!record) return { ...empty, indexPartial: true }
-    const terms = lexicalQueryTerms(query)
     const limit = Math.max(1, Math.min(SEARCH_MAX_LIMIT, Math.floor(request.limit ?? SEARCH_DEFAULT_LIMIT)))
-    const candidates: ChatIndexSearchHit[] = []
-    for (const line of record.lines) {
-      const matchScore = scoreLexicalLineMatch(terms, line.text)
-      if (matchScore === null) continue
-      const snippet = clip(line.text, SEARCH_SNIPPET_CHARS)
-      candidates.push({
-        chatId: record.chatId,
-        itemId: line.itemId,
-        role: line.role,
-        snippet,
-        score: matchScore,
-        lastActivityAt: record.lastActivityAt,
-        cwd: record.cwd,
-        title: record.title,
-        evidenceAvailability: { status: 'not-checked' }
-      })
-    }
-    candidates.sort((a, b) => b.score - a.score || a.itemId.localeCompare(b.itemId))
+    const hits = this.searchPaneFts(chatId, query, limit, record) ?? this.searchPaneScan(record, query, limit)
     return {
-      hits: candidates.slice(0, limit),
+      hits,
       indexedChatCount: 1,
       maxChats: 1,
       scope: 'chat',
@@ -213,10 +205,77 @@ export class ChatPaneLexicalIndex {
     if (!this.dir) return
     await mkdir(this.dir, { recursive: true })
     const chatIds = [...this.records.keys()].sort()
-    await writeAtomic(join(this.dir, 'manifest.json'), JSON.stringify({ chatIds, updatedAt: Date.now() }))
+    await writeAtomic(join(this.dir, 'manifest.json'), JSON.stringify({ chatIds, updatedAt: Date.now(), ftsSchema: 1 }))
     for (const chatId of chatIds) {
       const record = this.records.get(chatId)!
       await writeAtomic(join(this.dir, `${sanitizeChatFileName(chatId)}.json`), JSON.stringify(record))
     }
+  }
+
+  private openFts(): void {
+    try {
+      this.fts?.open()
+    } catch {
+      // JSON + scan fallback remains available when SQLite FTS is unavailable.
+    }
+  }
+
+  private syncFts(record: ChatPaneLexicalIndexRecord): void {
+    this.openFts()
+    try {
+      this.fts?.replaceChat(record)
+    } catch {
+      // Search falls back to in-memory scan for this pane until the next successful sync.
+    }
+  }
+
+  private searchPaneFts(
+    chatId: string,
+    query: string,
+    limit: number,
+    record: ChatPaneLexicalIndexRecord
+  ): ChatIndexSearchHit[] | null {
+    if (!this.fts) return null
+    const match = buildFtsMatchQuery(query)
+    if (!match) return []
+    this.openFts()
+    try {
+      const rows = this.fts.search(chatId, match, limit)
+      return rows.map((row) => ({
+        chatId: record.chatId,
+        itemId: row.itemId,
+        role: row.role,
+        snippet: clip(row.text, SEARCH_SNIPPET_CHARS),
+        score: row.score,
+        lastActivityAt: record.lastActivityAt,
+        cwd: record.cwd,
+        title: record.title,
+        evidenceAvailability: { status: 'not-checked' as const }
+      }))
+    } catch {
+      return null
+    }
+  }
+
+  private searchPaneScan(record: ChatPaneLexicalIndexRecord, query: string, limit: number): ChatIndexSearchHit[] {
+    const terms = lexicalQueryTerms(query)
+    const candidates: ChatIndexSearchHit[] = []
+    for (const line of record.lines) {
+      const matchScore = scoreLexicalLineMatch(terms, line.text)
+      if (matchScore === null) continue
+      candidates.push({
+        chatId: record.chatId,
+        itemId: line.itemId,
+        role: line.role,
+        snippet: clip(line.text, SEARCH_SNIPPET_CHARS),
+        score: matchScore,
+        lastActivityAt: record.lastActivityAt,
+        cwd: record.cwd,
+        title: record.title,
+        evidenceAvailability: { status: 'not-checked' }
+      })
+    }
+    candidates.sort((a, b) => b.score - a.score || a.itemId.localeCompare(b.itemId))
+    return candidates.slice(0, limit)
   }
 }
