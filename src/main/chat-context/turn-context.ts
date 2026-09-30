@@ -58,6 +58,23 @@ export function needsActiveBrowserContext(text: string): boolean {
   return BROWSER_CONTEXT_CUES.some((cue) => cue.test(text))
 }
 
+// Tab/chrome troubleshooting ("fix my browser tab", reload loops) — use tools/state, not an
+// arbitrary active-tab URL that may belong to another pane's assignment.
+const BROWSER_CHROME_SUPPORT_CUES = [
+  /\b(?:fix|debug|repair|broken|stuck)\b/i,
+  /\b(?:reload|refresh)(?:ing|s)?\b/i,
+  /\bkeeps?\s+(?:reload|refresh)/i
+] as const
+
+/** Whether to attach ambient active-tab metadata on this turn (stricter than tool discovery cues). */
+export function needsActiveBrowserTabMetadata(text: string): boolean {
+  if (!needsActiveBrowserContext(text)) return false
+  const chromeSupport =
+    BROWSER_CHROME_SUPPORT_CUES.some((cue) => cue.test(text)) &&
+    /\b(?:browser|tab)\b/i.test(text)
+  return !chromeSupport
+}
+
 /** Authoritative calendar time for the host running ClosedAI; attached every user turn. */
 export function buildClockAdditionalContext(now = new Date()): AdditionalContext {
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -86,7 +103,7 @@ export function buildTurnAdditionalContext(
     return { [NOTEPAD_CONTEXT]: { kind: 'untrusted', value: JSON.stringify({ ...surface, contextRole: 'subject', capturedAt }) } }
   }
   const activeBrowser = surface
-  if (!activeBrowser || !needsActiveBrowserContext(text)) return undefined
+  if (!activeBrowser || !needsActiveBrowserTabMetadata(text)) return undefined
   return {
     [ACTIVE_BROWSER_CONTEXT]: {
       kind: 'untrusted',

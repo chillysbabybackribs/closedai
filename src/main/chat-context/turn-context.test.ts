@@ -43,6 +43,14 @@ test('browser context is gated to browser and visible-page requests', () => {
   assert.equal(needsActiveBrowserContext('What are we looking at?'), true)
 })
 
+test('active tab metadata skips embedded-browser chrome support prompts', () => {
+  assert.equal(
+    buildTurnAdditionalContext('Can you fix my browser tab? It keeps reloading.', activeTab),
+    undefined
+  )
+  assert.ok(buildTurnAdditionalContext('What is on the current page?', activeTab))
+})
+
 test('an unrelated turn carries no additional context', () => {
   assert.equal(buildTurnAdditionalContext('Run the unit tests', activeTab), undefined)
 })
