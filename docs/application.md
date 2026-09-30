@@ -78,8 +78,10 @@ chat starts a provider; resolution follows each lane's spawn order (env override
 
 First-run onboarding (renderer). Before the workspace is used on a fresh install, the shell shows
 a full-screen **session gate** (Ubuntu-style local profiles: pick a user, enter a password, create
-account with username/password confirmation, keep signed in) persisted
-in `localStorage` under `closedai.onboarding.v1` (`src/shared/onboarding.ts`). Each **local
+account with username/password confirmation, keep signed in). The account list
+(`OnboardingSettings`, `src/shared/onboarding.ts`) is kept by main in `profiles.json`, outside
+every profile's data, and reaches the renderer through `window.closedai.profiles`; a list an
+earlier build kept in `localStorage` under `closedai.onboarding.v1` moves there once. Each **local
 profile** owns its own `keepSignedIn`, `connectedProviders`, and `providerSetupComplete` flags so
 a new account is not treated as finished with provider setup just because another profile on the
 same machine already connected. Existing installs with chat history skip the flow automatically
@@ -93,6 +95,22 @@ empty states still show connection guidance when a lane later drifts out of `rea
 **File → Sign out…** / Start → search) clears the local session (`sessionUnlocked`,
 `activeUserId`) and returns to the gate without deleting saved profiles or per-profile
 provider-setup progress.
+
+Each local profile owns a whole workspace (`src/main/profiles/`). A profile's data directory is
+Electron's `userData` for the process that opens it, chosen before the instance lock and before
+any store or Chromium session exists, so chats, open panes, notes, layouts, wallpaper, browser
+tabs, cookies, history, saved sites, agents, security settings and the credential vault never
+cross accounts. The oldest account is the **home** account and keeps the root directory, which
+is the data that existed before profiles had their own; every other account lives under
+`profiles/<id>/` and starts empty. One process holds one profile for its whole life: signing in
+to (or creating) an account whose data is not the open profile shows an "Opening your workspace"
+cover and relaunches into it after the normal quit flush, and that relaunch continues the
+session even without keep-signed-in. Signing in to the account that is already open does not
+relaunch. A launch opens the signed-in account, else the last one, else the home account, so the
+gate is painted over that profile. Provider CLIs are signed in per OS user, so the provider
+modal detects the same CLI sign-ins for every account; their thread stores are shared too, which
+is why only the home account adopts threads from provider catalogs and other accounts list the
+chats they made.
 
 Launch resilience. A bootstrap failure is shown in a native error box and ends the app; an
 uncaught exception or unhandled rejection after the window exists is logged with a `[main]`
@@ -1396,6 +1414,7 @@ instrumentation.
 |---|---|
 | Bootstrap, service composition, project persistence | `src/main/index.ts`, `src/main/app-settings-store.ts` |
 | Launch fault handling, renderer-loss recovery, bounded quit | `src/main/app-crash-guard.ts`, `src/main/main-window-recovery.ts`, `src/main/app-quit.ts` |
+| Local profiles: account list, per-account data directory, relaunch into a profile | `src/main/profiles/`, `src/shared/local-profiles.ts`, `src/renderer/onboarding/profile-storage.ts` |
 | Provider install detection and missing-binary messages | `src/main/provider-availability.ts`, `src/main/provider-binary.ts`, `src/shared/provider-availability.ts` |
 | Chat records and persistence, settings migration | `src/main/chat-store/`, `src/shared/chat-store.ts` |
 | Store file reads that set a damaged file aside, durable atomic writes | `src/main/store-recovery.ts`, `src/main/atomic-write.ts` |
@@ -1441,10 +1460,13 @@ File operations use native provider tools. No custom workspace inspection tool, 
 injection, native-read interception, or automatic source-version check runs around a turn.
 Browser tools, credentials, and chat controls remain available through the shared registry.
 
-App-owned files live under Electron's `userData` (`~/.config/closedai/` on Linux by default).
+App-owned files live under Electron's `userData`: `~/.config/closedai/` on Linux by default for
+the home account, and `profiles/<id>/` inside it for every other local profile. Each profile
+directory holds its own copy of every store below; `profiles.json` exists once, in the root.
 
 | Store | Contents |
 |---|---|
+| `profiles.json` (root only) | The local accounts: the renderer's onboarding settings as written (names, PBKDF2 password hashes, per-account provider progress, signed-in account), the home account, the last active account, and a one-launch resume marker set by a profile switch. Written synchronously and atomically at 0600; an unreadable file is set aside as `profiles.json.corrupt-<time>` |
 | `provider-catalogs.json` | The last model catalog read per workspace and provider, so a relaunch starts only the active provider and the picker still offers every model; a provider refreshes its own entry when selected |
 | `chat-transcripts/<chat id>.json` | The bounded tail of each chat as the app last showed it, so opening one paints before its provider replays; display-only, pruned against the store's live chat ids on launch |
 | `chats.json` | Every chat record: id, project directory, provider, model and effort, per-provider thread ids, title, preview, created/updated/last-turn times, archived flag, pin timestamp, parent chat, continuation digest, checkpoint, and the agent run driving the chat (`agentRun`: prompt, status, cycle, limits, failure count, last thread, and `stats`: step, edit, error and rotation counts, summed turn time, last reply and error excerpts, latest context and plan readings). Debounced atomic writes; flushed on quit |
