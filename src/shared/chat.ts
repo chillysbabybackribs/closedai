@@ -264,3 +264,10 @@ export type ChatEvent =
   | { type: 'checkpoint'; checkpoint: import('./chat-memory.js').ChatMemoryCheckpoint | null }
   | { type: 'item'; item: ChatTranscriptItem; appended?: boolean }
   | { type: 'itemDelta'; itemId: string; field: 'text' | 'output'; delta: string }
+
+/** Subscription telemetry read independently of chat sessions. */
+export type ProviderUsageSnapshot = {
+  provider: ChatProvider
+  account: ChatAccount | null
+  usage: ChatPlanUsage | null
+}

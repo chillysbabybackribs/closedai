@@ -102,6 +102,7 @@ export type IpcInvokeChannels = {
   'chat:setVisiblePanes': { args: [string, ChatPaneId[], ChatPaneId[]?]; result: void }
   'chat:selectModel': { args: [ChatPaneId, string]; result: void }
   'chat:selectReasoningEffort': { args: [ChatPaneId, string]; result: void }
+  'chat:readProviderUsage': { args: [ChatProvider]; result: import('./chat.js').ProviderUsageSnapshot }
   'chat:refreshPlanUsage': { args: [ChatPaneId, boolean?]; result: void }
   'chat:login': { args: []; result: void }
   'chat:listChats': { args: []; result: ChatRowSummary[] }
@@ -289,6 +290,7 @@ export const IPC = {
       setVisiblePanes: 'chat:setVisiblePanes',
       selectModel: 'chat:selectModel',
       selectReasoningEffort: 'chat:selectReasoningEffort',
+      readProviderUsage: 'chat:readProviderUsage',
       refreshPlanUsage: 'chat:refreshPlanUsage',
       login: 'chat:login',
       listChats: 'chat:listChats',

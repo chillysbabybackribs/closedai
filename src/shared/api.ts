@@ -169,6 +169,7 @@ export type ClosedaiApi = {
     selectReasoningEffort: (paneId: ChatPaneId, effort: string) => Promise<void>
     /** Re-read the pane provider's subscription usage; a no-op where it is not reported. */
     /** Passive callers pass onlyIfAwake to preserve parking and its idle deadline. */
+    readProviderUsage: (provider: import('./chat.js').ChatProvider) => Promise<import('./chat.js').ProviderUsageSnapshot>
     refreshPlanUsage: (paneId: ChatPaneId, onlyIfAwake?: boolean) => Promise<void>
     loginWithChatGPT: () => Promise<void>
     /** Every chat of this workspace from the app's own store, newest first; provider catalogs are reconciled behind it. */

@@ -3,6 +3,7 @@ import { MAIN_WINDOW_ID } from '../shared/app-windows.js'
 import { stat } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import type { ChatAttachment, ChatProvider } from '../shared/chat.js'
+import { readProviderUsage } from './chat-context/provider-usage.js'
 import { CHAT_PROVIDERS } from '../shared/chat-providers.js'
 import { CHAT_TURN_PAGE_SIZE } from '../shared/chat.js'
 import type { ChatContinuationSource, ChatNewPeerOptions } from '../shared/chat-peers.js'
@@ -43,6 +44,10 @@ export function registerChatIpc(ipcMain: IpcMain, getService: () => ChatWorkspac
   ipcMain.handle(IPC.invoke.chat.selectReasoningEffort, (_event, paneId: string, effort: string) =>
     requireService().selectReasoningEffort(paneId, effort)
   )
+  ipcMain.handle(IPC.invoke.chat.readProviderUsage, (_event, provider: ChatProvider) => {
+    if (!CHAT_PROVIDERS.includes(provider)) throw new Error('Choose a valid provider')
+    return readProviderUsage(provider)
+  })
   ipcMain.handle(IPC.invoke.chat.refreshPlanUsage, (_event, paneId: string, onlyIfAwake?: boolean) => requireService().refreshPlanUsage(paneId, onlyIfAwake))
   ipcMain.handle(IPC.invoke.chat.listChats, () => requireService().listChats())
   ipcMain.handle(IPC.invoke.chat.newPeer, (_event, anchorPaneId?: string, options?: ChatNewPeerOptions) => {
