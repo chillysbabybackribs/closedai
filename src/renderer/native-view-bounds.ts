@@ -139,6 +139,18 @@ export function useNativeViewBounds(
       queueSettle()
     }
 
+    // Scroll is captured window-wide, and a streaming transcript scrolls many times a second.
+    // `sync` walks the ancestor chain for animations before it reads, so scroll bursts are folded
+    // into one sync per frame instead of running that walk per event.
+    let scrollRaf = 0
+    const onScroll = (): void => {
+      if (scrollRaf) return
+      scrollRaf = requestAnimationFrame(() => {
+        scrollRaf = 0
+        if (!destroyed) sync()
+      })
+    }
+
     sync()
     const observer = new ResizeObserver(sync)
     observer.observe(host)
@@ -148,14 +160,15 @@ export function useNativeViewBounds(
       ancestor = ancestor.parentElement
     }
     window.addEventListener('resize', sync)
-    window.addEventListener('scroll', sync, true)
+    window.addEventListener('scroll', onScroll, true)
     return () => {
       destroyed = true
       if (coalesceRaf) cancelAnimationFrame(coalesceRaf)
       if (settleRaf) cancelAnimationFrame(settleRaf)
+      if (scrollRaf) cancelAnimationFrame(scrollRaf)
       observer.disconnect()
       window.removeEventListener('resize', sync)
-      window.removeEventListener('scroll', sync, true)
+      window.removeEventListener('scroll', onScroll, true)
     }
   }, [layoutKey, visible, occluded])
   return hostRef

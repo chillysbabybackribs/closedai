@@ -170,9 +170,20 @@ export function useTitlebarBrowserFreeze(omniboxCoversPage = false): {
       if (target.closest(EAGER_CAPTURE_TRIGGER)) capture()
       else if (event.button === 2 && target.closest(BROWSER_SURFACE)) capture()
     }
-    // Overlays mount inside the browser shell or directly under <body>; a subtree watch on
-    // body is cheap here because nothing in this shell streams DOM at token frequency.
-    const observer = new MutationObserver(sync)
+    // Overlays mount inside the browser shell or directly under <body>, so the watch has to cover
+    // the whole body. A streaming transcript mutates that subtree many times a frame, and each
+    // `sync` measures every overlay, so the records of one frame collapse into a single scan.
+    // The scan itself is still synchronous with the frame, before paint: an overlay that opened
+    // is covered by the still on the same frame it would have painted over the native page.
+    let scanFrame = 0
+    const scheduleSync = (): void => {
+      if (scanFrame) return
+      scanFrame = requestAnimationFrame(() => {
+        scanFrame = 0
+        sync()
+      })
+    }
+    const observer = new MutationObserver(scheduleSync)
     observer.observe(document.body, {
       attributes: true,
       attributeFilter: ['aria-hidden', 'data-state', 'hidden', 'open', 'style'],
@@ -182,6 +193,7 @@ export function useTitlebarBrowserFreeze(omniboxCoversPage = false): {
     window.addEventListener('pointerdown', onPointerDown, true)
     sync()
     return () => {
+      if (scanFrame) cancelAnimationFrame(scanFrame)
       observer.disconnect()
       window.removeEventListener('pointerdown', onPointerDown, true)
     }
