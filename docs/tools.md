@@ -327,6 +327,9 @@ when false. Provider text has no byte-level provenance of our own — its `sha25
 as delivered — and a source already queued for fetching keeps its fetch. If local retention fails
 the source returns to `deferred` and the ordinary reader may still fetch it. Standalone
 `search.query` never requests page text; Exa highlights alone become the snippet there.
+When results are snippet-only or a provider returns a synthesized answer, the JSON includes
+`groundingHint` nudging `embedded_browser.session` fetch and `site.discover` bootstrap for
+vendor-grounded work. `intent` defaults to `general` when omitted.
 
 `search.run.expand` accepts `run_id`, `source_id`, optional `method: auto|direct|exa`,
 `max_text_chars` (default zero/uncapped), and `max_source_bytes` (default 8 MiB). It awaits one
@@ -418,6 +421,8 @@ in the same pane/thread until eviction or app restart. Run files are an app-owne
 under `<userData>/research-runs`, cleared on the next launch; eviction also removes their files.
 
 `search.read.results` returns source states and errors under a 16k-character target budget.
+When retained sources are still snippet-scale or queries finished without page text, snapshots may
+include the same `groundingHint` as `search.query`.
 At most twelve recent errors are returned; `omittedErrors` reports earlier errors beyond that bound.
 Keep records by source id; later deltas replace earlier states. Continue from the returned cursor,
 including when `omittedSources` is nonzero. `wait` returns on a revision change or a bounded wait

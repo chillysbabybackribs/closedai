@@ -13,6 +13,7 @@ import { SEARCH_DEPTHS, SEARCH_INTENTS, SEARCH_PROVIDERS, type SearchDepth, type
 import { youClient } from './you.js'
 import { ResearchService, type ResearchDependencies } from './research/service.js'
 import { researchTools } from './research/tools.js'
+import { attachSearchGroundingHint } from './grounding-hints.js'
 import { SourcePresentation, SEARCH_PRESENTATION_FIELD } from './presentation.js'
 import { FRESHNESS_FIELD, SOURCE_OPTION_FIELDS, sourceOptions } from './request-options.js'
 
@@ -40,7 +41,11 @@ export function searchTools(deps: SearchToolDeps = {}): ToolNamespace {
         type: 'object',
         properties: {
           query: { type: 'string', minLength: 1, maxLength: 1_000, description: 'Search query or question.' },
-          intent: { type: 'string', enum: [...SEARCH_INTENTS], description: 'Evidence shape used to select providers.' },
+          intent: {
+            type: 'string',
+            enum: [...SEARCH_INTENTS],
+            description: 'Evidence shape used to select providers; defaults to general when omitted (use technical for API/docs).'
+          },
           depth: { type: 'string', enum: [...SEARCH_DEPTHS], description: 'quick=1 provider (default), balanced=2, deep=3.' },
           live: { type: 'boolean', description: 'Bypass the ten-minute cache and refresh it with current provider results.' },
           presentation: SEARCH_PRESENTATION_FIELD,
@@ -53,13 +58,13 @@ export function searchTools(deps: SearchToolDeps = {}): ToolNamespace {
           include_domains: { type: 'array', items: { type: 'string' }, description: 'Restrict supported providers to these domains.' },
           exclude_domains: { type: 'array', items: { type: 'string' }, description: 'Exclude these domains on supported providers.' }
         },
-        required: ['query', 'intent'],
+        required: ['query'],
         additionalProperties: false
       },
       async run(input, context) {
         const request = {
           query: stringArg(input, 'query')!,
-          intent: stringArg(input, 'intent') as SearchIntent,
+          intent: searchIntent(input),
           depth: stringArg(input, 'depth', 'quick') as SearchDepth,
           count: numberArg(input, 'count', 5),
           ...sourceOptions(input),
@@ -76,7 +81,11 @@ export function searchTools(deps: SearchToolDeps = {}): ToolNamespace {
           if ('output' in update) for (const source of update.output.results) presentation.consider(source.url)
         })
         presentation.finish()
-        return textResult(JSON.stringify({ ...response, presentation: presentation.snapshot() }, null, 2))
+        const payload = attachSearchGroundingHint(
+          { ...response, presentation: presentation.snapshot() },
+          response
+        )
+        return textResult(JSON.stringify(payload, null, 2))
       }
     })
   const extractionBudget = new RequestBudget(2)
@@ -107,6 +116,14 @@ function stringArray(input: JsonObject, key: string): string[] | undefined {
 function optionalString(input: JsonObject, key: string): Record<string, string> {
   const value = stringArg(input, key)
   return value ? { [key]: value } : {}
+}
+
+function searchIntent(input: JsonObject): SearchIntent {
+  const value = stringArg(input, 'intent', 'general')!
+  if (!(SEARCH_INTENTS as readonly string[]).includes(value)) {
+    throw new Error(`\`intent\` must be one of: ${SEARCH_INTENTS.join(', ')}`)
+  }
+  return value as SearchIntent
 }
 
 export { SearchRouter, selectProviders } from './router.js'

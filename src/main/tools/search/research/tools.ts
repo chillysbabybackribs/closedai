@@ -1,6 +1,8 @@
 import { defineActionTool } from '../../action-tool.js'
 import { numberArg, stringArg, textResult, type JsonObject, type ToolDefinition } from '../../tool.js'
+import type { ResearchSnapshot } from '../../../shared/web-research.js'
 import type { SearchRequest } from '../types.js'
+import { attachResearchGroundingHint } from '../grounding-hints.js'
 import { ResearchService } from './service.js'
 import { SEARCH_PRESENTATION_FIELD } from '../presentation.js'
 import { sourceOptions } from '../request-options.js'
@@ -26,7 +28,7 @@ export function researchTools(service: ResearchService, queryTool: ToolDefinitio
   const schema = (properties: JsonObject, required: string[] = []) => ({ type: 'object', properties, required, additionalProperties: false })
   const parseQueries = (input: JsonObject): SearchRequest[] => {
     return ((input.queries ?? []) as JsonObject[]).map((query) => ({
-      query: String(query.query), intent: query.intent as SearchRequest['intent'],
+      query: String(query.query), intent: (query.intent ?? 'general') as SearchRequest['intent'],
       depth: (query.depth ?? 'quick') as SearchRequest['depth'], count: Number(query.count ?? 5),
       ...sourceOptions(query),
       live: query.live === true, providers: query.providers as SearchRequest['providers'],
@@ -35,7 +37,12 @@ export function researchTools(service: ResearchService, queryTool: ToolDefinitio
       includeDomains: query.include_domains as string[] | undefined, excludeDomains: query.exclude_domains as string[] | undefined
     }))
   }
-  const result = (value: unknown) => textResult(JSON.stringify(value))
+  const result = (value: unknown) => {
+    const payload = value && typeof value === 'object' && 'runId' in (value as object)
+      ? attachResearchGroundingHint(value as ResearchSnapshot)
+      : value
+    return textResult(JSON.stringify(payload))
+  }
   return [
     defineActionTool({
       name: 'run',

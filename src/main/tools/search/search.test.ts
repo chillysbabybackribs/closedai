@@ -32,6 +32,27 @@ test('search.query defaults to quick depth when omitted', async () => {
   assert.deepEqual(providers, ['brave'])
 })
 
+test('search.query defaults intent to general when omitted', async () => {
+  const providers: SearchProvider[] = []
+  const fetchMock: typeof fetch = async (input) => {
+    const url = String(input)
+    if (url.includes('brave.com')) {
+      return json({
+        grounding: { generic: [{ url: 'https://example.com/doc', title: 'Doc', snippets: ['line'] }] },
+        sources: {}
+      })
+    }
+    return json({ organic: [] })
+  }
+  const registry = new ToolRegistry([searchTools({ fetch: fetchMock, readKey: async (provider) => { providers.push(provider); return 'key' } })])
+  const out = await registry.call({ namespace: 'search', tool: 'query', arguments: { query: 'topic' } }, context)
+  assert.deepEqual(providers, ['brave'])
+  const text = out.content[0].type === 'text' ? out.content[0].text : ''
+  const parsed = JSON.parse(text) as { intent: string; groundingHint?: string }
+  assert.equal(parsed.intent, 'general')
+  assert.match(parsed.groundingHint ?? '', /site\.discover/)
+})
+
 test('intent and depth select complementary provider sets', () => {
   assert.deepEqual(selectProviders(baseRequest), ['brave', 'serper'])
   assert.deepEqual(selectProviders({ ...baseRequest, intent: 'research', depth: 'deep' }), ['exa', 'tavily', 'brave'])
