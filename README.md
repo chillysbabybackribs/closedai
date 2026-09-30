@@ -60,11 +60,35 @@ The [Electron review](docs/electron-browser-platform-review.md),
 retain dated observations and proposals. They are evidence for past decisions; current behavior
 is documented in the application, model-context, and tool guides.
 
-## Verification
+## Focused verification
 
-For routine edits, run one co-located test with `npm run test:one -- src/path/to/module.test.ts`,
-then `npm run typecheck` when shared types or cross-layer contracts change. Use `npm run hygiene`
-for changed file lengths or structure. Run `npm run map` when navigable files or IPC ownership
-change, then `npm run map:check`. For real Chromium browser paths against the app's `HOME_URL`,
-run `npm run browser:live`. The full `npm run check` gate is for release preparation or an
-explicit request; see [AGENTS.md](AGENTS.md).
+Pick the smallest meaningful checks, run them once per logical edit batch, and reuse passing
+results until relevant edits, failures, or new evidence require a rerun. Docs-only and
+comment-only changes need no tests or typecheck.
+
+**One co-located test (default for code changes):** tests live beside the module they cover.
+
+```sh
+npm run test:one -- src/path/to/module.test.ts
+```
+
+**Typecheck:** run `npm run typecheck` when shared types, exports, or cross-layer contracts
+change—not after every micro-edit. `npm run build` already typechecks; `npm run check` relies
+on that build step instead of repeating it.
+
+**Hygiene:** run `npm run hygiene` when imports, module structure, or `scripts/hygiene-gate.mjs`
+change, unless `npm run dev` or `npm run build` will cover the same state. Dependency-layer
+violations fail; oversized-file reports are advisory and size-only growth needs no extra command.
+`dev` and `build` run hygiene automatically.
+
+**Renderer UI:** verify in the real Electron app (`npm run build && npm run preview`, or
+`npm run dev` for hot reload). Do not add a browser-only entry or duplicate the preload bridge.
+Main-process or preload changes require an app restart; confirming the build succeeded is not the
+same as checking the surface you changed—see [Application guide](docs/application.md).
+
+**Workspace index:** when navigable files or IPC ownership change, run `npm run map` then
+`npm run map:check`.
+
+For real Chromium browser paths against the app's `HOME_URL`, run `npm run browser:live`.
+`npm test` and `npm run check` are for release preparation or an explicit request; see
+[AGENTS.md](AGENTS.md).
