@@ -34,7 +34,7 @@
   z-index: 61;
   display: flex;
   flex-direction: column;
-  max-width: var(--radix-popover-content-available-width, 16.25rem);
+  max-width: var(--radix-popover-content-available-width, 18rem);
   max-height: min(var(--radix-popover-content-available-height, 60vh), 440px);
   overflow: hidden;
   border: 1px solid var(--border);

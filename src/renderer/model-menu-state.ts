@@ -117,7 +117,7 @@ export function modelFlyoutPlacement(
   row: Box,
   boundary: Box,
   panelSide: string | null,
-  { width = 260, gap = 6, padding = 12 }: { width?: number; gap?: number; padding?: number } = {}
+  { width = 288, gap = 6, padding = 12 }: { width?: number; gap?: number; padding?: number } = {}
 ): ModelFlyoutPlacement {
   const fit = Math.max(0, Math.floor(Math.min(width, boundary.width - padding * 2)))
   const roomRight = boundary.right - padding - panel.right

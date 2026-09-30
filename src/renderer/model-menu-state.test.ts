@@ -82,12 +82,12 @@ test('the flyout opens on the side with room, growing the way the panel opened',
   // Panel near the pane's left edge: room on the right, just past the row's 5px inset.
   assert.deepEqual(
     modelFlyoutPlacement({ left: 40, right: 328, width: 288 }, { left: 45, right: 323, width: 278 }, pane, 'top'),
-    { side: 'right', align: 'end', sideOffset: 11, width: 260 }
+    { side: 'right', align: 'end', sideOffset: 11, width: 288 }
   )
   // Panel against the right edge (the screenshot case): it flips left and drops down when the panel did.
   assert.deepEqual(
     modelFlyoutPlacement({ left: 700, right: 988, width: 288 }, { left: 705, right: 983, width: 278 }, pane, 'bottom'),
-    { side: 'left', align: 'start', sideOffset: 11, width: 260 }
+    { side: 'left', align: 'start', sideOffset: 11, width: 288 }
   )
 })
 
@@ -95,7 +95,7 @@ test('in a pane too narrow for either side the flyout overlaps the panel and sta
   const narrow = { left: 0, right: 420, width: 420 }
   const placement = modelFlyoutPlacement({ left: 60, right: 348, width: 288 }, { left: 65, right: 343, width: 278 }, narrow, 'top')
   assert.equal(placement.side, 'right')
-  // Row right edge 343 + offset + width 260 must end at the pane's padded edge, 408.
+  // Row right edge 343 + offset + width 288 must end at the pane's padded edge, 408.
   assert.equal(343 + placement.sideOffset + placement.width, 408)
   assert.equal(modelFlyoutPlacement(pane, pane, { left: 0, right: 200, width: 200 }, 'top').width, 176)
 })
