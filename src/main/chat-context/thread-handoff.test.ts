@@ -59,7 +59,7 @@ test('the digest keeps requests, one answer per turn, and changed files, and dro
   assert.match(handoff, /Where it stood: 2 user requests; the latest request was answered\./)
   assert.doesNotMatch(handoff, /Working directory there/)
   assert.match(handoff, /Files changed there: src\/header\.tsx/)
-  assert.match(handoff, /User: Make the header sticky\nAssistant: Done: the header is sticky\.\nUser: Now match this \[attached: mock\.png\]\nAssistant: Working on it$/)
+  assert.match(handoff, /User: Make the header sticky\nAssistant: Done: the header is sticky\.\nUser: Now match this \[attached: mock\.png\]\nAssistant: Working on it/)
   assert.doesNotMatch(handoff, /thinking hard|lots of output|data:image|compacted/)
   assert.deepEqual(handoffAdditionalContext('digest'), { [THREAD_HANDOFF_CONTEXT]: { kind: 'untrusted', value: 'digest' } })
 })
@@ -107,22 +107,21 @@ test('a destination continuation keeps the frozen source boundary and checkpoint
   })
 })
 
-test('long conversations keep the opening request and the most recent exchanges within budget', () => {
-  const items: ChatTranscriptItem[] = [user('u0', 'The original goal', 't0')]
-  for (let index = 1; index <= 40; index += 1) {
-    items.push(user(`u${index}`, `Request ${index} ${'x'.repeat(900)}`, `t${index}`))
-    items.push(answer(`a${index}`, `t${index}`, `Answer ${index} ${'y'.repeat(2_000)}`))
+test('handoffs preserve complete user requests and latest answer while omitting whole older answers', () => {
+  const items = [user('u0', 'The original goal')]
+  for (let i = 1; i <= 40; i++) {
+    items.push(user(`u${i}`, `Request ${i} ${'x'.repeat(900)}`))
+    items.push(answer(`a${i}`, `u${i}`, `Answer ${i} ${'y'.repeat(2_000)} END`))
   }
-  const digest = buildThreadHandoff(items, null)
-  assert.ok(digest)
-  assert.equal(digest.title, 'The original goal')
-  const handoff = digest.text
-  assert.ok(handoff.length <= 12_000, `digest is ${handoff.length} chars`)
-  assert.match(handoff, /^Handoff from the previous chat "The original goal"\./)
-  assert.match(handoff, /User: The original goal\n\[\d+ earlier messages omitted\]\n/)
-  assert.match(handoff, /Assistant: Answer 40 y+…$/)
-  assert.doesNotMatch(handoff, /Request 1 x/)
-  assert.doesNotMatch(handoff, /y{1500}/)
+  const handoff = buildThreadHandoff(items, null)!.text
+  assert.match(handoff, /User: The original goal/)
+  assert.match(handoff, /Request 1 x/)
+  assert.match(handoff, /Older answer omitted; recall item_id="a1"/)
+  assert.ok(handoff.endsWith(`Answer 40 ${'y'.repeat(2_000)} END`))
+  assert.ok(handoff.length > 24_000, 'protected requests may exceed the soft target')
+  const unlimited = buildThreadHandoff(items, null, null, { maxChars: 0 })!.text
+  assert.doesNotMatch(unlimited, /Older answer omitted/)
+  assert.ok(unlimited.includes(`Answer 1 ${'y'.repeat(2_000)} END`))
 })
 
 test('a bounded structured checkpoint preserves old decisions alongside recent corrections', () => {
@@ -138,12 +137,12 @@ test('a bounded structured checkpoint preserves old decisions alongside recent c
   assert.match(handoff, /production database read-only/)
   assert.match(handoff, /Correction: use the existing provider archive/)
   assert.match(handoff, /may be stale; later messages take precedence/)
-  assert.ok(handoff.length <= 12_000)
+  assert.match(handoff, /Task 2 x/)
   const earlierBranch = buildThreadHandoff(items.slice(0, 1), 'Memory', checkpoint)!.text
   assert.doesNotMatch(earlierBranch, /production database|Storage decision/)
 })
 
-test('large checkpoint, title, and paths cannot crowd the handoff past its budget', () => {
+test('protected checkpoint, requests, answers and paths survive a small soft budget', () => {
   const checkpoint: ChatMemoryCheckpoint = {
     version: 1, revision: 1, threadId: 'thread', throughItemId: 'a1', createdAt: 1,
     state: { goal: 'g'.repeat(1_000), constraints: Array.from({ length: 12 }, (_, i) => `${i}${'c'.repeat(340)}`),
@@ -153,7 +152,11 @@ test('large checkpoint, title, and paths cannot crowd the handoff past its budge
     type: 'fileChange', id: 'f', turnId: 't', status: 'completed',
     changes: Array.from({ length: 30 }, () => ({ path: 'p'.repeat(1_000), kind: 'update' as const, diff: '' }))
   }, user('u2', 'The latest task')]
-  assert.ok(buildThreadHandoff(items, 'title'.repeat(10_000), checkpoint)!.text.length <= 12_000)
+  const text = buildThreadHandoff(items, 'title'.repeat(10_000), checkpoint, { maxChars: 100 })!.text
+  assert.ok(text.includes('u'.repeat(3_000)))
+  assert.ok(text.includes('a'.repeat(3_000)))
+  assert.ok(text.includes('p'.repeat(1_000)))
+  assert.match(text, /The latest task/)
 })
 
 test('rotation seeds instruct recall for omitted tool evidence', () => {
@@ -162,4 +165,20 @@ test('rotation seeds instruct recall for omitted tool evidence', () => {
   assert.match(digest.text, /rotated to reduce context/)
   assert.match(digest.text, /peer_chats\.recall with scope source/)
   assert.doesNotMatch(digest.text, /Handoff from the previous chat/)
+})
+
+
+test('a larger target retains complete older answers and evidence is recallable by id', () => {
+  const items: ChatTranscriptItem[] = [user('u', 'Task'), answer('a', 'u', 'old'.repeat(2_000)),
+    { type: 'command', id: 'cmd', turnId: 'u', command: 'npm run test:one', cwd: '/w', status: 'failed', output: 'FAIL details', exitCode: 1 },
+    { type: 'plan', id: 'plan', turnId: 'u', text: 'Fix the failing test', streaming: false },
+    user('u2', 'Next'), answer('a2', 'u2', 'Latest answer'), answer('comment', 'u2', 'Late commentary', 'commentary')]
+  const small = buildThreadHandoff(items, null, null, { maxChars: 2_000 })!.text
+  const large = buildThreadHandoff(items, null, null, { maxChars: 20_000 })!.text
+  assert.match(small, /Older answer omitted; recall item_id="a"/)
+  assert.ok(large.includes('old'.repeat(2_000)))
+  assert.match(small, /Fix the failing test/)
+  assert.match(small, /command item_id="cmd".*exitCode=1/)
+  assert.doesNotMatch(small, /FAIL details|Late commentary/)
+  assert.match(small, /Latest answer/)
 })

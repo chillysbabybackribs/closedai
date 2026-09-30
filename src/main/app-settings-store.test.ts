@@ -20,7 +20,7 @@ test('a missing file yields the defaults, including the compaction threshold', a
   const { store } = await storeWith(null)
   assert.deepEqual(store.get(), DEFAULT_APP_SETTINGS)
   assert.equal(store.get().chatCompactAtPercent, 80)
-  assert.equal(store.get().chatCompactAtTokens, 28_000)
+  assert.equal(store.get().chatCompactAtTokens, 0)
   assert.equal(store.get().chatMidTurnCompactTokens, 0)
   assert.equal(store.get().toolBatchMaxCalls, 16)
   assert.equal(store.get().chatSeamlessRotation, true)
@@ -82,19 +82,21 @@ test('the compaction threshold is clamped and bad values fall back', async () =>
   assert.match(await readFile(file, 'utf8'), /"chatCompactAtPercent": 72/)
 })
 
-test('legacy token-off plus rotation-off migrates to the Codex replay default on load', async () => {
-  const { store } = await storeWith(JSON.stringify({
+test('explicit token-off plus rotation-off survives load and unrelated writes', async () => {
+  const { store, file } = await storeWith(JSON.stringify({
     chatCompactAtPercent: 60,
     chatCompactAtTokens: 0,
     chatSeamlessRotation: false
   }))
-  assert.equal(store.get().chatCompactAtTokens, 28_000)
-  assert.equal(store.get().chatSeamlessRotation, true)
+  assert.equal(store.get().chatCompactAtTokens, 0)
+  assert.equal(store.get().chatSeamlessRotation, false)
   assert.equal(store.get().chatCompactAtPercent, 60)
+  await store.set({ chatCompactAtPercent: 70 })
+  assert.equal((await AppSettingsStore.open(file)).get().chatSeamlessRotation, false)
 })
 
 test('the between-turn token budget is opt-in, bounded, and persists independently', async () => {
-  for (const [input, expected] of [[0, 0], [-1, 0], [500, 20_000], [32_000.4, 32_000], [9e9, 2_000_000], ['lots', 28_000]]) {
+  for (const [input, expected] of [[0, 0], [-1, 0], [500, 20_000], [32_000.4, 32_000], [9e9, 2_000_000], ['lots', 0]]) {
     const { store } = await storeWith(JSON.stringify({ chatCompactAtTokens: input }))
     assert.equal(store.get().chatCompactAtTokens, expected)
   }
@@ -215,4 +217,15 @@ test('saved project workspaces retain their own selected pane sets', async () =>
   await store.set({ chatWorkspaces: [workspace] })
   const reopened = await AppSettingsStore.open(file)
   assert.equal(reopened.get().chatWorkspaces[0]?.peers[0]?.threadId, 'thread-one')
+})
+
+
+test('handoff soft target is configurable, persists, and accepts zero without a fixed ceiling', async () => {
+  const { store, file } = await storeWith('{}')
+  assert.equal(store.get().chatHandoffTargetChars, 24_000)
+  for (const value of [0, 500, 90_000, 5_000_000]) {
+    await store.set({ chatHandoffTargetChars: value })
+    assert.equal((await AppSettingsStore.open(file)).get().chatHandoffTargetChars, value)
+  }
+  assert.equal((await storeWith('{"chatHandoffTargetChars":"bad"}')).store.get().chatHandoffTargetChars, 24_000)
 })

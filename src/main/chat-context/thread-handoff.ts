@@ -140,6 +140,7 @@ function overviewLines(items: ChatTranscriptItem[], entries: HandoffEntry[], cwd
 function conversationEntries(items: ChatTranscriptItem[]): HandoffEntry[] {
   const entries: HandoffEntry[] = []
   const answerIndexByTurn = new Map<string, number>()
+  const finalTurns = new Set<string>()
   for (const item of items) {
     if (item.type === 'user') {
       const attachments = item.attachments?.map((attachment) => attachment.name) ?? []
@@ -150,6 +151,8 @@ function conversationEntries(items: ChatTranscriptItem[]): HandoffEntry[] {
     }
     if (item.type !== 'assistant' || !item.text.trim()) continue
     const turnKey = item.turnId ?? item.id
+    if (finalTurns.has(turnKey) && item.phase !== 'final_answer') continue
+    if (item.phase === 'final_answer') finalTurns.add(turnKey)
     const existing = answerIndexByTurn.get(turnKey)
     if (existing === undefined) {
       answerIndexByTurn.set(turnKey, entries.length)

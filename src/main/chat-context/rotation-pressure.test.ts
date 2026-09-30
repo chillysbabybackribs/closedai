@@ -30,3 +30,17 @@ test('pressure triggers respect zero thresholds as off', () => {
   assert.equal(pressureTrigger(pressure, { atItems: 0, atToolCallsSinceUser: 24, atToolOutputChars: 0 }), 'toolCalls')
   assert.equal(pressureTrigger(pressure, { atItems: 0, atToolCallsSinceUser: 0, atToolOutputChars: 280_000 }), 'toolOutputChars')
 })
+
+
+test('rotated history cannot re-trigger pressure, including a boundary inside the last turn', () => {
+  const old = [user('u1'), ...Array.from({ length: 110 }, (_, i) => tool(`old-${i}`, 'large output'))]
+  const items = [...old, tool('new', 'ok')]
+  assert.deepEqual(measureRotationPressure(items, 'old-109'), {
+    itemCount: 1, toolCallsSinceUser: 1, toolOutputCharsSinceUser: 2
+  })
+  assert.equal(pressureTrigger(measureRotationPressure(items, 'old-109'), {
+    atItems: 100, atToolCallsSinceUser: 24, atToolOutputChars: 100
+  }), null)
+  assert.equal(measureRotationPressure(items, 'new').itemCount, 0)
+  assert.equal(measureRotationPressure(items, 'missing').itemCount, items.length)
+})
