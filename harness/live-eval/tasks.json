@@ -45,6 +45,45 @@
     "tags": ["app", "read_only"]
   },
   {
+    "id": "runtime_matches_state",
+    "title": "Runtime block vs closedai_app.state",
+    "user": "Call closedai_app.state with workspace and chat sections. Compare callerPaneId, chat.provider, and project.projectPath to the closedai.runtime block on this turn. Report match or mismatch in one short table. Do not edit files.",
+    "provider": "cursor",
+    "modelId": "cursor:composer-2.5[fast=true]",
+    "observe": [
+      "Calls closedai_app.state before concluding",
+      "Values match closedai.runtime on the same turn (pane id, provider, projectPath)",
+      "Does not claim IDE-only or deny in-app MCP"
+    ],
+    "tags": ["app", "orientation", "read_only"]
+  },
+  {
+    "id": "peer_recall_chat_scope",
+    "title": "Recall earlier text in this pane",
+    "user": "In the first message of this eval only: write exactly: EVAL_RECALL_ANCHOR=violet-port-4400. Then in a follow-up turn (or if this is a continuation, skip writing it): use peer_chats.recall scope chat with query violet-port-4400 and quote the matching excerpt with item_id. No file edits.",
+    "provider": "cursor",
+    "modelId": "cursor:composer-2.5[fast=true]",
+    "observe": [
+      "Uses peer_chats.recall with scope chat (not peer_chats.read on self)",
+      "Finds EVAL_RECALL_ANCHOR or violet-port-4400 when the anchor was sent earlier in this pane",
+      "Cites item_id from recall result"
+    ],
+    "tags": ["peer_chats", "recall", "read_only"]
+  },
+  {
+    "id": "peer_search_recall_drilldown",
+    "title": "Search then recall drill-down",
+    "user": "Use peer_chats.search with scope chat and a multi-word query taken from an earlier user message in this pane (pick distinctive words). For the top hit, call peer_chats.recall scope chat with that item_id and confirm the snippet matches. If search returns no hits, say so and fall back to recall with query. No file edits.",
+    "provider": "cursor",
+    "modelId": "cursor:composer-2.5[fast=true]",
+    "observe": [
+      "Uses search(scope=chat) before or with recall",
+      "Drill-down via recall(item_id=...) when search hits",
+      "Honest fallback when index lags (indexPartial or empty hits)"
+    ],
+    "tags": ["peer_chats", "search", "read_only"]
+  },
+  {
     "id": "search_electron_release",
     "title": "Quick web lookup",
     "user": "Use the app's search tools (not the browser search box) to find what major Electron version shipped around August 2025 and give a one-sentence answer with a source link if the tool returns one.",

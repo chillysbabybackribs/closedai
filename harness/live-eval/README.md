@@ -46,6 +46,24 @@ npm run harness:live -- --task=browser_ambient_github
 An orchestrator chat (not the eval pane) can launch steps 2–5 via `closedai_app.command` with
 `send_message` and `await_turn: false` so you can watch the eval pane work in real time.
 
+## C3 orientation probes (runtime + peer recall)
+
+After main-process changes, run automated contracts:
+
+```sh
+npm run harness:orientation
+```
+
+Live checks (new chat recommended for anchor tasks):
+
+```sh
+npm run harness:live -- --task=runtime_matches_state
+npm run harness:live -- --task=peer_recall_chat_scope
+npm run harness:live -- --task=peer_search_recall_drilldown
+```
+
+Compare `closedai.runtime` on the turn to `closedai_app.state` (`callerPaneId`, provider, project path).
+
 ## Relation to automated harness
 
 | Path | What runs | Who scores |

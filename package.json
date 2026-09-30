@@ -35,6 +35,7 @@
     "harness:prompt-sweep": "node --experimental-transform-types --import ./scripts/ts-resolve-hook-register.mjs scripts/harness-sim/prompt-sweep.mjs --adapter=codex --concurrency=2",
     "harness:extract": "node scripts/harness-sim/extract-from-tests.mjs",
     "harness:live": "node --experimental-transform-types --import ./scripts/ts-resolve-hook-register.mjs scripts/harness-sim/live-eval.mjs",
+    "harness:orientation": "npm run test:one -- src/main/chat-context/c3-orientation-probes.test.ts",
     "check": "npm run map:check && npm run guide:check && npm test && npm run build && npm run closure",
     "autogit": "node scripts/autogit.mjs run",
     "autogit:once": "node scripts/autogit.mjs once",

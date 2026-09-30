@@ -62,3 +62,12 @@ User-facing export of merged pane transcript (JSON/Markdown) for audit or extern
 ## Verification
 
 Co-located tests in `src/main/chat-context/chat-memory.test.ts` cover self-rotated panes and merged `scope: chat` reads. Tier C tests should cover rotation epoch invalidation, partial backfill, and search → recall drill-down. After changing tool contracts, update `docs/tools.md` and regenerate the session guide when cold-start orientation changes.
+
+### C3 orientation probes (harness)
+
+| Layer | Command | Purpose |
+|-------|---------|---------|
+| **Automated contracts** | `npm run harness:orientation` | Runtime block, recall/search/checkpoint round-trips in main (no Electron UI). |
+| **Live app (human score)** | `npm run harness:live -- --task=runtime_matches_state` (and `peer_recall_chat_scope`, `peer_search_recall_drilldown`) | MCP + transcript checks in a real pane after restart. |
+
+Treat failing automated probes as blocking for tool-description changes; live tasks score model behavior separately.
