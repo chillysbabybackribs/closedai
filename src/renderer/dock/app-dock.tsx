@@ -21,6 +21,7 @@ import { DockLayoutSection } from './dock-layout-menu.js'
 import type { LayoutPreset } from '../chat-layout/layout-presets.js'
 import type { MinimizedWindow } from '../chat-layout/floating/minimized-windows.js'
 import { useDockReveal } from './use-dock-reveal.js'
+import { ProviderUsage } from './provider-usage.js'
 import { useNotes } from '../notepad/notes-client.js'
 
 const SLIDE_MS = 200
@@ -54,7 +55,7 @@ export type AppDockProps = {
  * reaches the bottom edge unless Keep visible is on.
  */
 export function AppDock({ menu, nav, chats, chatTitle, browserVisible, prefs, onPrefsChange, onLaunch, onOpenSite, onAllSavedSites, minimized, onRestoreWindow, canTile, onTileWindows, onApplyPreset, onOpenLayouts, onOpenChat, startServices }: AppDockProps): JSX.Element {
-  const [openList, setOpenList] = useState<TrayAppId | 'settings' | 'start' | null>(null)
+  const [openList, setOpenList] = useState<TrayAppId | 'settings' | 'start' | 'usage' | null>(null)
   const [keyboard, setKeyboard] = useState(false)
   // Start opens on its home every time; a screen is where one visit went, not a preference.
   const [startView, setStartView] = useState<StartView>('home')
@@ -71,6 +72,13 @@ export function AppDock({ menu, nav, chats, chatTitle, browserVisible, prefs, on
   const root = useRef<HTMLDivElement>(null)
   // State, not a ref: the surface renders first and has to measure the tray once it exists.
   const [tray, setTray] = useState<HTMLDivElement | null>(null)
+  const [trayWidth, setTrayWidth] = useState(500)
+  useEffect(() => {
+    if (!tray) return
+    const observer = new ResizeObserver(() => setTrayWidth(tray.getBoundingClientRect().width))
+    observer.observe(tray)
+    return () => observer.disconnect()
+  }, [tray])
 
   const runs = useAgentRuns()
   const downloads = useBrowserDownloadsController().downloads
@@ -141,7 +149,8 @@ export function AppDock({ menu, nav, chats, chatTitle, browserVisible, prefs, on
               onClose={() => setOpenList(null)} view={startView} onViewChange={setStartView} services={startServices} />
           </PopoverContent>
         </Popover>
-        <div className="flex items-center gap-0.5">
+        <div className="provider-usage-rail" style={{ left: `calc(50% + ${trayWidth / 2 + 14}px)` }}>
+          <ProviderUsage chats={chats} visible={shown} open={openList === 'usage'} onOpenChange={(open) => setOpenList(open ? 'usage' : null)} />
           {/* Dock lists do not hand focus back on close: the button's tooltip would reopen over the page. */}
           <Popover open={openList === 'settings'} onOpenChange={(open) => setOpenList(open ? 'settings' : null)}>
             <Tooltip>

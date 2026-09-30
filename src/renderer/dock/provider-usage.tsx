@@ -10,14 +10,33 @@ import { ageNote, resetNote } from '../context-meter.js'
 import { errorMessage } from '../error-message.js'
 import { providerUsageEntries, usageHeadline, usageWindowState, type ProviderUsageEntry } from './provider-usage-model.js'
 
-export function ProviderUsage({ chats, open, onOpenChange }: {
-  chats: readonly ChatRowSummary[]; open: boolean; onOpenChange: (open: boolean) => void
+export function ProviderUsage({ chats, visible, open, onOpenChange }: {
+  chats: readonly ChatRowSummary[]; visible: boolean; open: boolean; onOpenChange: (open: boolean) => void
 }): JSX.Element | null {
   const entries = providerUsageEntries(chats)
   const [selected, setSelected] = useState<string | null>(null)
   const [now, setNow] = useState(Date.now)
   const [width, setWidth] = useState(0)
   const root = useRef<HTMLDivElement>(null)
+  const latest = useRef(entries)
+  latest.current = entries
+  useEffect(() => {
+    if (!visible) return
+    let busy = false
+    const refresh = async (): Promise<void> => {
+      if (busy || document.hidden) return
+      busy = true
+      try {
+        await Promise.allSettled(latest.current
+          .filter((item) => item.provider !== 'cursor' && item.source.providerUsage?.connection.state === 'ready'
+            && Date.now() - (item.usage?.updatedAt ?? 0) >= 60_000)
+          .map((item) => window.closedai.chat.refreshPlanUsage(item.source.paneId)))
+      } finally { busy = false }
+    }
+    void refresh()
+    const timer = window.setInterval(() => { void refresh() }, 60_000)
+    return () => window.clearInterval(timer)
+  }, [visible])
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 30_000)
     return () => window.clearInterval(timer)
