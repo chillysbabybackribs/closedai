@@ -932,8 +932,9 @@ the overview does: in the main window, once a chat is selected.
 Left: back and forward (`dock.back`, `dock.forward`) step through the zoom history as Alt+←/→ and
 are disabled at either end and while a zoom is moving; their tooltips name where you are
 (workspace and selected chat, or "All workspaces"). Right: Layout and dock settings
-(`dock.settings`). The left side, after the navigation arrows, holds text-and-provider-mark subscription chips
-(`dock.provider-usage`), on the existing rail without meter tracks or separate pill surfaces.
+(`dock.settings`). The left side, after the navigation arrows, holds provider-mark chips with a compact remaining
+allowance ring (`dock.provider-usage`), on the existing rail without separate pill surfaces.
+Text-only chips appear when a provider reports plan metadata but no numeric windows (for example Cursor).
 All four providers appear on startup, before any provider chat connects. They show the lowest reported remaining allowance, keeping known accounts separate and using the
 newest reading across account probes and attached chats; they never sum quotas across conversations. The popup
 names every provider window, including model-specific scopes, remaining allowance, reset time,

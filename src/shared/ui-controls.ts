@@ -74,7 +74,7 @@ export const UI_CONTROLS = {
   'dock.download': 'Dock Downloads list: show a finished file in its folder; item is the download id',
   'dock.window': 'Dock tile for a minimized window: restore it where it was and select it; item is the window\u2019s front tab id',
   'dock.layout-item': 'Dock settings popover layout row; open via dock.settings first; item is browser-side (every window and tab gathered into one chat window left of the browser), browser-between (a chat either side of the browser), tile-windows (floating windows back into the last tiled layout, also View \u2192 Tile windows and Ctrl+Shift+L; disabled while nothing floats) or workspace-layout (the layout dialog)',
-  'dock.provider-usage': 'Text and provider icon in the existing footer rail; opens provider-reported allowance details; item is the provider/account key',
+  'dock.provider-usage': 'Provider icon and remaining-allowance ring (or text when no numeric quota) in the footer rail; opens allowance details; item is the provider/account key',
   'dock.provider-usage-all': 'Compact provider usage menu when the footer has insufficient room for individual chips',
   'dock.provider-usage-tab': 'Select a provider/account in the footer usage popover; item is the provider/account key',
   'dock.provider-usage-refresh': 'Request a fresh subscription usage reading from the displayed provider session',

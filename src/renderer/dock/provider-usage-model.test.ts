@@ -22,7 +22,8 @@ test('account quotas use the latest reading without summing chats or merging kno
     row('other', usage(90), 'b@example.test'), { ...row('saved', usage(100)), attached: false }])
   assert.equal(entries.length, 2)
   assert.equal(entries[0].source?.paneId, 'new')
-  assert.equal(usageHeadline(entries[0].usage, NOW).text, '62% left')
+  assert.equal(usageHeadline(entries[0].usage, NOW).text, '62% remaining')
+  assert.equal(usageHeadline(entries[0].usage, NOW).remaining, 62)
   assert.equal(entries[1].source?.paneId, 'other')
 })
 
@@ -33,13 +34,13 @@ test('thresholds describe remaining allowance and scoped windows retain their na
   const value = usage()
   value.windows.push({ label: 'Weekly (Opus)', percent: 95, resetsAt: null })
   assert.equal(usageHeadline(value, NOW).window?.label, 'Weekly (Opus)')
-  assert.equal(usageHeadline(value, NOW).text, '5% left')
+  assert.equal(usageHeadline(value, NOW).text, '5% remaining')
 })
 
 test('passed resets and old partial windows never appear freshly replenished', () => {
   const value = usage()
   value.windows[0].resetsAt = NOW - 1
-  assert.equal(usageHeadline(value, NOW).text, 'Stale')
+  assert.match(usageHeadline(value, NOW).text, /% stale$/)
   value.windows[0].resetsAt = null
   value.windows.push({ label: 'Weekly', percent: 1, resetsAt: null, updatedAt: NOW - USAGE_STALE_MS - 1 })
   assert.equal(usageHeadline(value, NOW).level, 'stale')
@@ -58,7 +59,7 @@ test('codex and cursor chips name the plan when quota windows are missing', () =
   const missing = { plan: 'Pro Lite', note: null, unavailable: 'No windows', updatedAt: NOW, windows: [] as const }
   assert.equal(usageChipText('codex', missing, null, NOW), 'Pro Lite · usage unavailable')
   assert.equal(usageChipText('cursor', { ...missing, plan: 'Pro' }, null, NOW), 'Pro · usage unavailable')
-  assert.equal(usageChipText('codex', usage(28), 'prolite', NOW), '72% left')
+  assert.equal(usageChipText('codex', usage(28), 'prolite', NOW), '72')
 })
 
 
@@ -67,7 +68,7 @@ test('startup includes every provider without any chat runtimes', () => {
   assert.deepEqual(entries.map((entry) => entry.provider), ['codex', 'claude', 'antigravity', 'cursor'])
   assert.ok(entries.every((entry) => entry.source === null))
   const loaded = providerUsageEntries([], [{ provider: 'antigravity', account: null, usage: usage(2) }])
-  assert.equal(usageHeadline(loaded.find((entry) => entry.provider === 'antigravity')!.usage, NOW).text, '98% left')
+  assert.equal(usageHeadline(loaded.find((entry) => entry.provider === 'antigravity')!.usage, NOW).remaining, 98)
 })
 
 test('account probes and chat push readings choose newest without duplicating accounts', () => {

@@ -37,7 +37,44 @@
   background: var(--chrome-control-hover);
   color: var(--chrome-control-strong, var(--foreground));
 }
-.provider-usage-chip svg { width: 14px; height: 14px; }
+.provider-usage-chip > svg:not(.usage-meter-ring-svg) { width: 14px; height: 14px; }
+.provider-usage-chip-label { max-width: 168px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.usage-meter-ring {
+  position: relative;
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+}
+.usage-meter-ring-svg { transform: rotate(-90deg); }
+.usage-meter-ring-track {
+  fill: none;
+  stroke: color-mix(in srgb, var(--foreground) 14%, transparent);
+  stroke-width: 2;
+}
+.usage-meter-ring-fill {
+  fill: none;
+  stroke: var(--usage-meter-ink, var(--muted-foreground));
+  stroke-width: 2;
+  stroke-linecap: round;
+  transition: stroke-dasharray 260ms var(--ease-chrome, ease);
+}
+.usage-meter-ring[data-level='low'] { --usage-meter-ink: light-dark(#8b5d00, #dfbd79); }
+.usage-meter-ring[data-level='critical'],
+.usage-meter-ring[data-level='exhausted'] { --usage-meter-ink: light-dark(#b03528, #eaa08d); }
+.usage-meter-ring[data-level='stale'] { --usage-meter-ink: var(--muted-foreground); opacity: 0.72; }
+.usage-meter-ring-value {
+  position: absolute;
+  font-size: 9px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--chrome-control-strong, var(--foreground));
+  pointer-events: none;
+}
+.usage-meter-ring[data-digits='3'] .usage-meter-ring-value { font-size: 7px; }
+@media (prefers-reduced-motion: reduce) {
+  .usage-meter-ring-fill { transition: none; }
+}
 .provider-usage-anchor {
   position: absolute;
   left: 0;

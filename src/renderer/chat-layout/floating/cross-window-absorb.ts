@@ -42,9 +42,12 @@ function floatIncoming(tree: ChatLayout, paneId: string, fresh: readonly string[
 export function absorbCrossWindowDock(tree: ChatLayout, paneId: string, incomingTabIds: readonly string[],
   target: SerializedWindowTarget, splitId: string, pointer?: { x: number; y: number }, canvas?: { width: number; height: number }): ChatLayout {
   const fresh = incomingTabIds.filter((id) => !tabIds(tree).includes(id))
-  if (!fresh.length || target.kind === 'maximize') return tree
-  if (target.kind === 'group') return adoptTabs(tree, fresh, target.target)
-  if (target.kind === 'split') return dockIncomingPane(tree, paneId, fresh, target.target, target.edge, splitId)
-  if (pointer && canvas) return floatIncoming(tree, paneId, fresh, pointer, canvas)
-  return tree
+  if (!fresh.length) return tree
+  let next = tree
+  if (target.kind === 'group') next = adoptTabs(tree, fresh, target.target)
+  else if (target.kind === 'split') next = dockIncomingPane(tree, paneId, fresh, target.target, target.edge, splitId)
+  // Main has already moved these tabs to this window, so a drop that cannot be applied as aimed
+  // floats them at the pointer rather than leaving them in no window's layout.
+  if (next === tree && pointer && canvas) next = floatIncoming(tree, paneId, fresh, pointer, canvas)
+  return next
 }

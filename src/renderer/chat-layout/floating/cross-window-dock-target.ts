@@ -1,5 +1,5 @@
 import type { SerializedWindowTarget } from '../../../shared/cross-window-dock.js'
-import { BROWSER_PANE_ID, layoutGeometry, type ChatLayout, type DockEdge, type Rect } from '../layout-tree.js'
+import { BROWSER_PANE_ID, WORKSPACE_DOCK_ID, layoutGeometry, type ChatLayout, type DockEdge, type Rect } from '../layout-tree.js'
 import { absorbCrossWindowDock } from './cross-window-absorb.js'
 import { canvasTiles, floatingFront } from './window-tiles.js'
 import { WINDOW_HEADER } from './window-layout.js'
@@ -52,16 +52,24 @@ export function serializeWindowTarget(target: WindowTarget): SerializedWindowTar
   return { kind: 'free' }
 }
 
-/** Cross-window drops stack in the body; same-window drags still float in the middle. */
+/** A canvas target an incoming chat can take: not maximize, the workspace edge, or the browser. */
+const absorbable = (target: WindowTarget): boolean =>
+  (target.kind === 'group' || target.kind === 'split') && target.target !== BROWSER_PANE_ID && target.target !== WORKSPACE_DOCK_ID
+
+/**
+ * Cross-window drops stack in the body; same-window drags still float in the middle. Canvas
+ * targets an incoming chat cannot take fall through to the rules below, so the preview always
+ * shows a drop `absorbCrossWindowDock` applies.
+ */
 export function resolveCrossDockTarget(sourcePaneId: string, pointer: { x: number; y: number }, canvas: { width: number; height: number },
   tiled: readonly WindowTile[], floating: readonly WindowTile[]): WindowTarget {
   const target = windowTargetAt(sourcePaneId, pointer.x, pointer.y, canvas, tiled, floating)
-  if (target.kind !== 'free') return target
+  if (absorbable(target)) return target
   const dockable = dockableTiles(sourcePaneId, tiled, floating)
   const hit = dockable.find((candidate) => inside(candidate.rect, pointer.x, pointer.y))
   if (hit) return crossDockBodyTarget(hit, pointer)
   const nearest = nearestDockableTile(dockable, pointer)
-  return nearest ? crossDockGapTarget(nearest, pointer) : target
+  return nearest ? crossDockGapTarget(nearest, pointer) : { kind: 'free' }
 }
 
 function tilesForTarget(tree: ChatLayout, browserVisible: boolean, canvas: { width: number; height: number }) {
@@ -77,6 +85,5 @@ export function absorbCrossDockAtPointer(tree: ChatLayout, browserVisible: boole
   pointer: { x: number; y: number }, canvas: { width: number; height: number }, splitId: string): ChatLayout {
   const { tiled, floating } = tilesForTarget(tree, browserVisible, canvas)
   const target = resolveCrossDockTarget(incomingPaneId, pointer, canvas, tiled, floating)
-  if (target.kind === 'maximize') return tree
   return absorbCrossWindowDock(tree, incomingPaneId, tabIds, serializeWindowTarget(target), splitId, pointer, canvas)
 }

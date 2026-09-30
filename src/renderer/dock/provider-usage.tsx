@@ -9,7 +9,8 @@ import { CHAT_PROVIDERS, CHAT_PROVIDER_LABELS } from '../../shared/chat-provider
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import { ageNote, resetNote } from '../context-meter.js'
 import { errorMessage } from '../error-message.js'
-import { providerUsageEntries, usageChipText, usageHeadline, usageWindowState, type ProviderUsageEntry } from './provider-usage-model.js'
+import { UsageMeterRing } from '../../components/ui/usage-meter-ring.js'
+import { providerUsageEntries, usageChipDisplay, usageHeadline, usageWindowState, type ProviderUsageEntry } from './provider-usage-model.js'
 
 export function ProviderUsage({ chats, open, onOpenChange }: {
   chats: readonly ChatRowSummary[]; visible: boolean; open: boolean; onOpenChange: (open: boolean) => void
@@ -50,22 +51,27 @@ export function ProviderUsage({ chats, open, onOpenChange }: {
     return () => observer.disconnect()
   }, [hasEntries])
   if (!hasEntries) return null
-  const compact = width < entries.reduce((total, item) => total + (item.provider === 'cursor' ? 190 : 94), 0)
+  const chipWidth = (item: ProviderUsageEntry): number => {
+    const plan = item.usage?.plan ?? item.account?.planType ?? null
+    const display = usageChipDisplay(item.provider, item.usage, plan, now, CHAT_PROVIDER_LABELS[item.provider])
+    return display.kind === 'label' ? Math.max(120, display.text.length * 6.5) : 52
+  }
+  const compact = width < entries.reduce((total, item) => total + chipWidth(item), 0)
   const entry = entries.find((item) => item.key === selected) ?? entries[0]
   const trigger = (item: ProviderUsageEntry): JSX.Element => {
-    const headline = usageHeadline(item.usage, now)
     const label = CHAT_PROVIDER_LABELS[item.provider]
     const plan = item.usage?.plan ?? item.account?.planType ?? null
-    const text = usageChipText(item.provider, item.usage, plan, now)
-    const detail = `${label}: ${text}${headline.window ? ` · lowest reported: ${headline.window.label}` : ''}`
+    const display = usageChipDisplay(item.provider, item.usage, plan, now, label)
     return <Tooltip key={item.key}>
       <TooltipTrigger asChild><Button variant="ghost" className="provider-usage-chip" data-ui="dock.provider-usage"
-        data-ui-item={item.key} data-level={headline.level} aria-label={detail} aria-expanded={open && entry.key === item.key}
+        data-ui-item={item.key} data-level={display.level} aria-label={display.ariaLabel} aria-expanded={open && entry.key === item.key}
         onClick={(event) => { lastTrigger.current = event.currentTarget; setSelected(item.key); onOpenChange(!(open && entry.key === item.key)) }}>
         <ProviderMark provider={item.provider} />
-        <span>{text}</span>
+        {display.kind === 'meter'
+          ? <UsageMeterRing remaining={display.remaining} level={display.level} />
+          : <span className="provider-usage-chip-label">{display.text}</span>}
       </Button></TooltipTrigger>
-      {!open && <TooltipContent side="top">{detail}</TooltipContent>}
+      {!open && <TooltipContent side="top">{display.ariaLabel}</TooltipContent>}
     </Tooltip>
   }
   return <div ref={root} className="provider-usage">

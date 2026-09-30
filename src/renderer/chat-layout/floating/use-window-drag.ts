@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
 import { layoutTileElement } from '../layout-geometry-dom.js'
-import type { ChatLayout, Rect } from '../layout-tree.js'
+import { BROWSER_PANE_ID, type ChatLayout, type Rect } from '../layout-tree.js'
 import { clampWindow, resizeRect, tearOffRect, windowMinimum, type ResizeEdge, type WindowSize } from './window-layout.js'
 import { sameTarget, targetPreview, windowTargetAt, type WindowTarget, type WindowTile } from './window-targets.js'
 
@@ -117,6 +117,8 @@ export function useWindowDrag({ canvas, frame, onActive, onPainted, onFloat, onS
 
   /** Drag a window by its header; a tiled window tears off at a floating size under the pointer. */
   const startMove = useCallback((event: ReactPointerEvent, id: string): void => {
+    // The browser belongs to the main window; only chat and view windows cross to another one.
+    const crossDock = id === BROWSER_PANE_ID ? undefined : dockSource
     const first = frame()
     const floating = first.floating.find((tile) => tile.id === id)?.rect
     const tiled = first.tiled.find((tile) => tile.id === id)?.rect
@@ -136,8 +138,8 @@ export function useWindowDrag({ canvas, frame, onActive, onPainted, onFloat, onS
       }
       rect = clampWindow({ ...base, x: base.x + dx, y: base.y + dy }, now.size, minimum)
       paint(id, rect)
-      if (dockSource) {
-        const payload = dockSource(id)
+      if (crossDock) {
+        const payload = crossDock(id)
         void window.closedai.windows.routeCrossDock({
           screenX: screen.x, screenY: screen.y,
           source: { paneId: id, tabIds: payload.tabIds, ghostTabLabel: payload.ghostTabLabel }
@@ -168,8 +170,8 @@ export function useWindowDrag({ canvas, frame, onActive, onPainted, onFloat, onS
           onMaximize(id)
         } else onFloat(id, rect, !floating)
       }
-      if (!dockSource) { finishLocal(); return }
-      const payload = dockSource(id)
+      if (!crossDock) { finishLocal(); return }
+      const payload = crossDock(id)
       void window.closedai.windows.routeCrossDock({
         screenX: lastScreen.x, screenY: lastScreen.y,
         source: { paneId: id, tabIds: payload.tabIds, ghostTabLabel: payload.ghostTabLabel }
