@@ -8,6 +8,11 @@ test('basename extracts trailing filename or directory', () => {
   assert.equal(basename('file.ts'), 'file.ts')
 })
 
+test('basename handles Windows path backslashes and trailing separators', () => {
+  assert.equal(basename('C:\\Users\\dp\\project\\file.ts'), 'file.ts')
+  assert.equal(basename('C:\\Users\\dp\\project\\'), 'project')
+})
+
 test('formatChatTime formats relative intervals', () => {
   const now = 100_000
   assert.equal(formatChatTime(now - 10_000, now), 'Just now')
