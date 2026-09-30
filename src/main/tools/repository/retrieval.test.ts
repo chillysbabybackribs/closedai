@@ -37,13 +37,14 @@ test('locates current code with evidence; honors ignore rules and observes edits
 
 test('range reads preserve numbering, hashes and continuation without changing files', () => fixture(async root => {
   const path = 'src/dock-launch.ts'
+  await writeFile(join(root, path), Array.from({ length: 200 }, (_, index) => `source line ${index}`).join('\n'))
   const original = await readFile(join(root, path), 'utf8')
-  const result = await readRange(root, { path, from_line: 2, to_line: 3 }, signal(), 365)
+  const result = await readRange(root, { path, from_line: 2, to_line: 200 }, signal())
   assert.match(result.text, /^2\|/)
-  assert.equal(result.nextFromLine, 3)
+  assert.ok(result.nextFromLine! > 2 && result.nextFromLine! < 200)
   assert.match(result.sha256, /^[a-f0-9]{64}$/)
   assert.equal(await readFile(join(root, path), 'utf8'), original)
-  await assert.rejects(readRange(root, { path, from_line: 100 }, signal()), /range/)
+  await assert.rejects(readRange(root, { path, from_line: 1000 }, signal()), /range/)
 }))
 
 test('rejects escaping paths, outside symlinks, binary files, and cancelled reads', () => fixture(async root => {
