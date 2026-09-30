@@ -216,24 +216,27 @@ export class ResearchService {
     }
   }
 
-  async wait(id: string, context: ToolContext, after: number, timeoutMs: number): Promise<ResearchSnapshot> {
+  /** With a cursor, resolves on the next revision; without one, waits for the run to settle and returns every retained source. */
+  async wait(id: string, context: ToolContext, after: number | undefined, timeoutMs: number): Promise<ResearchSnapshot> {
     const run = this.owned(id, context)
-    if (run.revision <= after && (run.state === 'running' || run.expansions.size > 0)) {
+    const ready = () => (run.state !== 'running' && run.expansions.size === 0) || (after !== undefined && run.revision > after)
+    if (!ready()) {
       await new Promise<void>((resolve, reject) => {
         const complete = () => { cleanup(); resolve() }
+        const changed = () => { if (ready()) complete() }
         const abort = () => { cleanup(); reject(context.signal.reason) }
         const timer = setTimeout(complete, timeoutMs)
         const cleanup = () => {
           clearTimeout(timer)
-          run.listeners.delete(complete)
+          run.listeners.delete(changed)
           context.signal.removeEventListener('abort', abort)
         }
-        run.listeners.add(complete)
+        run.listeners.add(changed)
         context.signal.addEventListener('abort', abort, { once: true })
         if (context.signal.aborted) abort()
       })
     }
-    return this.read(id, context, after)
+    return this.read(id, context, after ?? 0)
   }
 
   cancelPane(paneId: string, threadId?: string | null, turnId?: string | null): void {

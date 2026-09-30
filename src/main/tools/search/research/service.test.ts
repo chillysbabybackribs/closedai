@@ -275,6 +275,30 @@ test('registry exposes provider-neutral run/read actions, rejects oversize array
   assert.equal(waited.isError, undefined)
 })
 
+test('read.wait without a cursor waits past intermediate revisions until the run settles', async (t) => {
+  const gate = deferred<void>()
+  let service!: ResearchService
+  const registry = new ToolRegistry([searchTools({
+    research: dependencies({ collect: async (url) => { if (url.endsWith('/slow')) await gate.promise; return { ...document, url } } }),
+    onResearchCreated: (value) => { service = value }
+  })])
+  t.after(() => service.dispose())
+  const call = (tool: string, args: unknown) => registry.call({ namespace: 'search', tool, arguments: args }, context)
+  const started = await call('run', { action: 'start', urls: ['https://example.com/fast', 'https://example.com/slow'] })
+  const run = JSON.parse(started.content[0].type === 'text' ? started.content[0].text : '')
+  let settled = false
+  const waiting = call('read', { action: 'wait', run_id: run.runId, timeout_ms: 20_000 }).then((value) => { settled = true; return value })
+  await tick()
+  assert.equal(service.read(run.runId, context).sources.filter((source) => source.state === 'ready').length, 1)
+  assert.equal(settled, false)
+  gate.resolve()
+  const waited = await waiting
+  assert.equal(waited.isError, undefined)
+  const snapshot = JSON.parse(waited.content[0].type === 'text' ? waited.content[0].text : '')
+  assert.equal(snapshot.state, 'completed')
+  assert.equal(snapshot.sources.length, 2)
+})
+
 test('source metadata is bounded and cursors do not skip omitted sources', async (t) => {
   const service = new ResearchService(new SearchRouter([]), dependencies({ collect: async (url) => ({ ...document, url }) }))
   t.after(() => service.dispose())

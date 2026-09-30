@@ -101,12 +101,15 @@ export function researchTools(service: ResearchService, queryTool: ToolDefinitio
           async run(input, context) { return result(service.read(stringArg(input, 'run_id')!, context, numberArg(input, 'after_cursor', 0))) }
         },
         {
-          action: 'wait', description: 'Wait for revision change or completion (capped wait).',
+          action: 'wait', description: 'Wait for the next change after after_cursor, or with no cursor for the run to settle (capped wait).',
           timeoutMs: 25_000,
           inputSchema: schema({ run_id: runId, after_cursor: after,
             timeout_ms: { type: 'integer', minimum: 1, description: 'Wait ms; default 10000, max 20000.' }
-          }, ['run_id', 'after_cursor']),
-          async run(input, context) { return result(await service.wait(stringArg(input, 'run_id')!, context, numberArg(input, 'after_cursor', 0), Math.min(numberArg(input, 'timeout_ms', 10_000), MAX_EVENT_WAIT_MS))) }
+          }, ['run_id']),
+          async run(input, context) {
+            const cursor = input.after_cursor === undefined ? undefined : numberArg(input, 'after_cursor', 0)
+            return result(await service.wait(stringArg(input, 'run_id')!, context, cursor, Math.min(numberArg(input, 'timeout_ms', 10_000), MAX_EVENT_WAIT_MS)))
+          }
         },
         {
           action: 'source', description: 'Paged excerpt of retained source text.',
