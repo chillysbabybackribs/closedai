@@ -106,7 +106,7 @@ export function createBrowserFreezeRefresh(
 // view attached. The native pixels stay visible until the still is ready; hiding them first
 // leaves a blank compositor gap while the capture round-trip is in flight. Closing the overlay
 // restores the live surface on the same bounds.
-export function useTitlebarBrowserFreeze(omniboxCoversPage = false): {
+export function useTitlebarBrowserFreeze(omniboxCoversPage = false, layoutOccluded = false): {
   open: boolean
   shot: BrowserShot | null
   finishRestore: () => void
@@ -117,6 +117,10 @@ export function useTitlebarBrowserFreeze(omniboxCoversPage = false): {
   const overlayOpen = useRef(false)
   const omniboxCoversPageRef = useRef(omniboxCoversPage)
   omniboxCoversPageRef.current = omniboxCoversPage
+  const layoutOccludedRef = useRef(layoutOccluded)
+  layoutOccludedRef.current = layoutOccluded
+  const pageCovered = (): boolean =>
+    overlayOpen.current || omniboxCoversPageRef.current || layoutOccludedRef.current
   const pending = useRef<Promise<BrowserShot | null> | null>(null)
   const primed = useRef<BrowserShot | null>(null)
   const captureRef = useRef<() => void>(() => {})
@@ -124,7 +128,7 @@ export function useTitlebarBrowserFreeze(omniboxCoversPage = false): {
   if (!refreshRef.current) refreshRef.current = createBrowserFreezeRefresh(
     () => window.closedai.browser.capture(),
     (shot) => {
-      if (overlayOpen.current || omniboxCoversPageRef.current) setFreeze(shot)
+      if (pageCovered()) setFreeze(shot)
     }
   )
   const applyRef = useRef<(next: boolean) => void>(() => {})
@@ -137,7 +141,7 @@ export function useTitlebarBrowserFreeze(omniboxCoversPage = false): {
         .then((shot) => {
           pending.current = null
           primed.current = shot
-          if (shot && (overlayOpen.current || omniboxCoversPageRef.current)) {
+          if (shot && pageCovered()) {
             setFreeze(shot)
             // Do not occlude the native page until its replacement is available. This matters
             // for large menus, whose final position is only known after their child list mounts.
@@ -147,7 +151,7 @@ export function useTitlebarBrowserFreeze(omniboxCoversPage = false): {
         })
     }
     const apply = (next: boolean): void => {
-      if (!next && omniboxCoversPageRef.current) return
+      if (!next && (omniboxCoversPageRef.current || layoutOccludedRef.current)) return
       if (next === overlayOpen.current) return
       overlayOpen.current = next
       if (!next) {
@@ -200,14 +204,14 @@ export function useTitlebarBrowserFreeze(omniboxCoversPage = false): {
   }, [])
 
   useEffect(() => {
-    if (omniboxCoversPage) applyRef.current(true)
+    if (omniboxCoversPage || layoutOccluded) applyRef.current(true)
     else applyRef.current(overlayBlocksBrowser())
-  }, [omniboxCoversPage])
+  }, [omniboxCoversPage, layoutOccluded])
 
   // The DOM overlay disappears before the bounds IPC necessarily reaches main. Retain the
   // still until main has made the attached live page visible, so there is no blank handoff.
   const finishRestore = useCallback((): void => {
-    if (!overlayOpen.current && !omniboxCoversPageRef.current) setFreeze(null)
+    if (!pageCovered()) setFreeze(null)
   }, [])
 
   return { open, shot: freeze, finishRestore, refresh: refreshRef.current }

@@ -15,11 +15,14 @@ export function useBrowserController(layoutKey?: string, visible = true, occlude
   const state = useBrowserSnapshot(isEditingUrl)
   const omnibox = useOmnibox(state.browser, state.location, state.setLocation, setIsEditingUrl)
   const omniboxCoversPage = isEditingUrl && omnibox.suggestionsOpen
-  const titlebarOverlay = useTitlebarBrowserFreeze(omniboxCoversPage || occluded)
+  const titlebarOverlay = useTitlebarBrowserFreeze(omniboxCoversPage, occluded)
+  // Layout occlusion (floating windows, drags, spaces hold) must reach main immediately; waiting
+  // for a freeze still before setBounds(occluded) leaves the native page live or hidden wrong.
+  const pageOccluded = titlebarOverlay.open || occluded
   const browserHostRef = useBrowserBounds(
     layoutKey,
     visible && !state.browser.navigationError,
-    titlebarOverlay.open,
+    pageOccluded,
     titlebarOverlay.finishRestore,
     titlebarOverlay.refresh
   )
