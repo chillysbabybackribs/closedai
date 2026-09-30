@@ -32,12 +32,14 @@ export async function readRange(root: string, request: ReadRequest, signal: Abor
   const path = await scopedPath(root, request.path)
   const handle = await open(path, 'r')
   let text: string
+  let sha256: string
   try {
     const info = await handle.stat()
     if (!info.isFile() || info.size > MAX_FILE_BYTES) throw new Error('Read requires a regular text file no larger than 1 MB')
     const bytes = Buffer.alloc(MAX_FILE_BYTES + 1)
     const { bytesRead } = await handle.read(bytes, 0, bytes.length, 0)
     if (bytesRead > MAX_FILE_BYTES || bytes.subarray(0, bytesRead).includes(0)) throw new Error('File is too large or binary')
+    sha256 = createHash('sha256').update(bytes.subarray(0, bytesRead)).digest('hex')
     text = bytes.subarray(0, bytesRead).toString('utf8')
   } finally { await handle.close() }
   signal.throwIfAborted()
@@ -56,7 +58,7 @@ export async function readRange(root: string, request: ReadRequest, signal: Abor
     used += JSON.stringify(row).length + 1
   }
   return {
-    path: request.path, sha256: createHash('sha256').update(text).digest('hex'), totalLines: lines.length,
+    path: request.path, sha256, totalLines: lines.length,
     fromLine: from, toLine: line - 1, text: rows.join('\n'),
     ...(line <= to ? { nextFromLine: line, truncated: true, ...(rows.length ? {} : { reason: 'Line exceeds output budget; use a narrower exact search' }) } : {})
   }
@@ -122,9 +124,10 @@ export async function locate(root: string, query: string, signal: AbortSignal, l
   const files = await Promise.all(ranked.map(async entry => {
     try {
       return { ...entry, excerpt: await readRange(root, { path: entry.path, from_line: Math.max(1, entry.line - 4), to_line: entry.line + 18 }, signal, 1100) }
-    } catch (error) { return { ...entry, error: String(error) } }
+    } catch (error) { return { ...entry, error: String(error).slice(0, 500) } }
   }))
+  while (files.length > 1 && JSON.stringify(files).length > 12_000) files.pop()
   return { method: 'live-lexical', terms, files, candidateCount: candidates.size,
-    truncated: candidates.size > limit || evidence.some(result => result.truncated),
+    truncated: candidates.size > files.length || evidence.some(result => result.truncated),
     guidance: 'Candidates are lexical evidence, not proof of ownership. Follow callers/imports with search_many and read_many before editing.' }
 }
