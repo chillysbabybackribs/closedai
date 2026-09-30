@@ -31,6 +31,11 @@ verification. Launching another preview can hand off to the existing single-inst
 does not prove that process loaded the new build. Verify the actual target surface after reload
 or restart, and report pending restart separately from build success.
 
+Development and build commands run hygiene automatically. Dependency-layer violations block;
+file sizes produce a compact, non-blocking advisory (`npm run hygiene -- --details` lists files).
+Build also typechecks, so `npm run check` relies on the build for both checks rather than repeating
+them. Verification should reuse valid results for the same code state and match the change scope.
+
 ## Find a workflow
 
 | If you want to… | Start here |

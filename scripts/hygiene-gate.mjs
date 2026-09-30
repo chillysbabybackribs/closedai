@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const scanRoots = ['src', 'scripts']
-const limits = {
+const thresholds = {
   component: { lines: 450, bytes: 60_000 },
   code: { lines: 675, bytes: 60_000 },
   test: { lines: 525, bytes: 60_000 },
@@ -60,7 +60,7 @@ function boundaryProblem(fromRelative, targetPath) {
 
 const files = (await Promise.all(scanRoots.map((entry) => walk(path.join(root, entry))))).flat()
 const problems = []
-const warnings = []
+const sizeAdvisories = []
 
 for (const file of files) {
   const relativePath = path.relative(root, file).replaceAll(path.sep, '/')
@@ -68,11 +68,11 @@ for (const file of files) {
   const bytes = (await stat(file)).size
   const lines = source === '' ? 0 : source.split(/\r?\n/).length - (source.endsWith('\n') ? 1 : 0)
   const category = categoryFor(relativePath)
-  const limit = limits[category]
-
-  if (lines > limit.lines) problems.push(`${relativePath}: ${lines} lines exceeds the ${category} limit of ${limit.lines}`)
-  else if (lines >= Math.floor(limit.lines * 0.8)) warnings.push(`${relativePath}: ${lines}/${limit.lines} lines`)
-  if (bytes > limit.bytes) problems.push(`${relativePath}: ${bytes} bytes exceeds the ${category} limit of ${limit.bytes}`)
+  const threshold = thresholds[category]
+  const measurements = []
+  if (lines > threshold.lines) measurements.push(`${lines}/${threshold.lines} lines`)
+  if (bytes > threshold.bytes) measurements.push(`${bytes}/${threshold.bytes} bytes`)
+  if (measurements.length) sizeAdvisories.push(`${relativePath}: ${measurements.join(', ')}`)
 
   if (!relativePath.endsWith('.ts') && !relativePath.endsWith('.tsx')) continue
   for (const match of source.matchAll(importPattern)) {
@@ -85,16 +85,16 @@ for (const file of files) {
 }
 
 console.log(`hygiene: checked ${files.length} source files`)
-if (warnings.length) {
-  console.log(
-    `near limit (review boundaries; do not trim cohesive work just to stay under):\n${warnings.map((warning) => `  • ${warning}`).join('\n')}`
-  )
+if (sizeAdvisories.length) {
+  console.log(`Size advisory: ${sizeAdvisories.length} files exceed review thresholds (non-blocking).`)
+  if (process.argv.includes('--details')) {
+    for (const advisory of sizeAdvisories) console.log(`  • ${advisory}`)
+  }
+  console.log('Use cohesion and maintenance cost to choose whether to extend, extract, or simplify; no size-only refactor required.')
 }
 if (problems.length) {
   for (const problem of problems) console.error(`✗ ${problem}`)
-  console.error(
-    'Over cap: split along real module boundaries, finish the cohesive change and raise the limit with owner approval, or merge unrelated growth elsewhere — not formatting tricks or gate bypass.'
-  )
+  console.error('Fix dependency boundaries before continuing.')
   process.exit(1)
 }
-console.log('✓ hygiene gate passed')
+console.log('✓ hygiene architecture checks passed')

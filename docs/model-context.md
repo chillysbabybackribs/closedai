@@ -54,7 +54,10 @@ historical digest.
 
 The session guide (`closedai.guide`, `kind: application`) is separate from handoffs: product
 routing, trust boundaries, recency expectations for external facts, and the default verification
-ladder, including build/reload/restart boundaries and verification of the actual target surface.
+guidance, including build/reload/restart boundaries and verification of the actual target surface.
+Verification is proportional to the change and reuses valid results from the current work.
+Hygiene blocks dependency-layer violations; file sizes are advisory and leave structural choices
+to the implementing model. Size-only growth requires no extra check or approval.
 It is attached once per provider thread (including the first send after a handoff to a new thread), omitted on later turns in the same thread, and stripped from the user-visible transcript
 like other context blocks. Edit `scripts/agent-guide-outline.json` and run `npm run guide:generate`;
 `guide:check` guards drift.

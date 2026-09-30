@@ -21,7 +21,7 @@
       "heading": "Current information",
       "lines": [
         "Each user turn includes closedai.clock (application): the host's calendar date and timezone. Treat it as the reference \"today\" for this session.",
-        "For external facts — news, product versions, regulations, market landscape, \"what users want now\", competitor behavior, and anything that changes after training — use search.query or search.run (or the provider's native web search when available). Do not answer from memory alone unless the user asks for historical or timeless material.",
+        "For external facts \u2014 news, product versions, regulations, market landscape, \"what users want now\", competitor behavior, and anything that changes after training \u2014 use search.query or search.run (or the provider's native web search when available). Do not answer from memory alone unless the user asks for historical or timeless material.",
         "Anchor queries to the clock year when recency matters; prefer intent news or research, depth balanced or deep for important lookups, freshness day/week/month or a YYYY-MM-DDtoYYYY-MM-DD range, and live true when a cached result could be stale.",
         "Cite source dates in answers; say when evidence is undated. If search credentials fail, say so instead of guessing."
       ]
@@ -40,7 +40,7 @@
       "heading": "HTML and design previews",
       "lines": [
         "After writing or updating a workspace HTML mock (for example under output/), call closedai_app.command action browser_tab with op preview_html and path relative to the chat cwd (or absolute inside it). That opens the page in the embedded browser and reveals the browser pane when hidden.",
-        "Do not paste file:// links for the user to click. Do not use xdg-open, sensible-browser, open, or start — the host OS may launch Codex Desktop or an external browser instead of ClosedAI's pane."
+        "Do not paste file:// links for the user to click. Do not use xdg-open, sensible-browser, open, or start \u2014 the host OS may launch Codex Desktop or an external browser instead of ClosedAI's pane."
       ]
     },
     {
@@ -66,15 +66,16 @@
     {
       "heading": "Verification (default: fast)",
       "lines": [
-        "Tier 0 — docs-only, .gitignore, comments, or generated map/guide after running the generator: no typecheck.",
-        "Tier 1 — default for code: one co-located *.test.ts for the module you changed; run once per logical edit batch, not after every micro-edit.",
-        "Tier 2 — npm run typecheck when shared types, exports, or cross-layer contracts change; once before handoff, not every save.",
-        "Tier 3 — npm run hygiene when a file crosses a numeric cap or you split modules; 80% warnings mean review boundaries only. Keep cohesive task work in place rather than pre-splitting to stay under a cap; split on real boundaries or raise limits with owner approval when the product change warrants it.",
-        "Tier 4 — Verify renderer behavior in the real Electron app; see docs/application.md for build/reload ownership. A successful build or preview command alone is not visual verification.",
+        "Choose checks by the change; these tiers are not a cumulative checklist. Reuse valid results from the current work; repeat only after relevant edits, failures, or new evidence. Dev/build include hygiene; build includes typecheck, and check reuses those build checks. Size-only growth needs no extra command.",
+        "Tier 0 \u2014 docs-only, .gitignore, comments, or generated map/guide after running the generator: no typecheck.",
+        "Tier 1 \u2014 default for code: one co-located *.test.ts for the module you changed; run once per logical edit batch, not after every micro-edit.",
+        "Tier 2 \u2014 npm run typecheck when shared types, exports, or cross-layer contracts change; once before handoff, not every save.",
+        "Tier 3 \u2014 npm run hygiene for import/module-structure or gate changes, unless dev/build will cover them. Architecture violations block; file sizes are advisory. Choose extension, extraction, or simplification by cohesion and maintenance cost, without size approval or unrelated refactoring. Explain substantial growth briefly in the normal change summary.",
+        "Tier 4 \u2014 Verify renderer behavior in the real Electron app; see docs/application.md for build/reload ownership. A successful build or preview command alone is not visual verification.",
         "Checkout preview runs built out/ files. After a successful build, preview -- --skipBuild avoids building twice. Renderer-only rebuilds auto-reload after settling only when the main bundle matches the running process. Changed main-process code requires an app restart; preload changes also require a restart for verification. Dev uses renderer hot reload. Starting another preview is not evidence that the existing app loaded new code; check the actual target surface and report a pending restart when needed.",
-        "Tier 5 — npm test or npm run check only for release preparation or an explicit user request. Full gates are not the default success criterion.",
+        "Tier 5 \u2014 npm test or npm run check only for release preparation or an explicit user request. Full gates are not the default success criterion.",
         "Command: npm run test:one -- src/path/to/module.test.ts",
-        "Heavy build/verify: provider shells auto-wrap npm via scripts/closedai-bin when chatWorkLockEnabled (default on); manual: node scripts/work-lock.mjs --cwd <path> -- <command…> (.closedai/work.lock)."
+        "Heavy build/verify: provider shells auto-wrap npm via scripts/closedai-bin when chatWorkLockEnabled (default on); manual: node scripts/work-lock.mjs --cwd <path> -- <command\u2026> (.closedai/work.lock)."
       ]
     }
   ]

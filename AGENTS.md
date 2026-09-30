@@ -55,7 +55,7 @@ produced each result so a browser capture is never presented as an image-generat
 - Design read tools for model context, not raw transport completeness: offer scope/query/projection controls and fit useful results within their output budget before the generic serializer has to truncate them.
 - Every interactive renderer control carries a `data-ui` id from `src/shared/ui-controls.ts`; add the id and its manifest entry together. Do not read renderer source merely to discover controls or selectors.
 
-## Hygiene limits (defaults, not design targets)
+## Hygiene review thresholds (advisory, not design targets)
 
 - React/TSX component: 450 physical lines
 - TypeScript implementation: 675 physical lines
@@ -64,13 +64,21 @@ produced each result so a browser capture is never presented as an image-generat
 - Build script: 450 physical lines
 - Source JSON: 375 physical lines
 
-The byte caps and layer-boundary rules live in `scripts/hygiene-gate.mjs`; source-category byte budgets are 1.5× their original values alongside the line budgets above.
+Line and byte review thresholds live in `scripts/hygiene-gate.mjs`. Size alone never fails
+hygiene or blocks development, builds, or CI. Dependency-layer violations remain hard failures.
+The default report summarizes oversized files; `npm run hygiene -- --details` lists them when
+that detail is useful. There are no near-threshold warnings or per-file waivers.
 
-**While completing a task**, prefer the cohesive change that finishes the work—even when that pushes a file slightly past a cap—over artificial trimming, one-liner extractions, or pre-emptive splits whose only purpose is to satisfy the gate. Split or modularize when responsibility boundaries are genuinely wrong, when two unrelated concerns share a file, or when modularization clearly improves maintenance. At 80% of a limit, review boundaries only; do not delete useful context to stay under the line.
+The implementing model may extend, extract, or simplify code based on cohesion, discoverability,
+testability, and maintenance cost, without requesting permission for crossing a size threshold.
+Prefer completing cohesive work. Extract when a distinct responsibility or useful boundary makes
+behavior easier to understand and maintain; simplify when code is redundant or unnecessary.
+Consider whether splitting would force readers to jump between tightly coupled fragments.
+Never remove useful context, minify source, or compress formatting to satisfy a size measurement.
 
-The hygiene gate still fails CI when a file exceeds its numeric cap so runaway modules cannot grow without notice. Crossing a cap is acceptable when the task needs it; fix the failure by merging related work, splitting along real boundaries, or **raising the category limit with explicit owner approval**—not by minifying, compressing formatting, disabling the gate, or adding one-off exceptions without approval.
-
-Never minify source or compress formatting to satisfy a cap.
+Review structure when the task meaningfully affects it. An existing large file does not create
+an unrelated refactoring assignment. For substantial growth beyond a threshold, briefly explain
+the structural choice in the normal change summary; no separate report or extra tool call is required.
 
 ## Verification and Testing
 
@@ -79,5 +87,12 @@ Never minify source or compress formatting to satisfy a cap.
 
 - Default verification: one co-located test via `npm run test:one -- src/path/to/target.test.ts`. Run
   `npm run typecheck` when shared types or cross-layer contracts change, not after every micro-edit.
-- Run `npm run hygiene` when changing file lengths or structure.
+- Run `npm run hygiene` when changing imports, module structure, or the gate itself, unless the
+  same work will be checked by `npm run dev` or `npm run build`. Size-only growth needs no extra check.
+- Choose the smallest meaningful verification set and run it once per logical edit batch. Reuse
+  valid results from the current work; repeat only when relevant edits, failures, or new evidence
+  justify it. Docs-only and comment-only changes need no code tests or typecheck.
+- `dev` and `build` run hygiene automatically; `build` also typechecks. `check` relies on those
+  build checks instead of repeating them. Do not run separate checks that the chosen workflow
+  already covers for the same code state.
 - Full gates (`npm test`, `npm run check`) are for releases or an explicit request; a routine edit does not earn one.
