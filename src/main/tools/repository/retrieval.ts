@@ -12,7 +12,7 @@ export type SearchRequest = { pattern: string; path?: string; regex?: boolean }
 function rg(root: string, args: string[], signal: AbortSignal): Promise<string> {
   return new Promise((done, reject) => {
     execFile('rg', args, { cwd: root, signal, timeout: 15_000, maxBuffer: MAX_RG_BYTES, encoding: 'utf8' }, (error, stdout) => {
-      if (error && (error as NodeJS.ErrnoException & { code?: unknown }).code !== 1) reject(error)
+      if (error && (error as { code?: string | number }).code !== 1) reject(error)
       else done(stdout)
     })
   })
