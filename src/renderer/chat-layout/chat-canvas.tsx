@@ -1,5 +1,5 @@
 import { expandedPaneIds } from './layout-docking.js'
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type Dispatch, type SetStateAction, type DragEvent as ReactDragEvent, type ReactNode } from 'react'
+import { memo, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type Dispatch, type SetStateAction, type DragEvent as ReactDragEvent, type ReactNode } from 'react'
 import type { WorkspaceBackdrop } from '../../shared/backdrop-presets.js'
 import { useWorkspaceBackdropContextMenu } from '../backdrop/workspace-backdrop-menu.js'
 import type { ChatReviewQueue } from '../chat-history/review-queue.js'
@@ -23,6 +23,7 @@ import { BrowserWindowContext, WindowResizeHandles } from './floating/window-con
 import { pressesMoveHandle } from './floating/window-move-handle.js'
 import { TEAR_OFF_TARGET, useTabTearOff } from './floating/use-tab-tear-off.js'
 import { CrossWindowDockPreview } from './cross-window-dock-preview.js'
+import { DockClearanceContext, browserDockInset } from '../dock/dock-clearance.js'
 import { useReportDockSurface } from './use-report-dock-surface.js'
 
 const position = (rect: Rect): CSSProperties => ({ left: rect.x, top: rect.y, width: rect.width, height: rect.height })
@@ -105,6 +106,7 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
   }
   const splitResize = splitResizeRef.current
   const [size, setSize] = useState({ width: 0, height: 0 })
+  const dockClear = useContext(DockClearanceContext)
   layoutFrame.current = { tree, browserVisible, width: size.width, height: size.height }
   useLayoutEffect(() => {
     if (!splitResize.live.active) return
@@ -391,7 +393,8 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
               onTile={floats ? () => windows.change((current) => tileWindow(current, activeId)) : undefined}
               onTop={Boolean(findWindow(tree, activeId)?.onTop)} onKeepOnTop={windows.keepOnTop} />}
             {activeId === selectedId && <div className="chat-layout-notice" role="status" aria-atomic="true">{notice}</div>}
-            {browser ? <div className="chat-layout-browser-frame" data-ui="layout.browser-dock">
+            {browser ? <div className="chat-layout-browser-frame" data-ui="layout.browser-dock"
+              style={{ paddingBottom: browserDockInset(tileRect, size.height, dockClear) || undefined }}>
               <BrowserWindowContext.Provider value={browserWindow}>{renderBrowser}</BrowserWindowContext.Provider>
             </div> : tileTabs.map((tabId) => <div key={tabId} className="chat-layout-content" role="tabpanel" id={`chat-panel-${tabId}`}
               aria-label={title(tabId)} hidden={tabId !== tileActiveId}>{renderPane(tabId, tabId === tileActiveId)}</div>)}

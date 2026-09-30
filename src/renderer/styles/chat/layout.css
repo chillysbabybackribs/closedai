@@ -260,22 +260,27 @@
   }
 }
 .chat-layout-tabs::-webkit-scrollbar { display: none; }
-/* The new-tab control rides the strip right after the last tab, always wearing its hover fill. */
+/* The new-tab control rides the strip right after the last tab, styled identically to the browser's new-tab button. */
 .chat-layout-tabs .chat-layout-tab-new {
+  --tab-fill-hover: color-mix(in srgb, var(--surface-raised) 55%, var(--surface-chrome));
   display: grid;
   flex: 0 0 auto;
   align-self: center;
   width: 28px;
   height: 28px;
   place-items: center;
-  margin-inline: 0 2px;
+  margin: 0 0 3px 6px;
   padding: 0;
   border: 0;
   border-radius: 50%;
   cursor: pointer;
-  background: var(--surface-control-hover);
+  color: var(--chrome-fg);
+  background: transparent;
+  transition:
+    background 90ms var(--ease-chrome),
+    color 90ms var(--ease-chrome);
 }
-.chat-layout-tabs .chat-layout-tab-new:hover { color: var(--chrome-fg-strong); background: var(--surface-control-hover); }
+.chat-layout-tabs .chat-layout-tab-new:hover { color: var(--chrome-fg-strong); background: var(--tab-fill-hover); }
 /* Tab strip ends before + / hide; line stays on the viewport edge, not scrolled tab content. */
 .chat-layout-header > .chat-layout-tabs::after {
   content: '';

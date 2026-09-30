@@ -56,7 +56,7 @@ function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset
       data-ui="layout.new-chat" data-ui-key={activeId} disabled={busy}
       title={noteTile ? 'New note tab' : 'New chat tab'} aria-label={noteTile ? 'New note tab' : 'New chat tab'}
       onClick={() => onNewChat(activeId)}>
-      <Plus size={14} aria-hidden="true" />
+      <Plus size={16} strokeWidth={2} aria-hidden="true" />
     </button>
   )
   return <ContextMenu.Root>
