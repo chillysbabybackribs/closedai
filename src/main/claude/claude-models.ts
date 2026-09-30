@@ -5,8 +5,9 @@ import { claudeModelId, claudeModelValue } from './claude-ids.js'
 
 // The Claude catalog is read live from the CLI (`Query.supportedModels()`), never hardcoded:
 // the CLI knows which models the signed-in account can use and what each supports. Verified
-// 2026-09-02 against SDK 0.3.258, rechecked 0.3.280: entries carry `value` (the `model` option), `resolvedModel`,
-// display name, description, and `supportedEffortLevels`; Haiku 4.5 reports no effort support.
+// 2026-09-02 against SDK 0.3.258, rechecked 0.3.280 and 0.3.285: entries carry `value` (the `model` option),
+// `resolvedModel`, display name, description, and `supportedEffortLevels`; Haiku 4.5 reports no effort support.
+// New models arrive with an SDK bump (0.3.285 added Sonnet 5.5 as the `sonnet` alias), not a code change.
 
 /** The effort the CLI runs at when no option is sent (verified through a PreToolUse hook). */
 export const CLAUDE_DEFAULT_EFFORT = 'high'

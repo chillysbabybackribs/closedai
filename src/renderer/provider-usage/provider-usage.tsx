@@ -14,9 +14,10 @@ import { providerUsageEntries, usageChipDisplay, usageWindowState, type Provider
 
 const WARNING_LEVELS = ['low', 'critical', 'exhausted']
 
-export const ProviderUsage = memo(function ProviderUsage({ chats, open, onOpenChange }: {
-  chats: readonly ChatRowSummary[]; visible: boolean; open: boolean; onOpenChange: (open: boolean) => void
-}): JSX.Element | null {
+/** Title-bar subscription usage between the File dropdown and chat search: one chip per provider/account,
+ * collapsing to a single Usage trigger when the gap is too narrow. */
+export const ProviderUsage = memo(function ProviderUsage({ chats }: { chats: readonly ChatRowSummary[] }): JSX.Element | null {
+  const [open, onOpenChange] = useState(false)
   const [readings, setReadings] = useState<ProviderUsageSnapshot[]>([])
   const entries = providerUsageEntries(chats, readings)
   const refreshProvider = useCallback(async (provider: ChatProvider): Promise<void> => {
@@ -29,7 +30,7 @@ export const ProviderUsage = memo(function ProviderUsage({ chats, open, onOpenCh
   const root = useRef<HTMLDivElement>(null)
   const lastTrigger = useRef<HTMLButtonElement | null>(null)
   useEffect(() => {
-    // Startup reads are independent of rail visibility and chat connection state.
+    // Startup reads are independent of chat connection state.
     void Promise.allSettled(CHAT_PROVIDERS.map(refreshProvider))
     const refresh = (): void => {
       if (!document.hidden) void Promise.allSettled(CHAT_PROVIDERS.map(refreshProvider))
@@ -65,19 +66,19 @@ export const ProviderUsage = memo(function ProviderUsage({ chats, open, onOpenCh
     .reduce<UsageChipDisplay | null>((lowest, next) => !lowest || (next.remaining ?? 100) < (lowest.remaining ?? 100) ? next : lowest, null)
   const warning = displays.some((display) => WARNING_LEVELS.includes(display.level))
   const trigger = (item: ProviderUsageEntry, display: UsageChipDisplay): JSX.Element => <Tooltip key={item.key}>
-    <TooltipTrigger asChild><Button variant="ghost" size="xs" className="provider-usage-chip" data-ui="dock.provider-usage"
+    <TooltipTrigger asChild><Button variant="ghost" size="xs" className="provider-usage-chip" data-ui="titlebar.provider-usage"
       data-ui-item={item.key} data-level={display.level} aria-label={display.ariaLabel} aria-expanded={open && entry.key === item.key}
       onClick={(event) => { lastTrigger.current = event.currentTarget; setSelected(item.key); onOpenChange(!(open && entry.key === item.key)) }}>
       <ProviderMark provider={item.provider} />
       {display.remaining !== null && <span className="provider-usage-chip-value">{display.text}</span>}
     </Button></TooltipTrigger>
-    {!open && <TooltipContent side="top">{display.ariaLabel}</TooltipContent>}
+    {!open && <TooltipContent side="bottom">{display.ariaLabel}</TooltipContent>}
   </Tooltip>
   return <div ref={root} className="provider-usage">
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="xs" className={`provider-usage-chip${compact ? '' : ' provider-usage-anchor'}`}
-          data-ui="dock.provider-usage-all" aria-label="Provider subscription usage" tabIndex={compact ? 0 : -1}
+          data-ui="titlebar.provider-usage-all" aria-label="Provider subscription usage" tabIndex={compact ? 0 : -1}
           aria-hidden={compact ? undefined : true} onClick={(event) => { lastTrigger.current = event.currentTarget }}>
           <Gauge aria-hidden="true" /><span>Usage</span>
           {worst && <Badge variant="secondary" className="provider-usage-worst" data-level={worst.level}>
@@ -89,7 +90,7 @@ export const ProviderUsage = memo(function ProviderUsage({ chats, open, onOpenCh
         {index > 0 && <span className="provider-usage-divider" aria-hidden="true" />}
         {trigger(item, displays[index])}
       </Fragment>)}
-      <PopoverContent side="top" align="start" sideOffset={12} collisionPadding={12}
+      <PopoverContent side="bottom" align="center" sideOffset={8} collisionPadding={12}
         className="dock-panel provider-usage-panel" aria-label="Provider subscription usage"
         onCloseAutoFocus={(event) => {
           event.preventDefault()
@@ -98,7 +99,7 @@ export const ProviderUsage = memo(function ProviderUsage({ chats, open, onOpenCh
         }}>
         <div className="provider-usage-tabs" aria-label="Providers">
           {entries.map((item) => <Button key={item.key} variant="ghost" className="provider-usage-tab"
-            data-ui="dock.provider-usage-tab" data-ui-item={item.key} aria-pressed={item.key === entry.key}
+            data-ui="titlebar.provider-usage-tab" data-ui-item={item.key} aria-pressed={item.key === entry.key}
             onClick={() => setSelected(item.key)}><ProviderMark provider={item.provider} />
             {CHAT_PROVIDER_LABELS[item.provider]}
             {entries.filter((other) => other.provider === item.provider).length > 1 && <span>{item.account?.email ?? 'Unknown account'}</span>}
@@ -125,7 +126,7 @@ function ProviderUsageDetail({ entry, now, refreshProvider }: { entry: ProviderU
   return <section className="provider-usage-detail">
     <header><div><h3>{CHAT_PROVIDER_LABELS[entry.provider]}</h3>
       <p>{usage?.plan ?? entry.account?.planType ?? 'Subscription usage'}</p></div>
-      <Button variant="ghost" size="icon-sm" data-ui="dock.provider-usage-refresh" disabled={refreshing}
+      <Button variant="ghost" size="icon-sm" data-ui="titlebar.provider-usage-refresh" disabled={refreshing}
         aria-label="Refresh provider usage" onClick={() => { void refresh() }}>
         <RefreshCw aria-hidden="true" className={refreshing ? 'animate-spin motion-reduce:animate-none' : undefined} />
       </Button></header>
@@ -150,6 +151,6 @@ function ProviderUsageDetail({ entry, now, refreshProvider }: { entry: ProviderU
       ? 'Codex app-server · only primary and secondary rate-limit windows when reported. Credits stay in the composer usage card.'
       : entry.provider === 'cursor'
         ? 'Cursor CLI · plan from about; quota percentages are not exposed on the CLI.'
-        : 'Provider-reported · lowest reported window shown in the rail. Model-specific windows keep their original labels.'}</footer>
+        : 'Provider-reported · lowest reported window shown in the title bar. Model-specific windows keep their original labels.'}</footer>
   </section>
 }
