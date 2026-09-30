@@ -32,7 +32,7 @@ QA entries and the coverage ledger are treated as historical records, not curren
 | Notes cannot open from a browser-only tree | `openNoteInTree` also required a non-browser host | Chats and Notes share `tabInNewWindow`; a first content window tiles without revealing a hidden browser. Tested and exercised live. |
 | Floating fallback restores a minimized host | Add-tab, tear-off, reselect-host temporarily mutated the existing window | Direct insertion preserves existing windows, tabs, and minimized state. Regression tests cover minimized and view-only hosts. |
 | A floating new window can remain hidden by maximization | `openWindowIn` cleared maximization only when auto-placement tiled | Opening a changed window now clears maximization for either placement. Source-verified; not separately exercised live. |
-| Main retains old visibility after the last content window closes | The reporting effect skipped an empty tree | Empty visible/retained lists are now sent through the existing IPC contract. Main accepts empty arrays. |
+| Main retains old visibility after the last content window closes | The reporting effect skipped an empty tree | Visibility is reported even without content tiles; lists can be empty when no side chats remain. Main accepts empty arrays. |
 | Closing the selected chat can try selecting a Notes/view id | `hide` chose `paneIds(remaining)[0]` as a backend chat id | It now chooses a visible chat id, or retains the backend selection with adoption suppressed. Verified live with Notes remaining. |
 | Opening a view can allow the last closed chat to reappear | The suppression guard applied only while there were no content tiles | Suppression persists until an explicit activation or a different selection. Verified by opening Notes and then opening/closing a new chat. |
 
@@ -210,6 +210,7 @@ audit does not justify declaring any underlying model intrinsically unreliable.
 - Real Electron verified empty canvas → Chats, empty canvas → Notes, Notes-only → Chats, and
   closing the selected chat while Notes remains. The browser stayed hidden. No model message
   was sent to the temporary test chats. The final changed surface was captured after rebuild.
+- Workspace map regeneration, `map:check`, `guide:check`, and tracked/untracked whitespace checks passed.
 - The pure counterexamples above demonstrate remaining inconsistent policies; they are findings,
   not claims that those behaviors were fixed.
 

@@ -1035,7 +1035,27 @@ detached windows and startup retain the header menus because no dock is availabl
 tile holds its icon from the shared list in
 `src/renderer/app-icons.tsx`, which the view tabs use too. The strip is 44 px tall and a step lighter than the workspace
 (`--surface-raised`); the tray sits in a tab that rises out of its centre, drawn with the strip as
-one shape and one outline (`dock-surface.tsx`). The dock's box reaches as high as a magnified tile, so a browser under any of it is covered. **Chats** opens a new chat window with its own tabs (history stays in header Search chats and File → Manage chat history), including when every content window is closed or only views remain. The first content window in a browser-only tree tiles beside the browser; a hidden browser stays hidden. Chats and Notes share the same independent-window insertion, which preserves existing tabs and minimized windows. Closing a selected chat while only views remain keeps the backend chat selection without reopening that chat or sending a view id to chat services. Opening a view does not implicitly reopen the last closed chat. Empty layouts report empty visible and retained chat lists to main. A window opened from the dock (Chats, or Notes when no notepad window is open) is **auto-placed** into the current tiled layout (`chat-layout/auto-place.ts`): it halves the roomiest chat or notepad tile, top/bottom when the tile is taller than wide and side by side otherwise, preferring the selected chat's tile among tiles of about the same size (within 4%). With chat, browser, chat, the first opens under one side chat, the second under the other, and the next halves one of those quarters side by side where it stays above the 300x280 minimum. The browser, floating, and minimized windows are never split; a maximized window is un-maximized so the opened window shows, including a floating fallback. When no tile can be halved above the minimum (or the canvas has not been measured) the window floats as before. The result is an ordinary split, so it drags, snaps, resizes, and floats like any other tile. **Browser** shows or hides the
+one shape and one outline (`dock-surface.tsx`). The dock's box reaches as high as a magnified tile,
+so a browser under any of it is covered.
+
+**Chats** opens a new chat window with its own tabs (history stays in header Search chats and File →
+Manage chat history), including when every content window is closed or only views remain. The first
+content window in a browser-only tree tiles beside the browser; a hidden browser stays hidden. Chats
+and Notes share the same independent-window insertion, which preserves existing tabs and minimized
+windows. Closing a selected chat while only views remain keeps the backend chat selection without
+reopening that chat or sending a view id to chat services. Opening a view does not implicitly reopen
+the last closed chat. Visibility is reported even with no content tiles, so main can clear stale chat visibility and retention.
+
+A window opened from the dock (Chats, or Notes when no notepad window is open) is **auto-placed**
+into the current tiled layout (`chat-layout/auto-place.ts`): it halves the roomiest chat or notepad
+tile, top/bottom when the tile is taller than wide and side by side otherwise, preferring the
+selected chat's tile among tiles of about the same size (within 4%). With chat, browser, chat, the
+first opens under one side chat, the second under the other, and the next halves one of those
+quarters side by side where it stays above the 300x280 minimum. The browser, floating, and minimized
+windows are never split; a maximized window is un-maximized so the opened window shows, including a
+floating fallback. When no tile can be halved above the minimum (or the canvas has not been
+measured) the window floats as before. The result is an ordinary split, so it drags, snaps, resizes,
+and floats like any other tile. **Browser** shows or hides the
 browser. **Notes** opens the notepad (its open window, else the latest note, else a new one). **Agent runs** opens the Agents view; its tooltip carries the runs summary. **Saved
 sites** and **Downloads** open a list above the icon. In Saved sites, a row (`dock.saved-site`)
 shows the browser and opens the site, and **All saved sites** (`dock.all-saved-sites`) opens the
