@@ -371,8 +371,9 @@ manual titles set `titleSource: 'manual'` and are preserved until cleared or res
 strip `<closedai_context>` blocks and clip the first nonempty user-message line.
 
 Startup, new chat, and opening a chat trim attached panes toward eight, least recently active
-first. The selected and visible panes, active turns, operations in flight, and undelivered continuation
-digests are protected, so this is not a hard concurrency limit. Detaching keeps the record and
+first. The selected and visible panes (including visible blank tabs), active turns, and operations
+in flight are protected, so this is not a hard concurrency limit. An undelivered continuation digest
+stays on the detached record until the chat's first send. Detaching keeps the record and
 its provider thread; the chat reopens from history search under the same id. A blank new chat (no
 thread, no messages, no continuation, no open or wake in flight) may be discarded when the user leaves
 it, but a chat still visible in the layout is retained.

@@ -21,7 +21,7 @@ test('startup detaches the least recently active panes down to the cap but keeps
   assert.equal(manager.snapshot().chats.length, 12)
 })
 
-test('detaching never closes a running pane or one holding an undelivered handoff', async () => {
+test('detaching never closes a running pane; undelivered handoffs stay on the record when detached', async () => {
   const records = manyChats(10)
   records[1] = {
     ...records[1]!,
@@ -34,7 +34,7 @@ test('detaching never closes a running pane or one holding an undelivered handof
       createdAt: 1
     }
   }
-  const { manager, surfaces } = harnessWith(records, 'pane-9')
+  const { manager, surfaces, store } = harnessWith(records, 'pane-9')
   surfaces[0]!.state.activeTurnId = 'turn-live'
 
   await manager.start()
@@ -42,19 +42,20 @@ test('detaching never closes a running pane or one holding an undelivered handof
   const kept = attached(manager)
   assert.equal(kept.length, 8)
   assert.ok(kept.includes('pane-0'), 'a pane mid-turn stays open')
-  assert.ok(kept.includes('pane-1'), 'a pending continuation stays open')
   assert.ok(kept.includes('pane-9'), 'the selected pane stays open')
   assert.equal(kept.includes('pane-2'), false)
+  assert.equal(store.require('pane-1').continuation?.handoff, 'digest', 'handoff survives detach on the record')
 })
 
-test('startup keeps blank background tabs attached so their strip slot survives a relaunch', async () => {
+test('startup keeps a blank tab attached when it is visible in the layout', async () => {
   const records = manyChats(10)
   records[1] = { ...records[1]!, codexThreadId: null, threadId: null, messageSentAt: null }
   const { manager, settings } = harnessWith(records, 'pane-9')
 
   await manager.start()
+  await manager.setVisiblePanes('/workspace', ['pane-9', 'pane-1'])
 
-  assert.ok(attached(manager).includes('pane-1'), 'a blank chat is listed only while attached')
+  assert.ok(attached(manager).includes('pane-1'), 'a visible blank chat keeps its strip slot')
   assert.ok(settings.get().chatOpenIds.includes('pane-1'))
 })
 

@@ -232,16 +232,16 @@ export class PeerLifecycle {
 
   /**
    * Detach the least recently active chats once more than the cap are attached. The chats in
-   * `keep`, any chat mid-turn or mid-operation, and any chat still holding an undelivered
-   * continuation digest are never detached: the first are in use and the last is state the
-   * provider does not have yet. Returns the ids that were detached.
+   * `keep`, any chat mid-turn, and any chat mid-operation are never detached. An undelivered
+   * continuation digest stays on the detached record and is injected on the destination's first
+   * send after reopen — it does not require an attached runtime. Returns the ids that were detached.
    */
   trim(keep: Iterable<ChatPaneId>, max = MAX_ATTACHED_CHATS): ChatPaneId[] {
     const excess = this.peers.size - max
     if (excess <= 0) return []
     const pinned = new Set(keep)
     for (const [chatId, entry] of this.peers) {
-      if (entry.busy > 0 || this.isRunning(chatId) || this.store.get(chatId)?.continuation?.handoff) pinned.add(chatId)
+      if (entry.busy > 0 || this.isRunning(chatId)) pinned.add(chatId)
     }
     const detaching = [...this.peers.values()]
       .filter((entry) => !pinned.has(entry.chatId))

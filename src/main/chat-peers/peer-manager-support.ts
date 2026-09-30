@@ -75,10 +75,14 @@ export async function peerManagerTrimAttached(host: PeerManagerSupportHost): Pro
   // A blank chat is listed only while attached, so detaching a blank background tab would drop
   // it from the strip, at launch before any window has registered its tabs too. It holds no
   // thread, so keeping it attached costs nothing; blank chats outside a strip are discarded elsewhere.
-  const blankTabs = host.lifecycle.ids().filter((id) => host.lifecycle.isBlank(id))
+  const visible = host.visiblePaneIds()
+  const retained = host.retainedTabIds()
+  const selected = host.selectedPaneId()
+  const blankTabs = host.lifecycle.ids().filter((id) =>
+    host.lifecycle.isBlank(id) && (id === selected || visible.has(id) || retained.has(id)))
   const detached = host.lifecycle.trim([
-    host.selectedPaneId(),
-    ...host.visiblePaneIds(),
+    selected,
+    ...visible,
     ...blankTabs,
     ...switching
   ])
