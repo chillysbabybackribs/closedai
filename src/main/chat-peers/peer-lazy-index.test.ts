@@ -6,12 +6,12 @@ import { ChatPaneLexicalIndex } from '../chat-store/chat-pane-lexical-index.js'
 import { ChatPeerManager } from './peer-manager.js'
 import { chatRecord, FakeSurface, MemorySettings, HARNESS_CWD } from './peer-manager-harness.js'
 
-test('pane events are lazy, concurrent searches share backfill, and later events refresh', async (t) => {
+test('pane events are lazy, concurrent searches share backfill, and later events refresh', { timeout: 5000 }, async (t) => {
   const settings = new MemorySettings({ ...DEFAULT_APP_SETTINGS, chatMemoryIndexEnabled: true,
     chatWorkspacePath: HARNESS_CWD, chatProjectPath: HARNESS_CWD, chatOpenIds: ['a'], chatSelectedPaneId: 'a' })
   const record = chatRecord('a', 'gpt', { threadId: 'live', codexThreadId: 'live',
     continuation: { sourcePaneId: 'a', sourceThreadId: 'old', sourceCwd: HARNESS_CWD,
-      checkpoint: null, sourceProvider: 'codex' } })
+      checkpoint: null, sourceProvider: 'codex', sourceTitle: 'Previous', handoff: null, createdAt: 1 } })
   const store = ChatStore.inMemory([record])
   const index = ChatPaneLexicalIndex.inMemory(settings.get())
   const surface = new FakeSurface('gpt')

@@ -239,7 +239,7 @@ export class ChatPaneLexicalIndex {
   }
 
   async close(): Promise<void> {
-    this.fts?.close()
+    await this.fts?.close()
     await this.flush()
   }
 

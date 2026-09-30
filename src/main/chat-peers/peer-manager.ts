@@ -658,7 +658,9 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       if (!callerPaneId || !this.paneLexicalIndex) return disabled
       if (!request.query?.trim()) return disabled
       const entry = this.lifecycle.get(callerPaneId)
-      if (entry && !this.paneLexicalIndex.getRecord(callerPaneId)) this.schedulePaneLexicalIndex(entry)
+      if (entry && !this.paneLexicalIndex.getRecord(callerPaneId) && !this.paneLexicalIndexTails.has(callerPaneId)) {
+        this.schedulePaneLexicalIndex(entry)
+      }
       try {
         await this.refreshPaneLexicalIndex(callerPaneId)
       } catch {

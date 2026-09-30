@@ -693,7 +693,14 @@ ordering as history (`messageSentAt`, then turn end, then creation), capped by
 `chatMemoryIndexMaxChats` (default 10, max 100 in settings). Per-pane indexes are not subject to
 that cap; each keeps the newest spine lines up to the larger of 96,000 characters or
 `chatMemoryIndexMaxCharsPerChat`. On disk, pane search uses SQLite FTS5 (`search.sqlite`) with
-BM25 ranking; JSON pane files remain authoritative and repopulate FTS after schema changes.
+BM25 ranking in a lazy worker thread; JSON pane files remain authoritative. Pane events only
+mark the derived index dirty. The next chat-scoped search coalesces pending changes, merges the
+latest transcript once, and awaits its refresh; concurrent searches share that refresh. No
+provider backfill or SQLite rebuild runs merely because a pane emits events. Startup reads
+saved JSON without rebuilding SQLite. The worker materializes only searched panes and skips
+unchanged records; schema changes are repaired on demand. JSON persistence writes only changed
+panes (and the manifest when membership changes). A worker failure falls back to the current
+in-memory lines, never stale SQLite rows. Disabled or archived panes cannot return in-flight hits.
 Global search also returns `titleMatches`: chat-level entries (`chatId`, title, `cwd`,
 `lastActivityAt`, optional `match`, `evidenceAvailability`) for chats whose current title matches.
 They cover every non-archived store chat the index has seen through startup sync or a turn end,

@@ -28,9 +28,9 @@ export class PaneIndexWorker {
     })
   }
 
-  close(): void {
+  async close(): Promise<void> {
     this.closed = true
-    if (this.worker) this.fail(this.worker, new Error('Pane index closed'))
+    if (this.worker) await this.fail(this.worker, new Error('Pane index closed'))
   }
 
   private start(): Worker {
@@ -52,7 +52,7 @@ export class PaneIndexWorker {
     return worker
   }
 
-  private fail(worker: Worker, error: Error): void {
+  private async fail(worker: Worker, error: Error): Promise<void> {
     if (this.worker !== worker) return
     this.worker = null
     for (const request of this.pending.values()) {
@@ -60,6 +60,6 @@ export class PaneIndexWorker {
       request.reject(error)
     }
     this.pending.clear()
-    void worker.terminate()
+    await worker.terminate()
   }
 }
