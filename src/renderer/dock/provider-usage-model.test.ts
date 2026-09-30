@@ -56,7 +56,7 @@ test('unknown, missing and invalid readings never become a healthy zero', () => 
 })
 
 test('codex and cursor chips name the plan when quota windows are missing', () => {
-  const missing = { plan: 'Pro Lite', note: null, unavailable: 'No windows', updatedAt: NOW, windows: [] as const }
+  const missing = { plan: 'Pro Lite', note: null, unavailable: 'No windows', updatedAt: NOW, windows: [] }
   assert.equal(usageChipText('codex', missing, null, NOW), '—')
   assert.equal(usageChipText('cursor', { ...missing, plan: 'Pro' }, null, NOW), '—')
   assert.equal(usageChipText('codex', usage(28), 'prolite', NOW), '72')
