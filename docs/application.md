@@ -31,6 +31,40 @@ verification. Launching another preview can hand off to the existing single-inst
 does not prove that process loaded the new build. Verify the actual target surface after reload
 or restart, and report pending restart separately from build success.
 
+### Renderer-only fallback
+
+If `npm run build` stops at unrelated TypeScript errors, a renderer-only change can still be
+built and checked in the running Electron app. First confirm that the errors are outside the
+change and that the UI does not depend on new main-process, preload, or IPC behavior. From the
+repository root, build only the renderer using the existing Electron Vite configuration:
+
+```sh
+node scripts/work-lock.mjs --cwd "$PWD" -- node --input-type=module <<'JS'
+import { resolveConfig } from 'electron-vite'
+import { build } from 'vite'
+
+process.env.NODE_ENV_ELECTRON_VITE = 'production'
+const { config } = await resolveConfig({}, 'build', 'production')
+if (!config?.renderer) throw new Error('Renderer configuration missing')
+await build(config.renderer)
+JS
+```
+
+This replaces `out/renderer` while leaving `out/main` and `out/preload` untouched. It uses the
+real renderer and preload bridge, with no alternate browser entry. The running checkout app
+reloads the renderer as described above, provided its main bundle still matches. If no app is
+running, `npm run preview -- --skipBuild` can launch existing main/preload artifacts; they must
+already support the UI being checked. Do not restart an active app just to apply a renderer-only
+change when automatic reload works.
+
+Wait for the reload, then inspect the actual Electron surface and exercise the changed control.
+A successful bundle alone does not verify that the app loaded it. This fallback does not run
+TypeScript or hygiene checks: reuse successful hygiene results from the failed build's prebuild
+step, or run hygiene when required for the change. Run the relevant co-located test. Report the
+renderer verification separately from the blocked full build, including the unrelated errors;
+this fallback does not establish that the full build passes. Changes requiring new main/preload
+behavior still need those layers built and the app restarted.
+
 Development and build commands run hygiene automatically. Dependency-layer violations block;
 file sizes produce a compact, non-blocking advisory (`npm run hygiene -- --details` lists files).
 Build also typechecks, so `npm run check` relies on the build for both checks rather than repeating
