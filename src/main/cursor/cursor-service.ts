@@ -6,9 +6,7 @@ import type {
   ChatSnapshot, ChatThreadContent, ChatThreadSummary
 } from '../../shared/chat.js'
 import type { RotationSettingsAccess } from '../chat-context/rotate-provider-session.js'
-import { createSessionRotator } from '../chat-context/session-rotator-factory.js'
 import { buildProviderChildEnv } from '../provider-work-env.js'
-import type { SessionRotator } from '../chat-context/session-rotation.js'
 import {
   carryLostCursorSession,
   detachCursorThread,
@@ -21,17 +19,13 @@ import { shrinkPastedImages } from '../chat-attachment-images.js'
 import {
   buildThreadHandoff,
   continuationFromThreadHandoff,
+  handoffAdditionalContext,
   type ThreadHandoffSource
 } from '../chat-context/thread-handoff.js'
 import {
-  buildTurnSendContext,
-  markSessionGuideDelivered,
-  sessionGuideThreadKey,
-  type SessionGuideDeliveryState
-} from '../chat-context/session-guide.js'
-import { workspaceLedgerContextForTurn } from '../chat-context/workspace-ledger/index.ts'
-import {
+  buildClockAdditionalContext,
   buildTurnAdditionalContext,
+  mergeTurnAdditionalContext,
   type TurnSurfaceContext
 } from '../chat-context/turn-context.js'
 import { reasoningEffortForModel } from '../chat-model-catalog.js'
@@ -84,10 +78,8 @@ export class CursorChatService extends EventEmitter {
    * the caller, and a pane has one thread at a time, so it survives every new chat and reload.
    */
   private readonly bridgeKey = randomUUID()
-  private readonly sessionGuideState: SessionGuideDeliveryState = { lastDeliveredThreadKey: null }
   private promptSuggestion: string | null = null
   private suggestionGeneration = 0
-  private readonly rotator: SessionRotator
   /** When set, only these MCP namespaces are passed at the next session open (task tool slices). */
   private cursorAttachNamespaces: readonly string[] | null = null
 
@@ -110,13 +102,6 @@ export class CursorChatService extends EventEmitter {
       (event) => this.emitEvent(event),
       (callId) => screenshots?.get(callId) ?? null
     )
-    this.rotator = createSessionRotator({
-      settings: this.settings,
-      threadId: () => (this.session?.sessionId ? cursorThreadId(this.session.sessionId) : null),
-      turnActive: () => this.activeTurnId !== null,
-      transcriptItems: () => this.transcript.snapshot(),
-      rotate: () => this.rotateProviderSession()
-    })
   }
 
   snapshot(window?: ChatHistoryWindow): ChatSnapshot {
@@ -158,11 +143,9 @@ export class CursorChatService extends EventEmitter {
       const { prompt, input, summaries } = buildChatInput(text, shrunk)
       if (input.length === 0) return
       if (this.activeTurnId) throw new Error('A Cursor turn is already running')
-      const transcriptWasEmpty = this.transcript.isEmpty
       // Paint the accepted message before the provider starts; see the Claude lane for why.
       this.transcript.addOptimisticUser(randomUUID(), prompt, summaries)
       await prepare?.()
-      await this.rotator.prepareForSend()
       await this.ensureReady()
       const session = this.session!
       if (this.activeTurnId) throw new Error('A Cursor turn is already running')
@@ -175,24 +158,14 @@ export class CursorChatService extends EventEmitter {
       await session.warm()
       const sessionId = session.sessionId
       const pendingHandoff = this.settings.get().chatContinuation?.handoff ?? null
-      const guideThreadKey = sessionGuideThreadKey(
-        this.settings.get().chatCursorSessionId,
-        session.sessionId,
-        this.paneId ?? 'pane'
+      // Keep Cursor's native session/context policy separate from the other provider lanes.
+      // No shared guide or workspace ledger: only turn facts and necessary continuation data.
+      // ACP reports no usage; transcript size must not automatically discard its live session.
+      const context = mergeTurnAdditionalContext(
+        buildClockAdditionalContext(),
+        pendingHandoff ? handoffAdditionalContext(pendingHandoff) : undefined,
+        this.turnAdditionalContext(text)
       )
-      const workspaceLedgerContext = await workspaceLedgerContextForTurn({
-        settings: this.settings.get(),
-        prompt,
-        cwd: this.cwd
-      })
-      const { context, attachGuide } = buildTurnSendContext({
-        threadKey: guideThreadKey,
-        state: this.sessionGuideState,
-        transcriptWasEmpty,
-        pendingHandoff,
-        workspaceLedgerContext,
-        browserContext: this.turnAdditionalContext(text)
-      })
       const turn = await buildCursorPrompt(
         text,
         shrunk,
@@ -209,7 +182,6 @@ export class CursorChatService extends EventEmitter {
       }
       await session.send(turn.blocks, turnId)
       await this.clearDeliveredHandoff()
-      if (attachGuide) markSessionGuideDelivered(this.sessionGuideState, guideThreadKey)
     } catch (error) {
       if (turnId) this.session?.abortTurn(turnId)
       if (turnId && this.activeTurnId === turnId) this.setTurn(null)
@@ -325,7 +297,7 @@ export class CursorChatService extends EventEmitter {
   async compactConversation(): Promise<void> {
     if (this.activeTurnId) throw new Error('Stop the current turn before compacting')
     if (!this.settings.get().chatSeamlessRotation) throw new Error('The active provider does not support compaction')
-    await this.rotateProviderSession()
+    await rotateCursorProviderSession(this.threadHost(), this.session)
     this.addNotice('Provider context will shrink on the next message; the visible transcript is unchanged.', 'info', null)
   }
 
@@ -615,19 +587,9 @@ export class CursorChatService extends EventEmitter {
       this.setPaused(null)
       this.suggestionGeneration += 1
       this.setPromptSuggestion(null)
-      this.rotator.turnStarted()
     }
     this.bindBridge()
     this.emitEvent({ type: 'turn', turnId })
-    if (turnId === null) this.rotator.turnFinished()
-  }
-
-  private async rotateProviderSession(): Promise<void> {
-    try {
-      await rotateCursorProviderSession(this.threadHost(), this.session)
-    } finally {
-      this.rotator.complete()
-    }
   }
 
   private async updatePromptSuggestion(answer: string): Promise<void> {
@@ -675,7 +637,6 @@ export class CursorChatService extends EventEmitter {
       settings: this.settings,
       paneId: this.paneId,
       transcript: this.transcript,
-      rotator: this.rotator,
       session: () => this.session,
       threadName: () => this.threadName,
       setThreadName: (name) => { this.threadName = name },
