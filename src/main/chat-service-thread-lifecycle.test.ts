@@ -69,7 +69,9 @@ async function mockHost(t: test.TestContext, tools: ToolRegistry, settingsPatch:
   t.after(() => rm(directory, { recursive: true, force: true }))
   let saved: AppSettings = { ...DEFAULT_APP_SETTINGS, chatSeamlessRotation: false, ...settingsPatch }
   let threadId: string | null = 'live-thread'
-  let threadToolCatalog: unknown = dynamicToolSpecs(tools)
+  // A live thread was started with the advertised catalog, including the default task slice.
+  // An unsliced seed here falsely turns the unchanged-catalog test into a drift test.
+  let threadToolCatalog: unknown = (await resolveCodexToolCatalog(tools, saved, { prompt: null, surface: null })).dynamicTools
   const requests: Array<{ method: string; params: unknown }> = []
   const transcript = new ChatTranscript(directory, () => null, () => undefined)
   const modelState = new ChatModelState()
