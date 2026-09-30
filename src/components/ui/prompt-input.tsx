@@ -54,8 +54,10 @@ function PromptInput({
   const handleClick: MouseEventHandler<HTMLDivElement> = (event) => {
     // Clicking the box focuses the textarea, but not when the click landed on a control inside
     // it: a menu opened by that control's pointerdown would be dismissed by the focus change.
-    const control = (event.target as HTMLElement | null)?.closest('button, a, input, select, [role="menu"], [role="menuitem"]')
-    if (!disabled && !control) textareaRef.current?.focus()
+    // Clicks inside a portaled panel still bubble here through React; they are not the box's.
+    const target = event.target as HTMLElement | null
+    const control = target?.closest('button, a, input, select, [role="menu"], [role="menuitem"]')
+    if (!disabled && !control && event.currentTarget.contains(target)) textareaRef.current?.focus()
     onClick?.(event)
   }
 
