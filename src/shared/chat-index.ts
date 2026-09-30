@@ -63,12 +63,19 @@ export type ChatPaneLexicalIndexRecord = {
   updatedAt: number
 }
 
+/** exact: literal phrase. spacing: same letters/digits ignoring spaces, punctuation, case, accents. fuzzy: small typos. */
+export type ChatTextMatchKind = 'exact' | 'spacing' | 'fuzzy'
+
 export type ChatIndexSearchHit = {
   evidenceAvailability?: ChatEvidenceAvailability
   chatId: string
   itemId: string
   role: ChatIndexLineRole
   snippet: string
+  /** Present only when the hit is not a literal phrase match. */
+  match?: Exclude<ChatTextMatchKind, 'exact'>
+  /** Original text the query matched, for spacing and fuzzy hits. */
+  matched?: string
   score: number
   lastActivityAt: number
   cwd: string

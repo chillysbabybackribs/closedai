@@ -23,6 +23,7 @@ import {
 } from '../chat-context/thread-handoff.js'
 import { conversationSpineTurns } from '../chat-context/conversation-spine.js'
 import { writeAtomic } from '../atomic-write.js'
+import { matchLabel, matchText, prepareTextQuery } from './forgiving-text-match.js'
 
 export type ChatMemoryIndexSettings = Pick<
   AppSettings,
@@ -196,43 +197,49 @@ export class ChatMemoryIndex {
       trust: 'historical-data'
     }
     if (!settings.chatMemoryIndexEnabled) return empty
-    const query = request.query?.trim().toLowerCase()
+    const query = prepareTextQuery(request.query)
     if (!query) return empty
     const cwd = request.cwd?.trim()
     const limit = Math.max(1, Math.min(SEARCH_MAX_LIMIT, Math.floor(request.limit ?? SEARCH_DEFAULT_LIMIT)))
     const now = Date.now()
     const halfLife = settings.chatMemoryIndexHalfLifeDays
-    const candidates: ChatIndexSearchHit[] = []
-    for (const chatId of this.manifest.chatIds) {
-      if (excludeChatId && chatId === excludeChatId) continue
-      const record = this.records.get(chatId)
-      if (!record) continue
-      const chat = resolveChat?.(chatId)
-      if (resolveChat && (!chat || chat.archived)) continue
-      if (cwd && record.cwd !== cwd) continue
-      const recency = recencyFactor(now - record.lastActivityAt, halfLife)
-      const pinBoost = record.pinnedAt ? 1.25 : 1
-      for (const line of record.lines) {
-        const haystack = line.text.toLowerCase()
-        const index = haystack.indexOf(query)
-        if (index < 0) continue
-        const snippet = clip(line.text.slice(Math.max(0, index - 80), index + SEARCH_SNIPPET_CHARS), SEARCH_SNIPPET_CHARS)
-        const matchQuality = query.length / Math.max(line.text.length, query.length)
-        candidates.push({
-          ...(resolveChat ? { evidenceAvailability: cachedChatThreadId(chat)
-            ? { status: 'not-checked' as const }
-            : { status: 'unavailable' as const, reason: 'missing-thread' as const } } : {}),
-          chatId: record.chatId,
-          itemId: line.itemId,
-          role: line.role,
-          snippet,
-          score: recency * pinBoost * (0.5 + matchQuality),
-          lastActivityAt: record.lastActivityAt,
-          cwd: record.cwd,
-          title: record.title
-        })
+    const scan = (fuzzy: boolean): ChatIndexSearchHit[] => {
+      const candidates: ChatIndexSearchHit[] = []
+      for (const chatId of this.manifest.chatIds) {
+        if (excludeChatId && chatId === excludeChatId) continue
+        const record = this.records.get(chatId)
+        if (!record) continue
+        const chat = resolveChat?.(chatId)
+        if (resolveChat && (!chat || chat.archived)) continue
+        if (cwd && record.cwd !== cwd) continue
+        const recency = recencyFactor(now - record.lastActivityAt, halfLife)
+        const pinBoost = record.pinnedAt ? 1.25 : 1
+        for (const line of record.lines) {
+          const match = matchText(query, line.text, { fuzzy })
+          if (!match) continue
+          const snippet = clip(line.text.slice(Math.max(0, match.start - 80), match.start + SEARCH_SNIPPET_CHARS), SEARCH_SNIPPET_CHARS)
+          const lengthRatio = query.phrase.length / Math.max(line.text.length, query.phrase.length)
+          candidates.push({
+            ...(resolveChat ? { evidenceAvailability: cachedChatThreadId(chat)
+              ? { status: 'not-checked' as const }
+              : { status: 'unavailable' as const, reason: 'missing-thread' as const } } : {}),
+            chatId: record.chatId,
+            itemId: line.itemId,
+            role: line.role,
+            snippet,
+            ...matchLabel(match, line.text),
+            score: recency * pinBoost * match.quality * (0.5 + lengthRatio),
+            lastActivityAt: record.lastActivityAt,
+            cwd: record.cwd,
+            title: record.title
+          })
+        }
       }
+      return candidates
     }
+    // Typo-tolerant matches only fill in when nothing matches exactly or up to spacing and punctuation.
+    const exact = scan(false)
+    const candidates = exact.length ? exact : scan(true)
     candidates.sort((a, b) => b.score - a.score || b.lastActivityAt - a.lastActivityAt || a.chatId.localeCompare(b.chatId))
     return { ...empty, hits: candidates.slice(0, limit) }
   }
