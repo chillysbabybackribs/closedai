@@ -10,8 +10,9 @@ npm run test:pilot:workspace-ledger
 ```
 
 Deterministic A/B cases live in `prompt-fixtures.json` (scroller-style read-only prompts, ledger
-on/off, browser false-positive guard). Pilot tests load those fixtures; no `harness:model` or live
-send required.
+on/off, browser false-positive guard). Stress limits are covered in `ledger-stress.pilot.test.ts`
+(store cap, hint priority, stale storms, JSON cap). Pilot tests load those fixtures; no
+`harness:model` or live send required.
 
 Implementation: `src/main/chat-context/workspace-ledger-pilot/`.
 
