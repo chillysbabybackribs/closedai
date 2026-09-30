@@ -92,8 +92,11 @@ export function appCommandActions(
         'Select a pane, or open a thread by thread_id or unique title substring. Ambiguous titles fail with candidate ids.',
       inputSchema: objectSchema({
         pane_id: paneField,
-        thread_id: { type: 'string', minLength: 1 },
-        title: { type: 'string', minLength: 1, maxLength: 200 }
+        thread_id: { type: 'string', minLength: 1, description: 'Existing thread to open.' },
+        title: {
+          type: 'string', minLength: 1, maxLength: 200,
+          description: 'Unique title substring of an existing chat to open; new_chat takes no title.'
+        }
       }),
       run: async (input, context) => {
         const host = requireHost(app, 'app commands')
