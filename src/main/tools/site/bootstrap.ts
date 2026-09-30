@@ -19,6 +19,7 @@ import {
   rankNavLinks,
   rankSitemapEntries,
   resolveAgainstOrigin,
+  isHtmlContentType,
   type HtmlDiscover,
   type LlmsLink,
   type ProbeFetchMeta,
@@ -70,7 +71,7 @@ function bootstrapAction(sessions: SessionHostProvider, browser?: BrowserHostPro
         type: 'integer',
         minimum: 10_000,
         maximum: 2_000_000,
-        description: `Ignore probe bodies larger than this; default ${DEFAULT_MAX_PROBE_BYTES}.`
+        description: `Ignore probe bodies larger than this; default ${DEFAULT_MAX_PROBE_BYTES}. The HTML channel still parses the first max_probe_bytes of text/html when the full document is larger.`
       },
       timeout_ms: { type: 'integer', minimum: 3000, maximum: MAX_TIMEOUT_MS, description: `Total budget; default ${DEFAULT_TIMEOUT_MS}.` }
     }, ['url']),
@@ -97,7 +98,10 @@ function bootstrapAction(sessions: SessionHostProvider, browser?: BrowserHostPro
       const session = requireSession(sessions)
       const errors: Array<{ channel: string; message: string }> = []
 
-      const fetchText = async (target: string): Promise<{ meta: ProbeFetchMeta; text: string | null }> => {
+      const fetchText = async (
+        target: string,
+        options?: { htmlParse?: boolean }
+      ): Promise<{ meta: ProbeFetchMeta; text: string | null }> => {
         const t0 = Date.now()
         try {
           if (context.signal.aborted) throw new Error('aborted')
@@ -113,6 +117,10 @@ function bootstrapAction(sessions: SessionHostProvider, browser?: BrowserHostPro
             error: null
           }
           if (response.byteLength > maxBytes) {
+            if (options?.htmlParse && response.text && isHtmlContentType(response.contentType)) {
+              meta.parseTruncated = true
+              return { meta, text: response.text.slice(0, maxBytes) }
+            }
             meta.error = `body exceeds max_probe_bytes (${response.byteLength})`
             return { meta, text: null }
           }
@@ -204,19 +212,18 @@ function bootstrapAction(sessions: SessionHostProvider, browser?: BrowserHostPro
               return
             }
             if (originOf(tab.url) === origin) {
-              const { meta, text } = await fetchText(tab.url)
+              const { meta, text } = await fetchText(tab.url, { htmlParse: true })
               if (text && meta.status >= 200 && meta.status < 400) {
-                applyHtml(htmlOut, parseHtmlDiscover(text, meta.finalUrl), 'tab', meta.finalUrl, text.length, tokens, maxNav)
-                htmlOut.fetch = meta
+                applyHtml(htmlOut, parseHtmlDiscover(text, meta.finalUrl), 'tab', meta, tokens, maxNav)
                 if (channels.has('feeds')) applyFeedCandidates(feedsOut, text, meta.finalUrl)
                 return
               }
             }
           }
-          const { meta, text } = await fetchText(seedUrl)
+          const { meta, text } = await fetchText(seedUrl, { htmlParse: true })
           htmlOut.fetch = meta
           if (text && meta.status >= 200 && meta.status < 400) {
-            applyHtml(htmlOut, parseHtmlDiscover(text, meta.finalUrl), 'fetch', meta.finalUrl, text.length, tokens, maxNav)
+            applyHtml(htmlOut, parseHtmlDiscover(text, meta.finalUrl), 'fetch', meta, tokens, maxNav)
             if (channels.has('feeds')) applyFeedCandidates(feedsOut, text, meta.finalUrl)
           } else if (meta.error) errors.push({ channel: 'html', message: meta.error })
         })
@@ -330,8 +337,7 @@ function applyHtml(
   htmlOut: ReturnType<typeof emptyHtml>,
   parsed: HtmlDiscover,
   source: 'fetch' | 'tab',
-  url: string,
-  byteLength: number,
+  fetch: ProbeFetchMeta,
   tokens: string[],
   maxNav: number
 ): void {
@@ -341,15 +347,7 @@ function applyHtml(
   htmlOut.canonical = parsed.canonical
   htmlOut.jsonLd = parsed.jsonLd
   htmlOut.navLinks = rankNavLinks(parsed.navLinks, tokens, maxNav)
-  htmlOut.fetch = {
-    requestedUrl: url,
-    finalUrl: url,
-    status: 200,
-    contentType: 'text/html',
-    byteLength,
-    durationMs: 0,
-    error: null
-  }
+  htmlOut.fetch = fetch
 }
 
 function applyFeedCandidates(feedsOut: { ok: boolean; feeds: Array<{ url: string; type: string }> }, html: string, baseUrl: string): void {

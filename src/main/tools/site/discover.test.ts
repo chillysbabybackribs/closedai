@@ -78,6 +78,44 @@ test('buildHints mentions llms and openapi findings', () => {
   assert.ok(hints.some((line) => line.includes('OpenAPI')))
 })
 
+test('site.discover bootstrap parses oversized HTML using first max_probe_bytes', async () => {
+  const padding = 'x'.repeat(600_000)
+  const html = `<html><head><title>Big doc</title><link rel="canonical" href="https://heavy.test/page"></head><body><nav><a href="/docs">Docs</a></nav>${padding}</body></html>`
+  const registry = new ToolRegistry([
+    sessionHarness({
+      'https://heavy.test/page': {
+        status: 200,
+        ok: true,
+        contentType: 'text/html; charset=utf-8',
+        text: html,
+        byteLength: html.length
+      }
+    })
+  ])
+  const result = await registry.call(
+    {
+      namespace: 'site',
+      tool: 'discover',
+      arguments: {
+        action: 'bootstrap',
+        url: 'https://heavy.test/page',
+        channels: ['html'],
+        max_probe_bytes: 512_000
+      }
+    },
+    { threadId: null, turnId: null, callId: 'c2' }
+  )
+  const text = result.content[0]?.type === 'text' ? result.content[0].text ?? '' : ''
+  const payload = JSON.parse(text) as {
+    html: { ok: boolean; title: string; fetch: { parseTruncated?: boolean } }
+    errors: unknown[]
+  }
+  assert.equal(payload.html.ok, true)
+  assert.equal(payload.html.title, 'Big doc')
+  assert.equal(payload.html.fetch.parseTruncated, true)
+  assert.equal(payload.errors.length, 0)
+})
+
 test('site.discover bootstrap returns robots and sitemap card', async () => {
   const registry = new ToolRegistry([
     sessionHarness({

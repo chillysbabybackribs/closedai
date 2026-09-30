@@ -19,6 +19,14 @@ export type ProbeFetchMeta = {
   byteLength: number
   durationMs: number
   error: string | null
+  /** HTML channel only: only the first max_probe_bytes were parsed; full body was larger. */
+  parseTruncated?: boolean
+}
+
+export function isHtmlContentType(contentType: string | null): boolean {
+  if (!contentType) return false
+  const lower = contentType.toLowerCase()
+  return lower.includes('text/html') || lower.includes('application/xhtml')
 }
 
 export type RobotsParse = {

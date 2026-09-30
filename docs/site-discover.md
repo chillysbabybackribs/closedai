@@ -22,6 +22,11 @@ commits tokens to whole-page reads or ad-hoc fetches. Probes run in the main pro
 - **`tab_id`** — optional; HTML channel reads the live tab when its URL shares the origin.
 - Caps: `max_sitemap_urls`, `max_nav_links`, `max_llms_chars`, `max_probe_bytes`, `timeout_ms`.
 
+Large HTML documents (for example Next.js doc sites) may exceed `max_probe_bytes`; the **html**
+channel still parses the **first** `max_probe_bytes` of `text/html` for title, canonical, nav
+links, and feed hints. Other channels reject oversize bodies. `html.fetch.parseTruncated` marks
+when the full response was larger.
+
 ## Execution order
 
 1. **`robots`** runs first when enabled (feeds sitemap URLs into the sitemap channel).
