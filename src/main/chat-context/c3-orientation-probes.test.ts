@@ -91,7 +91,7 @@ test('C3 probe: search scope chat hit drills down via recall item_id', async () 
     rotationEpoch: 0,
     partial: false
   })
-  const search = index.searchPane('probe-pane', { scope: 'chat', query: SEED_PHRASE, limit: 3 })
+  const search = await index.searchPane('probe-pane', { scope: 'chat', query: SEED_PHRASE, limit: 3 })
   assert.ok(search.hits.length > 0, 'search should index the seeded phrase')
   const hit = search.hits[0]!
   const store = ChatStore.inMemory([record])
