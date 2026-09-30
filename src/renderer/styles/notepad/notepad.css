@@ -55,12 +55,13 @@
   pointer-events: auto;
 }
 
-.notepad-chat-layer .quick-chat-card {
-  background: color-mix(in srgb, var(--surface-card) 80%, black);
+.notepad-chat-layer .quick-chat-card,
+.notepad-chat-layer .chat-pane {
+  background: color-mix(in srgb, var(--surface-card) 65%, black);
 }
 
-:root[data-theme='warm'] .notepad-chat-layer .quick-chat-card {
-  background: color-mix(in srgb, var(--surface-card) 94%, black);
+:root[data-theme='warm'] .notepad-chat-layer :is(.quick-chat-card, .chat-pane) {
+  background: color-mix(in srgb, var(--surface-card) 90%, black);
 }
 
 .notepad-chat-elsewhere {
