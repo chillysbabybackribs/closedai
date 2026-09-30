@@ -1,6 +1,6 @@
 import { setGroupDocked } from '../layout-docking.js'
-import { BROWSER_PANE_ID, WORKSPACE_DOCK_ID, dockBrowser, dockPane, removePane, type ChatLayout, type DockEdge, type FloatRect, type Rect } from '../layout-tree.js'
-import { addTab, moveTab, selectTab, tabOwner } from '../layout-tabs.js'
+import { BROWSER_PANE_ID, WORKSPACE_DOCK_ID, dockBrowser, dockPane, paneIds, removePane, type ChatLayout, type DockEdge, type FloatRect, type Rect } from '../layout-tree.js'
+import { moveTab, tabOwner } from '../layout-tabs.js'
 
 // Tiles as windows. A tile is tiled (a slot in the split tree), floating (lifted out of the tiled
 // layer into its own rect, stacked by z above every tiled window) or minimized (kept in the tree
@@ -169,9 +169,13 @@ export function resizeRect(start: Rect, edge: ResizeEdge, dx: number, dy: number
 
 const NEW_CHAT_WINDOW: Rect = { x: 96, y: 64, width: 760, height: 560 }
 
-/** A fresh chat as its own floating window with its own tabs; the host keeps the tab it had in front. */
-export function chatInNewWindow(tree: ChatLayout, added: string, host: string, splitId: string): ChatLayout {
-  const joined = addTab(tree, host, added)
-  const split = moveTab(joined, added, added, 'right', splitId)
-  return split === joined ? joined : floatWindow(selectTab(split, host, host), added, NEW_CHAT_WINDOW)
+/** A fresh tab in its own window, without selecting or restoring an existing window.
+ * A browser-only tree is the empty workspace: its first content window tiles beside the browser.
+ * Browser visibility is owned by the layout and stays unchanged.
+ */
+export function tabInNewWindow(tree: ChatLayout, added: string, host: string | undefined, splitId: string): ChatLayout {
+  const windows = paneIds(tree)
+  const target = host && tabOwner(tree, host) || windows[0] || BROWSER_PANE_ID
+  const split = dockPane(tree, added, target, windows.length ? 'right' : 'left', splitId)
+  return windows.length ? floatWindow(split, added, NEW_CHAT_WINDOW) : split
 }

@@ -10,7 +10,7 @@ import { readQuickChatModel, rememberQuickChatModel } from './quick-chat-model.j
 import { notepadChats, pruneNotepadChats } from '../notepad/notepad-layout.js'
 import { adoptTabs, initialWindowTree } from './layout-windows.js'
 import { adoptsUnheldChats, appWindow, isFrontWindow, onAppWindowCommand, tabsHeldElsewhere, useAppWindows } from '../app-windows/app-window-store.js'
-import { chatInNewWindow, floatBeside, groupWindow, minimizeWindow, raiseWindow, restoreWindow } from './floating/window-layout.js'
+import { tabInNewWindow, floatBeside, groupWindow, minimizeWindow, raiseWindow, restoreWindow } from './floating/window-layout.js'
 import { setWindowOnTop, tileWindows } from './floating/window-arrange.js'
 import { absorbCrossDockAtPointer } from './floating/cross-window-dock-target.js'
 import { crossWindowDockCanvasSize } from '../app-windows/cross-window-dock-store.js'
@@ -93,7 +93,6 @@ export function useChatLayout(
   const sideChats = (value: typeof layout): string[] => [...notepadChats(value.tree), ...(value.browserChat ? [value.browserChat] : [])]
   const idsKey = JSON.stringify([...new Set([...chatPaneIds(layout.tree), ...notepadChats(layout.tree), ...(browserChat ? [browserChat] : [])])])
   const tabsKey = JSON.stringify(chatTabIds(layout.tree))
-  const hasTiles = paneIds(layout.tree).length > 0
   const release = useCallback(() => {
     pending.current = false
     setSelectionToConfirm(null)
@@ -121,13 +120,12 @@ export function useChatLayout(
   }, [layoutKey, layout, mainSelection])
 
   useEffect(() => {
-    if (!hasTiles) return
     let active = true
     void window.closedai.chat.setVisiblePanes(cwd, JSON.parse(idsKey) as string[], JSON.parse(tabsKey) as string[]).catch((reason: unknown) => {
       if (active) fail(reason)
     })
     return () => { active = false }
-  }, [cwd, idsKey, tabsKey, hasTiles, fail])
+  }, [cwd, idsKey, tabsKey, fail])
 
   const chatIdsKey = useMemo(() => {
     const ids = getSnapshot().chats.map((chat) => chat.paneId)
@@ -278,16 +276,14 @@ export function useChatLayout(
    * tiled window ends any maximized one, or it would open hidden behind it.
    */
   const openWindowIn = (value: typeof layout, change: WindowOpen): typeof layout => {
-    let tiled = false
     const tile = (tree: ChatLayout, id: string): ChatLayout | null => {
       const next = autoPlace(tree, id, { ...canvasSize.current, browserVisible: self.main && value.browserVisible },
         crypto.randomUUID(), tabOwner(tree, selected.current))
-      if (next) tiled = true
       return next
     }
     const tree = change(value.tree, tile)
     if (tree === value.tree) return value
-    if (!tiled || !value.maximized) return { ...value, tree }
+    if (!value.maximized) return { ...value, tree }
     const { maximized: _cleared, ...rest } = value
     return { ...rest, tree }
   }
@@ -299,8 +295,8 @@ export function useChatLayout(
   /** A blank chat in a window of its own: tiled into the layout when a tile can be halved, else floating. */
   const newChatWindow = useCallback(async (): Promise<void> => {
     if (pending.current) return
-    const host = paneIds(current.current.tree).find((id) => !isViewTabId(id))
-    if (!host) return
+    const chats = chatTabIds(current.current.tree)
+    const host = chats.includes(selected.current) ? selected.current : chats[0]
     pending.current = true
     setBusy(true)
     clearError()
@@ -308,7 +304,7 @@ export function useChatLayout(
       const added = await window.closedai.chat.newPeer(host)
       selected.current = added
       setLayout((value) => openWindowIn(value, (tree, tile) => tile(tree, added)
-        ?? chatInNewWindow(tree, added, host, crypto.randomUUID())))
+        ?? tabInNewWindow(tree, added, host, crypto.randomUUID())))
       setSelectionToConfirm(added)
     } catch (reason) {
       fail(reason)

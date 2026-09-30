@@ -1,16 +1,13 @@
 import { layoutGroups } from '../chat-layout/layout-docking.js'
-import { isViewTabId, paneIds, type ChatLayout } from '../chat-layout/layout-tree.js'
-import { addTab, moveTab, selectTab, tabIds, tabOwner } from '../chat-layout/layout-tabs.js'
-import { floatWindow, mapWindow } from '../chat-layout/floating/window-layout.js'
+import { type ChatLayout } from '../chat-layout/layout-tree.js'
+import { addTab, selectTab, tabIds, tabOwner } from '../chat-layout/layout-tabs.js'
+import { tabInNewWindow, mapWindow } from '../chat-layout/floating/window-layout.js'
 import { viewKindOf, viewTabId } from '../chat-layout/layout-views.js'
 
 // A notepad window is an ordinary tile whose tabs are notes (`closedai:view:note:<noteId>`), so it
 // floats, snaps, minimizes and restores like any window. Its one chat lives on the tile itself
 // (`notepadChat`), not in a tab: switching notes keeps the conversation, and moving a note to
 // another window leaves the chat behind.
-
-/** Where a new notepad window opens when there is none to join. */
-const NEW_WINDOW = { x: 96, y: 64, width: 760, height: 560 }
 
 export function noteTabId(noteId: string): string {
   return viewTabId('note', noteId)
@@ -104,11 +101,5 @@ export function openNoteInTree(tree: ChatLayout, noteId: string, near: string | 
   if (tile) return addTab(tree, tile, tab)
   const placed = place?.(tree, tab)
   if (placed) return placed
-  const host = paneIds(tree).find((id) => !isViewTabId(id)) ?? paneIds(tree)[0]
-  if (!host) return tree
-  // Tear the new tab straight off the host tile, the way a dragged-out tab becomes a window, and
-  // give the host back the tab it had in front.
-  const joined = addTab(tree, host, tab)
-  const split = moveTab(joined, tab, tab, 'right', splitId)
-  return split === joined ? joined : floatWindow(selectTab(split, host, host), tab, NEW_WINDOW)
+  return tabInNewWindow(tree, tab, near ?? undefined, splitId)
 }
