@@ -10,7 +10,7 @@ import { claudeQueryOptions } from '../../claude/claude-options.js'
 import { claudeMcpServers } from '../../claude/claude-tools.js'
 import { AntigravityToolBridge } from '../../antigravity/antigravity-mcp.js'
 import { ensureAntigravityProfile } from '../../antigravity/antigravity-profile.js'
-import { antigravityBinary, antigravityChatArgs, antigravityTurnLine } from '../../antigravity/antigravity-cli.js'
+import { antigravityBinary, antigravityChatArgs } from '../../antigravity/antigravity-cli.js'
 
 export type BenchmarkProvider = 'codex' | 'claude' | 'antigravity'
 export type ProviderRun = {
@@ -83,7 +83,10 @@ async function antigravity(run: ProviderRun) {
   try {
     await bridge.start()
     const profile = await ensureAntigravityProfile(run.stateDir, { cwd: run.cwd })
-    const args = antigravityChatArgs({ workspace: run.cwd, model: run.model, resume: null, agent: { name: profile.agentName, root: profile.root } })
+    const streamArgs = antigravityChatArgs({ workspace: run.cwd, model: run.model, resume: null, agent: { name: profile.agentName, root: profile.root } })
+    // One-shot print avoids requiring a persistent stdin stream in this single-turn pilot.
+    const args = streamArgs.filter((arg, index) => arg !== '--input-format' && streamArgs[index - 1] !== '--input-format')
+      .map(arg => arg === '--print=' ? `--print=${run.prompt}` : arg)
     await new Promise<void>((resolve, reject) => {
       const child = spawn(antigravityBinary(), args, { cwd: run.cwd, stdio: ['pipe', 'pipe', 'pipe'], detached: true })
       let buffer = ''; let stderr = ''; let settled = false
@@ -114,7 +117,7 @@ async function antigravity(run: ProviderRun) {
       })
       child.stdin.on('error', finish)
       run.submitted()
-      child.stdin.write(antigravityTurnLine(run.prompt))
+      child.stdin.end()
     })
   } finally { await bridge.stop() }
 }
