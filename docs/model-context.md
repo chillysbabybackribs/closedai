@@ -2,8 +2,8 @@
 
 Source review: 2026-09-30. ClosedAI does not append provider-specific behavioral prompts beyond a
 compact first-turn session guide (`closedai.guide`) on Codex, Claude, and Antigravity. Cursor
-receives no guide or workspace-ledger injection and keeps its native session without automatic rotation. The old shared instruction builders were
-removed for a native-provider baseline. Regenerate the guide from `scripts/agent-guide-outline.json`
+receives no guide or workspace-ledger injection and keeps its native session without automatic
+rotation. The old shared instruction builders were removed for a native-provider baseline. Regenerate the guide from `scripts/agent-guide-outline.json`
 when orientation changes; `guide:check` guards drift. Product behavior lives in
 [Application](application.md), and enabled tool contracts live in [Tools](tools.md).
 
@@ -74,8 +74,9 @@ generated workspace maps from default searches. The guide also calls out checks 
 modules, map regeneration, and separate inspection and whitespace checks for untracked files.
 Hygiene blocks dependency-layer violations; file sizes are advisory and leave structural choices
 to the implementing model. Size-only growth requires no extra check or approval.
-On Codex, Claude, and Antigravity it is attached once per provider thread (including the first send after a handoff to a new thread), omitted on later turns in the same thread, and stripped from the user-visible transcript
-like other context blocks. Edit `scripts/agent-guide-outline.json` and run `npm run guide:generate`;
+On Codex, Claude, and Antigravity it is attached once per provider thread (including the first
+send after a handoff to a new thread), omitted on later turns in the same thread, and stripped
+from the user-visible transcript like other context blocks. Edit `scripts/agent-guide-outline.json` and run `npm run guide:generate`;
 `guide:check` guards drift.
 
 `closedai.clock` (`kind: application`) is attached on **every** user turn with the host's calendar
@@ -94,9 +95,10 @@ The payload carries the short git HEAD, `fresh` entries (path, content hash, rol
 taken at send time), at most 20 entries and 2,000 JSON characters. The host records entries from
 live, successful `fileChange` rows and `test:one -- <file>.test.ts(x)` commands into an in-memory
 ledger per project directory: every chat in that directory shares it, replays do not feed it, and
-restart clears it. Models must still re-read before citing semantics. Codex, Claude, and Antigravity attach it
-after the clock, guide, and handoff blocks and before browser or notepad context. Cursor never injects it, regardless of this switch. Disable injection for A/B runs in **Tools &
-capabilities** (**Workspace ledger** switch), or set `chatWorkspaceLedgerEnabled: false` in
+restart clears it. Models must still re-read before citing semantics. Codex, Claude, and
+Antigravity attach it after the clock, guide, and handoff blocks and before browser or notepad
+context. Cursor never injects it, regardless of this switch. Disable injection for A/B runs in
+**Tools & capabilities** (**Workspace ledger** switch), or set `chatWorkspaceLedgerEnabled: false` in
 `<userData>/app-settings.json` (default on). Takes effect on the next send; no restart required.
 
 Saved credentials are never put into turn context. When enabled, the credential tools expose
