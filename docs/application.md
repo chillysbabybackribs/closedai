@@ -637,14 +637,17 @@ the followed chat's tile; the History view opens a chosen chat in its own tile a
 catch up with the new chat before reconciling tabs; menu focus restoration cannot interrupt it.
 The tab's full surface, including its title, activity icon, and padding, drags that conversation
 (tab split, stack, or join). A 36 × 38 pixel grip at the left of the tile header (matching the
-browser tab strip) drags the whole pane with every tab in it; compact equal-width tabs leave no
-empty header space, so the grip is the reliable whole-tile target. Opening a view keeps conversation tabs at their usual width. The overlaid close button keeps its own click action; its
+browser tab strip) drags the whole pane with every tab in it, as does empty header space after the
+tabs. Tabs keep their content width (96–220 px); a long title fades out into the close button
+instead of ending in an ellipsis. Opening a view keeps conversation tabs at their usual width. The close button sits
+beside the label (always shown on the active tab, on hover for others) and keeps its own click action; its
 hit area is a 24 × tab-height strip around the existing 11 px icon, without a larger hover chip.
 Click a tab to return to its conversation; arrow keys and Home/End
 also switch tabs, and Delete closes the focused tab. Only the active tab's close button is in the
-tab order. Tab strips scroll horizontally when full: narrow tiles keep a 96 px floor per tab so the
-strip overflows instead of collapsing labels, a wheel over the strip pans it, and selecting a tab
-scrolls it into view. Mounted drafts and attachments survive
+tab order. Tab strips scroll horizontally when full: tabs keep a 96 px floor so the list
+overflows instead of collapsing labels, a wheel over the strip pans it, and selecting a tab
+scrolls it into view. The new-tab + follows the last tab and stays pinned at the strip's end
+when the tabs overflow; it never scrolls out of view. Mounted drafts and attachments survive
 switching tabs; unsent text (and attachments small enough to store) is also kept per chat in
 renderer localStorage (`closedai.composer.drafts.v1`, newest 50), so it survives a relaunch. Each tab's close button removes it from the layout without deleting its history
 or stopping a running turn. Closing the active tab selects a neighbor; closing the last tab in a

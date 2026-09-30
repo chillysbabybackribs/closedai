@@ -20,7 +20,7 @@ export function ChatTabs({ ids, activeId, busy, canClose, title, activity, revie
   onSelect: (id: string) => void
   onClose: (id: string) => void
   onDrag: (id: string) => void
-  /** Sits after the last tab in the strip (notepad's new-note control). */
+  /** Sits after the last tab, outside the scroller, so it never scrolls out of view (the new-tab +). */
   trailing?: ReactNode
   /** Notepad windows: browser-like tab strip, still on the tile header rail. */
   variant?: 'default' | 'note'
@@ -42,18 +42,21 @@ export function ChatTabs({ ids, activeId, busy, canClose, title, activity, revie
     }
   }, [activeId, ids.length])
 
-  return <div ref={list} className={variant === 'note' ? 'chat-layout-tabs chat-layout-tabs--note' : 'chat-layout-tabs'} role="tablist"
-    aria-label={variant === 'note' ? 'Note tabs' : 'Chat conversations'}
-    onWheel={(event) => {
-      const strip = event.currentTarget
-      if (event.deltaX || !event.deltaY || strip.scrollWidth <= strip.clientWidth) return
-      strip.scrollLeft += event.deltaY
-    }}>
-    {ids.map((id, index) => reviewQueue && !isViewTabId(id)
-      ? <ChatTabRowLive key={id} id={id} index={index} ids={ids} activeId={activeId} busy={busy} canClose={canClose}
-          title={title} reviewQueue={reviewQueue} list={list} onSelect={onSelect} onClose={onClose} onDrag={onDrag} />
-      : <ChatTabRow key={id} id={id} index={index} ids={ids} activeId={activeId} busy={busy} canClose={canClose}
-          title={title} activity={activity} list={list} onSelect={onSelect} onClose={onClose} onDrag={onDrag} noteStrip={variant === 'note'} />)}
+  // Only the tabs scroll; the trailing control follows the last tab and pins to the edge on overflow.
+  return <div className={variant === 'note' ? 'chat-layout-tab-strip chat-layout-tab-strip--note' : 'chat-layout-tab-strip'}>
+    <div ref={list} className={variant === 'note' ? 'chat-layout-tabs chat-layout-tabs--note' : 'chat-layout-tabs'} role="tablist"
+      aria-label={variant === 'note' ? 'Note tabs' : 'Chat conversations'}
+      onWheel={(event) => {
+        const strip = event.currentTarget
+        if (event.deltaX || !event.deltaY || strip.scrollWidth <= strip.clientWidth) return
+        strip.scrollLeft += event.deltaY
+      }}>
+      {ids.map((id, index) => reviewQueue && !isViewTabId(id)
+        ? <ChatTabRowLive key={id} id={id} index={index} ids={ids} activeId={activeId} busy={busy} canClose={canClose}
+            title={title} reviewQueue={reviewQueue} list={list} onSelect={onSelect} onClose={onClose} onDrag={onDrag} />
+        : <ChatTabRow key={id} id={id} index={index} ids={ids} activeId={activeId} busy={busy} canClose={canClose}
+            title={title} activity={activity} list={list} onSelect={onSelect} onClose={onClose} onDrag={onDrag} noteStrip={variant === 'note'} />)}
+    </div>
     {trailing}
   </div>
 }

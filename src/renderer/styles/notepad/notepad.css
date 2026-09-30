@@ -30,6 +30,10 @@
   align-self: stretch;
   padding: 6px 8px 0;
   overflow-y: hidden;
+}
+
+/* The note rail paints behind the tabs and the +, which sits outside the scrolling list. */
+.chat-layout-tab-strip--note {
   background: var(--tab-active-surface, #191919);
 }
 
@@ -121,7 +125,15 @@
   padding-right: 28px;
 }
 
+.chat-layout-tabs--note .chat-layout-tab > [role='tab'] span {
+  padding-right: 0;
+  text-overflow: ellipsis;
+  mask-image: none;
+}
+
 .chat-layout-tabs--note .chat-layout-tab button.chat-layout-tab-close {
+  position: absolute;
+  top: 0;
   right: 6px;
   width: 16px;
   border-radius: 50%;
@@ -140,17 +152,17 @@
   background: rgb(255 255 255 / 14%);
 }
 
-.chat-layout-tabs--note .chat-layout-tab-new {
+.chat-layout-tab-strip--note .chat-layout-tab-new {
   width: 28px;
   height: 28px;
-  margin: 0 0 3px 4px;
+  margin: 6px 0 3px 4px;
   border-radius: 50%;
   color: var(--chrome-fg);
   background: transparent;
   transition: background 90ms var(--ease-chrome, ease), color 90ms var(--ease-chrome, ease);
 }
 
-.chat-layout-tabs--note .chat-layout-tab-new:hover {
+.chat-layout-tab-strip--note .chat-layout-tab-new:hover {
   color: var(--chrome-fg-strong);
   background: var(--note-tab-fill-hover);
 }
