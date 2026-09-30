@@ -23,7 +23,7 @@ import { BrowserWindowContext, WindowResizeHandles } from './floating/window-con
 import { pressesMoveHandle } from './floating/window-move-handle.js'
 import { TEAR_OFF_TARGET, useTabTearOff } from './floating/use-tab-tear-off.js'
 import { CrossWindowDockPreview } from './cross-window-dock-preview.js'
-import { DockClearanceContext, browserDockInset } from '../dock/dock-clearance.js'
+import { DockClearanceContext } from '../dock/dock-clearance.js'
 import { useReportDockSurface } from './use-report-dock-surface.js'
 
 const position = (rect: Rect): CSSProperties => ({ left: rect.x, top: rect.y, width: rect.width, height: rect.height })
@@ -312,7 +312,8 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
   }
 
   return <>
-  <div className="chat-layout-viewport" ref={viewport} onContextMenu={openBackdropMenu}>
+  <div className="chat-layout-viewport" ref={viewport} onContextMenu={openBackdropMenu}
+    style={dockClear ? { paddingBottom: `calc(8px + ${dockClear}px)` } : undefined}>
     <div className="chat-layout-canvas" ref={canvasRef} style={{ minWidth: minimum.width, minHeight: minimum.height }}
       onContextMenu={openBackdropMenu}
       // The shell's Escape handler leaves a drag in progress to the cancel listener above.
@@ -393,8 +394,7 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
               onTile={floats ? () => windows.change((current) => tileWindow(current, activeId)) : undefined}
               onTop={Boolean(findWindow(tree, activeId)?.onTop)} onKeepOnTop={windows.keepOnTop} />}
             {activeId === selectedId && <div className="chat-layout-notice" role="status" aria-atomic="true">{notice}</div>}
-            {browser ? <div className="chat-layout-browser-frame" data-ui="layout.browser-dock"
-              style={{ paddingBottom: browserDockInset(tileRect, size.height, dockClear) || undefined }}>
+            {browser ? <div className="chat-layout-browser-frame" data-ui="layout.browser-dock">
               <BrowserWindowContext.Provider value={browserWindow}>{renderBrowser}</BrowserWindowContext.Provider>
             </div> : tileTabs.map((tabId) => <div key={tabId} className="chat-layout-content" role="tabpanel" id={`chat-panel-${tabId}`}
               aria-label={title(tabId)} hidden={tabId !== tileActiveId}>{renderPane(tabId, tabId === tileActiveId)}</div>)}
