@@ -21,3 +21,19 @@ test('research routing omits ordinary repo work', () => {
     undefined
   )
 })
+
+test('research routing attaches on official doc-only web prompts', () => {
+  const ctx = buildResearchRoutingAdditionalContext(
+    'Using official htmx documentation only (no repo reads): what does hx-get do?'
+  )
+  assert.ok(ctx?.[RESEARCH_ROUTING_CONTEXT])
+  assert.match(ctx![RESEARCH_ROUTING_CONTEXT]!.value, /capture_spa/)
+  assert.match(ctx![RESEARCH_ROUTING_CONTEXT]!.value, /fetch_many/)
+})
+
+test('research routing attaches on web-tools-only pricing prompts', () => {
+  const ctx = buildResearchRoutingAdditionalContext(
+    'From Supabase public pricing page only: quote Branching rows. Web tools only.'
+  )
+  assert.ok(ctx?.[RESEARCH_ROUTING_CONTEXT])
+})

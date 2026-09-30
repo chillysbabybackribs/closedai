@@ -50,3 +50,14 @@ test('browser intent outranks research cues in the same message', () => {
     'browser'
   )
 })
+
+test('research slice triggers on benchmark-style web-only prompts', () => {
+  assert.ok(needsResearchToolSlice({
+    prompt: 'Using official htmx documentation only (no repo reads): what does hx-get do?',
+    surface: null
+  }))
+  assert.ok(needsResearchToolSlice({
+    prompt: 'On Hacker News search for electron: Algolia API and JSON titles. Web tools only.',
+    surface: null
+  }))
+})

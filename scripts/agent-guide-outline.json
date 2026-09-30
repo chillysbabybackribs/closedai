@@ -43,7 +43,7 @@
     {
       "heading": "Browser and tool_batch",
       "lines": [
-        "Fast path first: known doc/pricing URLs → embedded_browser.session fetch_many (headless, no tab) or single session fetch + text_contains; unfamiliar origin → site.discover bootstrap then expand. SPA JSON after page load → browser_cdp.capture_spa (one call: capture + navigate + project). Visible tab only when the user should see the page or you need live DOM → page navigate + script query.",
+        "Fast path first: known doc/pricing URLs → embedded_browser.session fetch_many (headless, no tab) or single session fetch + text_contains; unfamiliar origin → site.discover bootstrap then expand. SPA JSON → browser_cdp.capture_spa (one call), not page+network+script. Visible tab only when the user should see the page or you need live DOM → page navigate + script query. Learn tools from attached MCP only, not repo or provider CLI schema files.",
         "Manual CDP only when composites are insufficient: embedded_browser.network is passive (no bodies); ids ≠ CDP. protocol requests/body for ad-hoc captures; instrument hook → navigate → site.discover apis for API maps.",
         "Tool_batch arguments are literal: discover ids/refs first, then batch known steps. Sequential inspect→act→verify; parallel only independent targets. After input, same batch needs read, wait, or capture. ClosedAI tools only; no nested batches.",
         "Session fetch defaults to text without response headers; text_contains finds a passage, offset/nextOffset continues a fresh GET. JSON → json_path/fields/limit. DOM query → selector/text_contains and fields:[\"text\",\"href\"]. Use captures for visual questions; narrow scope on truncation, never repeat the same wide read."

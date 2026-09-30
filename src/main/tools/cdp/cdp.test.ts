@@ -125,6 +125,37 @@ test('capture_spa enables capture, navigates, and projects a matching JSON body'
   assert.equal((body.matchedRequest as { requestId: string }).requestId, 'req-9')
 })
 
+test('capture_spa retries transient CDP body read failures', async () => {
+  let attempts = 0
+  const { registry } = harness({
+    networkRequests: async () => ({
+      capturing: true,
+      requests: [
+        { url: 'https://news.test/api/query', method: 'POST', type: 'XHR', requestId: 'req-9', sessionId: '', status: 200 }
+      ]
+    }),
+    responseBody: async () => {
+      attempts += 1
+      if (attempts < 3) throw new Error('No data found for resource with given identifier')
+      return { requestId: 'req-9', text: '{"hits":[{"title":"Ok"}]}' }
+    }
+  })
+  const spa = await registry.call(
+    { namespace: 'browser_cdp', tool: 'capture_spa', arguments: {
+      url: 'https://news.test/?q=x',
+      url_contains: '/api/query',
+      json_path: 'hits',
+      fields: ['title'],
+      max_items: 1
+    } },
+    { threadId: null, turnId: null, callId: 'call-spa-retry' }
+  )
+  assert.equal(spa.isError, undefined)
+  assert.equal(attempts, 3)
+  const body = JSON.parse(textOf(spa)) as Record<string, unknown>
+  assert.deepEqual(body.json, [{ title: 'Ok' }])
+})
+
 test('requests lists network traffic and body reads one captured response', async () => {
   const { calls, call } = harness()
   const listed = await call({ action: 'requests', url_contains: '/api/', max_requests: 5 })

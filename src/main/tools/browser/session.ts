@@ -30,7 +30,8 @@ export function sessionTool(sessions: SessionHostProvider): ToolDefinition {
     deferLoading: true,
     description:
       'Headless session HTTP (no visible tab): fetch and fetch_many for known URLs; cookies read/write. ' +
-      'Prefer fetch_many for independent official doc URLs in one call. Use embedded_browser.script fetch only when JS in the page must run the request.',
+      'Prefer fetch_many for independent official doc URLs in one call. Skip provider web search when you already have the URL. ' +
+      'Use embedded_browser.script fetch only when JS in the page must run the request.',
     actions: [fetchAction(sessions), fetchManyAction(sessions), cookiesAction(sessions), setCookieAction(sessions), removeCookieAction(sessions)]
   })
 }
@@ -40,6 +41,7 @@ function fetchAction(sessions: SessionHostProvider): ToolAction {
     action: 'fetch',
     description:
       'Send a request with session cookies and no page CORS; redirects follow unless manual. HTML defaults to readable text; raw markup and response headers are opt-in. ' +
+      'Official doc/pricing pages: fetch the URL directly—no web search or visible tab. ' +
       'Use text_contains for a passage, offset/nextOffset for more text (each call refetches; content may change). Project JSON with json_path/fields/limit. Binary is base64.',
     inputSchema: objectSchema({
       url: urlField,

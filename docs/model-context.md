@@ -38,11 +38,13 @@ Every user turn includes **`closedai.clock`** (`kind: application`) and **`close
 (`kind: application`): host facts (ClosedAI pane id, provider lane, project path, chat memory
 index toggle, whether `closedai.guide` ships on this send) plus a single verify line pointing
 models at `closedai_app.state` and tool results rather than trusting descriptions blindly.
-When the prompt matches multi-source official web research (same heuristic as the research task
-tool slice), **`closedai.research.routing`** (`kind: application`) may also attach on that turn
-for every provider, including Cursor, with a short depth routing hint (session fetch, site
-discovery, search.run vs snippet-only answers). It does not disable native web search or
-`search.query`.
+When the prompt matches official web / pricing / doc work (same heuristic as the research task
+tool slice, including “web tools only” and single-vendor doc fetches), **`closedai.research.routing`**
+(`kind: application`) may also attach on that turn for every provider, including Cursor, with a
+short fast-path hint (session `fetch` / `fetch_many`, `capture_spa` for SPA XHR JSON, site
+discovery when the origin is unfamiliar). It steers away from repo or on-disk MCP schema reads
+and long page+network+script chains when composites suffice. It does not disable native web
+search or `search.query`.
 `closedai_app.state` exposes the same probe-time facts where they matter: `workspace.appVersion`
 and `chat.memory.chatMemoryIndexEnabled` align with the runtime envelope on the same turn.
 Cursor receives runtime on every turn but never the session guide or workspace ledger.

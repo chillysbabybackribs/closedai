@@ -114,12 +114,18 @@ export type DecodedBody =
  * for an image: a megabyte of mojibake would sit in the transcript forever. Decode, then keep the
  * result only when it reads as text.
  */
-const STALE_BODY_PATTERN = /No resource with given identifier|Invalid requestId|request id was not found/i
+const STALE_BODY_PATTERN =
+  /No resource with given identifier|No data found for resource|Invalid requestId|request id was not found/i
+
+export function isStaleCdpResponseBodyError(error: unknown): boolean {
+  const detail = error instanceof Error ? error.message : String(error)
+  return STALE_BODY_PATTERN.test(detail)
+}
 
 /** Turn transient CDP body failures into guidance to re-list requests. */
 export function explainResponseBodyFailure(requestId: string, sessionId: string | null | undefined, error: unknown): Error {
   const detail = error instanceof Error ? error.message : String(error)
-  if (!STALE_BODY_PATTERN.test(detail)) return error instanceof Error ? error : new Error(detail)
+  if (!isStaleCdpResponseBodyError(error)) return error instanceof Error ? error : new Error(detail)
   const session = sessionId ? ` (session ${JSON.stringify(sessionId)})` : ''
   return new Error(
     `Response body for request ${JSON.stringify(requestId)}${session} is no longer in CDP capture. ` +

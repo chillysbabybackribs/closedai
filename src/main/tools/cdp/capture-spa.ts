@@ -1,3 +1,5 @@
+import { setTimeout as delay } from 'node:timers/promises'
+import { isStaleCdpResponseBodyError } from '../../cdp/cdp-network.js'
 import { defineTool, failureResult, numberArg, stringArg, type ToolDefinition } from '../tool.js'
 import { jsonResult, objectSchema } from '../json-result.js'
 import { projectionFieldsField, readinessFrom, readinessProperties, urlField } from '../browser/fields.js'
@@ -71,7 +73,8 @@ export function captureSpaTool(cdp: CdpHostProvider, browser: BrowserHostProvide
             : `No captured request matched url_contains ${JSON.stringify(stringArg(input, 'url_contains'))}. Check resource_type or the substring.`
         )
       }
-      const response = await cdpHost.responseBody(
+      const response = await readCapturedResponseBody(
+        cdpHost,
         activeTabId,
         picked.requestId,
         normalizeCdpSessionId(picked.sessionId)
@@ -109,4 +112,25 @@ export function captureSpaTool(cdp: CdpHostProvider, browser: BrowserHostProvide
       })
     }
   })
+}
+
+const BODY_READ_RETRY_MS = [0, 120, 320] as const
+
+async function readCapturedResponseBody(
+  cdpHost: ReturnType<typeof requireCdp>,
+  tabId: string,
+  requestId: string,
+  sessionId: string | undefined
+): Promise<unknown> {
+  let lastError: unknown
+  for (const waitMs of BODY_READ_RETRY_MS) {
+    if (waitMs) await delay(waitMs)
+    try {
+      return await cdpHost.responseBody(tabId, requestId, sessionId)
+    } catch (error) {
+      lastError = error
+      if (!isStaleCdpResponseBodyError(error)) throw error
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error(String(lastError))
 }

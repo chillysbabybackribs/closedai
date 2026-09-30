@@ -131,7 +131,10 @@ test('text body byte counts measure UTF-8 rather than JavaScript string length',
 })
 
 test('explainResponseBodyFailure maps stale CDP ids to a re-list requests hint', () => {
-  const explained = explainResponseBodyFailure('r-old', 'worker-1', new Error('No resource with given identifier found'))
+  const explained = explainResponseBodyFailure('r-old', 'worker-1', new Error('No data found for resource with given identifier'))
+  assert.match(explained.message, /Call requests/)
+  const explained2 = explainResponseBodyFailure('r-old', 'worker-1', new Error('No resource with given identifier found'))
+  assert.match(explained2.message, /Call requests/)
   assert.match(explained.message, /no longer in CDP capture/)
   assert.match(explained.message, /Call requests/)
   assert.match(explained.message, /worker-1/)

@@ -15,11 +15,18 @@ const RESEARCH_CONTEXT_CUES = [
   /\b(?:latest|recent|current)\s+(?:news|developments|landscape)\b/i,
   /\b(?:market|industry)\s+(?:trends|landscape|research)\b/i,
   /\bsearch\s+(?:the\s+)?(?:web|online|internet)\b/i,
-  /\b(?:web|news)\s+search\b/i
+  /\b(?:web|news)\s+search\b/i,
+  /\bweb tools only\b/i,
+  /\bno repo reads?\b/i,
+  /\bofficial\b.{0,48}\b(?:docs?|documentation)\b/i,
+  /\b(?:public|official)\b.{0,24}\bpricing\b/i,
+  /\b(?:hn\.algolia|hacker news)\b/i,
+  /\b(?:json response|captured json|xhr|algolia api)\b/i
 ] as const
 
 const RESEARCH_NEGATIVE_CUES = [
-  /\b(?:codebase|repo(?:sitory)?|workspace|file(?:s)?|function|class|module|test(?:s)?)\b/i,
+  /\b(?:codebase|workspace|file(?:s)?|function|class|module|test(?:s)?)\b/i,
+  /(?<!no )(?<!not )\brepo(?:sitory)?\b/i,
   /\bgrep\b/i,
   /\bnpm run\b/i
 ] as const
