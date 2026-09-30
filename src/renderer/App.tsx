@@ -281,24 +281,29 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
     startAgent: async (chatId, options) => { await workspaceRef.current?.startAgent(chatId, options) },
     settings: { appearance, onAppearanceChange: updateAppearance, backdropStatus, onOpenWallpaper: openWallpaper }
   }
+  // The main window's menus live in the dock; the title bar only falls back to them when startup
+  // failed and no dock exists. While starting there is no pane yet either, so gating on the pane
+  // alone flashed File / View / Agent / Developer on every launch.
+  const startupStalled = chat.state.connection.state !== 'starting' && chat.state.connection.state !== 'ready'
   useMenuRunBridge(applicationMenu, chat.selectedPaneId, () => workspaceRef.current?.focusedCloseTarget() ?? chat.selectedPaneId)
 
   return (
     <div className="shell" data-ui-surface="shell">
       <header className="shell-titlebar" aria-label="Window title bar">
         <TitlebarRail search={searchTools} />
-        {(!appWindow().main || !chat.selectedPaneId) && <TitlebarMenu {...applicationMenu} />}
+        {(!appWindow().main || (!chat.selectedPaneId && startupStalled)) && <TitlebarMenu {...applicationMenu} />}
         <div ref={setSearchTools} className="titlebar-search-tools">
           <HeaderChatSearch chats={chat.chats} controller={history} inputRef={searchRef} />
         </div>
-        {activeLocalUser && onboarding.settings.sessionUnlocked && (
-          <SessionAccountMenu
-            user={activeLocalUser}
-            onSignOut={endLocalSession}
-            onConnectProviders={onboarding.reopenProviderSetup}
-          />
-        )}
-        <AppWindowControls />
+        <AppWindowControls>
+          {activeLocalUser && onboarding.settings.sessionUnlocked && (
+            <SessionAccountMenu
+              user={activeLocalUser}
+              onSignOut={endLocalSession}
+              onConnectProviders={onboarding.reopenProviderSetup}
+            />
+          )}
+        </AppWindowControls>
       </header>
       <div className="shell-titlebar-divider" aria-hidden="true" />
       {shellError && (

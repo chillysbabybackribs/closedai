@@ -80,9 +80,9 @@ with chat history skip the flow automatically and receive an implicit **Local pr
 title-bar account menu and sign-out stay available. After the gate, the normal title bar,
 workspace, and dock stay visible while a **provider setup** modal lists all four providers with
 install hints, Codex in-app connect, and CLI confirmation for the other lanes. Per-pane empty
-states still show connection guidance when a lane later drifts out of `ready`. **Sign out…**
-(title-bar account menu to the left of the window controls, or **File → Sign out…** / Start →
-search when the menu bar is visible) clears the local session (`sessionUnlocked`, `activeUserId`,
+states still show connection guidance when a lane later drifts out of `ready`. **Sign out**
+(the profile avatar leading the window-control strip, whose menu names the profile, or
+**File → Sign out…** / Start → search) clears the local session (`sessionUnlocked`, `activeUserId`,
 `keepSignedIn`) and returns to the gate without deleting saved profiles or provider-setup progress.
 
 Launch resilience. A bootstrap failure is shown in a native error box and ends the app; an

@@ -248,68 +248,65 @@
   flex: 1;
 }
 
-/* ---- Title bar local profile (signed-in onboarding session) ---------------- */
-
-.titlebar-session-account {
-  position: absolute;
-  top: 0;
-  right: 132px;
-  display: flex;
-  align-items: center;
-  height: 100%;
-  padding-right: 4px;
-  -webkit-app-region: no-drag;
-}
-
-.titlebar-session-account-trigger {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  max-width: 160px;
-  height: 30px;
-  padding: 0 8px 0 4px;
-  border: 1px solid var(--chrome-control-divider);
-  border-radius: 999px;
-  background: var(--chrome-control-hover);
-  color: var(--chrome-control-strong);
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: var(--tracking-ui);
-  cursor: pointer;
-  transition: background 110ms var(--ease-chrome), border-color 110ms var(--ease-chrome);
-}
-
-.titlebar-session-account-trigger:hover,
-.titlebar-session-account-trigger[data-state='open'] {
-  background: var(--chrome-control-active, var(--chrome-control-hover));
-  border-color: var(--hairline-strong);
-}
+/* ---- Title bar local profile (signed-in onboarding session) ----------------
+   An avatar in the window-control strip: it takes a .shell-window-control slot, so height, hover
+   plate and alignment follow the minimize / maximize / close buttons in both chrome modes. */
 
 .titlebar-session-account-avatar {
+  position: relative;
   display: grid;
   place-items: center;
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
-  background: hsl(var(--avatar-hue, 220) 55% 42%);
+  background: hsl(var(--avatar-hue, 220) 45% 46%);
+  box-shadow: 0 0 0 1px hsl(0 0% 100% / 0.14);
   color: white;
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 600;
+  line-height: 1;
+}
+
+.titlebar-session-account[data-state='open']::before {
+  background: var(--chrome-control-hover);
+}
+
+.titlebar-session-account-menu {
+  min-width: 220px;
+}
+
+.titlebar-session-account-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  font-weight: normal;
+}
+
+.titlebar-session-account-avatar-lg {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  font-size: 14px;
+}
+
+.titlebar-session-account-identity {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
 }
 
 .titlebar-session-account-name {
   overflow: hidden;
+  color: hsl(var(--foreground));
+  font-size: 13px;
+  font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-@media (max-width: 720px) {
-  .titlebar-session-account-name {
-    display: none;
-  }
-
-  .titlebar-session-account-trigger {
-    max-width: none;
-    padding-right: 6px;
-  }
+.titlebar-session-account-kind {
+  color: hsl(var(--muted-foreground));
+  font-size: 11.5px;
 }

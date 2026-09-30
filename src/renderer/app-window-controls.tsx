@@ -1,8 +1,10 @@
-import { memo, type JSX } from 'react'
+import type { JSX, ReactNode } from 'react'
 
-export const AppWindowControls = memo(function AppWindowControls(): JSX.Element {
+/** Window buttons, led by any session control (the account avatar) so both share the strip. */
+export function AppWindowControls({ children }: { children?: ReactNode }): JSX.Element {
   return (
     <div className="shell-window-controls">
+      {children}
       <button
         type="button"
         className="shell-window-control"
@@ -38,4 +40,4 @@ export const AppWindowControls = memo(function AppWindowControls(): JSX.Element 
       </button>
     </div>
   )
-})
+}
