@@ -165,12 +165,7 @@
   color: var(--foreground);
 }
 
-:root[data-theme='warm'] .user-message {
-  color: #202223;
-  background: #c1bbb3;
-}
-
-:root[data-theme='warm'] .user-message code,
+:root[data-theme='warm'] .prompt-message-user-content code,
 :root[data-theme='warm'] .aui-md .aui-md-inline-code {
   background: var(--path-chip-bg, rgb(32 34 35 / 8%));
   color: var(--tab-accent, #3f5f86);

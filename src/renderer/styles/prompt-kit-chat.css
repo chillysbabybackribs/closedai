@@ -47,24 +47,9 @@
   line-height: var(--chat-lh-body);
 }
 
-/* User turn: an elevated card with subtle Antigravity hairline border */
+/* User turn: the card itself is styled with the capsule material in chat/messages.css. */
 .prompt-message-user {
   justify-content: flex-start;
-}
-
-.prompt-message-user-content {
-  width: 100%;
-  max-width: 100%;
-  padding: 10px 14px;
-  border: 1px solid var(--antigravity-card-border, rgb(255 255 255 / 8%));
-  border-radius: 10px;
-  background: var(--antigravity-card-bg, #252526);
-  color: #ececee;
-  font-size: var(--chat-fs-body);
-  line-height: var(--chat-lh-body);
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 18%);
 }
 
 .prompt-message-assistant-content {

@@ -24,8 +24,9 @@
   color: var(--transcript-strong);
 }
 
-.user-message {
+.prompt-message-user-content {
   width: 100%;
+  max-width: 100%;
   box-sizing: border-box;
   padding: 11px 16px;
   border: 1px solid var(--capsule-edge, var(--hairline));
@@ -39,12 +40,12 @@
   overflow-wrap: anywhere;
 }
 
-.user-message p {
+.prompt-message-user-content p {
   margin: 0;
 }
 
 /* Paths pasted into a task: same Cursor path-chip treatment as assistant prose. */
-.user-message code {
+.prompt-message-user-content code {
   padding: 1px 5px;
   border-radius: 4px;
   background: var(--path-chip-bg, rgb(255 255 255 / 8%));
