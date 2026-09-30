@@ -23,6 +23,11 @@ test('chat zoom normalizes arbitrary and invalid values', () => {
   assert.equal(clampChatZoom(Number.POSITIVE_INFINITY), CHAT_ZOOM_DEFAULT)
 })
 
+test('chat zoom commands recover non-finite current values to the default', () => {
+  assert.equal(applyChatZoomCommand(Number.NaN, 'in'), CHAT_ZOOM_DEFAULT)
+  assert.equal(applyChatZoomCommand(Number.POSITIVE_INFINITY, 'out'), CHAT_ZOOM_DEFAULT)
+})
+
 test('chat zoom keyboard commands accept Ctrl or Cmd without Alt', () => {
   const key = (value: string, modifiers: Partial<Pick<KeyboardEvent, 'altKey' | 'ctrlKey' | 'metaKey'>> = {}) =>
     chatZoomCommandForKey({ altKey: false, ctrlKey: false, metaKey: false, key: value, ...modifiers })
