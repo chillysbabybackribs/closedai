@@ -66,11 +66,16 @@ const BROWSER_CHROME_SUPPORT_CUES = [
   /\bkeeps?\s+(?:reload|refresh)/i
 ] as const
 
-// Discussing browser behavior or tasks in the abstract — not "read the open page".
-const BROWSER_ABSTRACT_DISCUSSION = [
-  /\bbrowser\b.{0,56}\b(?:task|tasks|related|behavior|reject|refus|scope|ledger|context|injection|ambient)\b/i,
-  /\b(?:task|tasks|related|behavior|reject|refus|scope)\b.{0,56}\bbrowser\b/i
-] as const
+/** User is asking about visible page content, not merely mentioning browser/product in general. */
+function hasVisiblePageIntent(text: string): boolean {
+  return (
+    /\b(?:this|that|current|active|open)\s+(?:page|site|tab)\b/i.test(text) ||
+    /\bwhat\s+(?:am\s+i|are\s+we)\s+(?:looking at|viewing)\b/i.test(text) ||
+    /\b(?:on|from)\s+(?:the\s+)?(?:page|site|screen)\b/i.test(text) ||
+    /\b(?:summarize|read|explain|describe)\b.{0,24}\b(?:page|site|tab)\b/i.test(text) ||
+    /\b(?:page|site|tab)\b.{0,24}\b(?:summarize|read|explain|describe)\b/i.test(text)
+  )
+}
 
 /** Whether to attach ambient active-tab metadata on this turn (stricter than tool discovery cues). */
 export function needsActiveBrowserTabMetadata(text: string): boolean {
@@ -79,13 +84,7 @@ export function needsActiveBrowserTabMetadata(text: string): boolean {
     BROWSER_CHROME_SUPPORT_CUES.some((cue) => cue.test(text)) &&
     /\b(?:browser|tab)\b/i.test(text)
   if (chromeSupport) return false
-  const pageFocused =
-    /\b(?:this|that|current|active|open)\s+(?:page|site|tab)\b/i.test(text) ||
-    /\bwhat\s+(?:am\s+i|are\s+we)\s+(?:looking at|viewing)\b/i.test(text) ||
-    /\b(?:on|from)\s+(?:the\s+)?(?:page|site|screen)\b/i.test(text) ||
-    /\b(?:summarize|read|explain|describe)\b.{0,24}\b(?:page|site|tab)\b/i.test(text)
-  if (BROWSER_ABSTRACT_DISCUSSION.some((cue) => cue.test(text)) && !pageFocused) return false
-  return true
+  return hasVisiblePageIntent(text)
 }
 
 /** Authoritative calendar time for the host running ClosedAI; attached every user turn. */

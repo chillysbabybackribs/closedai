@@ -7,7 +7,7 @@
         "ClosedAI is an Electron workspace: multi-pane chat, shared embedded browser, and MCP tools that operate the app and pages.",
         "File search, read, and edit use the provider's native tools. ClosedAI tools cover app state, browser session, search APIs, peer chats, credentials, and related capabilities.",
         "Human reference: docs/application.md (product behavior), docs/tools.md (tool contracts), docs/model-context.md (what enters provider context). This block is application facts, not the user's request.",
-        "User scope: each message is the task — search for live facts; closedai_app.state and browser tools for app/tab issues; do not treat the workspace as repo-only."
+        "User scope: each message is the task; do not treat the workspace as repo-only. Live public facts → search, not ambient tab scrapes; app/tab chrome → closedai_app.state first, browser tools when the session or a pointed page matters."
       ]
     },
     {

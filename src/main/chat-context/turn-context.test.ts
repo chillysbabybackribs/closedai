@@ -52,8 +52,9 @@ test('active tab metadata skips embedded-browser chrome support prompts', () => 
   assert.ok(buildTurnAdditionalContext('What is on the current page?', activeTab))
 })
 
-test('active tab metadata skips abstract browser product discussion', () => {
+test('active tab metadata requires visible-page intent', () => {
   assert.equal(needsActiveBrowserTabMetadata('browser related tasks should not be rejected'), false)
+  assert.equal(needsActiveBrowserTabMetadata('Open this link in a new tab'), false)
   assert.equal(
     buildTurnAdditionalContext('browser related tasks should not be rejected', activeTab),
     undefined
