@@ -181,11 +181,19 @@ export class ClaudeChatService extends EventEmitter {
         prompt,
         cwd: this.cwd
       })
+      const settings = this.settings.get()
       const { context, attachGuide } = buildTurnSendContext({
         threadKey: guideThreadKey,
         state: this.sessionGuideState,
         transcriptWasEmpty,
         pendingHandoff,
+        runtime: {
+          paneId: this.paneId,
+          provider: 'claude',
+          cwd: this.cwd,
+          chatMemoryIndexEnabled: settings.chatMemoryIndexEnabled !== false,
+          sessionGuideOnTurn: false
+        },
         workspaceLedgerContext,
         browserContext: this.turnAdditionalContext(text)
       })

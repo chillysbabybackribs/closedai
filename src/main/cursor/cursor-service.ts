@@ -22,6 +22,7 @@ import {
   handoffAdditionalContext,
   type ThreadHandoffSource
 } from '../chat-context/thread-handoff.js'
+import { buildRuntimeAdditionalContext } from '../chat-context/runtime-context.js'
 import {
   buildClockAdditionalContext,
   buildTurnAdditionalContext,
@@ -161,8 +162,16 @@ export class CursorChatService extends EventEmitter {
       // Keep Cursor's native session/context policy separate from the other provider lanes.
       // No shared guide or workspace ledger: only turn facts and necessary continuation data.
       // ACP reports no usage; transcript size must not automatically discard its live session.
+      const settings = this.settings.get()
       const context = mergeTurnAdditionalContext(
         buildClockAdditionalContext(),
+        buildRuntimeAdditionalContext({
+          paneId: this.paneId,
+          provider: 'cursor',
+          cwd: this.cwd,
+          chatMemoryIndexEnabled: settings.chatMemoryIndexEnabled !== false,
+          sessionGuideOnTurn: false
+        }),
         pendingHandoff ? handoffAdditionalContext(pendingHandoff) : undefined,
         this.turnAdditionalContext(text)
       )

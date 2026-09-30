@@ -188,11 +188,19 @@ export class AntigravityChatService extends EventEmitter {
         prompt,
         cwd: this.cwd
       })
+      const settings = this.settings.get()
       const { context: guided, attachGuide } = buildTurnSendContext({
         threadKey: guideThreadKey,
         state: this.sessionGuideState,
         transcriptWasEmpty,
         pendingHandoff,
+        runtime: {
+          paneId: this.paneId,
+          provider: 'antigravity',
+          cwd: this.cwd,
+          chatMemoryIndexEnabled: settings.chatMemoryIndexEnabled !== false,
+          sessionGuideOnTurn: false
+        },
         workspaceLedgerContext,
         browserContext: this.turnAdditionalContext(text)
       })

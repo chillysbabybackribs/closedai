@@ -79,14 +79,16 @@ test('buildTurnSendContext orders clock before guide and handoff', () => {
     state,
     transcriptWasEmpty: true,
     pendingHandoff: 'Handoff digest',
+    runtime: { paneId: 'p', provider: 'codex', cwd: '/w', chatMemoryIndexEnabled: true, sessionGuideOnTurn: false },
     browserContext: undefined
   })
   assert.equal(attachGuide, true)
   assert.ok(context)
   const keys = Object.keys(context!)
   assert.equal(keys[0], 'closedai.clock')
-  assert.equal(keys[1], SESSION_GUIDE_CONTEXT)
-  assert.equal(keys[2], 'closedai.chat.handoff')
+  assert.equal(keys[1], 'closedai.runtime')
+  assert.equal(keys[2], SESSION_GUIDE_CONTEXT)
+  assert.equal(keys[3], 'closedai.chat.handoff')
 })
 
 test('buildTurnSendContext places workspace ledger after handoff and before browser', () => {
@@ -102,11 +104,13 @@ test('buildTurnSendContext places workspace ledger after handoff and before brow
     state,
     transcriptWasEmpty: false,
     pendingHandoff: 'digest',
+    runtime: { paneId: 'p', provider: 'codex', cwd: '/w', chatMemoryIndexEnabled: true, sessionGuideOnTurn: false },
     workspaceLedgerContext: ledger,
     browserContext: browser
   })
   assert.deepEqual(Object.keys(context!), [
     'closedai.clock',
+    'closedai.runtime',
     'closedai.chat.handoff',
     WORKSPACE_LEDGER_CONTEXT,
     'closedai.browser.active-tab'
@@ -120,8 +124,11 @@ test('buildTurnSendContext always attaches clock even without guide', () => {
     state,
     transcriptWasEmpty: false,
     pendingHandoff: null,
+    runtime: { paneId: 'p', provider: 'codex', cwd: '/w', chatMemoryIndexEnabled: false, sessionGuideOnTurn: false },
     browserContext: undefined
   })
   assert.equal(attachGuide, false)
-  assert.deepEqual(Object.keys(context!), ['closedai.clock'])
+  assert.deepEqual(Object.keys(context!), ['closedai.clock', 'closedai.runtime'])
+  const runtime = JSON.parse(context!['closedai.runtime']!.value)
+  assert.equal(runtime.sessionGuideOnTurn, false)
 })

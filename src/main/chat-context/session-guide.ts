@@ -1,5 +1,6 @@
 import { AGENT_GUIDE_TEXT } from './agent-guide.generated.js'
 import { handoffAdditionalContext } from './thread-handoff.js'
+import { buildRuntimeAdditionalContext, type TurnRuntimeFacts } from './runtime-context.js'
 import { buildClockAdditionalContext, mergeTurnAdditionalContext, type AdditionalContext } from './turn-context.js'
 
 export const SESSION_GUIDE_CONTEXT = 'closedai.guide'
@@ -50,6 +51,7 @@ export function buildTurnSendContext(input: {
   state: SessionGuideDeliveryState
   transcriptWasEmpty: boolean
   pendingHandoff: string | null
+  runtime: TurnRuntimeFacts
   workspaceLedgerContext?: AdditionalContext | undefined
   browserContext: AdditionalContext | undefined
 }): { context: AdditionalContext | undefined; attachGuide: boolean } {
@@ -61,6 +63,7 @@ export function buildTurnSendContext(input: {
   })
   const context = mergeTurnAdditionalContext(
     buildClockAdditionalContext(),
+    buildRuntimeAdditionalContext({ ...input.runtime, sessionGuideOnTurn: attachGuide }),
     attachGuide ? agentGuideAdditionalContext() : undefined,
     input.pendingHandoff ? handoffAdditionalContext(input.pendingHandoff) : undefined,
     input.workspaceLedgerContext,

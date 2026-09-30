@@ -293,6 +293,8 @@ test('fresh Cursor turns keep the clock and full tools without guide or ledger i
   assert.equal(prompts.length, 2)
   for (const prompt of prompts) {
     assert.match(prompt, /name="closedai.clock" kind="application"/)
+    assert.match(prompt, /name="closedai.runtime" kind="application"/)
+    assert.match(prompt, /"host":"closedai"/)
     assert.doesNotMatch(prompt, /closedai\.guide|closedai\.workspace\.ledger|closedai\.chat\.handoff/)
   }
   assert.equal(service.snapshot().threadId, 'cursor:fresh')

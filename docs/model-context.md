@@ -34,6 +34,12 @@ thread can retain instructions from an earlier version.
 
 ## Turn data
 
+Every user turn includes **`closedai.clock`** (`kind: application`) and **`closedai.runtime`**
+(`kind: application`): host facts (ClosedAI pane id, provider lane, project path, chat memory
+index toggle, whether `closedai.guide` ships on this send) plus a single verify line pointing
+models at `closedai_app.state` and tool results rather than trusting descriptions blindly.
+Cursor receives runtime on every turn but never the session guide or workspace ledger.
+
 `buildChatInput` validates user text and attachments, which provider adapters translate into
 their native turn input. A browser-related message can receive a timestamped ambient active-tab
 fragment from `buildTurnAdditionalContext`. It is labeled `untrusted` and marks relevance as

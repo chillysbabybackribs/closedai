@@ -222,11 +222,19 @@ export class ChatService extends EventEmitter {
         prompt,
         cwd: this.cwd
       })
+      const settings = this.settings.get()
       const { context: additionalContext, attachGuide } = buildTurnSendContext({
         threadKey: guideThreadKey,
         state: this.sessionGuideState,
         transcriptWasEmpty,
         pendingHandoff,
+        runtime: {
+          paneId: this.paneId,
+          provider: 'codex',
+          cwd: this.cwd,
+          chatMemoryIndexEnabled: settings.chatMemoryIndexEnabled !== false,
+          sessionGuideOnTurn: false
+        },
         workspaceLedgerContext,
         browserContext: this.turnAdditionalContext(prompt)
       })
