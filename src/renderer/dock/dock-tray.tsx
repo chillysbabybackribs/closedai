@@ -53,10 +53,14 @@ export function DockTray(props: DockTrayProps): JSX.Element {
   }
   return <div data-slot="app-dock-tray"
     className="mx-0 mt-0 flex h-[58px] w-max items-end gap-2 rounded-none border-0 bg-transparent p-2.5 pb-0">
-    <Dock {...dockProps}>{leftApps.map((app) => <TrayAppIcon key={app.id} {...props} app={app} />)}</Dock>
+    <Dock {...dockProps}>{leftApps.map((app) => <DockIcon key={app.id} padding={0} className="relative rounded-[22%]">
+      <TrayAppIcon {...props} app={app} />
+    </DockIcon>)}</Dock>
     <div className="relative flex shrink-0 items-center justify-center rounded-[22%]"
       style={{ width: TRAY_ICON, height: TRAY_ICON }}>{startTrigger}</div>
-    <Dock {...dockProps}>{rightApps.map((app) => <TrayAppIcon key={app.id} {...props} app={app} />)}</Dock>
+    <Dock {...dockProps}>{rightApps.map((app) => <DockIcon key={app.id} padding={0} className="relative rounded-[22%]">
+      <TrayAppIcon {...props} app={app} />
+    </DockIcon>)}</Dock>
     {minimized.length > 0 && <Separator orientation="vertical" className="mx-1 h-9 self-center" />}
     {minimized.length > 0 && <Dock {...dockProps}>
       {minimized.map((entry) => <DockIcon key={entry.id} padding={0} className="relative rounded-[22%]">
@@ -68,7 +72,7 @@ export function DockTray(props: DockTrayProps): JSX.Element {
 
 function TrayAppIcon(props: DockTrayProps & { app: TrayApp }): JSX.Element {
   const { app, openStack, onOpenStack, onLaunch } = props
-  return <DockIcon padding={0} className="relative rounded-[22%]">
+  return <>
     {app.stack
       ? <Popover open={openStack === app.id} onOpenChange={(open) => onOpenStack(open ? app.id : null)}>
           <TrayButton app={app} stackOpen={openStack === app.id} />
@@ -77,7 +81,7 @@ function TrayAppIcon(props: DockTrayProps & { app: TrayApp }): JSX.Element {
           </PopoverContent>
         </Popover>
       : <TrayButton app={app} onLaunch={onLaunch} />}
-  </DockIcon>
+  </>
 }
 
 export function StartTrayButton({ open, overviewActive }: { open: boolean; overviewActive: boolean }): JSX.Element {
