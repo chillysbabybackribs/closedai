@@ -57,7 +57,9 @@
 
 /* The padding is the chassis gutter around the tile cards; the canvas measures its
    content box, so tiles never overlap it. */
-.chat-layout-viewport { flex: 1; min-height: 0; min-width: 0; padding: 2px 8px 8px; overflow: auto; }
+/* Horizontal scroll only when the tiled minimum width exceeds the canvas; suppress vertical
+   scroll so tile shadows and the fixed wallpaper backdrop do not drift in the gutter. */
+.chat-layout-viewport { flex: 1; min-height: 0; min-width: 0; padding: 2px 8px 8px; overflow-x: auto; overflow-y: hidden; overscroll-behavior: none; }
 
 .workspace-backdrop-menu-anchor {
   position: fixed;
@@ -108,7 +110,7 @@
 .browser-layout-drag:focus-visible { outline: 1px solid var(--focus-ink); outline-offset: -2px; }
 .browser-layout-drag:active { cursor: grabbing; }
 .browser-layout-drag:disabled { opacity: 0.3; cursor: default; }
-.chat-layout-canvas { position: relative; width: 100%; height: 100%; }
+.chat-layout-canvas { position: relative; width: 100%; height: 100%; overflow: hidden; }
 /* Preview geometry is already frame-coalesced. Tiles glide between previews through
    transform animations (layout-motion.ts); animating dimensions would reflow transcripts
    every frame and interrupt the final frame when the native drag ends. */
