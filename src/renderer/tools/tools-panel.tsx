@@ -156,7 +156,7 @@ export function ToolsPanel({ active: open, onSendToChat }: ToolsPanelProps): JSX
               <div className="tools-rail-slice">
                 <div className="min-w-0">
                   <p className="tools-rail-slice-label" id="tools-task-slice-label">Task tool slices</p>
-                  <p className="tools-rail-slice-note">Codex eager set; Cursor namespaces per turn</p>
+                  <p className="tools-rail-slice-note">Task-scoped eager tools and Cursor namespaces per turn</p>
                 </div>
                 <Switch
                   checked={tools.chatToolSliceEnabled}
@@ -233,7 +233,7 @@ export function ToolsPanel({ active: open, onSendToChat }: ToolsPanelProps): JSX
 
         <footer className="flex shrink-0 items-center gap-4 border-t px-6 py-2.5 text-xs text-muted-foreground">
           <span className="min-w-0 flex-1">
-            Off takes effect now. Open Codex chats pick up slice and enable changes on the next send or thread rotation.
+            Off takes effect now. Open chats pick up slice and enable changes on the next send or thread rotation.
           </span>
           <button type="button" className="whitespace-nowrap hover:enabled:text-foreground disabled:text-muted-foreground/50" disabled={totalCalls === 0} data-ui="tools.clear"
             onClick={() => void tools.clearTelemetry()}>

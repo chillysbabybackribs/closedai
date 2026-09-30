@@ -58,6 +58,9 @@ import { loadClaudeSdk, type ClaudeSdk } from './claude-sdk.js'
 import { ClaudeSession } from './claude-session.js'
 import { applyTranscriptOp, handleProviderTurnEnd, type TranscriptOp, type TurnEnd } from '../chat-transcript-ops.js'
 import { claudeMcpServers } from './claude-tools.js'
+import { attachToolSliceForTurn, type ToolSliceTurnAttachState } from '../tools/provider-tool-slice-turn.js'
+import { slicedToolRegistryKey } from '../tools/slice-tool-registry.js'
+import type { ToolRegistry } from '../tools/registry.js'
 
 // The Claude Code provider, mirroring ChatService's surface so the hub can route to either.
 // Everything model-facing is the Claude Agent SDK: the process, the tools (as in-process MCP
@@ -94,6 +97,8 @@ export class ClaudeChatService extends EventEmitter {
   private readonly threadCache = new Map<string, ChatThreadContent>()
   private readonly sessionGuideState: SessionGuideDeliveryState = { lastDeliveredThreadKey: null }
   private mcpServersCache: { key: string; servers: ReturnType<typeof claudeMcpServers> } | null = null
+  private readonly toolSliceState: ToolSliceTurnAttachState = { cacheKey: null }
+  private toolSliceAdvertisement: ToolRegistry | null = null
 
   constructor(
     readonly cwd: string,
@@ -159,6 +164,7 @@ export class ClaudeChatService extends EventEmitter {
       // catalog read and the turn context, which is most of the wait before a first reply.
       this.transcript.addOptimisticUser(crypto.randomUUID(), prompt, summaries)
       await prepare?.()
+      await this.prepareClaudeToolAttach(text)
       await this.rotator.prepareForSend()
       await this.ensureReady()
       const session = this.session!
@@ -369,14 +375,33 @@ export class ClaudeChatService extends EventEmitter {
     return { models, account }
   }
 
+  private async prepareClaudeToolAttach(prompt: string): Promise<void> {
+    await attachToolSliceForTurn({
+      provider: 'claude',
+      paneId: this.paneId,
+      activeTurnId: this.activeTurnId,
+      registry: this.tools,
+      settings: this.settings.get(),
+      prompt,
+      surface: this.surfaceContext(),
+      state: this.toolSliceState,
+      cacheKeyOf: (bundle) => `${this.tools.disabledIds().join('\0')}\0${slicedToolRegistryKey(bundle)}`,
+      onApplied: async (bundle) => {
+        this.toolSliceAdvertisement = bundle.advertisement
+        this.mcpServersCache = null
+        if (this.session?.live && !this.activeTurnId) await this.session.retire()
+      }
+    })
+  }
+
   private mcpServersFor(sdk: ClaudeSdk): ReturnType<typeof claudeMcpServers> {
-    const key = this.tools.disabledIds().join('\0')
+    const key = this.toolSliceState.cacheKey ?? `${this.tools.disabledIds().join('\0')}\0`
     if (this.mcpServersCache?.key === key) return this.mcpServersCache.servers
     const servers = claudeMcpServers(sdk, this.tools, () => ({
       paneId: this.paneId,
       threadId: this.session?.sessionId ? claudeThreadId(this.session.sessionId) : null,
       turnId: this.activeTurnId
-    }))
+    }), this.toolSliceAdvertisement)
     this.mcpServersCache = { key, servers }
     return servers
   }

@@ -4,6 +4,7 @@ import test from 'node:test'
 import { DEFAULT_APP_SETTINGS } from '../app-settings-store.js'
 import type { ChatEvent } from '../../shared/chat.js'
 import type { AntigravityToolBridge } from './antigravity-mcp.js'
+import { ToolRegistry } from '../tools/registry.js'
 import { antigravityModelCatalog } from './antigravity-models.js'
 
 const hooks = registerHooks({
@@ -29,7 +30,7 @@ function createService(initialSettings: Partial<typeof DEFAULT_APP_SETTINGS> = {
     set: async (patch) => { saved = { ...saved, ...patch }; return saved },
     checkpoint: () => null,
     sessionRotations: () => saved.chatSessionRotations ?? []
-  }, { servers: () => [] } as unknown as AntigravityToolBridge, '/tmp/antigravity-test-state')
+  }, new ToolRegistry([]), { servers: () => [], setToolAdvertisement: () => {}, listening: false, start: async () => {}, ensureRegistered: async () => {} } as unknown as AntigravityToolBridge, '/tmp/antigravity-test-state')
 
   service.on('event', (e: ChatEvent) => events.push(e))
   const catalog = antigravityModelCatalog([

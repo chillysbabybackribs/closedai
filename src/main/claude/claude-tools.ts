@@ -1,6 +1,7 @@
 import type { McpSdkServerConfigWithInstance } from '@anthropic-ai/claude-agent-sdk'
 import { mcpToolResult, type McpToolContent, type McpToolResult } from '../tools/mcp-tool-result.js'
 import type { ToolRegistry } from '../tools/registry.js'
+import { toolAdvertisedEager } from '../tools/slice-tool-registry.js'
 import type { ClaudeSdk } from './claude-sdk.js'
 import { zodShapeFromJsonSchema } from '../tools/json-schema-zod.js'
 
@@ -26,7 +27,8 @@ type ToolFactory = Pick<ClaudeSdk, 'tool' | 'createSdkMcpServer'>
 export function claudeMcpServers(
   sdk: ToolFactory,
   registry: ToolRegistry,
-  context: ClaudeToolContext
+  context: ClaudeToolContext,
+  advertisement: ToolRegistry | null = null
 ): Record<string, McpSdkServerConfigWithInstance> {
   const servers: Record<string, McpSdkServerConfigWithInstance> = {}
   for (const namespace of registry.enabledNamespaces()) {
@@ -42,7 +44,7 @@ export function claudeMcpServers(
         )
         return mcpToolResult(result)
       },
-      { alwaysLoad: !tool.deferLoading }
+      { alwaysLoad: toolAdvertisedEager(advertisement, namespace.name, tool) }
     ))
     servers[namespace.name] = sdk.createSdkMcpServer({
       name: namespace.name,

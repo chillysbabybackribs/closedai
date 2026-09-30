@@ -83,7 +83,13 @@ promotes a task slice from `scripts/tool-slices.json` (core, browser, research, 
 `codex.tool_slice` records the slice id and promoted tool ids. On Cursor, the same flag selects a
 slice and passes only that slice's `cursorNamespaces` at `session/new`; a slice change reopens the
 ACP session with the new list. Trace label `cursor.tool_slice` records the slice id and namespace
-set. `measureToolContextBudget()` in the main process guards eager wire size in tests.
+set. On Claude Code, the flag promotes the slice's eager set through MCP `alwaysLoad`; a slice
+change retires the idle CLI process so the next turn spawns with the new load set (ToolSearch
+still reaches deferred tools). Trace label `claude.tool_slice` records the slice id and promoted
+tool ids. On Antigravity, the flag writes the slice's eager tools into the CLI MCP config; a slice
+change retires the idle `agy` process and re-registers config before the next spawn. Trace label
+`antigravity.tool_slice` records the slice id and promoted tool ids. `measureToolContextBudget()`
+in the main process guards eager wire size in tests.
 
 **Provider parity target:** Cursor Composer in ClosedAI is the reference stack — full enabled
 MCP tool schemas on the session plus the provider's native repository loop. Other lanes should

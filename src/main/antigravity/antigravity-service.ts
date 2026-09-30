@@ -38,6 +38,9 @@ import { AntigravityHistory } from './antigravity-history.js'
 import { antigravityConversationIdOf, antigravityThreadId } from './antigravity-ids.js'
 import { buildAntigravityPrompt } from './antigravity-input.js'
 import type { AntigravityToolBridge } from './antigravity-mcp.js'
+import { attachToolSliceForTurn, type ToolSliceTurnAttachState } from '../tools/provider-tool-slice-turn.js'
+import { slicedToolRegistryKey } from '../tools/slice-tool-registry.js'
+import { ToolRegistry } from '../tools/registry.js'
 import {
   antigravityContextWindow,
   antigravityModelCatalog,
@@ -98,10 +101,12 @@ export class AntigravityChatService extends EventEmitter {
   private promptSuggestion: string | null = null
   private suggestionGeneration = 0
   private readonly rotator: SessionRotator
+  private readonly toolSliceState: ToolSliceTurnAttachState = { cacheKey: null }
 
   constructor(
     readonly cwd: string,
     private readonly settings: RotationSettingsAccess,
+    private readonly tools: ToolRegistry = new ToolRegistry([]),
     private readonly bridge: AntigravityToolBridge,
     private readonly stateDir: string,
     private readonly surfaceContext: () => TurnSurfaceContext | null = () => null,
@@ -164,6 +169,7 @@ export class AntigravityChatService extends EventEmitter {
       // Paint the accepted message before the provider starts; see the Claude lane for why.
       this.transcript.addOptimisticUser(crypto.randomUUID(), prompt, summaries)
       await prepare?.()
+      await this.prepareAntigravityToolAttach(text)
       await this.rotator.prepareForSend()
       await this.ensureReady()
       const session = this.session!
@@ -194,8 +200,8 @@ export class AntigravityChatService extends EventEmitter {
       // moment its instructions — including the repository map — can be brought up to date.
       if (!session.live) {
         this.profile = await ensureAntigravityProfile(this.stateDir, { cwd: this.cwd })
-        await this.bridge.ensureRegistered()
       }
+      await this.bridge.ensureRegistered()
       if (this.session !== session || (conversationId && session.conversationId !== conversationId) || this.activeTurnId) throw new Error('Antigravity conversation changed while preparing the turn')
       this.lastTurnContent = turn.content
       this.authRetrying = false
@@ -399,6 +405,25 @@ export class AntigravityChatService extends EventEmitter {
           : { state: 'unavailable', message: `Antigravity is unavailable: ${message}` })
     }
     this.emitEvent({ type: 'replace', snapshot: this.snapshot() })
+  }
+
+  private async prepareAntigravityToolAttach(prompt: string): Promise<void> {
+    await attachToolSliceForTurn({
+      provider: 'antigravity',
+      paneId: this.paneId,
+      activeTurnId: this.activeTurnId,
+      registry: this.tools,
+      settings: this.settings.get(),
+      prompt,
+      surface: this.surfaceContext(),
+      state: this.toolSliceState,
+      cacheKeyOf: slicedToolRegistryKey,
+      onApplied: async (bundle) => {
+        this.bridge.setToolAdvertisement(bundle.advertisement)
+        if (this.session?.live && !this.activeTurnId) await this.session.retire()
+        if (this.bridge.listening) await this.bridge.ensureRegistered()
+      }
+    })
   }
 
   private createSession(): AntigravitySession {

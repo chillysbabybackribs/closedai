@@ -706,9 +706,12 @@ summary and master switch in the head, then one ledger row per tool (switch, nam
 status dot). Clicking a row opens its overview inline: technical id and verbs, summary and off
 effect, effect, cost, last use, runs, recent failure notes, the exact text the model reads, and
 the advertised schema. A **Task tool slices** switch under the rail toggles `chatToolSliceEnabled`
-when on, Codex each send advertises the eager set from `scripts/tool-slices.json` instead of the
-legacy pair (`closedai_app.state` + `embedded_browser.page`), and Cursor passes only that slice's
-`cursorNamespaces` at `session/new` (execution still uses the full registry for Codex discovery).
+when on, each send picks a slice from `scripts/tool-slices.json` (core, browser, research, or
+full): Codex advertises the promoted eager set on `thread/start` instead of the legacy pair
+(`closedai_app.state` + `embedded_browser.page`); Cursor passes only that slice's
+`cursorNamespaces` at `session/new`; Claude sets MCP `alwaysLoad` on the promoted tools; Antigravity
+writes the promoted set as `eager` in the CLI MCP config. Discovery / ToolSearch / deferred stubs
+still reach the rest of the enabled registry.
 Presets (Full, Read-only, Custom) sit under that switch; the footer resets telemetry
 counts. Full turns everything on; Read-only keeps `READ_ONLY_TOOL_IDS` (the reads-only
 group plus app state, screenshots, and chat reading) and turns the rest off; Custom is the
@@ -720,8 +723,9 @@ registry still supports per-verb restriction (`restrictActions`) for callers tha
 the view does not expose verbs. Bulk changes (a row of an action tool, a group, a preset) go
 through `tools:setEnabledMany`, one persisted write, after which the renderer re-reads the
 manifest. Enable/disable state is stored in `app-settings.json` and applied before each `ChatService`
-starts or resumes a thread. The slice switch uses the same store and applies on the next Codex or
-Cursor send without restarting the app.
+starts or resumes a thread. The slice switch uses the same store and applies on the next send on
+any provider lane without restarting the app (Claude and Antigravity retire an idle CLI process when
+the slice changes so the next turn picks up the new eager set).
 
 ## Telemetry
 

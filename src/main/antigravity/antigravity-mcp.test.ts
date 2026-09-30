@@ -3,16 +3,21 @@ import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
+import { appTools } from '../tools/app/index.ts'
+import { browserTools } from '../tools/browser/index.ts'
+import { createToolRegistry } from '../tools/index.ts'
 import type { ToolRegistry } from '../tools/registry.ts'
+import { applyToolSliceById, loadToolSliceCatalog, resetToolSliceCatalogCache } from '../tools/tool-slice.ts'
 import { AntigravityToolBridge } from './antigravity-mcp.ts'
 
-const registry = {
-  enabledNamespaces: () => [
-    { name: 'embedded_browser', description: 'browser', tools: [{ name: 'page' }, { name: 'script', deferLoading: true }] },
-    { name: 'closedai_app', description: 'app', tools: [{ name: 'state' }] }
-  ],
-  call: async () => ({ content: [{ type: 'text' as const, text: 'ok' }] })
-} as unknown as ToolRegistry
+function stubHost(): null {
+  return null
+}
+
+const registry = createToolRegistry([
+  browserTools(() => stubHost(), () => stubHost(), () => stubHost()),
+  appTools(stubHost, stubHost)
+]) as ToolRegistry
 
 type Config = { mcpServers: Record<string, { serverUrl: string; tools: Record<string, unknown> }> } & Record<string, unknown>
 
@@ -30,6 +35,24 @@ async function withConfig(initial: string | null, run: (path: string, dir: strin
 async function readConfig(path: string): Promise<Config> {
   return JSON.parse(await readFile(path, 'utf8')) as Config
 }
+
+test('task slice advertisement limits eager tools in the CLI config', async () => {
+  resetToolSliceCatalogCache()
+  const catalog = await loadToolSliceCatalog()
+  const applied = applyToolSliceById(registry, catalog, 'core')
+  await withConfig(null, async (path) => {
+    const bridge = new AntigravityToolBridge(registry, { configPath: path })
+    bridge.setToolAdvertisement(applied.registry)
+    await bridge.start()
+    try {
+      const config = await readConfig(path)
+      assert.deepEqual(config.mcpServers.embedded_browser.tools, {})
+      assert.deepEqual(config.mcpServers.closedai_app.tools, { state: { eager: true } })
+    } finally {
+      await bridge.stop()
+    }
+  })
+})
 
 test('registers every enabled namespace with its eager tools and keeps foreign entries', async () => {
   const foreign = { mcpServers: { github: { serverUrl: 'https://example.test/mcp' } }, other: true }

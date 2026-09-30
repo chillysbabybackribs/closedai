@@ -10,8 +10,8 @@
 .onboarding-gate-backdrop {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at 30% 20%, hsl(var(--muted) / 0.35), transparent 55%),
-    linear-gradient(165deg, hsl(var(--background)), hsl(var(--muted) / 0.5));
+  background: radial-gradient(ellipse at 30% 20%, color-mix(in srgb, var(--muted) 35%, transparent), transparent 55%),
+    linear-gradient(165deg, var(--background), color-mix(in srgb, var(--muted) 50%, transparent));
   background-size: cover;
   background-position: center;
 }
@@ -24,7 +24,7 @@
 .onboarding-gate-scrim {
   position: absolute;
   inset: 0;
-  background: hsl(var(--background) / 0.55);
+  background: color-mix(in srgb, var(--background) 55%, transparent);
   backdrop-filter: blur(12px);
 }
 
@@ -33,9 +33,9 @@
   width: min(420px, 100%);
   padding: 28px 28px 24px;
   border-radius: 16px;
-  border: 1px solid hsl(var(--border) / 0.8);
-  background: hsl(var(--popover) / 0.92);
-  box-shadow: 0 24px 80px hsl(var(--foreground) / 0.12);
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: color-mix(in srgb, var(--popover) 92%, transparent);
+  box-shadow: 0 24px 80px color-mix(in srgb, var(--foreground) 12%, transparent);
 }
 
 .onboarding-gate-eyebrow {
@@ -43,7 +43,7 @@
   font-size: 11px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: hsl(var(--muted-foreground));
+  color: var(--muted-foreground);
 }
 
 .onboarding-gate-title {
@@ -57,7 +57,7 @@
   margin: 0 0 20px;
   font-size: 13px;
   line-height: 1.45;
-  color: hsl(var(--muted-foreground));
+  color: var(--muted-foreground);
 }
 
 .onboarding-gate-users {
@@ -75,8 +75,8 @@
   width: 100%;
   padding: 10px 12px;
   border-radius: 12px;
-  border: 1px solid hsl(var(--border) / 0.7);
-  background: hsl(var(--background) / 0.6);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  background: color-mix(in srgb, var(--background) 60%, transparent);
   text-align: left;
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease;
@@ -84,8 +84,8 @@
 
 .onboarding-gate-user:hover,
 .onboarding-gate-user:focus-visible {
-  background: hsl(var(--accent) / 0.5);
-  border-color: hsl(var(--border));
+  background: color-mix(in srgb, var(--accent) 50%, transparent);
+  border-color: var(--border);
   outline: none;
 }
 
@@ -97,7 +97,7 @@
   border-radius: 999px;
   font-size: 16px;
   font-weight: 600;
-  color: hsl(var(--foreground));
+  color: var(--foreground);
   background: hsl(calc(var(--avatar-hue, 220)) 55% 42% / 0.22);
   box-shadow: inset 0 0 0 1px hsl(calc(var(--avatar-hue, 220)) 50% 50% / 0.35);
 }
@@ -116,7 +116,7 @@
   margin-bottom: 8px;
   font-size: 12px;
   font-weight: 500;
-  color: hsl(var(--muted-foreground));
+  color: var(--muted-foreground);
 }
 
 .onboarding-gate-create-row {
@@ -130,13 +130,13 @@
   height: 36px;
   padding: 0 12px;
   border-radius: 8px;
-  border: 1px solid hsl(var(--border));
-  background: hsl(var(--background));
+  border: 1px solid var(--border);
+  background: var(--background);
   font-size: 14px;
 }
 
 .onboarding-gate-input:focus-visible {
-  outline: 2px solid hsl(var(--ring) / 0.45);
+  outline: 2px solid color-mix(in srgb, var(--ring) 45%, transparent);
   outline-offset: 1px;
 }
 
@@ -145,7 +145,7 @@
   align-items: center;
   gap: 8px;
   font-size: 13px;
-  color: hsl(var(--muted-foreground));
+  color: var(--muted-foreground);
   cursor: pointer;
   user-select: none;
 }
@@ -192,8 +192,8 @@
   align-items: start;
   padding: 12px 14px;
   border-radius: 12px;
-  border: 1px solid hsl(var(--border) / 0.75);
-  background: hsl(var(--background) / 0.5);
+  border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
+  background: color-mix(in srgb, var(--background) 50%, transparent);
 }
 
 .onboarding-provider-row[data-status='connected'] {
@@ -219,14 +219,14 @@
   display: block;
   margin-top: 2px;
   font-size: 12px;
-  color: hsl(var(--muted-foreground));
+  color: var(--muted-foreground);
 }
 
 .onboarding-provider-hint {
   margin: 6px 0 0;
   font-size: 11px;
   line-height: 1.4;
-  color: hsl(var(--muted-foreground));
+  color: var(--muted-foreground);
 }
 
 .onboarding-provider-actions {
@@ -241,7 +241,7 @@
   gap: 8px;
   margin-top: 4px;
   padding-top: 8px;
-  border-top: 1px solid hsl(var(--border) / 0.6);
+  border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
 }
 
 .onboarding-provider-footer-spacer {
@@ -299,7 +299,7 @@
 
 .titlebar-session-account-name {
   overflow: hidden;
-  color: hsl(var(--foreground));
+  color: var(--foreground);
   font-size: 13px;
   font-weight: 500;
   text-overflow: ellipsis;
@@ -307,6 +307,6 @@
 }
 
 .titlebar-session-account-kind {
-  color: hsl(var(--muted-foreground));
+  color: var(--muted-foreground);
   font-size: 11.5px;
 }

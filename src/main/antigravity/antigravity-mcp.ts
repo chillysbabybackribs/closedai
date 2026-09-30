@@ -2,6 +2,7 @@ import { readFile, rename } from 'node:fs/promises'
 import { writeAtomic } from '../atomic-write.js'
 import { McpHttpBridge, type McpCallContext } from '../tools/mcp-http-bridge.js'
 import type { ToolRegistry } from '../tools/registry.js'
+import { toolAdvertisedEager } from '../tools/slice-tool-registry.js'
 import { ANTIGRAVITY_MCP_CONFIG_PATH } from './antigravity-cli.js'
 
 // Adapter between the ToolRegistry and the Antigravity CLI. `agy` is a separate process, so the
@@ -44,6 +45,8 @@ const CONVERSATION_META = 'antigravity.google/conversation_id'
 export class AntigravityToolBridge extends McpHttpBridge {
   private registered: string[] = []
   private writes: Promise<unknown> = Promise.resolve()
+  /** When set, controls which tools are declared eager in the CLI config; calls use the live registry. */
+  private advertisement: ToolRegistry | null = null
 
   constructor(
     registry: ToolRegistry,
@@ -60,6 +63,10 @@ export class AntigravityToolBridge extends McpHttpBridge {
   /** Servers the CLI was pointed at (empty before the first start), with the namespace each serves. */
   servers(): AntigravityServer[] {
     return this.registered.map((namespace) => ({ server: this.serverName(namespace), namespace }))
+  }
+
+  setToolAdvertisement(registry: ToolRegistry | null): void {
+    this.advertisement = registry
   }
 
   /** Drop the app's entries from the CLI config and close the server. */
@@ -90,7 +97,8 @@ export class AntigravityToolBridge extends McpHttpBridge {
     const written = await this.rewriteConfig((servers) => {
       for (const endpoint of endpoints) {
         const namespace = namespaces.get(endpoint.namespace)
-        const tools = namespace?.tools.filter((tool) => !tool.deferLoading) ?? []
+        const main = this.registry.enabledNamespaces().find((entry) => entry.name === endpoint.namespace)
+        const tools = main?.tools.filter((tool) => toolAdvertisedEager(this.advertisement, endpoint.namespace, tool)) ?? []
         servers[this.serverName(endpoint.namespace)] = {
           serverUrl: endpoint.url,
           tools: Object.fromEntries(tools.map((tool) => [tool.name, { eager: true }]))

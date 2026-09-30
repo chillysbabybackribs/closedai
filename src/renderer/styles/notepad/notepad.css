@@ -55,6 +55,14 @@
   pointer-events: auto;
 }
 
+.notepad-chat-layer .quick-chat-card {
+  background: color-mix(in srgb, var(--surface-card) 80%, black);
+}
+
+:root[data-theme='warm'] .notepad-chat-layer .quick-chat-card {
+  background: color-mix(in srgb, var(--surface-card) 94%, black);
+}
+
 .notepad-chat-elsewhere {
   display: flex;
   gap: 8px;

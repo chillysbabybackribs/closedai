@@ -49,7 +49,7 @@ export function SessionAccountMenu({ user, onSignOut, onConnectProviders }: Sess
           <Avatar user={user} className="titlebar-session-account-avatar titlebar-session-account-avatar-lg" />
           <span className="titlebar-session-account-identity">
             <span className="titlebar-session-account-name">{user.displayName}</span>
-            <span className="titlebar-session-account-kind">Local profile</span>
+            <span className="titlebar-session-account-kind">Signed in on this device</span>
           </span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />

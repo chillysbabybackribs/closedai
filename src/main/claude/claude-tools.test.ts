@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { createToolRegistry } from '../tools/index.js'
 import { defineTool, textResult } from '../tools/tool.js'
 import type { ToolCallEvent } from '../../shared/tools.js'
+import { applyToolSliceById, loadToolSliceCatalog, resetToolSliceCatalogCache } from '../tools/tool-slice.ts'
 import { claudeMcpServers, claudeToolResult, toolUseIdOf } from './claude-tools.js'
 
 type Registered = {
@@ -52,6 +53,16 @@ function registry(): ReturnType<typeof createToolRegistry> {
     ]
   }])
 }
+
+test('slice advertisement overrides alwaysLoad without changing call routing', async () => {
+  resetToolSliceCatalogCache()
+  const { sdk, servers } = fakeSdk()
+  const live = registry()
+  const catalog = await loadToolSliceCatalog()
+  const applied = applyToolSliceById(live, catalog, 'core')
+  claudeMcpServers(sdk, live, () => ({ threadId: null, turnId: null }), applied.registry)
+  assert.deepEqual(servers[0]!.tools.map((tool) => [tool.name, tool.extras?.alwaysLoad]), [['page', false], ['protocol', false]])
+})
 
 test('one MCP server per namespace, tools always-loaded unless the registry defers them', () => {
   const { sdk, servers } = fakeSdk()

@@ -1,6 +1,6 @@
 # Task-scoped tool slices (design)
 
-Status: **Phase 1 (Codex) and Phase 2 (Cursor) landed** — slice manifest + `applyToolSlice()`, Codex `thread/start` via `resolveCodexToolCatalog()`, Cursor `session/new` namespace allowlists via `resolveCursorToolCatalog()` when `chatToolSliceEnabled` is true. Claude/Antigravity remain Phase 3.
+Status: **Phases 1–3 landed** — slice manifest + `applyToolSlice()`, shared `resolveSlicedToolRegistry()` when `chatToolSliceEnabled` is true: Codex `thread/start` via `resolveCodexToolCatalog()`, Cursor `session/new` namespace allowlists via `resolveCursorToolCatalog()`, Claude MCP `alwaysLoad` via slice advertisement + process retire on change, Antigravity MCP config `eager` map via the same advertisement + CLI retire on change. Trace labels: `codex.tool_slice`, `cursor.tool_slice`, `claude.tool_slice`, `antigravity.tool_slice`.
 
 ## Problem
 
