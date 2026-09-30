@@ -190,6 +190,29 @@ test('source recall on a self-rotated pane uses the live transcript through the 
   assert.equal(result.sessionRotationEpoch, 1)
 })
 
+test('scope chat merges prerotation transcript when the live snapshot dropped the rotation boundary', async () => {
+  const h = harness()
+  h.snapshot.items = [{ type: 'user', id: 'u2', turnId: 't2', text: 'After rotation only in live thread' }]
+  h.snapshot.threadId = 'new-thread-after-rotation'
+  h.setRead(async (threadId) => {
+    assert.equal(threadId, 'old-thread')
+    return { threadId: 'old-thread', threadName: null, items: [
+      { type: 'user', id: 'u1', turnId: 't', text: 'Ask' },
+      { type: 'tool', id: 'tool1', turnId: 't', label: 'grep', detail: 'search', status: 'completed', output: 'pane-secret-output' }
+    ] }
+  })
+  h.source({ sourcePaneId: 'p', sourceThreadId: 'old-thread', sourceThroughItemId: 'tool1' })
+  h.store.update('p', { sessionRotations: [{ epoch: 1, sourceThroughItemId: 'tool1', providerThreadId: 'old-thread', at: 1 }] })
+  const rotatedCaller = { ...caller, threadId: h.snapshot.threadId }
+  const chat = await h.memory.recall(rotatedCaller, { scope: 'chat', types: ['tool'], query: 'pane-secret' })
+  assert.equal(h.reads(), 1)
+  assert.match(chat.matches[0]!.text, /pane-secret-output/)
+  assert.deepEqual(chat.rotationEpochs, [1])
+  const current = await h.memory.recall(rotatedCaller, { scope: 'current', types: ['tool'], query: 'pane-secret' })
+  assert.equal(h.reads(), 2, 'scope current also merges when rotated and boundary missing from snapshot')
+  assert.match(current.matches[0]!.text, /pane-secret-output/)
+})
+
 test('recalls a closed continuation source without opening or changing the current conversation', async () => {
   const h = harness()
   h.source()

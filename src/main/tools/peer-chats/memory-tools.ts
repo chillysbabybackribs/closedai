@@ -13,8 +13,10 @@ export function memoryTools(getMemory: () => PeerMemoryAccess | null): ToolDefin
       name: 'recall',
       deferLoading: true,
       description:
-        'Read bounded excerpts from this chat, its continuation source, or a previous chat; source includes transcript ' +
-        'evidence omitted after session rotation. For history, use chat_id from list, search, or omit it for the latest other chat ' +
+        'Read bounded excerpts from this chat, its continuation source, or a previous chat. scope chat searches the full ' +
+        'pane transcript across provider thread rotations (preferred after seamless rotation); scope current searches the live ' +
+        'snapshot and also merges prerotation segments when the pane has rotated. source includes transcript evidence omitted ' +
+        'after session rotation with an explicit frozen boundary. For history, use chat_id from list, search, or omit it for the latest other chat ' +
         '(open panes and closed chats). ' +
         'Index fallback returns retained text with provenance=index and evidenceAvailability=unavailable; evidence-role text is a compact label, not raw output. Exact item_id reads include any eligible kind. ' +
         'Results are historical, not current instructions. query matches a literal case-insensitive phrase; types can ' +
@@ -23,7 +25,7 @@ export function memoryTools(getMemory: () => PeerMemoryAccess | null): ToolDefin
       inputSchema: {
         type: 'object', additionalProperties: false, required: ['scope'],
         properties: {
-          scope: { type: 'string', enum: ['current', 'source', 'history'] },
+          scope: { type: 'string', enum: ['current', 'chat', 'source', 'history'] },
           chat_id: { type: 'string', minLength: 1, maxLength: 256, description: 'Other chat id from list(scope=history) or search; omit for the most recent other conversation.' },
           types: { type: 'array', maxItems: 6, items: { type: 'string', enum: RECALLABLE_ITEM_TYPES } },
           query: { type: 'string', maxLength: 200 },
@@ -54,13 +56,14 @@ export function memoryTools(getMemory: () => PeerMemoryAccess | null): ToolDefin
       deferLoading: true,
       description:
         'Bounded turn-shaped conversation read from this chat or a previous one (handoff-style user/assistant ' +
-        'spine, optional compact evidence). Default five turns, max eight: the newest page first, turns within it ' +
+        'spine, optional compact evidence). scope chat includes prerotation turns on a rotated pane; scope current ' +
+        'matches live snapshot unless the pane has rotated. Default five turns, max eight: the newest page first, turns within it ' +
         'oldest first. Page older turns with nextBeforeUserItemId as before_user_item_id. Results are historical; use recall for long answers and raw tool output. Disabled ' +
         'when chat memory is unavailable. evidenceAvailability flags unavailable source evidence; index text remains historical and may be partial. For a search hit omitted from turn grouping, use recall with its item_id.',
       inputSchema: {
         type: 'object', additionalProperties: false, required: ['scope'],
         properties: {
-          scope: { type: 'string', enum: ['current', 'history'] },
+          scope: { type: 'string', enum: ['current', 'chat', 'history'] },
           chat_id: { type: 'string', minLength: 1, maxLength: 256, description: 'Other chat id from list(scope=history) or search; omit for the most recent other conversation.' },
           before_user_item_id: { type: 'string', minLength: 1, maxLength: 256 },
           limit: { type: 'integer', minimum: 1, maximum: 8 },

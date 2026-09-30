@@ -1,3 +1,4 @@
+import type { ChatTranscriptItem } from '../../shared/chat.js'
 import type { ChatEvidenceAvailability, ChatHistoryRequest, ChatHistoryResult, ChatMemoryCheckpoint, ChatRecallRequest, ChatRecallResult, ChatSpineRequest, ChatSpineResult } from '../../shared/chat-memory.js'
 import type { ChatRecord } from '../../shared/chat-store.js'
 import type { ChatSurface } from '../chat-hub.js'
@@ -83,10 +84,12 @@ export class ChatMemory {
   async recall(caller: MemoryCaller, request: ChatRecallRequest): Promise<ChatRecallResult> {
     const { pane, surface } = this.resolve(caller)
     if (request.chatId && request.scope !== 'history') throw new Error('chat_id requires history scope')
-    if (request.scope === 'current') {
-      const snapshot = surface.snapshot()
+    if (request.scope === 'current' || request.scope === 'chat') {
+      const items = await this.itemsForPaneRecall(pane, surface, request.scope)
       const checkpoint = pane.checkpoint?.threadId === caller.threadId ? pane.checkpoint : null
-      return recallTranscript(snapshot.items, caller.threadId!, checkpoint, request, null)
+      const result = recallTranscript(items, caller.threadId!, checkpoint, request, null)
+      const epochs = pane.sessionRotations?.map((rotation) => rotation.epoch)
+      return request.scope === 'chat' && epochs?.length ? { ...result, rotationEpochs: epochs } : result
     }
     if (request.scope === 'history') {
       const target = this.resolveHistoryTarget(pane, request.chatId)
@@ -130,9 +133,9 @@ export class ChatMemory {
   async spine(caller: MemoryCaller, request: ChatSpineRequest): Promise<ChatSpineResult> {
     const { pane, surface } = this.resolve(caller)
     if (request.chatId && request.scope !== 'history') throw new Error('chat_id requires history scope')
-    if (request.scope === 'current') {
-      const snapshot = surface.snapshot()
-      return spineTranscript(snapshot.items, {
+    if (request.scope === 'current' || request.scope === 'chat') {
+      const items = await this.itemsForPaneRecall(pane, surface, request.scope)
+      return spineTranscript(items, {
         threadId: caller.threadId!,
         title: pane.title,
         cwd: pane.cwd,
@@ -268,6 +271,31 @@ export class ChatMemory {
       throw new Error('Memory is available only to the calling pane’s current thread')
     }
     return { pane, surface }
+  }
+
+  /**
+   * scope chat (and rotated panes on scope current) search the same visible conversation the UI
+   * keeps across provider thread resets, not only the active provider thread's live items.
+   */
+  private async itemsForPaneRecall(
+    pane: ChatRecord,
+    surface: MemorySurface,
+    scope: 'current' | 'chat'
+  ): Promise<ChatTranscriptItem[]> {
+    const snapshot = surface.snapshot()
+    const rotations = pane.sessionRotations ?? []
+    if (scope === 'current' && rotations.length === 0) return snapshot.items
+    const boundary = rotations.at(-1)?.sourceThroughItemId
+    if (boundary && snapshot.items.some((item) => item.id === boundary)) return snapshot.items
+    const cont = pane.continuation
+    if (cont?.sourcePaneId !== pane.id || !cont.sourceThreadId) return snapshot.items
+    try {
+      const retired = await this.read(cont.sourcePaneId, cont.sourceThreadId, surface, cont.sourceCwd)
+      const seen = new Set(retired.items.map((item) => item.id))
+      return [...retired.items, ...snapshot.items.filter((item) => !seen.has(item.id))]
+    } catch {
+      return snapshot.items
+    }
   }
 }
 

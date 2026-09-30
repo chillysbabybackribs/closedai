@@ -15,6 +15,7 @@ export const WORKSPACE_FILES = [
   "docs/autogit.md",
   "docs/cdp-tool-foundation.md",
   "docs/chat-spine-read-scope.md",
+  "docs/chat-transcript-recall-phases.md",
   "docs/claude-code.md",
   "docs/codex-desktop-recon.md",
   "docs/cursor.md",
@@ -1391,7 +1392,7 @@ export const WORKSPACE_IPC_FLOWS = {
 /** Directory areas with the file-name prefixes that dominate them. */
 export const WORKSPACE_AREAS = [
   {"directory":".","files":7},
-  {"directory":"docs","files":24,"prefixes":[["model-*",3]]},
+  {"directory":"docs","files":25,"prefixes":[["model-*",3]]},
   {"directory":"docs/design-mocks","files":8},
   {"directory":"docs/reports","files":9,"prefixes":[["docs-*",8]]},
   {"directory":"harness/live-eval","files":5},

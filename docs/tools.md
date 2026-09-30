@@ -698,7 +698,7 @@ Indexed `evidence` text contains compact labels, never raw tool output. Index ex
 offset pagination. Cancellation, archival, deleted records, changed threads, and mismatched
 provider responses still invalidate reads; eviction can remove retained text between calls.
 
-`peer_chats.spine` is read-only and accepts `scope: current|history`, optional `chat_id` for history
+`peer_chats.spine` is read-only and accepts `scope: current|chat|history`, optional `chat_id` for history
 (defaults to the most recent other conversation), `limit` (default 5, max 8), and
 `before_user_item_id` to page older turns newest-first. `include_evidence` adds up to three compact
 tool/command/file-change labels per turn; `include_changed_files` (default true) lists paths touched
@@ -710,7 +710,7 @@ Index-served reads (`provenance: index`) cover only the lines the index kept. Wh
 `provenance: index` without reloading provider history; stale or missing index rows load the
 transcript instead. Provider stores remain authoritative.
 
-`peer_chats.recall` is read-only and accepts `scope: current|source|history`, optional literal
+`peer_chats.recall` is read-only and accepts `scope: current|chat|source|history`, optional literal
 case-insensitive `query`, `types` (defaults to user/assistant messages), `limit` (default 5, max 8),
 or `item_id` with a character `offset`. History accepts `chat_id` from discovery, defaulting to
 the most recent other conversation when omitted, and returns its `chatId`. `chat_id` is rejected
@@ -723,7 +723,10 @@ items remain, not necessarily more query matches. Screenshot and reasoning items
 user/assistant/plan text and textual tool/command/file-change evidence are eligible. File/image
 attachment contents are not fetched. Queries are literal phrases, not semantic/vector search.
 
-The current scope reads the caller's existing transcript. Source scope uses only the direct
+The current scope reads the caller's live provider snapshot. Chat scope searches the full pane
+transcript, merging prerotation segments when the pane has session rotations and the live snapshot
+no longer includes the rotation boundary; responses may include `rotationEpochs`. On a rotated
+pane, current scope uses the same merge rules so recall matches visible history. Source scope uses only the direct
 continuation source and its frozen last-item id; later messages are excluded even when the
 original pane keeps running. A source with no recoverable boundary is unavailable rather than
 read without limits. History scope separately reads previous chats across projects without that

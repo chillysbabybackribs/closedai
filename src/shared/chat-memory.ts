@@ -24,7 +24,8 @@ export type ChatMemoryCheckpoint = {
 }
 
 export type ChatRecallRequest = {
-  scope: 'current' | 'source' | 'history'
+  /** current: this provider thread's live snapshot; chat: full pane transcript including prerotation segments when rotated; source/history: unchanged. */
+  scope: 'current' | 'chat' | 'source' | 'history'
   /** Stable chat id from history discovery; history defaults to the most recent chat. */
   chatId?: string
   /** Item kinds to search; user/assistant messages when omitted or empty. */
@@ -71,6 +72,8 @@ export type ChatRecallResult = {
   throughItemId: string | null
   /** Latest rotation epoch when source recall runs on a chat with session rotations. */
   sessionRotationEpoch?: number
+  /** Present when scope is chat and the pane has recorded session rotations. */
+  rotationEpochs?: number[]
   trust: 'historical-data'
 }
 
@@ -85,7 +88,7 @@ export type ChatSpineTurn = {
 }
 
 export type ChatSpineRequest = {
-  scope: 'current' | 'history'
+  scope: 'current' | 'chat' | 'history'
   chatId?: string
   limit?: number
   beforeUserItemId?: string
