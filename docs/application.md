@@ -38,7 +38,8 @@ to the actual target surface. Rebuild before checking preview UI, then confirm t
 loaded the update; do not assume the process has the current reload watcher or that it succeeded.
 If automatic reload is unavailable or loading the update cannot be confirmed, hard-refresh if
 available. The application's `reload-renderer` menu key is not model-runnable through
-`closedai_app.menu`; when no usable refresh path is available, stop captures and report
+`closedai_app.menu`; when no usable refresh path is available or the update still cannot be
+confirmed, stop captures and report
 "Build passed; visual verification pending a manual app restart." Report build failures separately.
 Existing UI tools remain usable; a pending restart limits verification of the new behavior.
 

@@ -95,7 +95,8 @@ the structural choice in the normal change summary; no separate report or extra 
   before visual verification. Renderer rebuilds can auto-reload only when the running main bundle
   matches; main-process or preload changes require a restart (see `docs/application.md`). Starting
   another preview does not prove the existing app loaded the rebuild. If automatic reload is
-  unavailable or the update cannot be confirmed, hard-refresh if available; otherwise stop captures
+  unavailable or the update cannot be confirmed, hard-refresh if available. If there is no usable
+  refresh path or the update still cannot be confirmed, stop captures
   and report: "Build passed; visual verification pending a manual app restart." Report build failures
   separately. Models cannot run the application's reload menu through the menu tool.
   Once the update is loaded, reveal the changed area and capture once. Another capture needs a
