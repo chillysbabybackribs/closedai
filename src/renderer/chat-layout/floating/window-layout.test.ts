@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { BROWSER_PANE_ID, WORKSPACE_DOCK_ID, chatPaneIds, layoutGeometry, readLayout, saveLayout, type ChatLayout } from '../layout-tree.ts'
 import { tabIds, tabOwner } from '../layout-tabs.ts'
-import { clampWindow, findWindow, floatBeside, floatWindow, floatingWindows, groupWindow, minimizeWindow, raiseWindow, resizeRect, restoreWindow, snapWindow, tearOffRect } from './window-layout.ts'
+import { tabInNewWindow, clampWindow, findWindow, floatBeside, floatWindow, floatingWindows, groupWindow, minimizeWindow, raiseWindow, resizeRect, restoreWindow, snapWindow, tearOffRect } from './window-layout.ts'
 
 const pane = (id: string, tabs?: string[]): ChatLayout => ({ kind: 'pane', id, ...(tabs ? { tabs } : {}) })
 const split = (id: string, first: ChatLayout, second: ChatLayout): ChatLayout => ({ kind: 'split', id, axis: 'horizontal', ratio: 0.5, first, second })
@@ -58,7 +58,7 @@ test('a window opened beside a floating one cascades from it; beside a tiled one
   assert.equal(floatBeside(floated, 'new', 'b'), floated)
 })
 
-test('minimize keeps the window in place until it is restored, never the last chat or the browser', () => {
+test('minimize keeps every chat window restorable, including the last, but never the browser', () => {
   const floated = floatWindow(three, 'a', rect)
   const minimized = minimizeWindow(floated, 'a2')
   assert.equal(floatingWindows(minimized).length, 0)
@@ -67,6 +67,32 @@ test('minimize keeps the window in place until it is restored, never the last ch
   assert.equal(minimizeWindow(three, BROWSER_PANE_ID), three)
   const restored = restoreWindow(minimized, 'a2')
   assert.deepEqual(findWindow(restored, 'a')?.float, { ...rect, z: 1 })
+})
+
+test('a new window opens from a browser-only workspace without losing browser state', () => {
+  const browser = { ...pane(BROWSER_PANE_ID), float: { ...rect, z: 1 } }
+  const next = tabInNewWindow(browser, 'new', undefined, 'new-split')
+  assert.deepEqual(tabIds(next), ['new'])
+  assert.deepEqual(chatPaneIds(next), ['new'])
+  assert.deepEqual(findWindow(next, BROWSER_PANE_ID), browser)
+  assert.equal(findWindow(next, 'new')?.float, undefined)
+})
+
+test('a new floating window preserves a minimized host and its selected tab', () => {
+  const minimized = minimizeWindow(minimizeWindow(three, 'a'), 'b')
+  const next = tabInNewWindow(minimized, 'new', 'a2', 'new-split')
+  assert.deepEqual(chatPaneIds(next), ['new'])
+  assert.deepEqual(findWindow(next, 'a'), findWindow(minimized, 'a'))
+  assert.deepEqual(findWindow(next, 'b'), findWindow(minimized, 'b'))
+  assert.ok(findWindow(next, 'new')?.float)
+})
+
+test('a view-only workspace can open a chat without a chat host', () => {
+  const view = pane('closedai:view:history:x')
+  const next = tabInNewWindow(split('browser', view, pane(BROWSER_PANE_ID)), 'new', undefined, 'new-split')
+  assert.deepEqual(findWindow(next, view.id), view)
+  assert.deepEqual(chatPaneIds(next), ['new'])
+  assert.ok(findWindow(next, 'new')?.float)
 })
 
 test('floating rects persist and malformed ones are refused', () => {

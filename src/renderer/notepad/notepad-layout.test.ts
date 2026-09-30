@@ -1,12 +1,19 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import type { ChatLayout } from '../chat-layout/layout-tree.js'
+import { BROWSER_PANE_ID, type ChatLayout } from '../chat-layout/layout-tree.js'
 import { tabIds, tabOwner } from '../chat-layout/layout-tabs.js'
 import { findWindow } from '../chat-layout/floating/window-layout.js'
 import { noteIdOfTab, noteTabId, notepadChats, openNoteInTree, tileNoteIds, tileNotepadChat, withNotepadChat } from './notepad-layout.js'
 
 const chatTile: ChatLayout = { kind: 'pane', id: 'chat-a', tabs: ['chat-a', 'chat-b'] }
+
+test('the first note opens when every content window has been closed', () => {
+  const tree = openNoteInTree({ kind: 'pane', id: BROWSER_PANE_ID }, 'n1', null, 'split-1')
+  assert.deepEqual(tabIds(tree), [noteTabId('n1')])
+  assert.ok(findWindow(tree, BROWSER_PANE_ID))
+  assert.equal(findWindow(tree, noteTabId('n1'))?.float, undefined)
+})
 
 test('the first note opens in a floating window of its own and the chat tile keeps its front tab', () => {
   const tree = openNoteInTree(chatTile, 'n1', null, 'split-1')

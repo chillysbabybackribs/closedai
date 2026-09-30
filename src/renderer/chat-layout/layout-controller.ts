@@ -273,7 +273,7 @@ export function useChatLayout(
   /**
    * Open a new window (a dock chat, the notepad). `change` gets `tile`, which halves the roomiest
    * tile for `id` and returns null when none can be halved, so the caller floats it instead. A
-   * tiled window ends any maximized one, or it would open hidden behind it.
+   * changed window ends any maximized one, or the opened window would remain hidden behind it.
    */
   const openWindowIn = (value: typeof layout, change: WindowOpen): typeof layout => {
     const tile = (tree: ChatLayout, id: string): ChatLayout | null => {
