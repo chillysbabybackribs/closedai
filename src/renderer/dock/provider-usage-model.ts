@@ -1,4 +1,4 @@
-import type { ChatPlanUsage, ChatPlanUsageWindow, ChatProvider } from '../../shared/chat.js'
+import type { ChatPlanUsage, ChatPlanUsageWindow, ChatProvider, ProviderUsageSnapshot } from '../../shared/chat.js'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import { CHAT_PROVIDERS } from '../../shared/chat-providers.js'
 
@@ -7,12 +7,13 @@ export type UsageLevel = 'normal' | 'low' | 'critical' | 'exhausted' | 'stale' |
 export type ProviderUsageEntry = {
   key: string
   provider: ChatProvider
-  source: ChatRowSummary
+  source: ChatRowSummary | null
+  account: ProviderUsageSnapshot['account']
   usage: ChatPlanUsage | null
 }
 
 /** Never add quotas across chats. Keep known accounts separate; retain the newest observation. */
-export function providerUsageEntries(chats: readonly ChatRowSummary[]): ProviderUsageEntry[] {
+export function providerUsageEntries(chats: readonly ChatRowSummary[], readings?: readonly ProviderUsageSnapshot[]): ProviderUsageEntry[] {
   const entries = new Map<string, ProviderUsageEntry>()
   for (const row of chats) {
     if (!row.attached || !row.providerUsage) continue
@@ -20,8 +21,26 @@ export function providerUsageEntries(chats: readonly ChatRowSummary[]): Provider
     const key = JSON.stringify([row.provider, account?.type ?? null, account?.email ?? null])
     const prior = entries.get(key)
     if (!prior || (usage?.updatedAt ?? -1) > (prior.usage?.updatedAt ?? -1)
-      || ((usage?.updatedAt ?? -1) === (prior.usage?.updatedAt ?? -1) && row.updatedAt > prior.source.updatedAt)) {
-      entries.set(key, { key, provider: row.provider, source: row, usage })
+      || ((usage?.updatedAt ?? -1) === (prior.usage?.updatedAt ?? -1) && row.updatedAt > (prior.source?.updatedAt ?? 0))) {
+      entries.set(key, { key, provider: row.provider, source: row, account, usage })
+    }
+  }
+  if (readings) for (const provider of CHAT_PROVIDERS) {
+    const reading = readings.find((item) => item.provider === provider)
+    const account = reading?.account ?? null
+    const key = JSON.stringify([provider, account?.type ?? null, account?.email ?? null])
+    const prior = entries.get(key)
+    const providerEntries = [...entries.values()].filter((item) => item.provider === provider)
+    // A placeholder must not create an extra unknown-account tab beside live telemetry.
+    if (!reading && providerEntries.length) continue
+    if (!account && providerEntries.length) {
+      if (reading?.usage) for (const item of providerEntries) {
+        if (!item.account && reading.usage.updatedAt > (item.usage?.updatedAt ?? -1)) item.usage = reading.usage
+      }
+      continue
+    }
+    if (!prior || (reading?.usage?.updatedAt ?? -1) >= (prior.usage?.updatedAt ?? -1)) {
+      entries.set(key, { key, provider, source: null, account, usage: reading?.usage ?? null })
     }
   }
   return [...entries.values()].sort((a, b) => CHAT_PROVIDERS.indexOf(a.provider) - CHAT_PROVIDERS.indexOf(b.provider)

@@ -1,52 +1,43 @@
-import { useEffect, useRef, useState, type JSX } from 'react'
+import { useCallback, useEffect, useRef, useState, type JSX } from 'react'
 import { CircleAlert, Clock3, Gauge, RefreshCw } from 'lucide-react'
 import { Button } from '../../components/ui/button.js'
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover.js'
 import { ProviderMark } from '../../components/ui/provider-mark.js'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../../components/ui/tooltip.js'
-import { CHAT_PROVIDER_LABELS } from '../../shared/chat-providers.js'
+import type { ChatProvider, ProviderUsageSnapshot } from '../../shared/chat.js'
+import { CHAT_PROVIDERS, CHAT_PROVIDER_LABELS } from '../../shared/chat-providers.js'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import { ageNote, resetNote } from '../context-meter.js'
 import { errorMessage } from '../error-message.js'
 import { providerUsageEntries, usageHeadline, usageWindowState, type ProviderUsageEntry } from './provider-usage-model.js'
 
-export function ProviderUsage({ chats, visible, open, onOpenChange }: {
+export function ProviderUsage({ chats, open, onOpenChange }: {
   chats: readonly ChatRowSummary[]; visible: boolean; open: boolean; onOpenChange: (open: boolean) => void
 }): JSX.Element | null {
-  const entries = providerUsageEntries(chats)
+  const [readings, setReadings] = useState<ProviderUsageSnapshot[]>([])
+  const entries = providerUsageEntries(chats, readings)
+  const refreshProvider = useCallback(async (provider: ChatProvider): Promise<void> => {
+    const reading = await window.closedai.chat.readProviderUsage(provider)
+    setReadings((prior) => [...prior.filter((item) => item.provider !== provider), reading])
+  }, [])
   const [selected, setSelected] = useState<string | null>(null)
   const [now, setNow] = useState(Date.now)
   const [width, setWidth] = useState(0)
   const root = useRef<HTMLDivElement>(null)
   const lastTrigger = useRef<HTMLButtonElement | null>(null)
-  const attempts = useRef(new Map<string, number>())
-  const inFlight = useRef(new Set<string>())
-  const latest = useRef(entries)
-  latest.current = entries
   useEffect(() => {
-    if (!visible) return
-    const refresh = async (): Promise<void> => {
-      if (document.hidden) return
-      const now = Date.now()
-      await Promise.allSettled(latest.current
-        .filter((item) => {
-          const observedAt = Math.min(item.usage?.updatedAt ?? 0,
-            ...(item.usage?.windows.map((window) => window.updatedAt ?? item.usage!.updatedAt) ?? []))
-          return item.provider !== 'cursor' && item.source.providerUsage?.connection.state === 'ready'
-            && !inFlight.current.has(item.key) && now - (attempts.current.get(item.key) ?? 0) >= 60_000
-            && now - observedAt >= 60_000
-        })
-        .map(async (item) => {
-          attempts.current.set(item.key, now)
-          inFlight.current.add(item.key)
-          try { await window.closedai.chat.refreshPlanUsage(item.source.paneId, true) }
-          finally { inFlight.current.delete(item.key) }
-        }))
+    // Startup reads are independent of rail visibility and chat connection state.
+    void Promise.allSettled(CHAT_PROVIDERS.map(refreshProvider))
+    const refresh = (): void => {
+      if (!document.hidden) void Promise.allSettled(CHAT_PROVIDERS.map(refreshProvider))
     }
-    void refresh()
-    const timer = window.setInterval(() => { void refresh() }, 60_000)
-    return () => window.clearInterval(timer)
-  }, [visible])
+    const timer = window.setInterval(refresh, 60_000)
+    document.addEventListener('visibilitychange', refresh)
+    return () => {
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', refresh)
+    }
+  }, [refreshProvider])
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 30_000)
     return () => window.clearInterval(timer)
@@ -64,7 +55,7 @@ export function ProviderUsage({ chats, visible, open, onOpenChange }: {
   const trigger = (item: ProviderUsageEntry): JSX.Element => {
     const headline = usageHeadline(item.usage, now)
     const label = CHAT_PROVIDER_LABELS[item.provider]
-    const plan = item.usage?.plan ?? item.source.providerUsage?.account?.planType
+    const plan = item.usage?.plan ?? item.account?.planType
     const text = item.provider === 'cursor' && headline.level === 'unknown'
       ? `${plan ? `${plan} · ` : ''}usage unavailable` : headline.text
     const detail = `${label}: ${text}${headline.window ? ` · lowest reported: ${headline.window.label}` : ''}`
@@ -102,36 +93,36 @@ export function ProviderUsage({ chats, visible, open, onOpenChange }: {
             data-ui="dock.provider-usage-tab" data-ui-item={item.key} aria-pressed={item.key === entry.key}
             onClick={() => setSelected(item.key)}><ProviderMark provider={item.provider} />
             {CHAT_PROVIDER_LABELS[item.provider]}
-            {entries.filter((other) => other.provider === item.provider).length > 1 && <span>{item.source.providerUsage?.account?.email ?? 'Unknown account'}</span>}
+            {entries.filter((other) => other.provider === item.provider).length > 1 && <span>{item.account?.email ?? 'Unknown account'}</span>}
           </Button>)}
         </div>
-        <ProviderUsageDetail key={entry.key} entry={entry} now={now} />
+        <ProviderUsageDetail key={entry.key} entry={entry} now={now} refreshProvider={refreshProvider} />
       </PopoverContent>
     </Popover>
   </div>
 }
 
-function ProviderUsageDetail({ entry, now }: { entry: ProviderUsageEntry; now: number }): JSX.Element {
+function ProviderUsageDetail({ entry, now, refreshProvider }: { entry: ProviderUsageEntry; now: number; refreshProvider: (provider: ChatProvider) => Promise<void> }): JSX.Element {
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { usage, source } = entry
-  const telemetry = source.providerUsage
+  const telemetry = source?.providerUsage
   async function refresh(): Promise<void> {
     setRefreshing(true)
     setError(null)
-    try { await window.closedai.chat.refreshPlanUsage(source.paneId) }
+    try { await refreshProvider(entry.provider) }
     catch (error) { setError(errorMessage(error, 'Could not refresh usage')) }
     finally { setRefreshing(false) }
   }
   return <section className="provider-usage-detail">
     <header><div><h3>{CHAT_PROVIDER_LABELS[entry.provider]}</h3>
-      <p>{usage?.plan ?? telemetry?.account?.planType ?? 'Subscription usage'}</p></div>
+      <p>{usage?.plan ?? entry.account?.planType ?? 'Subscription usage'}</p></div>
       <Button variant="ghost" size="icon-sm" data-ui="dock.provider-usage-refresh" disabled={refreshing}
         aria-label="Refresh provider usage" onClick={() => { void refresh() }}>
         <RefreshCw aria-hidden="true" className={refreshing ? 'animate-spin motion-reduce:animate-none' : undefined} />
       </Button></header>
-    {telemetry?.account?.email && <p className="provider-usage-account">{telemetry.account.email}</p>}
-    <div className="provider-usage-connection">Session: {telemetry?.connection.state === 'ready' ? 'connected' : telemetry?.connection.state ?? 'unknown'}</div>
+    {entry.account?.email && <p className="provider-usage-account">{entry.account.email}</p>}
+    {source && <div className="provider-usage-connection">Session: {telemetry?.connection.state === 'ready' ? 'connected' : telemetry?.connection.state ?? 'unknown'}</div>}
     {usage?.unavailable ? <p className="provider-usage-note">{usage.unavailable}</p> : usage?.windows.length ?
       <dl className="provider-usage-windows">{usage.windows.map((window, index) => {
         const state = usageWindowState(window, usage, now)

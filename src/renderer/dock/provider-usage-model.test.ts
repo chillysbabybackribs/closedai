@@ -21,9 +21,9 @@ test('account quotas use the latest reading without summing chats or merging kno
   const entries = providerUsageEntries([row('old', usage(20, NOW - 1000)), row('new', usage(38)),
     row('other', usage(90), 'b@example.test'), { ...row('saved', usage(100)), attached: false }])
   assert.equal(entries.length, 2)
-  assert.equal(entries[0].source.paneId, 'new')
+  assert.equal(entries[0].source?.paneId, 'new')
   assert.equal(usageHeadline(entries[0].usage, NOW).text, '62% left')
-  assert.equal(entries[1].source.paneId, 'other')
+  assert.equal(entries[1].source?.paneId, 'other')
 })
 
 test('thresholds describe remaining allowance and scoped windows retain their name', () => {
@@ -52,4 +52,20 @@ test('unknown, missing and invalid readings never become a healthy zero', () => 
   assert.equal(usageHeadline(usage(NaN), NOW).level, 'unknown')
   assert.equal(usageHeadline({ ...usage(), unavailable: 'No usage endpoint' }, NOW).level, 'unknown')
   assert.equal(usageHeadline(usage(0, 0), NOW).level, 'stale')
+})
+
+
+test('startup includes every provider without any chat runtimes', () => {
+  const entries = providerUsageEntries([], [])
+  assert.deepEqual(entries.map((entry) => entry.provider), ['codex', 'claude', 'antigravity', 'cursor'])
+  assert.ok(entries.every((entry) => entry.source === null))
+  const loaded = providerUsageEntries([], [{ provider: 'antigravity', account: null, usage: usage(2) }])
+  assert.equal(usageHeadline(loaded.find((entry) => entry.provider === 'antigravity')!.usage, NOW).text, '98% left')
+})
+
+test('account probes and chat push readings choose newest without duplicating accounts', () => {
+  const chat = row('live', usage(40))
+  const entries = providerUsageEntries([chat], [{ provider: 'codex', account: chat.providerUsage!.account, usage: usage(20, NOW - 1) }])
+  assert.equal(entries.filter((entry) => entry.provider === 'codex').length, 1)
+  assert.equal(entries[0].usage?.windows[0].percent, 40)
 })
