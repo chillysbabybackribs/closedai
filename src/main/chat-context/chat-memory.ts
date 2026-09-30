@@ -1,11 +1,11 @@
-import type { ChatHistoryRequest, ChatHistoryResult, ChatMemoryCheckpoint, ChatRecallRequest, ChatRecallResult, ChatSpineRequest, ChatSpineResult } from '../../shared/chat-memory.js'
+import type { ChatEvidenceAvailability, ChatHistoryRequest, ChatHistoryResult, ChatMemoryCheckpoint, ChatRecallRequest, ChatRecallResult, ChatSpineRequest, ChatSpineResult } from '../../shared/chat-memory.js'
 import type { ChatRecord } from '../../shared/chat-store.js'
 import type { ChatSurface } from '../chat-hub.js'
 import type { ChatMemoryIndex } from '../chat-store/chat-memory-index.js'
 import { conversationSpineTurnsFromIndexLines } from './conversation-spine.js'
 import { validateMemoryState } from './memory-checkpoint.js'
 import { spineFromTurns, spineTranscript } from './memory-spine.js'
-import { recallTranscript } from './memory-recall.js'
+import { recallEntries, recallTranscript } from './memory-recall.js'
 
 export type MemoryCaller = { paneId?: string | null; threadId: string | null; turnId: string | null; signal?: AbortSignal }
 type MemorySurface = Pick<ChatSurface, 'snapshot' | 'readThread'>
@@ -89,11 +89,23 @@ export class ChatMemory {
     }
     if (request.scope === 'history') {
       const target = this.resolveHistoryTarget(pane, request.chatId)
-      if (!target?.threadId) throw new Error('No matching conversation is available in history')
-      const content = await this.read(target.id, target.threadId, surface, target.cwd)
+      if (!target) throw new Error('No matching conversation is available in history')
+      if (!target.threadId) return this.recallFromIndex(target, request, 'missing-thread')
+      let content
+      try {
+        content = await this.read(target.id, target.threadId, surface, target.cwd)
+      } catch (error) {
+        this.assertPendingHistory(caller, surface, target)
+        if (!this.retainedIndex(target.id)) throw error
+        return this.recallFromIndex(target, request, 'provider-read-failed')
+      }
       const resolved = this.resolve(caller)
       if (resolved.surface !== surface) throw new Error('Workspace changed while loading memory')
       const latest = this.assertHistoryTargetStable(resolved.pane, target.id, target.threadId)
+      if (request.itemId && !content.items.some((item) => item.id === request.itemId)
+        && this.retainedIndex(target.id)?.lines.some((line) => line.itemId === request.itemId)) {
+        return this.recallFromIndex(target, request, 'item-not-found')
+      }
       return recallTranscript(content.items, target.threadId, latest.checkpoint, { ...request, chatId: target.id }, null)
     }
     if (request.scope !== 'source') throw new Error('Unknown recall scope')
@@ -128,10 +140,19 @@ export class ChatMemory {
     }
     if (request.scope !== 'history') throw new Error('Unknown spine scope')
     const target = this.resolveHistoryTarget(pane, request.chatId)
-    if (!target?.threadId) throw new Error('No matching conversation is available in history')
+    if (!target) throw new Error('No matching conversation is available in history')
     const indexed = this.spineFromIndex(target, request)
     if (indexed) return indexed
-    const content = await this.read(target.id, target.threadId, surface, target.cwd)
+    if (!target.threadId) throw new Error('Source evidence unavailable: missing provider thread; use recall with the search item_id for retained text')
+    let content
+    try {
+      content = await this.read(target.id, target.threadId, surface, target.cwd)
+    } catch (error) {
+      this.assertPendingHistory(caller, surface, target)
+      const fallback = this.spineFromIndex(target, request, 'provider-read-failed')
+      if (fallback) return fallback
+      throw error
+    }
     const resolved = this.resolve(caller)
     if (resolved.surface !== surface) throw new Error('Workspace changed while loading memory')
     const latest = this.assertHistoryTargetStable(resolved.pane, target.id, target.threadId)
@@ -145,15 +166,14 @@ export class ChatMemory {
     }, request)
   }
 
-  private spineFromIndex(record: ChatRecord, request: ChatSpineRequest): ChatSpineResult | null {
-    if (!this.memoryIndex || !this.indexEnabled()) return null
-    const indexed = this.memoryIndex.getRecord(record.id)
-    if (!indexed || !record.threadId) return null
-    if (indexed.lastActivityAt < historyActivity(record)) return null
+  private spineFromIndex(record: ChatRecord, request: ChatSpineRequest, reason?: ChatEvidenceAvailability['reason']): ChatSpineResult | null {
+    const indexed = this.retainedIndex(record.id)
+    if (!indexed) return null
+    if (!reason && record.threadId && indexed.lastActivityAt < historyActivity(record)) return null
     const turns = conversationSpineTurnsFromIndexLines(indexed.lines)
     if (!turns.length) return null
     const changedFiles = request.includeChangedFiles === false ? undefined : indexed.changedFiles
-    return spineFromTurns(turns, {
+    const result = spineFromTurns(turns, {
       threadId: record.threadId,
       title: record.title,
       cwd: record.cwd,
@@ -161,6 +181,28 @@ export class ChatMemory {
       chatId: record.id,
       provenance: 'index'
     }, request, changedFiles)
+    return { ...result, evidenceAvailability: reason || !record.threadId
+      ? { status: 'unavailable', reason: reason ?? 'missing-thread' }
+      : { status: 'not-checked' } }
+  }
+
+  private retainedIndex(chatId: string) {
+    return this.indexEnabled() ? this.memoryIndex?.getRecord(chatId) : undefined
+  }
+
+  private recallFromIndex(record: ChatRecord, request: ChatRecallRequest, reason: ChatEvidenceAvailability['reason']): ChatRecallResult {
+    const indexed = this.retainedIndex(record.id)
+    if (!indexed?.lines.length) throw new Error('Source evidence unavailable and no retained index text remains')
+    const result = recallEntries(indexed.lines.map((line) => ({
+      id: line.itemId, turnId: null, type: line.role, text: line.text
+    })), record.threadId, null, { ...request, chatId: record.id }, null)
+    return { ...result, provenance: 'index', evidenceAvailability: { status: 'unavailable', reason } }
+  }
+
+  private assertPendingHistory(caller: MemoryCaller, surface: MemorySurface, target: ChatRecord): void {
+    const resolved = this.resolve(caller)
+    if (resolved.surface !== surface) throw new Error('Workspace changed while loading memory')
+    this.assertHistoryTargetStable(resolved.pane, target.id, target.threadId)
   }
 
   private historyRecords(pane: ChatRecord): ChatRecord[] {
@@ -178,14 +220,14 @@ export class ChatMemory {
 
   private lookupHistoryChat(callerPane: ChatRecord, chatId: string): ChatRecord | null {
     const record = this.records.get(chatId)
-    if (!record || record.id === callerPane.id || record.archived || !record.threadId) return null
-    if (this.isHistoryDiscoverable(record)) return record
+    if (!record || record.id === callerPane.id || record.archived) return null
+    if (record.threadId && this.isHistoryDiscoverable(record)) return record
     if (!this.indexEnabled() || !this.memoryIndex) return null
     const indexed = this.memoryIndex.getRecord(chatId)
     return indexed?.lines.length ? record : null
   }
 
-  private assertHistoryTargetStable(callerPane: ChatRecord, chatId: string, threadId: string): ChatRecord {
+  private assertHistoryTargetStable(callerPane: ChatRecord, chatId: string, threadId: string | null): ChatRecord {
     const latest = this.records.get(chatId)
     if (!latest || latest.id === callerPane.id || latest.archived || latest.threadId !== threadId) {
       throw new Error('History chat changed while loading memory')
