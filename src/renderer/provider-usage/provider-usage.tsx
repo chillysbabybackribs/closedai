@@ -4,7 +4,7 @@ import { Badge } from '../../components/ui/badge.js'
 import { Button } from '../../components/ui/button.js'
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover.js'
 import { ProviderMark } from '../../components/ui/provider-mark.js'
-import { Tooltip, TooltipContent, TooltipTrigger } from '../../components/ui/tooltip.js'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../components/ui/tooltip.js'
 import type { ChatProvider, ProviderUsageSnapshot } from '../../shared/chat.js'
 import { CHAT_PROVIDERS, CHAT_PROVIDER_LABELS } from '../../shared/chat-providers.js'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
@@ -74,7 +74,7 @@ export const ProviderUsage = memo(function ProviderUsage({ chats }: { chats: rea
     </Button></TooltipTrigger>
     {!open && <TooltipContent side="bottom">{display.ariaLabel}</TooltipContent>}
   </Tooltip>
-  return <div ref={root} className="provider-usage">
+  return <TooltipProvider><div ref={root} className="provider-usage">
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="xs" className={`provider-usage-chip${compact ? '' : ' provider-usage-anchor'}`}
@@ -108,7 +108,7 @@ export const ProviderUsage = memo(function ProviderUsage({ chats }: { chats: rea
         <ProviderUsageDetail key={entry.key} entry={entry} now={now} refreshProvider={refreshProvider} />
       </PopoverContent>
     </Popover>
-  </div>
+  </div></TooltipProvider>
 })
 
 function ProviderUsageDetail({ entry, now, refreshProvider }: { entry: ProviderUsageEntry; now: number; refreshProvider: (provider: ChatProvider) => Promise<void> }): JSX.Element {
