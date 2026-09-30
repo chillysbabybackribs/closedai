@@ -260,7 +260,7 @@
   }
 }
 .chat-layout-tabs::-webkit-scrollbar { display: none; }
-/* Notepad windows: the new-tab control rides the strip after the last note tab, like the browser. */
+/* The new-tab control rides the strip right after the last tab, always wearing its hover fill. */
 .chat-layout-tabs .chat-layout-tab-new {
   display: grid;
   flex: 0 0 auto;
@@ -273,6 +273,7 @@
   border: 0;
   border-radius: 50%;
   cursor: pointer;
+  background: var(--surface-control-hover);
 }
 .chat-layout-tabs .chat-layout-tab-new:hover { color: var(--chrome-fg-strong); background: var(--surface-control-hover); }
 /* Tab strip ends before + / hide; line stays on the viewport edge, not scrolled tab content. */
@@ -322,7 +323,6 @@
   transform: none;
   transition: opacity 120ms ease;
 }
-.chat-layout-tab[data-active='true'] .chat-layout-tab-close,
 .chat-layout-tab:hover .chat-layout-tab-close,
 .chat-layout-tab:focus-within .chat-layout-tab-close,
 .chat-layout-tab .chat-layout-tab-close:focus-visible { opacity: 0.7; }

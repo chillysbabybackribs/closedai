@@ -79,10 +79,9 @@ function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset
         <ChatTabs ids={tabs} activeId={activeId} busy={busy} canClose={tabs.length > 1 || chatCount > 1}
           title={title} activity={activity} reviewQueue={reviewQueue} variant={noteTile ? 'note' : 'default'}
           onSelect={(tab) => { tabFocus.current = tab; onSelectTab(tab) }} onClose={onCloseTab}
-          onDrag={(tab) => setDragging({ id: tab, singleTab: true })} trailing={noteTile ? newTabButton('chat-layout-tab-new') : undefined} />
+          onDrag={(tab) => setDragging({ id: tab, singleTab: true })} trailing={newTabButton('chat-layout-tab-new')} />
         {toolsPreset === 'read-only' && <span className="chat-layout-preset" data-ui="layout.tools-preset"
           title="Tools are in Read-only: the model can look but not act. Change it in Agent → Tools & capabilities.">Read-only</span>}
-        {!noteTile && newTabButton('chat-layout-new-chat')}
         <WindowControls id={activeId} busy={busy} maximized={isThisTileSolo} floating={Boolean(onTile)} canMinimize={canMinimize}
           canMaximize={canMaximize} closeLabel={`Close window · ${hideHint}`} canClose={chatCount >= 2}
           onMinimize={() => {
