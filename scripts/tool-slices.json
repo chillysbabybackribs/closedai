@@ -29,6 +29,8 @@
       "resetEager": true,
       "cursorNamespaces": [
         "embedded_browser",
+        "site",
+        "browser_cdp",
         "closedai_app",
         "search",
         "closedai_ui",
@@ -37,7 +39,9 @@
       "promotePriority": [
         "embedded_browser.page",
         "closedai_app.state",
+        "embedded_browser.session",
         "embedded_browser.script",
+        "site.discover.bootstrap",
         "search.query"
       ]
     },
@@ -48,14 +52,18 @@
       "cursorNamespaces": [
         "closedai_app",
         "search",
+        "site",
+        "embedded_browser",
         "tool_batch",
         "peer_chats"
       ],
       "promotePriority": [
         "closedai_app.state",
+        "site.discover.bootstrap",
         "search.query",
         "search.run",
         "search.read",
+        "embedded_browser.session",
         "tool_batch.run"
       ]
     },

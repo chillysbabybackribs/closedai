@@ -63,9 +63,13 @@ export function applyToolSliceById(registry: ToolRegistryType, catalog: ToolSlic
   return { ...applied, sliceId }
 }
 
+function switchableAndToolIds(registry: ToolRegistryType): Set<string> {
+  return new Set([...registry.names(), ...registry.switchableIds()])
+}
+
 function greedyPromote(registry: ToolRegistryType, priority: readonly string[], wireCap: number, resetEager: boolean): Set<string> {
   const chosen = new Set<string>()
-  const known = new Set(registry.names())
+  const known = switchableAndToolIds(registry)
   for (const id of priority) {
     if (!known.has(id)) continue
     if (!toolAdvertised(registry, id)) continue
@@ -101,14 +105,17 @@ function cloneNamespaces(registry: ToolRegistryType, promote: Set<string>, reset
 
 function promoteTool(namespace: string, tool: ToolDefinition, promote: Set<string>): ToolDefinition {
   const toolId = `${namespace}.${tool.name}`
-  if (promote.has(toolId) && tool.deferLoading) return { ...tool, deferLoading: false }
+  const shouldPromote =
+    promote.has(toolId) ||
+    (tool.actions?.some((action) => promote.has(`${toolId}.${action.name}`)) ?? false)
+  if (shouldPromote && tool.deferLoading) return { ...tool, deferLoading: false }
   return tool
 }
 
 /** Validate slice ids and promotion budgets against a registry (CI-friendly). */
 export function validateToolSliceCatalog(catalog: ToolSliceCatalog, registry: ToolRegistryType): string[] {
   const problems: string[] = []
-  const known = new Set(registry.names())
+  const known = switchableAndToolIds(registry)
   const knownNamespaces = new Set(registry.namespaces.map((namespace) => namespace.name))
   for (const [id, slice] of Object.entries(catalog.slices)) {
     for (const toolId of slice.promotePriority) {

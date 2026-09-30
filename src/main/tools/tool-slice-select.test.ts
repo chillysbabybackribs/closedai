@@ -36,6 +36,10 @@ test('browser slice wins on browser phrasing or a live non-blank tab', () => {
 test('research slice triggers on web research phrasing but not repo work', () => {
   assert.ok(needsResearchToolSlice({ prompt: 'Research the latest news on vector databases', surface: null }))
   assert.equal(selectToolSliceId(catalog, { prompt: 'Research the latest news on vector databases', surface: null }), 'research')
+  assert.ok(needsResearchToolSlice({
+    prompt: 'Compare Neon and Supabase using only what each vendor publishes on their own websites',
+    surface: null
+  }))
   assert.ok(!needsResearchToolSlice({ prompt: 'Search the codebase for ToolRegistry', surface: null }))
   assert.equal(selectToolSliceId(catalog, { prompt: 'Search the codebase for ToolRegistry', surface: null }), 'core')
 })

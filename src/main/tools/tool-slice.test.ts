@@ -16,6 +16,7 @@ import { mediaTools } from './media/index.ts'
 import { credentialVaultTools } from './credential-vault/index.ts'
 import { peerChatTools } from './peer-chats/index.ts'
 import { searchTools } from './search/index.ts'
+import { siteTools } from './site/index.ts'
 import type { ResearchDependencies } from './search/research/service.ts'
 import { measureToolContextBudget } from './tool-context-budget.ts'
 import { applyToolSliceById, loadToolSliceCatalog, resetToolSliceCatalogCache, validateToolSliceCatalog } from './tool-slice.ts'
@@ -52,6 +53,7 @@ function fullRegistry() {
     appTools(stubHost, stubHost),
     mediaTools({ app: stubHost, ui: stubHost, page: stubHost, record: stubHost as never }),
     browserTools(() => stubHost(), () => stubHost(), () => stubHost()),
+    siteTools(() => stubHost(), () => stubHost(), () => stubHost()),
     cdpTools(stubHost),
     captureTools(stubHost, stubHost as never),
     searchTools({ research: minimalResearch() }),

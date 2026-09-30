@@ -48,6 +48,11 @@ Claude, and Antigravity; not injected on Cursor). The patterns below match that 
 `embedded_browser.page` `navigate` on canonical links.
 Navigate refuses search-engine result pages and free-text queries.
 
+**Depth:** One quick fact or a single page can use `search.query` or the provider's native web
+search. Multi-page official docs, vendor comparisons, or linked checklists should prefer
+`search.run` and/or `site.discover` **bootstrap**/**expand** (and `embedded_browser.session`
+fetch when markdown or session cookies help)—not a chain of unrelated web-search snippets.
+
 **Tabs:** The first `navigate` or `new_tab` in a pane assigns a tab; assigned tabs run at full
 speed when not selected. `read_page` and `wait_for` observe without claiming. For SPA API maps,
 `browser_cdp.instrument` `hook` before navigate.

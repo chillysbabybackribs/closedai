@@ -8,7 +8,10 @@ export type ToolSliceTurnInput = {
 
 const RESEARCH_CONTEXT_CUES = [
   /\b(?:research|look up|lookup|find sources|source material)\b/i,
-  /\b(?:compare|contrast)\b.{0,32}\b(?:options|alternatives|providers|products|competitors)\b/i,
+  /\b(?:compare|contrast)\b.{0,48}\b(?:options|alternatives|providers|products|competitors|vendors|plans|pricing)\b/i,
+  /\bcompare\b.{0,12}\b\w+\b.{0,12}\b(?:and|vs\.?|versus)\b/i,
+  /\b(?:official|each vendor'?s?|their own)\b.{0,24}\b(?:docs?|documentation|website|site)\b/i,
+  /\b(?:only|using)\b.{0,20}\b(?:what|from)\b.{0,24}\b(?:vendor|company|publish)\b/i,
   /\b(?:latest|recent|current)\s+(?:news|developments|landscape)\b/i,
   /\b(?:market|industry)\s+(?:trends|landscape|research)\b/i,
   /\bsearch\s+(?:the\s+)?(?:web|online|internet)\b/i,

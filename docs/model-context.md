@@ -73,8 +73,9 @@ reuse it, naming the latest plan by `item_id` and pointing to `peer_chats.recall
 for omitted evidence.
 
 The session guide (`closedai.guide`, `kind: application`) is separate from handoffs: product
-routing (user scope, search-first for public live facts, browser/app support when the session or
-a pointed page matters), **browser and `tool_batch` workflows** (tab ownership, dual network stacks,
+routing (user scope, tiered depth for external facts—quick lookup vs multi-page official
+research—browser/app support when the session or a pointed page matters), **browser and
+`tool_batch` workflows** (tab ownership, dual network stacks,
 inspect→act→verify batching), trust boundaries, recency expectations for external facts, and the default
 verification guidance, including build/reload/restart boundaries, confirmation that the actual
 target surface loaded the update, and a screenshot stop rule when it has not. Once loaded, models

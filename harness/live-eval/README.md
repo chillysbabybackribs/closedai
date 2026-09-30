@@ -13,7 +13,10 @@ Contract probes (orientation, peer recall) may still name tools when the test *i
 **Complexity:** Simple one-fact lookups may legitimately finish with fast web search. Tasks tagged
 `complex` expect multi-page or multi-site research from official sources—watch whether the model
 still tries to answer from memory, uses one shallow fetch, or works through linked docs efficiently
-(search, discovery, browser reads, or a sensible mix).
+(search, discovery, browser reads, native web search, or a sensible mix). With **Task tool slices**
+enabled, Codex/Claude/Antigravity promote `search.run` / `site.discover` on research-shaped turns
+(trace `*.tool_slice` in the transcript); Cursor keeps all MCP tools but still records the slice id.
+Regenerate `closedai.guide` after outline edits; **new provider thread** required for guide changes.
 
 ## Start: mission loop pilot (no UI changes)
 
