@@ -27,7 +27,7 @@ What reaches a provider, and when:
 |---|---|---|
 | Provider-native chat behavior | Provider session adapters | Provider-specific; native project instructions may also load through that provider. |
 | Session guide | `src/main/chat-context/`, `scripts/agent-guide-outline.json` | Attached to a new provider thread or handoff, not every turn. Edit the outline and regenerate the guide. |
-| Turn context and handoffs | `src/main/chat-context/` | The clock is attached every turn; ambient browser context and historical handoffs are conditional. Keep data scoped to the relevant turn. |
+| Turn context and handoffs | `src/main/chat-context/` | The clock is attached every turn and notepad context on every notepad-chat turn; the ambient browser tab, the workspace ledger (regex-gated), and historical handoffs are conditional. Keep data scoped to the relevant turn. |
 | Tool schemas and descriptions | `src/main/tools/**` | Provider-specific delivery and discovery. Schemas own arguments, defaults, and limits; link to them instead of copying. |
 | Human guides | `docs/application.md`, `docs/tools.md` | Reference for people; guide text is not automatically sent to chats. |
 
@@ -49,6 +49,9 @@ guides when behavior diverges.
 | [electron-browser-platform-review.md](electron-browser-platform-review.md) | Chromium/Electron sandbox and permission design record (2026-09-01) |
 | [frida-capability-assessment-2026-09-20.md](frida-capability-assessment-2026-09-20.md) | Native instrumentation assessment |
 | [source-guided-task-execution-plan-2026-09-20.md](source-guided-task-execution-plan-2026-09-20.md) | Implementation plan |
+| [chat-spine-read-scope.md](chat-spine-read-scope.md) | `peer_chats.spine` design record (2026-09-30); [Tools](tools.md) owns the contract |
+| [tool-task-slice-design-2026-09-29.md](tool-task-slice-design-2026-09-29.md) | Task tool slice design; implementation notes at its top, [Tools](tools.md) owns the contract |
+| [reddit-multi-provider-landscape-2026-09-29.md](reddit-multi-provider-landscape-2026-09-29.md) | Multi-provider user landscape research |
 | [tool-harness-simulation-plan-2026-09-23.md](tool-harness-simulation-plan-2026-09-23.md) | Historical prompt and tool optimization plan; its shared-prompt assumptions are retired |
 | [ui-polish-backlog.md](ui-polish-backlog.md), [../design-qa.md](../design-qa.md) | Visual QA backlog |
 | [design-mocks/](design-mocks/) | Dated static HTML layout and chrome explorations; not shipped product behavior |

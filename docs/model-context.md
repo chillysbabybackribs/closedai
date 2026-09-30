@@ -1,6 +1,6 @@
 # Model context
 
-Source review: 2026-09-23. ClosedAI does not append provider-specific behavioral prompts beyond a
+Source review: 2026-09-30. ClosedAI does not append provider-specific behavioral prompts beyond a
 compact first-turn session guide (`closedai.guide`). The old shared instruction builders were
 removed for a native-provider baseline. Regenerate the guide from `scripts/agent-guide-outline.json`
 when orientation changes; `guide:check` guards drift. Product behavior lives in
@@ -59,7 +59,9 @@ historical user and assistant text; they are labeled untrusted and are not fresh
 instructions. Codex receives typed `additionalContext`; Claude, Antigravity, and Cursor receive
 serialized `<closedai_context>` blocks. The serializer escapes embedded envelope markup so
 quoted text cannot close its enclosing block. New chats without a continuation receive no
-historical digest.
+historical digest. The handoff fragment is `closedai.chat.handoff`; rotation and compaction seeds
+reuse it, naming the latest plan by `item_id` and pointing to `peer_chats.recall(scope=current)`
+for omitted evidence.
 
 The session guide (`closedai.guide`, `kind: application`) is separate from handoffs: product
 routing (user scope, search-first for public live facts, browser/app support when the session or
@@ -80,11 +82,19 @@ date, local timestamp, UTC ISO time, and IANA timezone. Models should treat it a
 "today" when deciding whether a question needs web lookup or freshness filters on `search.query`.
 It is not injected into the user-visible transcript.
 
-On coding-related turns (regex-gated for repo-work cues, or when the user names repo paths), ClosedAI may attach
-`closedai.workspace.ledger` (`kind: untrusted`): host-verified paths from the current project
-with content hashes, stale markers after re-read, and path hints from the prompt. The host fills
-the ledger from completed `fileChange` rows and successful `test:one` commands in the transcript;
-models must still re-read before citing semantics. Disable injection for A/B runs in **Tools &
+On gated sends ClosedAI attaches `closedai.workspace.ledger` (`kind: untrusted`, `contextRole:
+ambient`, `relevance: host-verified-paths`). The regex gate (`needs-workspace-context.ts`) opens on
+repo-work verbs (implement, refactor, debug, patch, update, migrate, and similar), test commands,
+continuation cues (continue, handoff, previous chat), or repo-style paths; browser-only prompts
+without repo cues stay closed. A `src/`, `docs/`, `scripts/`, or `harness/` path in the prompt
+attaches the block even when the gate is closed, and those paths are listed first as `pathHints`.
+The payload carries the short git HEAD, `fresh` entries (path, content hash, role `edited` or
+`verified-test`, evidence item id), and `stale` paths (`missing` or `hash-mismatch` against a hash
+taken at send time), at most 20 entries and 2,000 JSON characters. The host records entries from
+live, successful `fileChange` rows and `test:one -- <file>.test.ts(x)` commands into an in-memory
+ledger per project directory: every chat in that directory shares it, replays do not feed it, and
+restart clears it. Models must still re-read before citing semantics. All four lanes attach it
+after the clock, guide, and handoff blocks and before browser or notepad context. Disable injection for A/B runs in **Tools &
 capabilities** (**Workspace ledger** switch), or set `chatWorkspaceLedgerEnabled: false` in
 `<userData>/app-settings.json` (default on). Takes effect on the next send; no restart required.
 
@@ -102,7 +112,7 @@ On Codex, only a small eager set (typically `embedded_browser.page` and `closeda
 ships full schemas on every turn; tools such as `search.query`, `tool_batch.run`, and the browser
 CDP namespace load through discovery. Toggle **Task tool slices** in Tools & capabilities, or set `chatToolSliceEnabled` in app settings.
 When it is on, `ensureCodexThread`
-promotes a task slice from `scripts/tool-slices.json` (core, browser, research, or full) before
+promotes a task slice from `scripts/tool-slices.json` (core, browser, or research; see [Tools](tools.md#seeing-what-exists-tools--capabilities)) before
 `thread/start`; a slice change rotates the thread like any other catalog drift. Trace label
 `codex.tool_slice` records the slice id and promoted tool ids. On Cursor, the same flag selects a
 slice for telemetry but always attaches every enabled MCP namespace at `session/new`.

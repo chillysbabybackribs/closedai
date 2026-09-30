@@ -53,8 +53,8 @@ export function memoryTools(getMemory: () => PeerMemoryAccess | null): ToolDefin
       deferLoading: true,
       description:
         'Bounded turn-shaped conversation read from this chat or a previous one (handoff-style user/assistant ' +
-        'spine, optional compact evidence). Default five turns, max eight, newest first. Page older turns with ' +
-        'before_user_item_id. Results are historical; use recall for long answers and raw tool output. Disabled ' +
+        'spine, optional compact evidence). Default five turns, max eight: the newest page first, turns within it ' +
+        'oldest first. Page older turns with nextBeforeUserItemId as before_user_item_id. Results are historical; use recall for long answers and raw tool output. Disabled ' +
         'when chat memory is unavailable.',
       inputSchema: {
         type: 'object', additionalProperties: false, required: ['scope'],

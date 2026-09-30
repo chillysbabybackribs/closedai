@@ -654,8 +654,8 @@ the serialized result fits within 16k characters and may return fewer entries to
 `nextBeforeChatId` as `before_chat_id`. A missing cursor is an error. `query` is a literal
 case-insensitive metadata filter over title, preview, project directory, and applicable checkpoint
 notes, not transcript search. `cwd` optionally narrows discovery to a project directory. History
-arguments require history scope. The session guide points models to `peer_chats.list` and
-`peer_chats.recall` when other panes or prior chats matter; these tool descriptions own the retrieval
+arguments require history scope. The session guide points models to `peer_chats.search`, then
+`spine` or `recall`, and to `list(scope=open)` + `read` for open panes; these tool descriptions own the retrieval
 parameters and boundaries.
 `peer_chats.read` refuses unknown ids and self-reads as **usage** (amber in Tools & capabilities)
 with pointers to `list` or `recall(scope=current)`; only detach/close races surface as errors.
@@ -674,15 +674,20 @@ pinned chats. Disabled when `chatMemoryIndexEnabled` is false. Results are histo
 `peer_chats.spine` for turn-shaped reads of one chat or
 `peer_chats.recall(scope=history, chat_id=..., item_id=...)` for depth. A `chat_id` from search
 works with `spine` and `recall` under `scope: history` for open panes and closed chats (not only
-rows returned from `list(scope=history)`). Chats older than the hot window are reachable only
-through history discovery and recall, not the index.
+rows returned from `list(scope=history)`). Chats outside the hot window are reachable through
+history discovery, `spine`, and `recall` (transcript load), not search. Search returns 5 hits by
+default (max 8) with snippets up to 400 characters; each indexed chat keeps the newest spine lines
+within `chatMemoryIndexMaxCharsPerChat` (default 48,000).
 
 `peer_chats.spine` is read-only and accepts `scope: current|history`, optional `chat_id` for history
 (defaults to the most recent other conversation), `limit` (default 5, max 8), and
 `before_user_item_id` to page older turns newest-first. `include_evidence` adds up to three compact
 tool/command/file-change labels per turn; `include_changed_files` (default true) lists paths touched
-in the chat. Responses fit within 16,000 serialized characters and may omit older assistant prose
-with recall pointers. When the hot index is enabled and current for the chat, main may serve
+in the chat (the 30 most recently changed). Pages run newest to oldest; turns within a page are
+oldest first. Responses fit within 16,000 serialized characters: older answers become recall
+pointers first, then the page's oldest turns are dropped (never its newest), and
+`nextBeforeUserItemId` names the first turn kept, so the next page starts with the dropped ones.
+Index-served reads (`provenance: index`) cover only the lines the index kept. When the hot index is enabled and current for the chat, main may serve
 `provenance: index` without reloading provider history; stale or missing index rows load the
 transcript instead. Provider stores remain authoritative.
 
@@ -737,12 +742,18 @@ summary and master switch in the head, then one ledger row per tool (switch, nam
 status dot). Clicking a row opens its overview inline: technical id and verbs, summary and off
 effect, effect, cost, last use, runs, recent failure notes, the exact text the model reads, and
 the advertised schema. A **Task tool slices** switch under the rail toggles `chatToolSliceEnabled`
-when on, each send picks a slice from `scripts/tool-slices.json` (core, browser, research, or
-full): Codex advertises the promoted eager set on `thread/start` instead of the legacy pair
+(off by default). When on, each send picks a slice from `scripts/tool-slices.json` (read once per
+process from the app path, so an edit needs a restart) in `tool-slice-select.ts`: `browser` when the
+prompt names the browser or the active tab is anything but `about:blank`, else `research` when
+research cues match and no repo/file/test/`npm run` cue does, else `core`. `full` is reachable
+only by pointing a `signals` entry at it; the `when` strings there are labels, the rules are code.
+Because an open page selects `browser`, opening or closing a tab between sends can change the
+slice, and on Codex a slice change rotates the thread. Codex advertises the promoted eager set on `thread/start` instead of the legacy pair
 (`closedai_app.state` + `embedded_browser.page`); Cursor retains every enabled MCP namespace at `session/new`
 (the slice is telemetry only; omitted ACP servers cannot be discovered); Claude sets MCP `alwaysLoad` on the promoted tools; Antigravity
 writes the promoted set as `eager` in the CLI MCP config. Discovery / ToolSearch / deferred stubs
-still reach the rest of the enabled registry.
+still reach the rest of the enabled registry. A **Workspace ledger** switch toggles
+`chatWorkspaceLedgerEnabled` (see [Model context](model-context.md#turn-data)).
 Presets (Full, Read-only, Custom) sit under that switch; the footer resets telemetry
 counts. Full turns everything on; Read-only keeps `READ_ONLY_TOOL_IDS` (the reads-only
 group plus app state, screenshots, and chat reading) and turns the rest off; Custom is the

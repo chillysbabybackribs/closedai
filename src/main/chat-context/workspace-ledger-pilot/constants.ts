@@ -1,4 +1,4 @@
-/** Pilot-only context name; not wired into production send paths until promoted. */
+/** Turn-context name for the workspace ledger; attached on gated sends in every provider lane. */
 export const WORKSPACE_LEDGER_CONTEXT = 'closedai.workspace.ledger'
 
 export const MAX_LEDGER_ENTRIES = 20

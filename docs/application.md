@@ -1587,7 +1587,9 @@ no model-facing list/read/export/delete surface beyond the compact receipt and s
 semantics. See [Tools](tools.md) and [CDP tool foundation](cdp-tool-foundation.md).
 
 File operations use native provider tools. No custom workspace inspection tool, generated map
-injection, native-read interception, or automatic source-version check runs around a turn.
+injection, or native-read interception runs around a turn. On gated sends the in-memory workspace
+ledger re-hashes the files it recorded (see [Model context](model-context.md#turn-data)); it is not
+persisted.
 Browser tools, credentials, and chat controls remain available through the shared registry.
 
 App-owned files live under Electron's `userData`: `~/.config/closedai/` on Linux by default for

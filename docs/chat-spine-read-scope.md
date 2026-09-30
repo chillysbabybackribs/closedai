@@ -2,6 +2,12 @@
 
 Status: **implemented** (`peer_chats.spine` v1; history `chat_id` resolution v1.1).
 
+Design record (2026-09-30), not the current contract: [Tools](tools.md#working-memory-and-recall)
+owns it. Where they differ, the implementation won: the builder lives in `conversation-spine.ts`
+and `memory-spine.ts`, handoff text was rewritten in the same window, and budget pressure drops
+whole oldest turns (user text included) after compacting answers, with the cursor naming the first
+kept turn.
+
 ## Problem
 
 - `peer_chats.search` finds needles; `peer_chats.recall` returns **item excerpts** (800 chars, tool-heavy when `types` widens).
