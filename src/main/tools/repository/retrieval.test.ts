@@ -38,7 +38,7 @@ test('locates current code with evidence; honors ignore rules and observes edits
 test('range reads preserve numbering, hashes and continuation without changing files', () => fixture(async root => {
   const path = 'src/dock-launch.ts'
   const original = await readFile(join(root, path), 'utf8')
-  const result = await readRange(root, { path, from_line: 2, to_line: 3 }, signal(), 26)
+  const result = await readRange(root, { path, from_line: 2, to_line: 3 }, signal(), 365)
   assert.match(result.text, /^2\|/)
   assert.equal(result.nextFromLine, 3)
   assert.match(result.sha256, /^[a-f0-9]{64}$/)

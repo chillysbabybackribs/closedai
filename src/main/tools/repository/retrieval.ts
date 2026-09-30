@@ -46,13 +46,14 @@ export async function readRange(root: string, request: ReadRequest, signal: Abor
   const to = Math.min(request.to_line ?? from + 79, lines.length)
   if (to < from || from < 1) throw new Error('Invalid or out-of-range line range')
   const rows: string[] = []
+  const textBudget = Math.max(0, budget - JSON.stringify(request.path).length - 320)
   let used = 0
   let line = from
   for (; line <= to; line++) {
     const row = `${line}| ${lines[line - 1]}`
-    if (used + row.length > budget) break
+    if (used + JSON.stringify(row).length > textBudget) break
     rows.push(row)
-    used += row.length + 1
+    used += JSON.stringify(row).length + 1
   }
   return {
     path: request.path, sha256: createHash('sha256').update(text).digest('hex'), totalLines: lines.length,
@@ -67,17 +68,21 @@ export async function search(root: string, request: SearchRequest, signal: Abort
     '--glob', '!.git/**', ...(request.regex ? [] : ['--fixed-strings']), '-i', '-e', request.pattern, '--', target], signal)
   const matches: Array<{ path: string; line: number; text: string }> = []
   let total = 0
+  let used = 0
   for (const row of output.split('\n')) {
     if (!row) continue
     const event = JSON.parse(row)
     if (event.type !== 'match' || typeof event.data?.path?.text !== 'string') continue
     total++
-    if (matches.length < limit) matches.push({
+    const match = {
       path: relative(root, event.data.path.text), line: event.data.line_number,
-      text: String(event.data.lines.text).trimEnd().slice(0, 220)
-    })
+      text: String(event.data.lines.text).trimEnd().slice(0, 220),
+      textTruncated: String(event.data.lines.text).trimEnd().length > 220
+    }
+    const size = JSON.stringify(match).length
+    if (matches.length < limit && used + size < 2800) { matches.push(match); used += size }
   }
-  return { matches, truncated: total > limit, perFileMatchLimit: 4 }
+  return { matches, truncated: total > matches.length, perFileMatchLimit: 4 }
 }
 
 const STOP_WORDS = new Set('the a an to of and or in on for with when after before is are be it this that from fix broken should does not no all user please can'.split(' '))
