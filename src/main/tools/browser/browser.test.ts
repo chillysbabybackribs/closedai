@@ -331,6 +331,21 @@ test('evaluate returns the page value as JSON and defaults its bound', async () 
   assert.deepEqual(JSON.parse(textOf(result)), { ok: true, type: 'object', value: { title: 'A' }, truncated: false })
 })
 
+test('query projects DOM facts before serialization without dropping match counts', async () => {
+  const { scriptCall } = harness({ query: async () => ({
+    selector: 'a', matched: 100, returned: 1, items: [{
+      index: 0, tag: 'a', id: null, classes: ['navigation'], role: null, name: null,
+      text: 'Docs', href: 'https://a.test/docs', value: null, src: null, type: null,
+      disabled: false, checked: null, visible: true, bounds: { x: 0, y: 0, width: 10, height: 20 }
+    }]
+  }) })
+  const result = await scriptCall({ action: 'query', selector: 'a', fields: ['text', 'href'] })
+  assert.equal(result.isError, undefined)
+  assert.deepEqual(JSON.parse(textOf(result)), {
+    selector: 'a', matched: 100, returned: 1, items: [{ text: 'Docs', href: 'https://a.test/docs' }]
+  })
+})
+
 test('console forwards its filters and reports a missing tab', async () => {
   const { calls, scriptCall } = harness()
   await scriptCall({ action: 'console', min_level: 'error', since_navigation: true, after_cursor: 3, max_entries: 10 })

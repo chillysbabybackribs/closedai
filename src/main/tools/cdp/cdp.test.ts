@@ -100,6 +100,37 @@ test('requests lists network traffic and body reads one captured response', asyn
   assert.equal(missing.isError, true)
 })
 
+test('body projects captured JSON before truncation and never needs replay', async () => {
+  let reads = 0
+  const { call } = harness({ responseBody: async () => {
+    reads++
+    return { requestId: 'r1', sessionId: 'worker-1', text: JSON.stringify({ hits: [
+      { title: 'One', debug: 'x'.repeat(20000) }, { title: 'Two', debug: 'y'.repeat(20000) }
+    ] }) }
+  } })
+  const result = await call({ action: 'body', request_id: 'r1', session_id: 'worker-1', json_path: 'hits', fields: ['title'], max_items: 1 })
+  assert.equal(result.isError, undefined)
+  assert.deepEqual(JSON.parse(textOf(result)), {
+    requestId: 'r1', sessionId: 'worker-1', json: [{ title: 'One' }], matched: 2, limited: true
+  })
+  assert.equal(reads, 1)
+  assert.equal((await call({ action: 'body', request_id: 'r1', json_path: 'missing' })).isError, true)
+  assert.equal((await call({ action: 'body', request_id: 'r1', json_path: 'hits', offset: 1 })).isError, true)
+})
+
+test('body pages captured text and reports invalid JSON projections', async () => {
+  const { call } = harness({ responseBody: async () => ({ requestId: 'r1', text: 'a'.repeat(20000) }) })
+  const first = JSON.parse(textOf(await call({ action: 'body', request_id: 'r1' })))
+  assert.equal(first.nextOffset, 6000)
+  assert.equal(first.bodyTruncated, true)
+  const next = JSON.parse(textOf(await call({ action: 'body', request_id: 'r1', offset: first.nextOffset })))
+  assert.equal(next.offset, 6000)
+  assert.equal(next.nextOffset, 12000)
+  assert.equal((await call({ action: 'body', request_id: 'r1', fields: ['title'] })).isError, true)
+  const binary = harness({ responseBody: async () => ({ requestId: 'r1', binary: true, byteLength: 42 }) })
+  assert.equal((await binary.call({ action: 'body', request_id: 'r1', fields: ['title'] })).isError, true)
+})
+
 test('agent page wrapper inspects and clicks refs or explicit coordinates', async () => {
   const { calls, registry } = harness()
   const callPage = (arguments_: Record<string, unknown>) => registry.call(
