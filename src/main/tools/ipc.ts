@@ -25,7 +25,12 @@ export function registerToolsIpc(ipcMain: IpcMain, deps: ToolsIpcDeps): void {
     const registry = deps.registry()
     if (!registry) throw new Error('Tools are not available')
     const manifest = toolManifest(registry, deps.providers())
-    return { ...manifest, chatToolSliceEnabled: deps.settings()?.get().chatToolSliceEnabled === true }
+    const settings = deps.settings()?.get()
+    return {
+      ...manifest,
+      chatToolSliceEnabled: settings?.chatToolSliceEnabled === true,
+      chatWorkspaceLedgerEnabled: settings?.chatWorkspaceLedgerEnabled !== false
+    }
   })
   ipcMain.handle(IPC.invoke.tools.telemetry, () => {
     const telemetry = deps.telemetry()
@@ -56,6 +61,13 @@ export function registerToolsIpc(ipcMain: IpcMain, deps: ToolsIpcDeps): void {
     if (!settings) throw new Error('Settings are not available')
     if (typeof enabled !== 'boolean') throw new Error('Invalid tool slice toggle')
     await settings.set({ chatToolSliceEnabled: enabled })
+    deps.notifyEvent({ type: 'changed' })
+  })
+  ipcMain.handle(IPC.invoke.tools.setChatWorkspaceLedgerEnabled, async (_event, enabled: unknown) => {
+    const settings = deps.settings()
+    if (!settings) throw new Error('Settings are not available')
+    if (typeof enabled !== 'boolean') throw new Error('Invalid workspace ledger toggle')
+    await settings.set({ chatWorkspaceLedgerEnabled: enabled })
     deps.notifyEvent({ type: 'changed' })
   })
 }

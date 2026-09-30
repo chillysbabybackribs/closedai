@@ -13,6 +13,8 @@ export type ToolsController = {
   setEnabledMany: (switches: ToolSwitch[]) => Promise<void>
   chatToolSliceEnabled: boolean
   setChatToolSliceEnabled: (enabled: boolean) => Promise<void>
+  chatWorkspaceLedgerEnabled: boolean
+  setChatWorkspaceLedgerEnabled: (enabled: boolean) => Promise<void>
 }
 
 /** Loads the manifest and telemetry while `active`, and keeps telemetry live via push events. */
@@ -105,6 +107,16 @@ export function useToolsController(active: boolean): ToolsController {
     }
   }, [refresh])
 
+  const setChatWorkspaceLedgerEnabled = useCallback(async (enabled: boolean) => {
+    setManifest((current) => current ? { ...current, chatWorkspaceLedgerEnabled: enabled } : current)
+    try {
+      await window.closedai.tools.setChatWorkspaceLedgerEnabled(enabled)
+    } catch (caught) {
+      setError(errorMessage(caught))
+      await refresh()
+    }
+  }, [refresh])
+
   return {
     manifest,
     telemetry,
@@ -114,7 +126,9 @@ export function useToolsController(active: boolean): ToolsController {
     setEnabled,
     setEnabledMany,
     chatToolSliceEnabled: manifest?.chatToolSliceEnabled === true,
-    setChatToolSliceEnabled
+    setChatToolSliceEnabled,
+    chatWorkspaceLedgerEnabled: manifest?.chatWorkspaceLedgerEnabled !== false,
+    setChatWorkspaceLedgerEnabled
   }
 }
 

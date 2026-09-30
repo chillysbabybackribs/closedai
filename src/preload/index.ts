@@ -190,6 +190,7 @@ const api: ClosedaiApi = {
     setEnabled: (toolId: string, enabled: boolean) => invoke(IPC.invoke.tools.setEnabled, toolId, enabled),
     setEnabledMany: (switches) => invoke(IPC.invoke.tools.setEnabledMany, switches),
     setChatToolSliceEnabled: (enabled: boolean) => invoke(IPC.invoke.tools.setChatToolSliceEnabled, enabled),
+    setChatWorkspaceLedgerEnabled: (enabled: boolean) => invoke(IPC.invoke.tools.setChatWorkspaceLedgerEnabled, enabled),
     onEvent: (listener) => subscribe(IPC.event.toolsEvent, listener)
   },
   models: {

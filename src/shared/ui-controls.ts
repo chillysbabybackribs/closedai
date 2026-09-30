@@ -260,6 +260,7 @@ export const UI_CONTROLS = {
   'tools.suggest-off': 'Turn off a tool the view suggests is unused and costly; item is the tool id',
   'tools.suggestions-apply': 'Turn off every suggested tool at once',
   'tools.task-slice': 'Turn Codex task-based tool slices on or off (which tools load eagerly each turn)',
+  'tools.workspace-ledger': 'Turn host-verified workspace ledger context on or off for coding sends',
   'tools.repair': 'Put a repair request with the tool\u2019s recent failure messages into the composer of the chat the Tools view follows, bringing that chat forward; item is the tool id',
   'trace.refresh': 'Refresh the turn trace',
   'trace.clear': 'Clear the turn trace',

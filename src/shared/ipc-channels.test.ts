@@ -140,6 +140,7 @@ test('IPC invoke constants cover the typed invoke registry', () => {
     'tools:clearTelemetry',
     'tools:setEnabled',
     'tools:setChatToolSliceEnabled',
+    'tools:setChatWorkspaceLedgerEnabled',
     'trace:setActive',
     'trace:snapshot',
     'trace:clear',

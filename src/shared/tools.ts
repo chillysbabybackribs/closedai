@@ -88,6 +88,8 @@ export type ToolManifest = {
    * (`closedai_app.state` + `embedded_browser.page`). Execution still uses the full registry.
    */
   chatToolSliceEnabled: boolean
+  /** When false, `closedai.workspace.ledger` is not attached on send (default on). */
+  chatWorkspaceLedgerEnabled: boolean
 }
 
 /** One switch change; a batch of these is one persisted write and one refresh. */

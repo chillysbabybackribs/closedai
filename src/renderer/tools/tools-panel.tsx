@@ -166,6 +166,19 @@ export function ToolsPanel({ active: open, onSendToChat }: ToolsPanelProps): JSX
                   onCheckedChange={(checked) => void tools.setChatToolSliceEnabled(checked)}
                 />
               </div>
+              <div className="tools-rail-slice">
+                <div className="min-w-0">
+                  <p className="tools-rail-slice-label" id="tools-workspace-ledger-label">Workspace ledger</p>
+                  <p className="tools-rail-slice-note">Host-verified paths on coding sends (regex gate)</p>
+                </div>
+                <Switch
+                  checked={tools.chatWorkspaceLedgerEnabled}
+                  disabled={!tools.manifest}
+                  aria-labelledby="tools-workspace-ledger-label"
+                  data-ui="tools.workspace-ledger"
+                  onCheckedChange={(checked) => void tools.setChatWorkspaceLedgerEnabled(checked)}
+                />
+              </div>
               <div className="settings-tabs" role="radiogroup" aria-label="Preset">
                 {PRESETS.map((entry) => (
                   <button

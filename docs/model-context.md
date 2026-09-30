@@ -78,8 +78,9 @@ On coding-related turns (regex-gated, or when the user names repo paths), Closed
 `closedai.workspace.ledger` (`kind: untrusted`): host-verified paths from the current project
 with content hashes, stale markers after re-read, and path hints from the prompt. The host fills
 the ledger from completed `fileChange` rows and successful `test:one` commands in the transcript;
-models must still re-read before citing semantics. Disable injection for A/B runs with app setting
-`chatWorkspaceLedgerEnabled: false` (default on).
+models must still re-read before citing semantics. Disable injection for A/B runs in **Tools &
+capabilities** (**Workspace ledger** switch), or set `chatWorkspaceLedgerEnabled: false` in
+`<userData>/app-settings.json` (default on). Takes effect on the next send; no restart required.
 
 Saved credentials are never put into turn context. When enabled, the credential tools expose
 masked metadata and scoped field reads; the registry redacts sensitive results from the Turn

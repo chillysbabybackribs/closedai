@@ -148,6 +148,7 @@ export type IpcInvokeChannels = {
   'tools:setEnabled': { args: [string, boolean]; result: void }
   'tools:setEnabledMany': { args: [ToolSwitch[]]; result: void }
   'tools:setChatToolSliceEnabled': { args: [boolean]; result: void }
+  'tools:setChatWorkspaceLedgerEnabled': { args: [boolean]; result: void }
   'models:manifest': { args: []; result: ModelManifest }
   'models:setEnabled': { args: [string, boolean]; result: void }
   'models:setEnabledMany': { args: [ModelSwitch[]]; result: void }
@@ -343,7 +344,8 @@ export const IPC = {
       clearTelemetry: 'tools:clearTelemetry',
       setEnabled: 'tools:setEnabled',
       setEnabledMany: 'tools:setEnabledMany',
-      setChatToolSliceEnabled: 'tools:setChatToolSliceEnabled'
+      setChatToolSliceEnabled: 'tools:setChatToolSliceEnabled',
+      setChatWorkspaceLedgerEnabled: 'tools:setChatWorkspaceLedgerEnabled'
     },
     models: {
       manifest: 'models:manifest',

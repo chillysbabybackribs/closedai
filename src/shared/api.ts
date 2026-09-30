@@ -261,6 +261,8 @@ export type ClosedaiApi = {
     setEnabledMany: (switches: import('./tools.js').ToolSwitch[]) => Promise<void>
     /** Codex task-slice catalog; takes effect on the next Codex send or thread rotation. */
     setChatToolSliceEnabled: (enabled: boolean) => Promise<void>
+    /** Host-verified workspace ledger on send; takes effect on the next message. */
+    setChatWorkspaceLedgerEnabled: (enabled: boolean) => Promise<void>
     onEvent: (listener: (event: ToolsEvent) => void) => Unsubscribe
   }
   /** Settings → Models: which catalog entries appear in the composer picker per connected provider. */
