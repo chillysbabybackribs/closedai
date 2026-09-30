@@ -89,6 +89,10 @@ same as checking the surface you changed—see [Application guide](docs/applicat
 **Workspace index:** when navigable files or IPC ownership change, run `npm run map` then
 `npm run map:check`.
 
+**Adding a test file:** run the new test, hygiene (unless dev/build covers it), and the workspace
+index commands above. Inspect untracked files separately: `git diff` and `git diff --check`
+omit them. Check a new file's whitespace with `git diff --no-index --check /dev/null path/to/file`.
+
 For real Chromium browser paths against the app's `HOME_URL`, run `npm run browser:live`.
 `npm test` and `npm run check` are for release preparation or an explicit request; see
 [AGENTS.md](AGENTS.md).

@@ -56,6 +56,9 @@ The session guide (`closedai.guide`, `kind: application`) is separate from hando
 routing, trust boundaries, recency expectations for external facts, and the default verification
 guidance, including build/reload/restart boundaries and verification of the actual target surface.
 Verification is proportional to the change and reuses valid results from the current work.
+Repository navigation starts with filenames and scoped content searches; `.rgignore` excludes
+generated workspace maps from default searches. The guide also calls out checks for new test
+modules, map regeneration, and separate inspection and whitespace checks for untracked files.
 Hygiene blocks dependency-layer violations; file sizes are advisory and leave structural choices
 to the implementing model. Size-only growth requires no extra check or approval.
 It is attached once per provider thread (including the first send after a handoff to a new thread), omitted on later turns in the same thread, and stripped from the user-visible transcript

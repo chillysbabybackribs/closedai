@@ -49,7 +49,7 @@
         "src/main/ orchestration and tools; src/preload/ IPC bridge; src/shared/ cross-process types; src/renderer/ product UI; src/components/ui/ presentation primitives.",
         "Tests live beside the module they cover. Feature styles: src/renderer/styles/<feature>/.",
         "Interactive controls use data-ui ids from src/shared/ui-controls.ts (manifest), not renderer source trawling.",
-        "The generated workspace index is for map:check maintenance only; it is not injected into chat context."
+        "Find candidate filenames first (rg --files -g), then search content in the relevant directory. Generated workspace maps are maintenance data, not injected context; .rgignore excludes them from default searches. Pass an explicit file path to inspect them."
       ]
     },
     {
@@ -74,6 +74,7 @@
         "Tier 4 \u2014 Verify renderer behavior in the real Electron app; see docs/application.md for build/reload ownership. A successful build or preview command alone is not visual verification.",
         "Checkout preview runs built out/ files. After a successful build, preview -- --skipBuild avoids building twice. Renderer-only rebuilds auto-reload after settling only when the main bundle matches the running process. Changed main-process code requires an app restart; preload changes also require a restart for verification. Dev uses renderer hot reload. Starting another preview is not evidence that the existing app loaded new code; check the actual target surface and report a pending restart when needed.",
         "Tier 5 \u2014 npm test or npm run check only for release preparation or an explicit user request. Full gates are not the default success criterion.",
+        "Adding a test file: run it, hygiene (unless dev/build covers it), then npm run map and npm run map:check. Inspect untracked files separately; git diff and git diff --check omit them. Check new-file whitespace with git diff --no-index --check /dev/null path/to/file.",
         "Command: npm run test:one -- src/path/to/module.test.ts",
         "Heavy build/verify: provider shells auto-wrap npm via scripts/closedai-bin when chatWorkLockEnabled (default on); manual: node scripts/work-lock.mjs --cwd <path> -- <command\u2026> (.closedai/work.lock)."
       ]

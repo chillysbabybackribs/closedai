@@ -39,6 +39,9 @@ Prefer a feature directory once a concern needs three or more files. Keep tests 
 Use native file search and read tools to navigate this repository. Tests sit beside their modules;
 feature stylesheets live under `src/renderer/styles/<feature>/`. The generated index is a maintenance
 artifact, not injected model context or a replacement for native file tools.
+Find candidate filenames first (`rg --files -g '*name*'`), then search content in the relevant
+directory. `.rgignore` excludes generated workspace maps from default searches; pass an explicit
+file path when inspecting them.
 
 ## Visual concept work
 
@@ -91,6 +94,10 @@ the structural choice in the normal change summary; no separate report or extra 
   `npm run typecheck` when shared types or cross-layer contracts change, not after every micro-edit.
 - Run `npm run hygiene` when changing imports, module structure, or the gate itself, unless the
   same work will be checked by `npm run dev` or `npm run build`. Size-only growth needs no extra check.
+- Adding a co-located test: run that test, run hygiene for the new module/imports (unless dev/build
+  covers it), and run `npm run map` then `npm run map:check`. Inspect untracked files separately;
+  ordinary `git diff` and `git diff --check` omit them. For a new file, use
+  `git diff --no-index --check /dev/null path/to/file` to check whitespace without staging it.
 - Choose the smallest meaningful verification set and run it once per logical edit batch. Reuse
   valid results from the current work; repeat only when relevant edits, failures, or new evidence
   justify it. Docs-only and comment-only changes need no code tests or typecheck.

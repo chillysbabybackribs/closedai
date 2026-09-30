@@ -9,13 +9,21 @@
 /* Capsule material, shared with the agent strip and the sent user message so the draft and its
    bubble read as one object before and after sending. Theme tokens keep it right on warm paper. */
 .chat-pane {
-  --capsule-fill: color-mix(in srgb, var(--antigravity-card-bg, #262626) 74%, transparent);
-  --capsule-edge: color-mix(in srgb, var(--foreground) 11%, transparent);
-  --capsule-sheen: color-mix(in srgb, var(--foreground) 7%, transparent);
-  --capsule-shadow: 0 1px 2px rgb(0 0 0 / 28%), 0 14px 34px rgb(0 0 0 / 32%);
-  --capsule-radius: 20px;
   /* The one colour in the chat (Send, focus): the wallpaper's hue while a backdrop is on. */
   --composer-accent: var(--backdrop-accent, var(--tab-accent, #8ab4f8));
+  /* The fill carries a breath of the accent so the capsule belongs to the theme (or the
+     wallpaper) rather than reading as a grey card; glass.css thins it over a backdrop. */
+  --capsule-fill: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--antigravity-card-bg, #262626) 93%, var(--composer-accent)) 72%,
+    transparent
+  );
+  --capsule-edge: color-mix(in srgb, color-mix(in srgb, var(--foreground) 75%, var(--composer-accent)) 13%, transparent);
+  --capsule-sheen: color-mix(in srgb, var(--foreground) 8%, transparent);
+  /* A soft light falling from the top edge, layered over the fill. */
+  --capsule-wash: linear-gradient(180deg, color-mix(in srgb, var(--foreground) 4%, transparent), transparent 70%);
+  --capsule-shadow: 0 1px 2px rgb(0 0 0 / 28%), 0 14px 34px rgb(0 0 0 / 32%);
+  --capsule-radius: 20px;
 }
 
 /* The dock layer: absolutely placed over the scroller, which pads its end by the dock's height
@@ -60,7 +68,7 @@
   overflow: hidden;
   border: 1px solid var(--capsule-edge);
   border-radius: var(--capsule-radius);
-  background: var(--capsule-fill);
+  background: var(--capsule-wash), var(--capsule-fill);
   box-shadow: inset 0 1px 0 var(--capsule-sheen), var(--capsule-shadow);
   backdrop-filter: blur(22px) saturate(1.5);
   transition: border-color 140ms ease, box-shadow 140ms ease;

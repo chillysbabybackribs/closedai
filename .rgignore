@@ -1,0 +1,3 @@
+# Generated maintenance data; pass its explicit path to rg when needed.
+/src/main/tools/workspace/workspace-index.generated.ts
+/src/main/tools/workspace/workspace-control-families.generated.ts

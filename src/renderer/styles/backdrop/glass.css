@@ -115,6 +115,16 @@
 :root[data-backdrop] .chat-layout-tile[data-pane-id] .chat-pane,
 :root[data-backdrop] .chat-layout-tile[data-pane-id] .chat-turn-user { background: transparent; }
 
+/* Over a backdrop the capsule material (composer, sent message, agent strip) turns to tinted
+   glass: the glass ink at low opacity, warmed by the wallpaper's hue, with an accent-tinted rim,
+   so the chat's glass body and the composer's live blur show through instead of a grey card. */
+:root[data-backdrop] .chat-pane {
+  --capsule-fill: color-mix(in srgb, var(--composer-accent) 8%, rgb(var(--glass-ink) / 30%));
+  --capsule-edge: color-mix(in srgb, var(--composer-accent) 20%, rgb(255 255 255 / 9%));
+  --capsule-sheen: rgb(255 255 255 / 11%);
+  --capsule-wash: linear-gradient(180deg, rgb(255 255 255 / 5%), transparent 65%);
+}
+
 /* Overview frosts the whole desktop behind the space miniatures, as the OS does for its own. */
 :root[data-backdrop] .spaces-stage[data-spaces-overview] {
   background:
