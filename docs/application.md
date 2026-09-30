@@ -995,7 +995,7 @@ padding, so no native browser view ever covers it. It slides up over the workspa
 While it is up it counts as an overlay (`data-slot="app-dock"`, whose `data-state` stays `open`
 until the slide down ends), so a browser it covers shows its still. The Dock settings
 **Keep visible** switch (`dock.keep-visible`) keeps it up and gives it its own row: the workspace's
-bottom padding grows past the dock's reach (including magnified tiles), so the page stays live. **Magnify icons** (`dock.magnify`)
+bottom padding becomes the rail's height (44 px), so every tile ends at the rail and the tray icons standing above it overlay whatever is under them. **Magnify icons** (`dock.magnify`)
 turns off the tray's magnification. Both are saved in localStorage (`closedai.dock.v1`). The dock
 reads the spaces it navigates through `SpacesStage`'s `dock` render prop, so it exists only where
 the overview does: in the main window, once a chat is selected.

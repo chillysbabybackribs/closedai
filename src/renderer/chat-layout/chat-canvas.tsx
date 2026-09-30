@@ -312,7 +312,8 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
   }
 
   return <>
-  <div className="chat-layout-viewport" ref={viewport} onContextMenu={openBackdropMenu}>
+  <div className="chat-layout-viewport" ref={viewport} onContextMenu={openBackdropMenu}
+    style={dockClear ? { paddingBottom: dockClear } : undefined}>
     <div className="chat-layout-canvas" ref={canvasRef} style={{ minWidth: minimum.width, minHeight: minimum.height }}
       onContextMenu={openBackdropMenu}
       // The shell's Escape handler leaves a drag in progress to the cancel listener above.

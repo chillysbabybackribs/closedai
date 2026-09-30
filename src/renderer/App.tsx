@@ -26,8 +26,8 @@ import { SpacesStage, type SpacesDockNav, type SpacesHandle } from './spaces/spa
 import { AppDock } from './dock/app-dock.js'
 import { ProviderUsage } from './provider-usage/provider-usage.js'
 import { TitlebarRail } from './rail/titlebar-rail.js'
-import { DockClearanceContext, dockClearance } from './dock/dock-clearance.js'
-import { DOCK_RESERVE, readDockPrefs, saveDockPrefs, type DockPrefs } from './dock/dock-model.js'
+import { DockClearanceContext } from './dock/dock-clearance.js'
+import { DOCK_HEIGHT, readDockPrefs, saveDockPrefs, type DockPrefs } from './dock/dock-model.js'
 import type { LayoutPreset } from './chat-layout/layout-presets.js'
 import type { AgentRunStartOptions } from '../shared/agent-runs.js'
 import type { AppDockProps } from './dock/app-dock.js'
@@ -358,7 +358,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
           <button type="button" className="shell-alert-dismiss" data-ui="shell.alert-dismiss" onClick={() => setShellError(null)}>Dismiss</button>
         </div>
       )}
-      <DockClearanceContext.Provider value={dockPinned ? dockClearance(DOCK_RESERVE) : 0}>
+      <DockClearanceContext.Provider value={dockPinned ? DOCK_HEIGHT : 0}>
       <div className="workspace" data-mode="chat">
         {!chat.selectedPaneId && <AppStartup connection={chat.state.connection} onRetry={chat.retryStartup} />}
         {chat.selectedPaneId && !projectElsewhere && <SpacesStage ref={spacesRef} enabled={appWindow().main}

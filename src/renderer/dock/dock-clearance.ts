@@ -1,13 +1,8 @@
 import { createContext } from 'react'
-import { REVEAL_EDGE } from './dock-model.js'
 
 /**
- * How far the workspace stops above its floor while the dock is pinned, or 0. The viewport pads
- * its bottom by this, so every tile (the native browser page included) ends above the resting tiles.
+ * The bottom padding, in px, the workspace keeps while the dock is pinned, or 0: the rail's height.
+ * Every tile (the native browser page included) ends above the rail; the icons standing above it
+ * overlay whatever is under them.
  */
 export const DockClearanceContext = createContext(0)
-
-/** The dock's reserve less the workspace's own bottom padding, which is already clear of it. */
-export function dockClearance(reserve: number): number {
-  return Math.max(0, reserve - REVEAL_EDGE)
-}
