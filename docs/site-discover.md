@@ -79,7 +79,11 @@ navigate/interaction, then **`apis`** with the same `tab_id`.
 ### Output
 
 `installed`, `pageUrl`, `origin`, `channelCounts`, **`endpoints`** (method, resolvedUrl, count,
-channels, lastAtMs), **`frames`**, deterministic **`hints`**, and `message` when no recorder.
+channels, lastAtMs, optional urlMayBeTruncated), **`frames`**, deterministic **`hints`**, and
+`message` when no recorder. Counts reflect the retained recorder sample, not total wire traffic;
+distinct and recent are overlapping views and are counted once. Labels at the recorder’s
+200-character cap are conservatively flagged and must be resolved against full network request
+URLs before fetching. `channelCounts` can exceed the sample when the ring has dropped events.
 
 ## Implementation
 

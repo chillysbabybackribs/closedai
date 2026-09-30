@@ -31,7 +31,7 @@ test('search grounding hint when answers or snippet-only results', () => {
 })
 
 test('attachSearchGroundingHint adds hint only when needed', () => {
-  const bare = { query: 'q', results: [] as const, answers: [] as const }
+  const bare = { query: 'q', results: [], answers: [] }
   assert.deepEqual(attachSearchGroundingHint(bare, bare), bare)
   const withHint = attachSearchGroundingHint(bare, { ...bare, answers: [{ provider: 'you', text: 'a' }] })
   assert.match(withHint.groundingHint ?? '', /embedded_browser\.session/)

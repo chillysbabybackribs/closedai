@@ -1,6 +1,6 @@
 import { defineActionTool } from '../../action-tool.js'
 import { numberArg, stringArg, textResult, type JsonObject, type ToolDefinition } from '../../tool.js'
-import type { ResearchSnapshot } from '../../../shared/web-research.js'
+import type { ResearchSnapshot } from '../../../../shared/web-research.js'
 import type { SearchRequest } from '../types.js'
 import { attachResearchGroundingHint } from '../grounding-hints.js'
 import { ResearchService } from './service.js'
