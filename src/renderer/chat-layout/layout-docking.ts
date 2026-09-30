@@ -32,9 +32,7 @@ export function setGroupDocked(tree: ChatLayout, id: string, docked: boolean): C
   const groups = layoutGroups(tree)
   const group = groups.find((item) => (item.tabs ?? [item.id]).includes(id))
   if (!group || Boolean(group.docked) === docked) return tree
-  // Always keep an actual chat visible, even when other tiles show only views.
-  if (docked && (expandedPaneIds(tree).length <= 1 || (!isViewTabId(group.id)
-    && groups.filter((item) => !item.docked && !isViewTabId(item.id)).length <= 1))) return tree
+  // Every window may minimize, leaving only the wallpaper, header and dock.
   const used = new Set(groups.map((item) => item.dockNumber))
   let number = 1
   while (used.has(number)) number++

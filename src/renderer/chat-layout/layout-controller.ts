@@ -43,7 +43,7 @@ export function useChatLayout(
       selectedPaneId: snapshot.selectedPaneId, detached: !self.main, initialTabs: self.initialTabs,
       fallbackView: () => viewTabId('history', crypto.randomUUID())
     })
-    return { ...saved, tree: withBrowser(ensureExpandedGroup(tree)) }
+    return { ...saved, tree: withBrowser(tree) }
   })
   // Objects rather than strings: repeating the same message restarts its dismissal timer.
   const [error, setError] = useState<{ text: string } | null>(null)

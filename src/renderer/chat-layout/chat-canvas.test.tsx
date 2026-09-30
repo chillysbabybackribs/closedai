@@ -231,5 +231,5 @@ test('ChatCanvas lifts a floating window above the tiles, with resize grips, and
   const minimized: ChatLayout = { ...multiPaneTree, second: { kind: 'pane', id: 'pane-b', docked: true, dockNumber: 1 } }
   const hidden = renderToStaticMarkup(createElement(ChatCanvas, { ...props, tree: minimized }))
   assert.match(hidden, /data-pane-id="pane-b" data-window="hidden"[^>]*hidden=""/)
-  assert.match(hidden, /data-ui="layout\.window-minimize" data-ui-key="pane-a" disabled/, 'the last visible chat stays')
+  assert.doesNotMatch(hidden, /data-ui="layout\.window-minimize" data-ui-key="pane-a" disabled/, 'the last visible chat may minimize')
 })

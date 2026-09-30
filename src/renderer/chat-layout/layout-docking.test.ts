@@ -36,8 +36,8 @@ test('a fully minimized side remains restorable', () => {
   docked = setGroupDocked(docked, 'b', true)
   assert.deepEqual(layoutGeometry(removePane(docked, BROWSER_PANE_ID)!, 1800, 900).panes.map((item) => item.id), ['c', 'd'])
   docked = setGroupDocked(docked, 'c', true)
-  assert.equal(setGroupDocked(docked, 'd', true), docked)
   assert.deepEqual(expandedPaneIds(docked), ['d'])
+  assert.deepEqual(expandedPaneIds(setGroupDocked(docked, 'd', true)), [])
 })
 
 test('selecting a minimized sibling restores the whole window; archive cannot strand the dock', () => {
@@ -58,7 +58,7 @@ test('minimizing preserves saved group labels, membership and divider ratios', (
   assert.deepEqual(twice, docked)
 })
 
-test('a view-only tile cannot allow the final visible chat to be docked', () => {
+test('the final visible chat can be docked, leaving only the dock', () => {
   const chatAndView = split('pair', pane('a'), pane('closedai:view:tools:x'))
-  assert.equal(setGroupDocked(chatAndView, 'a', true), chatAndView)
+  assert.equal(setGroupDocked(chatAndView, 'a', true) === chatAndView, false)
 })

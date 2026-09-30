@@ -63,7 +63,7 @@ test('minimize keeps the window in place until it is restored, never the last ch
   const minimized = minimizeWindow(floated, 'a2')
   assert.equal(floatingWindows(minimized).length, 0)
   assert.deepEqual(chatPaneIds(minimized), ['b'])
-  assert.equal(minimizeWindow(minimized, 'b'), minimized, 'the last visible chat stays')
+  assert.deepEqual(chatPaneIds(minimizeWindow(minimized, 'b')), [], 'the last visible chat may minimize too')
   assert.equal(minimizeWindow(three, BROWSER_PANE_ID), three)
   const restored = restoreWindow(minimized, 'a2')
   assert.deepEqual(findWindow(restored, 'a')?.float, { ...rect, z: 1 })
