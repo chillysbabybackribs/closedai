@@ -1,4 +1,4 @@
-import type { ChatProvider, ChatSnapshot, ChatTranscriptItem } from './chat.js'
+import type { ChatAccount, ChatConnection, ChatPlanUsage, ChatProvider, ChatSnapshot, ChatTranscriptItem } from './chat.js'
 import type { QuickChatSurface } from './quick-chat-overlay.js'
 
 export type ChatPaneId = string
@@ -27,6 +27,8 @@ export type ChatPeerSummary = {
   kind: ChatPeerKind
   provider: ChatProvider
   modelId: string | null
+  /** Latest live provider telemetry; absent for saved chats without a runtime. */
+  providerUsage?: { usage: ChatPlanUsage | null; account: ChatAccount | null; connection: ChatConnection }
   threadId: string | null
   title: string
   preview: string

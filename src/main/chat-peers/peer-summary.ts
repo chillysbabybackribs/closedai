@@ -75,7 +75,13 @@ export class PeerSummaryCache {
       summary = summaryOf(this.paneId, event.snapshot, updatedAt, this.record)
       this.setLatest(latestReadable(event.snapshot.items))
     } else if (event.type === 'connection') {
-      summary = { ...summary, provider: event.provider, modelId: event.selectedModel ?? this.record.modelId }
+      const sameAccount = summary.provider === event.provider
+        && JSON.stringify(summary.providerUsage?.account ?? null) === JSON.stringify(event.account)
+      summary = { ...summary, provider: event.provider, modelId: event.selectedModel ?? this.record.modelId,
+        providerUsage: { usage: sameAccount ? summary.providerUsage?.usage ?? null : null,
+          account: event.account, connection: event.connection } }
+    } else if (event.type === 'planUsage' && summary.providerUsage) {
+      summary = { ...summary, providerUsage: { ...summary.providerUsage, usage: event.usage } }
     } else if (event.type === 'model') {
       summary = { ...summary, modelId: event.selectedModel }
     } else if (event.type === 'thread') {
@@ -193,6 +199,7 @@ export function summaryOf(
     parentPaneId: record.parentChatId,
     kind: 'peer',
     provider: snapshot.provider,
+    providerUsage: { usage: snapshot.planUsage, account: snapshot.account, connection: snapshot.connection },
     modelId: snapshot.selectedModel ?? record.modelId,
     threadId: snapshot.threadId ?? record.threadId,
     title: paneTitle(snapshot, record),

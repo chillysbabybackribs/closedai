@@ -161,7 +161,7 @@ export type ChatThreadContent = {
 export type ChatContextUsage = {
   usedTokens: number
   contextWindow: number
-  /** 0–100, rounded. */
+  /** Percent used, 0–100, rounded. */
   percent: number
 }
 
@@ -169,10 +169,12 @@ export type ChatContextUsage = {
 export type ChatPlanUsageWindow = {
   /** How the provider names the window: '5-hour', 'Weekly', 'Weekly (Opus)'. */
   label: string
-  /** 0–100, rounded. */
+  /** Percent used, 0–100, rounded. */
   percent: number
   /** Epoch ms the window rolls over, when the provider says. */
   resetsAt: number | null
+  /** Per-window observation time when a partial update can leave other windows older. */
+  updatedAt?: number
 }
 
 /**

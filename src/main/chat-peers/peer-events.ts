@@ -187,7 +187,7 @@ export function chatRowSummariesEqual(left: ChatRowSummary[], right: ChatRowSumm
       || a.parentPaneId !== b.parentPaneId || a.kind !== b.kind || a.paused !== b.paused
       || a.activity !== b.activity || a.cwd !== b.cwd || a.projectPath !== b.projectPath
       || a.createdAt !== b.createdAt || a.lastTurnEndedAt !== b.lastTurnEndedAt
-      || a.quickChatSurface !== b.quickChatSurface) return false
+      || a.quickChatSurface !== b.quickChatSurface || a.providerUsage !== b.providerUsage) return false
     if (!pendingProjectEqual(a.pendingProject, b.pendingProject)) return false
     if (!continuedFromEqual(a.continuedFrom, b.continuedFrom)) return false
   }

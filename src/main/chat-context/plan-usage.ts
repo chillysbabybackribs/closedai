@@ -138,11 +138,11 @@ export function applyPlanUsageSignal(
   signal: ClaudeRateLimitSignal,
   now = Date.now()
 ): ChatPlanUsage {
-  const window: ChatPlanUsageWindow = { label: signal.label, percent: signal.percent, resetsAt: signal.resetsAt }
+  const window: ChatPlanUsageWindow = { label: signal.label, percent: signal.percent, resetsAt: signal.resetsAt, updatedAt: now }
   if (!current) return { plan: null, windows: [window], note: null, unavailable: null, updatedAt: now }
   const windows = current.windows.some((entry) => entry.label === signal.label)
-    ? current.windows.map((entry) => (entry.label === signal.label ? window : entry))
-    : [...current.windows, window]
+    ? current.windows.map((entry) => (entry.label === signal.label ? window : { ...entry, updatedAt: entry.updatedAt ?? current.updatedAt }))
+    : [...current.windows.map((entry) => ({ ...entry, updatedAt: entry.updatedAt ?? current.updatedAt })), window]
   return { ...current, windows, unavailable: null, updatedAt: now }
 }
 
