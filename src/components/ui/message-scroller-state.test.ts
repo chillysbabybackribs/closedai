@@ -143,3 +143,12 @@ test('prompt anchoring is opt-in and does not leak into bottom-following mode', 
     ...bottomFollowing, autoScroll: false, following: false, newAnchor: true
   }), 'none')
 })
+
+test('streaming growth re-anchors a pinned prompt instead of snapping to the transcript bottom', () => {
+  assert.equal(resizeScrollAction({
+    ...bottomFollowing,
+    anchorMode: true,
+    anchored: true,
+    following: false
+  }), 'anchor')
+})
