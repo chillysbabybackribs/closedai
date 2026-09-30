@@ -172,9 +172,9 @@ export function useTitlebarBrowserFreeze(omniboxCoversPage = false): {
     }
     // Overlays mount inside the browser shell or directly under <body>, so the watch has to cover
     // the whole body. A streaming transcript mutates that subtree many times a frame, and each
-    // `sync` measures every overlay, so the records of one frame collapse into a single scan.
-    // The scan itself is still synchronous with the frame, before paint: an overlay that opened
-    // is covered by the still on the same frame it would have painted over the native page.
+    // `sync` measures every overlay, so the records of one frame collapse into a single scan on
+    // the next animation frame. The still already arrives a capture round-trip after the overlay
+    // opens (or from a primed shot), so one frame of scheduling does not change what is seen.
     let scanFrame = 0
     const scheduleSync = (): void => {
       if (scanFrame) return

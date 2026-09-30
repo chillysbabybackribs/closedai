@@ -182,6 +182,21 @@ export function SpacesStage({ enabled, workspace, chats, selectedPaneId, childre
     return counts
   }, [chats, spaces, zoomed])
 
+  // The stage re-renders for every streamed chunk (its live child is the workspace). The dock
+  // element is built once per nav or dock change, so React reuses it and the dock's subtree does
+  // not reconcile while a transcript streams.
+  const stepNav = useCallback((delta: -1 | 1) => { void step(delta) }, [step])
+  const dockNav = useMemo<SpacesDockNav>(() => ({
+    overview: phase === 'overview',
+    moving: phase !== 'space' && phase !== 'overview',
+    spaceName: current.name,
+    canBack: edges.back,
+    canForward: edges.forward,
+    toggleOverview: toggle,
+    step: stepNav
+  }), [phase, current.name, edges.back, edges.forward, toggle, stepNav])
+  const dockNode = useMemo(() => dock?.(dockNav), [dock, dockNav])
+
   if (!enabled) return <div className="spaces-stage">{children({ browserHeld: false })}</div>
   const currentIndex = spaces.findIndex((space) => space.id === current.id)
   const currentSlot = slots[currentIndex]
@@ -190,15 +205,6 @@ export function SpacesStage({ enabled, workspace, chats, selectedPaneId, childre
   const liveStyle: CSSProperties | undefined = zoomed && currentSlot
     ? { transform: liveTransform(camera, currentSlot, size), transition }
     : undefined
-  const dockNav: SpacesDockNav = {
-    overview: phase === 'overview',
-    moving: phase !== 'space' && phase !== 'overview',
-    spaceName: current.name,
-    canBack: edges.back,
-    canForward: edges.forward,
-    toggleOverview: toggle,
-    step: (delta) => { void step(delta) }
-  }
   return <><div ref={stageRef} className="spaces-stage" data-spaces-overview={phase === 'space' ? undefined : phase}>
     <div className="spaces-live" style={liveStyle} inert={phase !== 'space'}
       data-native-bounds-hold={zoomed ? '' : undefined}>
@@ -236,5 +242,5 @@ export function SpacesStage({ enabled, workspace, chats, selectedPaneId, childre
       </button>}
     </div>}
     {nav.error && zoomed && <div className="spaces-error" role="alert">{nav.error}</div>}
-  </div>{dock?.(dockNav)}</>
+  </div>{dockNode}</>
 }

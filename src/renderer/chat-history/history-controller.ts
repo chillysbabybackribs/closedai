@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import type { ChatController } from '../chat-controller.js'
 import { historyErrorMessage } from './history-format.js'
@@ -112,22 +112,25 @@ export function useHistoryController(
   }, [reviewQueue])
 
   /** Open a chat by id; the main process decides whether it takes the blank selected pane or opens beside it. */
+  // Keyed on the controller fields used, not the controller: it is rebuilt for every streamed
+  // chunk, and a new controller here would hand the title bar and dock new callbacks each time.
+  const { selectedPaneId, openChat, newThread, archiveChat, interruptPane: pauseRow, resumePane: resumeRow } = chat
   const openRow = useCallback(async (chatId: string) => {
-    if (chatId === chat.selectedPaneId) return
+    if (chatId === selectedPaneId) return
     if (openInWorkspace) await openInWorkspace(chatId)
-    else await chat.openChat(chatId)
-  }, [chat, openInWorkspace])
+    else await openChat(chatId)
+  }, [selectedPaneId, openChat, openInWorkspace])
 
   const newChat = useCallback(() => {
-    chat.newThread().catch(reportError)
-  }, [chat, reportError])
+    newThread().catch(reportError)
+  }, [newThread, reportError])
 
   const deleteRow = useCallback(async (chatId: string) => {
-    await chat.archiveChat(chatId)
-  }, [chat])
+    await archiveChat(chatId)
+  }, [archiveChat])
 
-  return { reviewQueue, openRow, deleteRow, pauseRow: chat.interruptPane,
-    resumeRow: chat.resumePane, newChat, refreshChats, error, reportError }
+  return useMemo(() => ({ reviewQueue, openRow, deleteRow, pauseRow, resumeRow, newChat, refreshChats, error, reportError }),
+    [reviewQueue, openRow, deleteRow, pauseRow, resumeRow, newChat, refreshChats, error, reportError])
 }
 
 export type HistoryController = ReturnType<typeof useHistoryController>

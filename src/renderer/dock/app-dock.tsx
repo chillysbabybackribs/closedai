@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type JSX } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react'
 import { ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-react'
 import { Button } from '../../components/ui/button.js'
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover.js'
@@ -54,7 +54,7 @@ export type AppDockProps = {
  * Centre: Start and the app tray. Right: dock settings (layout options live in that popover). It hides until the pointer
  * reaches the bottom edge unless Keep visible is on.
  */
-export function AppDock({ menu, nav, chats, chatTitle, browserVisible, prefs, onPrefsChange, onLaunch, onOpenSite, onAllSavedSites, minimized, onRestoreWindow, canTile, onTileWindows, onApplyPreset, onOpenLayouts, onOpenChat, startServices }: AppDockProps): JSX.Element {
+export const AppDock = memo(function AppDock({ menu, nav, chats, chatTitle, browserVisible, prefs, onPrefsChange, onLaunch, onOpenSite, onAllSavedSites, minimized, onRestoreWindow, canTile, onTileWindows, onApplyPreset, onOpenLayouts, onOpenChat, startServices }: AppDockProps): JSX.Element {
   const [openList, setOpenList] = useState<TrayAppId | 'settings' | 'start' | 'usage' | null>(null)
   const [keyboard, setKeyboard] = useState(false)
   // Start opens on its home every time; a screen is where one visit went, not a preference.
@@ -80,6 +80,7 @@ export function AppDock({ menu, nav, chats, chatTitle, browserVisible, prefs, on
     return () => observer.disconnect()
   }, [tray])
 
+  const onUsageOpenChange = useCallback((open: boolean) => setOpenList(open ? 'usage' : null), [])
   const runs = useAgentRuns()
   const downloads = useBrowserDownloadsController().downloads
   const savedSites = useSavedSitesList(true)
@@ -150,7 +151,7 @@ export function AppDock({ menu, nav, chats, chatTitle, browserVisible, prefs, on
           </PopoverContent>
         </Popover>
         <div className="provider-usage-rail" style={{ right: `calc(50% + ${trayWidth / 2 + 14}px)` }}>
-          <ProviderUsage chats={chats} visible={shown} open={openList === 'usage'} onOpenChange={(open) => setOpenList(open ? 'usage' : null)} />
+          <ProviderUsage chats={chats} visible={shown} open={openList === 'usage'} onOpenChange={onUsageOpenChange} />
         </div>
         <div>
           {/* Dock lists do not hand focus back on close: the button's tooltip would reopen over the page. */}
@@ -181,7 +182,7 @@ export function AppDock({ menu, nav, chats, chatTitle, browserVisible, prefs, on
       </div>
     </div>
   </TooltipProvider>
-}
+})
 
 function DockIconButton({ control, label, detail, disabled, onClick, children }: {
   control: string; label: string; detail?: string; disabled: boolean; onClick: () => void; children: JSX.Element

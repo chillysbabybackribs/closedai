@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useRef, useState, type JSX } from 'react'
+import { memo, Fragment, useCallback, useEffect, useRef, useState, type JSX } from 'react'
 import { CircleAlert, Clock3, Gauge, RefreshCw } from 'lucide-react'
 import { Badge } from '../../components/ui/badge.js'
 import { Button } from '../../components/ui/button.js'
@@ -14,7 +14,7 @@ import { providerUsageEntries, usageChipDisplay, usageWindowState, type Provider
 
 const WARNING_LEVELS = ['low', 'critical', 'exhausted']
 
-export function ProviderUsage({ chats, open, onOpenChange }: {
+export const ProviderUsage = memo(function ProviderUsage({ chats, open, onOpenChange }: {
   chats: readonly ChatRowSummary[]; visible: boolean; open: boolean; onOpenChange: (open: boolean) => void
 }): JSX.Element | null {
   const [readings, setReadings] = useState<ProviderUsageSnapshot[]>([])
@@ -108,7 +108,7 @@ export function ProviderUsage({ chats, open, onOpenChange }: {
       </PopoverContent>
     </Popover>
   </div>
-}
+})
 
 function ProviderUsageDetail({ entry, now, refreshProvider }: { entry: ProviderUsageEntry; now: number; refreshProvider: (provider: ChatProvider) => Promise<void> }): JSX.Element {
   const [refreshing, setRefreshing] = useState(false)

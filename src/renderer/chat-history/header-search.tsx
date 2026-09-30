@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type JSX, type RefObject } from 'react'
+import { memo, useCallback, useEffect, useRef, useState, type JSX, type RefObject } from 'react'
 import { Search, X } from 'lucide-react'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import type { HistoryController } from './history-controller.js'
@@ -16,7 +16,7 @@ type Phase = 'closed' | 'open' | 'closing'
  * what a click on the native browser view looks like from here). Nothing is inferred from pointer
  * position. Ranking and the keyboard cursor live in `useChatSearchList`, shared with Start.
  */
-export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
+export const HeaderChatSearch = memo(function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
   chats: ChatRowSummary[]
   controller: HistoryController
   inputRef: RefObject<HTMLInputElement | null>
@@ -146,4 +146,4 @@ export function HeaderChatSearch({ chats, controller, inputRef, onOpened }: {
     </div>}
     {controller.error && <div className="header-chat-search-error" role="alert">{controller.error}</div>}
   </div>
-}
+})
