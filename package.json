@@ -16,6 +16,7 @@
     "test:one": "node --experimental-transform-types --import ./scripts/ts-resolve-hook-register.mjs --test",
     "test": "node --experimental-transform-types --import ./scripts/ts-resolve-hook-register.mjs --test \"src/**/*.test.ts\" \"src/**/*.test.tsx\" --test-skip-pattern=\"\\.pilot\\.test\\.ts$\"",
     "test:pilot:workspace-ledger": "node --experimental-transform-types --import ./scripts/ts-resolve-hook-register.mjs --test \"src/main/chat-context/workspace-ledger-pilot/**/*.pilot.test.ts\"",
+    "harness:pilot:workspace-ledger": "npm run test:pilot:workspace-ledger",
     "guide:generate": "node scripts/agent-guide-generate.mjs --write",
     "guide:check": "node scripts/agent-guide-generate.mjs --check",
     "closure": "node scripts/closure-gate.mjs",

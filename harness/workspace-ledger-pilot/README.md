@@ -9,6 +9,10 @@ Experimental regex-gated `closedai.workspace.ledger` context. **Not** connected 
 npm run test:pilot:workspace-ledger
 ```
 
+Deterministic A/B cases live in `prompt-fixtures.json` (scroller-style read-only prompts, ledger
+on/off, browser false-positive guard). Pilot tests load those fixtures; no `harness:model` or live
+send required.
+
 Implementation: `src/main/chat-context/workspace-ledger-pilot/`.
 
 Main CI (`npm test`) skips `*.pilot.test.ts` files so this pilot does not collide with the default

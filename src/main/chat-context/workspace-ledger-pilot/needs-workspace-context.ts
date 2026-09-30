@@ -1,5 +1,7 @@
 // Regex gate for when to attach host-verified workspace ledger context (pilot).
 
+import { needsActiveBrowserContext } from '../turn-context.js'
+
 const WORKSPACE_CONTEXT_CUES = [
   /\b(?:fix|implement|refactor|debug|patch|add|update|remove|migrate)\b/i,
   /\b(?:test:one|typecheck|unit test|run tests|npm test)\b/i,
@@ -9,10 +11,20 @@ const WORKSPACE_CONTEXT_CUES = [
   /\b[\w.-]+\/[\w./-]+\.(?:ts|tsx|js|mjs)\b/i
 ] as const
 
+const REPO_WORK_CUES = [
+  /\b(?:repo|repository|codebase|code|module|helper|component|tests?|typecheck)\b/i,
+  /\bsrc\/[\w./-]+\.(?:ts|tsx|js|mjs)\b/i,
+  /\b(?:docs|scripts|harness)\/[\w./-]+\./i
+] as const
+
 /** True when attaching a bounded workspace ledger is likely worth the tokens. */
 export function needsWorkspaceContext(text: string): boolean {
   const trimmed = text.trim()
   if (!trimmed) return false
+  const browserOnly =
+    needsActiveBrowserContext(trimmed) &&
+    !REPO_WORK_CUES.some((cue) => cue.test(trimmed))
+  if (browserOnly) return false
   return WORKSPACE_CONTEXT_CUES.some((cue) => cue.test(trimmed))
 }
 

@@ -27,6 +27,7 @@ test('needsWorkspaceContext mirrors coding and audit cues without browser-only p
   assert.equal(needsWorkspaceContext('Read-only: assess the message scroller helper in this repo'), true)
   assert.equal(needsWorkspaceContext('What is the weather in Boston?'), false)
   assert.equal(needsWorkspaceContext('Open this link in a new tab'), false)
+  assert.equal(needsWorkspaceContext('Can you fix my browser tab? It keeps reloading.'), false)
 })
 
 test('extractPathHints collects repo-relative paths from the prompt', () => {

@@ -1,0 +1,69 @@
+{
+  "gateExpectations": [
+    {
+      "id": "scroller-readonly-audit",
+      "prompt": "Read-only: assess the message scroller helper in this repo. Which function decides resize scroll action when prepending?",
+      "attach": true
+    },
+    {
+      "id": "scroller-path-in-prompt",
+      "prompt": "Without editing, explain src/components/ui/message-scroller-state.ts branch order for prepending.",
+      "attach": true
+    },
+    {
+      "id": "continued-handoff",
+      "prompt": "Continue from the handoff and pick up the scroller precedence task.",
+      "attach": true
+    },
+    {
+      "id": "implement-test-gap",
+      "prompt": "Implement a unit test for prepending plus newAnchor without anchorMode in message-scroller-state.test.ts",
+      "attach": true
+    },
+    {
+      "id": "weather-unrelated",
+      "prompt": "What is the weather in Boston?",
+      "attach": false
+    },
+    {
+      "id": "browser-tab-false-positive",
+      "prompt": "Can you fix my browser tab? It keeps reloading.",
+      "attach": false
+    },
+    {
+      "id": "open-link-browser-only",
+      "prompt": "Open this link in a new tab",
+      "attach": false
+    },
+    {
+      "id": "path-only-no-cue-word",
+      "prompt": "Look at src/components/ui/message-scroller-context.tsx wiring only.",
+      "attach": true
+    }
+  ],
+  "abScenarios": [
+    {
+      "id": "ledger-on-scroller-continued",
+      "prompt": "Continue the scroller audit — re-check src/components/ui/message-scroller-state.ts",
+      "paths": [
+        "src/components/ui/message-scroller-state.ts",
+        "src/components/ui/message-scroller-context.tsx"
+      ],
+      "expectFreshCount": 2,
+      "expectStaleCount": 0
+    },
+    {
+      "id": "ledger-on-empty-store",
+      "prompt": "Refactor the message scroller helper precedence",
+      "paths": [],
+      "expectFreshCount": 0,
+      "expectStaleCount": 0
+    },
+    {
+      "id": "ledger-off-unrelated",
+      "prompt": "Write a short poem about autumn",
+      "paths": ["src/components/ui/message-scroller-state.ts"],
+      "expectContext": false
+    }
+  ]
+}

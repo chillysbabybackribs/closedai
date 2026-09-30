@@ -101,10 +101,18 @@ export async function buildWorkspaceLedgerAdditionalContext(input: {
     stale,
     pathHints
   }
-  let value = JSON.stringify(payload)
-  if (value.length > MAX_LEDGER_JSON_CHARS) {
-    const trimmed = { ...payload, fresh: fresh.slice(0, 8), stale: stale.slice(0, 4) }
-    value = JSON.stringify(trimmed)
+  let slimFresh = fresh
+  let slimStale = stale
+  let value = JSON.stringify({ ...payload, fresh: slimFresh, stale: slimStale })
+  while (value.length > MAX_LEDGER_JSON_CHARS && (slimFresh.length > 0 || slimStale.length > 0)) {
+    if (slimFresh.length >= slimStale.length && slimFresh.length > 0) {
+      slimFresh = slimFresh.slice(0, slimFresh.length - 1)
+    } else if (slimStale.length > 0) {
+      slimStale = slimStale.slice(0, slimStale.length - 1)
+    } else {
+      break
+    }
+    value = JSON.stringify({ ...payload, fresh: slimFresh, stale: slimStale })
   }
   return {
     [WORKSPACE_LEDGER_CONTEXT]: {
