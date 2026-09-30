@@ -11,50 +11,6 @@ names separately.
 Source review: 2026-09-23. See [Model context](model-context.md) for prompt delivery and
 [Application guide](application.md) for UI behavior the tools operate on.
 
-## Experimental repository retrieval
-
-Set `chatRepositoryRetrievalEnabled: true` in `<userData>/app-settings.json`, restart Electron,
-and start a fresh provider thread. Default is false. No UI toggle is added. Startup registration
-adds three deferred read-only tools for Codex, Claude Code and Antigravity. Cursor's MCP
-attachment excludes this experimental namespace; its execution guard also refuses Cursor calls.
-The project root is resolved from the calling pane, not a model-supplied cwd or global selection.
-Native search, editing, shell execution and web tools are unchanged.
-
-- `repository.locate`: up to eight meaningful query terms, live filename/text ranking, six
-  candidate paths with scores, match reasons, numbered excerpts and SHA-256 file hashes.
-  This is **lexical retrieval, not semantic embeddings or an ownership oracle**. It does not
-  consume the generated maintenance map or chat index. Follow callers/imports before editing.
-- `repository.search_many`: one to four independent concurrent rg searches. Literal,
-  case-insensitive by default; optional regex and project-relative scope. Up to twelve returned
-  matches and 2,800 match characters per query, four matches per file; long match text is
-  limited to 220 characters and marked when clipped.
-- `repository.read_many`: one to four concurrent project-relative text reads. Default 80-line
-  ranges, 2,800-character result budget per file, full-file hash, and explicit continuation when
-  bounded. Files over 1 MB, binary files, and paths/symlinks outside the project are refused.
-
-Search honors rg ignore rules and skips hidden files; explicit reads can name ignored files.
-rg is required on the host PATH. Calls pass literal argv (never shell strings), respect
-cancellation, use a 15-second subprocess limit and a 2 MB subprocess output limit. Oversized
-search output fails explicitly; narrow the scope rather than treating a failure as no matches.
-Batches preserve per-item errors. Results are current file evidence, not trusted instructions.
-Tool switches and normal registry tracing apply; no new persistent source index is stored.
-
-`npm run harness:retrieval -- --repetitions=3 --output=output/retrieval-benchmark.json` runs
-live paired trials for all three providers in disposable projects, preserving native tools.
-Optional `--providers=codex,claude,antigravity` and `--codex-model=...`, `--claude-model=...`,
-`--antigravity-model=...` pin the comparison. The two fixtures cover empty-window insertion
-and history ordering. A hidden behavior oracle checks captured file states every 100 ms,
-including preservation of non-target files. Time starts when the prompt is submitted; adapter
-startup before submission is excluded (Claude's lazy query startup remains included).
-Null time means no observed correct edit. Final correctness and errors are reported separately;
-model mismatch, missing model identity, or failed final behavior makes a pair incomparable.
-Availability and actual use of retrieval are separate fields. Arm order alternates per fixture
-and repetition. This is a small adapter pilot, not a production quality claim or full Electron
-A/B: guide, ledger and task slicing are absent in both arms. Antigravity uses unique temporary
-MCP registration names and removes only its own entries on normal completion; inherited user
-MCP configuration is not disabled. Antigravity uses one-shot print for these single-turn trials;
-production uses a persistent input stream. Force-killing the harness can leave registrations to remove.
-
 ## Native instrumentation
 
 `native_instrument.query` exposes read-only `capabilities`, `processes` and `operation` actions.

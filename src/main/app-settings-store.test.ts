@@ -240,13 +240,3 @@ test('handoff soft target is configurable, persists, and accepts zero without a 
   }
   assert.equal((await storeWith('{"chatHandoffTargetChars":"bad"}')).store.get().chatHandoffTargetChars, 24_000)
 })
-
-
-test('repository retrieval is opt-in and persists only a boolean true', async () => {
-  for (const value of [undefined, false, 'true', 1]) {
-    assert.equal((await storeWith(JSON.stringify({ chatRepositoryRetrievalEnabled: value }))).store.get().chatRepositoryRetrievalEnabled, false)
-  }
-  const { store, file } = await storeWith('{}')
-  await store.set({ chatRepositoryRetrievalEnabled: true })
-  assert.equal((await AppSettingsStore.open(file)).get().chatRepositoryRetrievalEnabled, true)
-})

@@ -133,11 +133,7 @@ Trace and persisted tool rows. The tool and security settings own their enforcem
 
 The registry supplies provider-neutral tool descriptions and schemas. Codex receives dynamic
 tool specifications, Claude receives in-process MCP servers, and Antigravity and Cursor receive
-HTTP MCP servers. Native file search, editing and command execution remain available. The opt-in
-`chatRepositoryRetrievalEnabled` startup flag additionally registers deferred `repository.locate`,
-`search_many` and `read_many` for Codex, Claude and Antigravity (not Cursor). These provide live
-lexical source retrieval; no source embeddings or maintenance map are injected. See
-[tool contracts and paired live pilot](tools.md#experimental-repository-retrieval). Some tools are
+HTTP MCP servers. File search and edits stay with each provider's native tools. Some tools are
 deferred where the provider supports discovery; see [Tools](tools.md#how-the-model-sees-it).
 On Codex, only a small eager set (typically `embedded_browser.page` and `closedai_app.state`)
 ships full schemas on every turn; tools such as `search.query`, `tool_batch.run`, and the browser

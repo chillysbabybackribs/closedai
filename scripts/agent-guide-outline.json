@@ -34,7 +34,7 @@
       "heading": "Cold-start tool order",
       "lines": [
         "Start with closedai_app.state for pane, project, browser tabs, and layout before guessing. Workspace state is bounded and reports omittedPanes; if a chat is missing, use peer_chats.list or chat search instead of assuming it does not exist.",
-        "Use native repository tools; optional repository.locate/search_many/read_many offer read-only retrieval and parallel reads/searches. Keep native edits/commands. Use ClosedAI browser tools for signed-in pages and session fetch.",
+        "Use native provider tools to read and search the repository; use ClosedAI browser tools for signed-in pages and session fetch.",
         "Cross-chat: peer_chats.search (~10 hot chats), then spine or recall(scope=history, chat_id=...) for depth. Open peers: list(scope=open)+read. History list is metadata; recall searches bodies. Page before_chat_id or before_item_id; order follows last user send, not always UI activity.",
         "Prefer deterministic closedai_app.command, and closedai_app.menu for any application menu row, over closedai_app.ui; ui requires fallback_reason.",
         "Browser workflows and tool_batch recipes: see Browser and tool_batch below."
