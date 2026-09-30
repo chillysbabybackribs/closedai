@@ -6,15 +6,12 @@ import { buildThreadHandoff } from './thread-handoff.js'
 // later). The app drops the provider conversation handle and injects a bounded transcript
 // summary on the next turn so the CLI starts fresh with smaller context.
 
-/** Upper bound on prose carried into a compaction seed; head/tail retention lives in handoff. */
-export const COMPACTION_TRANSCRIPT_LIMIT = 120_000
-
 export const COMPACTED_CONTEXT = 'closedai.chat.compacted'
 
 /** Digest for re-seeding a provider thread; null when the transcript has nothing to carry. */
-export function buildCompactionSeed(items: ChatTranscriptItem[], threadName: string | null): string | null {
+export function buildCompactionSeed(items: ChatTranscriptItem[], threadName: string | null, targetChars?: number): string | null {
   const handoff = buildThreadHandoff(items, threadName, null, {
-    maxChars: COMPACTION_TRANSCRIPT_LIMIT,
+    maxChars: targetChars,
     framing: 'compaction'
   })
   return handoff?.text ?? null

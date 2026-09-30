@@ -113,7 +113,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
         const record = store.require(id)
         await rememberChatProjects(settings, record, selection)
         if (this.projectChanges.selection(id) !== selection || this.lifecycle.get(id)?.surface !== surface) return
-        this.lifecycle.relocate(id, projectConversationPatch(record, source, selection), source)
+        this.lifecycle.relocate(id, projectConversationPatch(record, source, selection, settings.get().chatHandoffTargetChars), source)
         this.catalog.invalidate()
         await this.persistOpenChats()
         this.emitWorkspace()
@@ -125,6 +125,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
           text: `Could not change this chat’s directory: ${String(error)}` } } } satisfies ChatWorkspaceEvent)
     })
     this.projectSwitch = new DeferredProjectSwitch({
+      handoffTargetChars: () => settings.get().chatHandoffTargetChars,
       cwd: () => this.workspace().cwd,
       source: (id, full) => this.lifecycle.get(id)?.surface.snapshot(full ? undefined : { limit: 0 }) ?? null,
       record: (id) => this.store.get(id) ?? null,
@@ -438,6 +439,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   async continueInNewPeer(source: ChatContinuationSource, modelId: string | null): Promise<ChatPaneId> {
     this.projectSwitch.assertAvailable()
     return continuePeer({
+      handoffTargetChars: this.settings.get().chatHandoffTargetChars,
       current: () => this.lifecycle.require(this.selectedPaneId).surface.snapshot(),
       attached: (id) => !!this.lifecycle.get(id),
       snapshot: (id) => this.withAwake(id, async (surface) => surface.snapshot()),

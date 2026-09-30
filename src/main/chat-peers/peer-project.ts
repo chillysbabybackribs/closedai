@@ -72,9 +72,9 @@ export class PeerProjectChanges {
 }
 
 /** A fresh provider session receives the existing handoff in the new cwd; chat identity survives. */
-export function projectConversationPatch(record: ChatRecord, source: ChatSnapshot, selection: Selection): ChatRecordPatch {
+export function projectConversationPatch(record: ChatRecord, source: ChatSnapshot, selection: Selection, handoffTargetChars?: number): ChatRecordPatch {
   const checkpoint = record.checkpoint?.threadId === source.threadId ? record.checkpoint : null
-  const handoff = buildThreadHandoff(source.items, source.threadName, checkpoint)
+  const handoff = buildThreadHandoff(source.items, source.threadName, checkpoint, { maxChars: handoffTargetChars })
   return {
     ...selection,
     codexThreadId: null, claudeSessionId: null, antigravityConversationId: null, cursorSessionId: null,

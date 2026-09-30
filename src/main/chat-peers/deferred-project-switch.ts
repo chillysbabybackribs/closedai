@@ -7,6 +7,7 @@ import type { ChatContinuation } from '../../shared/types.js'
 import { buildThreadHandoff } from '../chat-context/thread-handoff.js'
 
 type Host = {
+  handoffTargetChars?(): number
   cwd(): string
   source(paneId: string, includeTranscript?: boolean): ChatSnapshot | null
   record(paneId: string): ChatRecord | null
@@ -115,7 +116,7 @@ export class DeferredProjectSwitch {
       const savedCheckpoint = record?.checkpoint
       const checkpoint = savedCheckpoint?.threadId === source.threadId &&
         source.items.some((item) => item.id === savedCheckpoint.throughItemId) ? savedCheckpoint : null
-      const handoff = buildThreadHandoff(source.items, source.threadName, checkpoint)
+      const handoff = buildThreadHandoff(source.items, source.threadName, checkpoint, { maxChars: this.host.handoffTargetChars?.() })
       if (!handoff) throw new Error('There is no conversation to continue')
       const continuation: ChatContinuation = {
         sourcePaneId: request.paneId, sourceThreadId: source.threadId, sourceProvider: source.provider,

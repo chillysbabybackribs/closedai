@@ -267,7 +267,7 @@ export class ClaudeChatService extends EventEmitter {
 
   /** This session as the digest its successor carries, or null when there is nothing to carry. */
   private ownHandoff(): ThreadHandoffSource | null {
-    const handoff = buildThreadHandoff(this.transcript.snapshot(), this.threadName)
+    const handoff = buildThreadHandoff(this.transcript.snapshot(), this.threadName, null, { maxChars: this.settings.get().chatHandoffTargetChars })
     if (!handoff) return null
     return { ...handoff, provider: 'claude', threadId: this.session?.sessionId ? claudeThreadId(this.session.sessionId) : null }
   }
@@ -299,7 +299,7 @@ export class ClaudeChatService extends EventEmitter {
   async compactConversation(): Promise<void> {
     if (this.activeTurnId) throw new Error('Stop the current turn before compacting')
     if (!this.seamlessRotation()) throw new Error('The active provider does not support compaction')
-    if (!buildThreadHandoff(this.transcript.snapshot(), this.threadName)) {
+    if (!buildThreadHandoff(this.transcript.snapshot(), this.threadName, null, { maxChars: this.settings.get().chatHandoffTargetChars })) {
       throw new Error('There is no conversation to compact yet')
     }
     await rotateClaudeProviderSession(this.threadHost(), this.session)

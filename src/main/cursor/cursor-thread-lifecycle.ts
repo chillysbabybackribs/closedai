@@ -53,7 +53,7 @@ export async function resumePersistedCursorSession(host: CursorThreadHost, sessi
  */
 export async function carryLostCursorSession(host: CursorThreadHost, sessionId: string): Promise<boolean> {
   if (host.settings.get().chatContinuation?.handoff) return false
-  const handoff = buildThreadHandoff(host.transcript.snapshot(), host.threadName())
+  const handoff = buildThreadHandoff(host.transcript.snapshot(), host.threadName(), null, { maxChars: host.settings.get().chatHandoffTargetChars })
   if (!handoff) return false
   await host.settings.set({
     chatContinuation: continuationFromThreadHandoff(host.paneId, {

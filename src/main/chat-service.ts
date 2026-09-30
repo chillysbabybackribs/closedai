@@ -317,7 +317,7 @@ export class ChatService extends EventEmitter {
 
   /** This thread as the digest its successor carries, or null when there is nothing to carry. */
   private ownHandoff(): ThreadHandoffSource | null {
-    const handoff = buildThreadHandoff(this.transcript.snapshot(), this.threadName)
+    const handoff = buildThreadHandoff(this.transcript.snapshot(), this.threadName, null, { maxChars: this.settings.get().chatHandoffTargetChars })
     return handoff ? { ...handoff, provider: 'codex', threadId: this.threadId } : null
   }
 
@@ -346,7 +346,7 @@ export class ChatService extends EventEmitter {
   async compactConversation(): Promise<void> {
     if (this.activeTurnId) throw new Error('Stop the current turn before compacting')
     if (this.seamlessRotation()) {
-      if (!buildThreadHandoff(this.transcript.snapshot(), this.threadName)) {
+      if (!buildThreadHandoff(this.transcript.snapshot(), this.threadName, null, { maxChars: this.settings.get().chatHandoffTargetChars })) {
         throw new Error('There is no conversation to compact yet')
       }
       await rotateCodexProviderSession(this.threadHost())

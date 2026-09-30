@@ -6,6 +6,7 @@ import { chatProviderOfId } from '../../shared/chat-providers.js'
 import { buildThreadHandoff, handoffPreviewExchange } from '../chat-context/thread-handoff.js'
 
 export type ContinuationHost = {
+  handoffTargetChars?: number
   current(): ChatSnapshot
   attached(paneId: string): boolean
   snapshot(paneId: string): Promise<ChatSnapshot>
@@ -58,7 +59,7 @@ export async function continuePeer(host: ContinuationHost, source: ChatContinuat
   // The work continues where it was: the digest names the source directory and the new chat
   // opens in it, rather than in whichever chat happened to hold focus.
   const cwd = sourceSnapshot?.cwd ?? sourceRecord?.cwd ?? null
-  const handoff = buildThreadHandoff(items, threadName, checkpoint, { cwd })
+  const handoff = buildThreadHandoff(items, threadName, checkpoint, { cwd, maxChars: host.handoffTargetChars })
   if (!handoff) throw new Error('There is no conversation to continue yet')
   const preview = handoffPreviewExchange(items)
   const targetModel = modelId ?? sourceSnapshot?.selectedModel ?? current.selectedModel

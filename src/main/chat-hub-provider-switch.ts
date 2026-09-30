@@ -147,7 +147,7 @@ export async function carryConversation(host: ChatHubSwitchHost, source: ChatSna
   const savedCheckpoint = host.checkpoint?.() ?? null
   const checkpoint = savedCheckpoint?.threadId === source.threadId
     && source.items.some((item) => item.id === savedCheckpoint.throughItemId) ? savedCheckpoint : null
-  const handoff = buildThreadHandoff(source.items, source.threadName, checkpoint)
+  const handoff = buildThreadHandoff(source.items, source.threadName, checkpoint, { maxChars: host.settings.get().chatHandoffTargetChars })
   host.setCarriedHistory(null)
   if (handoff) {
     await host.providers[target].continueInNewThread({

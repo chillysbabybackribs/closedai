@@ -319,7 +319,7 @@ export class AntigravityChatService extends EventEmitter {
 
   /** This conversation as the digest its successor carries, or null when there is nothing to carry. */
   private ownHandoff(): ThreadHandoffSource | null {
-    const handoff = buildThreadHandoff(this.transcript.snapshot(), this.threadName)
+    const handoff = buildThreadHandoff(this.transcript.snapshot(), this.threadName, null, { maxChars: this.settings.get().chatHandoffTargetChars })
     if (!handoff) return null
     return { ...handoff, provider: 'antigravity', threadId: this.session?.conversationId ? antigravityThreadId(this.session.conversationId) : null }
   }
@@ -354,7 +354,7 @@ export class AntigravityChatService extends EventEmitter {
       this.addNotice('Provider context will shrink on the next message; the visible transcript is unchanged.', 'info', null)
       return
     }
-    const seed = buildCompactionSeed(this.transcript.snapshot(), this.threadName)
+    const seed = buildCompactionSeed(this.transcript.snapshot(), this.threadName, this.settings.get().chatHandoffTargetChars)
     if (!seed) throw new Error('There is no conversation to compact yet')
     const previous = this.session?.conversationId ?? null
     if (!this.session) this.session = this.createSession()

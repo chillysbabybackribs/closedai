@@ -556,7 +556,7 @@ export class CursorChatService extends EventEmitter {
 
   /** This conversation as the digest its successor carries, or null when there is nothing to carry. */
   private ownHandoff(): ThreadHandoffSource | null {
-    const handoff = buildThreadHandoff(this.transcript.snapshot(), this.threadName)
+    const handoff = buildThreadHandoff(this.transcript.snapshot(), this.threadName, null, { maxChars: this.settings.get().chatHandoffTargetChars })
     if (!handoff) return null
     return {
       ...handoff,

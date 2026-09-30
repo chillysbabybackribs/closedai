@@ -21,6 +21,7 @@ export type PlanProviderRotationInput = {
   items: readonly ChatTranscriptItem[]
   checkpoint: ChatMemoryCheckpoint | null
   existingContinuation: ChatContinuation | null
+  handoffTargetChars?: number
   existingRotations: readonly ChatSessionRotation[]
 }
 
@@ -36,7 +37,7 @@ export function planProviderRotation(input: PlanProviderRotationInput): PlannedP
   const sourceThreadId = input.threadId ?? input.existingContinuation?.sourceThreadId ?? null
   if (!sourceThreadId) return null
   const checkpoint = applicableCheckpoint(input.items, sourceThreadId, input.checkpoint)
-  const handoff = buildThreadHandoff([...input.items], input.threadName, checkpoint, { framing: 'rotation' })
+  const handoff = buildThreadHandoff([...input.items], input.threadName, checkpoint, { framing: 'rotation', maxChars: input.handoffTargetChars })
   if (!handoff) return null
   const sourceThroughItemId = input.items.at(-1)?.id ?? null
   const source: ThreadHandoffSource = {
@@ -101,6 +102,7 @@ export async function applyProviderRotation(
 ): Promise<boolean> {
   const planned = planProviderRotation({
     ...input,
+    handoffTargetChars: settings.get().chatHandoffTargetChars,
     checkpoint: settings.checkpoint(),
     existingContinuation: settings.get().chatContinuation,
     existingRotations: settings.sessionRotations()
