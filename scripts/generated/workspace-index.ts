@@ -52,6 +52,7 @@ export const WORKSPACE_FILES = [
   "docs/tool-task-slice-design-2026-09-29.md",
   "docs/tools.md",
   "docs/trace-research.md",
+  "docs/ui-context-audit-2026-09-30.md",
   "docs/ui-polish-backlog.md",
   "electron.vite.config.ts",
   "harness/live-eval/README.md",
@@ -1032,6 +1033,7 @@ export const WORKSPACE_FILES = [
   "src/renderer/backdrop/wallpaper-tiles.tsx",
   "src/renderer/backdrop/workspace-backdrop-menu.tsx",
   "src/renderer/background-tasks.tsx",
+  "src/renderer/browser-controller.test.ts",
   "src/renderer/browser-controller.ts",
   "src/renderer/browser-downloads-controller.ts",
   "src/renderer/browser-downloads-model.ts",
@@ -1438,7 +1440,7 @@ export const WORKSPACE_IPC_FLOWS = {
 /** Directory areas with the file-name prefixes that dominate them. */
 export const WORKSPACE_AREAS = [
   {"directory":".","files":7},
-  {"directory":"docs","files":27,"prefixes":[["model-*",3]]},
+  {"directory":"docs","files":28,"prefixes":[["model-*",3]]},
   {"directory":"docs/design-mocks","files":8},
   {"directory":"docs/reports","files":10,"prefixes":[["docs-*",9]]},
   {"directory":"harness/live-eval","files":5},
@@ -1521,7 +1523,7 @@ export const WORKSPACE_AREAS = [
   {"directory":"src/main/wallpapers","files":3},
   {"directory":"src/main/windows","files":10,"prefixes":[["app-*",4]]},
   {"directory":"src/preload","files":1,"listed":["index.ts"]},
-  {"directory":"src/renderer","files":101,"prefixes":[["chat-*",17],["composer-*",16],["browser-*",12],["app-*",8]]},
+  {"directory":"src/renderer","files":102,"prefixes":[["chat-*",17],["composer-*",16],["browser-*",13],["app-*",8]]},
   {"directory":"src/renderer/agent-library","files":10,"prefixes":[["agent-*",8]]},
   {"directory":"src/renderer/agent-runs","files":13,"prefixes":[["agent-*",12]]},
   {"directory":"src/renderer/app-windows","files":2,"listed":["app-window-store.ts","cross-window-dock-store.ts"]},

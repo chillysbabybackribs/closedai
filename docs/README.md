@@ -53,6 +53,7 @@ guides when behavior diverges.
 | [tool-task-slice-design-2026-09-29.md](tool-task-slice-design-2026-09-29.md) | Task tool slice design; implementation notes at its top, [Tools](tools.md) owns the contract |
 | [reddit-multi-provider-landscape-2026-09-29.md](reddit-multi-provider-landscape-2026-09-29.md) | Multi-provider user landscape research |
 | [tool-harness-simulation-plan-2026-09-23.md](tool-harness-simulation-plan-2026-09-23.md) | Historical prompt and tool optimization plan; its shared-prompt assumptions are retired |
+| [ui-context-audit-2026-09-30.md](ui-context-audit-2026-09-30.md) | Empty workspace fixes, remaining layout conflicts, and provider continuity audit |
 | [ui-polish-backlog.md](ui-polish-backlog.md), [../design-qa.md](../design-qa.md) | Visual QA backlog |
 | [design-mocks/](design-mocks/) | Dated static HTML layout and chrome explorations; not shipped product behavior |
 
