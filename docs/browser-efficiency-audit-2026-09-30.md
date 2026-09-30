@@ -1,6 +1,6 @@
 # Browser efficiency audit — 2026-09-30
 
-Status: shared fixes implemented and locally verified. Live measurements below used the running pre-change Electron process. **Restart Electron after rebuilding to load the new main-process handlers; no post-restart live speedup is claimed.**
+Status: shared fixes implemented and locally verified. The original measurements below used the pre-change Electron process. The later **Fresh-chat cross-provider live runs** section records user-authorized runs with the updated text-window and captured-body projection behavior confirmed live. These are single samples, not a controlled before/after speedup claim.
 
 ## Scope and measurement
 
@@ -94,8 +94,56 @@ The old live comparison has no valid “after” wall-clock number until the app
 
 ## Highest-value follow-ups
 
-1. **Restarted cross-lane reruns with durable metrics.** Same four prompts and fresh threads, recording model-generation count, canonical tool id/action, timing and output size. Reason deferred: new main code is not live; extra autonomous model runs were not launched during this audit.
+1. **Cross-lane reruns with durable metrics.** Fresh-chat runs were subsequently authorized and completed below. Durable generation/result telemetry remains incomplete, especially for Cursor; do not infer missing metrics from UI labels or reasoning rows.
 2. **Machine-readable document tables and scoped HTML extraction.** Text extraction can flatten column relationships and lose icon/aria labels; rendered query recovered Supabase's Free exclusion. Reason deferred: needs a distinct parser contract and fixtures across several real table patterns; passage search alone cannot promise table fidelity.
 3. **Discovery depth and waste.** Bootstrap probes all channels by default and root llms candidates miss advertised paths such as Neon's `/docs/llms.txt`. Reason deferred: htmx discovery succeeded in 1.17 s; test a broader site corpus before changing channel defaults or adding bounded hint following.
 4. **Captured-body/result handles for larger investigations.** Projection removes the immediate JSON problem, but long-lived snapshots would avoid repeated acquisition and changing text offsets. Reason deferred: retention, lifetime and private-session data policy need an explicit shared contract.
 5. **Persist canonical tool identity and pass boundaries in history.** UI aliases and sampled spine evidence produced demonstrably wrong prior audit counts. Reason deferred: spans transcript/telemetry storage beyond the browser handler fixes; unavailable fields are marked rather than inferred.
+
+## Fresh-chat cross-provider live runs
+
+At the user's request, Cursor ran first and was monitored to completion, followed sequentially by Codex, Claude Code, and Antigravity. Each received the same single prompt containing four tasks: discover htmx `hx-get` from the docs; identify the HN Algolia `?q=electron` SPA endpoint and first three captured titles; extract Supabase Branching plan rows; compare Neon/Supabase Free storage, compute/pausing, and branching with official evidence. The prompt required read-only external work, owned tabs, capture cleanup, no repository edits/tests, citations, and an honest efficiency report. It supplied no expected answers or provider-specific tool recipe. No benchmark turn was steered mid-run.
+
+Models were selected from the live app menu and confirmed in chat state: `cursor:composer-2.5[fast=true]`, `gpt-6-sol` (medium), `claude:opus[1m]` (medium; native transcript confirms `claude-opus-5-5`), and `agy:gemini-3.8-flash` (app effort medium). These were fresh threads with no audit transcript injected.
+
+Before starting Cursor, a 200-character htmx session passage probe returned `matchOffset`, `nextOffset`, and truthful `bodyTruncated:true`, confirming the new handler live. Subsequent captured-body projections succeeded in the benchmark runs. This establishes those capabilities, not every fix in the earlier implementation table.
+
+### Measured results
+
+End-to-end time uses the app store's `messageSentAt` through `lastTurnEndedAt`, including startup and final streaming. Shared operations expand batch children and exclude the batch envelope itself. Native discovery/file calls are separate. The observer's monitoring and independent verification are excluded.
+
+| Provider / model | End-to-end | Shared operations | Other calls | Model generations | Assessment |
+|---|---:|---:|---:|---:|---|
+| Cursor / Composer 2.5 Fast | **54.644 s** | 24 | 1 repository grep | Unavailable | Fastest sample; clear, sourced answers to all four tasks; core values independently corroborated. Extra table recovery and duplicate network listing. |
+| Codex / GPT-6 SOL, medium | **242.650 s** | 25 | 3 catalog-discovery execs | 29 | Concise, grounded answers to all four. Serial calls, an oversized catalog read, two unhelpful request filters, and extra DOM inspection increased overhead. |
+| Claude Code / Opus 5.5, medium | **59.118 s** | 13 (12 children in 4 batches, plus close) | 2 schema lookups | 8 | Correct core answers with compact reads and batching. Plan mapping inferred from flattened text; self-reported call counts inaccurate. |
+| Antigravity / Gemini 3.8 Flash | **213.456 s** | 17 attempts (16 succeeded) | 15 file/schema searches and reads | 33 | Core task answers matched, but one transport retry, extensive source inspection, and unsupported statements in the final report. |
+
+These are single runs in a shared, already-used browser session, not cold-cache trials or evidence of a general model ranking. Opus fetched later-task pages early despite the requested task order. Flash's transport failure further limits latency comparison. Composer was fastest here and its answer was articulate; the sample does not establish universal superiority.
+
+Timing anchors (UTC):
+
+- Cursor: 08:59:10.710 → 09:00:05.354; chat `5762d56f-8b7d-41f0-8994-e86c6394e9bf`, thread `cursor:199413d7-b82c-4f8c-a33c-93671f3e0357`.
+- SOL: 09:00:15.005 → 09:04:17.655; chat `7370b3b3-77e0-47c0-bc13-167dd6e635f2`, thread `01a0f18b-0440-7e91-a0c6-ff87c0c8f1a0`.
+- Opus: 09:04:39.867 → 09:05:38.985; chat `688ebe10-cebf-4248-90f0-f9299e1f9f13`, thread `claude:b2e38b97-f85b-4216-8325-c110aa0bfe33`.
+- Flash: 09:06:02.685 → 09:09:36.141; chat `a8e86dcd-251e-4194-8e76-c53321c74347`, thread `agy:bc04c1dc-10ce-464c-8dcd-d55265555358`.
+
+SOL's 29 generations are unique native `token_usage_record.response_id` values, including the final answer; its 28 exec calls include three catalog lookups and 25 tool operations. Opus's eight generations are unique native assistant message ids. Flash's 33 are `gen_metadata` rows at completion of its first turn. Cursor's retained live tool timestamps support timing/call counts, but its app transcript omits all 24 shared result bodies; reasoning-row counts are not substituted for generation counts.
+
+Native retained result text totaled 109,877 characters for SOL's 28 exec outputs, including catalog discovery and wrappers, and 22,028 for Opus's seven tool results. These are different result envelopes, not a normalized token comparison. Cursor's returned-body total is unavailable. Flash's cache clips some outputs and omits a request-list body delegated to an output file, so no complete total is claimed. Summed displayed tool intervals were Cursor 7.379 s, SOL 6.982 s, Opus 3.982 s (batch envelopes), and Flash 2.165 s; these are not comparable pure browser-service times and exclude gaps between calls.
+
+### Observed quality and efficiency
+
+- **Shared capabilities worked across all four lanes.** Each armed capture before SPA navigation and used captured-body JSON projection. The observed endpoint was the Algolia `Item_dev/query` POST; the first three titles agreed across runs. This was an ordinary page-issued request, with no tool-issued POST or replay. All four avoided screenshots and repository edits/tests.
+- **Cursor:** five task-1 calls, seven SPA calls including cleanup, eight table-task calls, and five comparison calls. It used both discovery and DOM link lookup for htmx; both passive and CDP request lists for the SPA; a 50k requested Supabase page read, two raw HTML windows, three evaluate calls, and an unrelated repository grep for the pricing table. Its final report acknowledged some duplication but omitted the grep. All 25 live tool rows completed; unavailable result bodies prevent a full truncation census. The final numeric/plan claims agree with the independent DOM and official-page checks.
+- **SOL:** initial catalog discovery printed roughly 49,498 tokens before provider-side output truncation. Its broad htmx page read was also bounded before the needed passage. Filtering requests by `fetch` missed the XHR; filtering by `search` mostly found unrelated URLs; the full list recovered the correct id. It then projected the captured body correctly. Supabase row/header extraction preserved plan relationships; a follow-up HTML read was extra. A failed Neon `tr` match led to a broad `*` query before a focused grid read. No failed tool status or generic `_closedai_truncated` result was found. The final answer's “no retries” should not obscure these evidence-recovery calls.
+- **Opus:** used bounded session passages and literal, correctly ordered capture/navigation/listing steps in a batch. It fetched Supabase pricing four times; two could have been combined. Its answer claimed five batches with 15 sub-calls, but actual arguments show **four batches with 12 sub-calls**, plus the separate tab close and two schema lookups. Core pricing claims matched independent rendered rows. The answers inferred column mapping from flattened text instead of extracting structured DOM cells. No generic serializer cut appeared in retained native results.
+- **Flash:** 15 native file operations comprised four schema-discovery calls, nine repository searches/reads, and two reads of the same saved request-list output. It then projected five titles although three were requested. The initial SPA navigation failed with a local MCP connection reset; state inspection showed the blank tab, and one retry succeeded. The evidence does not establish that `wait_until:idle` caused the reset. Its final “no redundant calls” claim conflicts with the repeated source/output reads. Its “exactly 20 KB decoded” wording mistakes the captured response's `byteLength` for the much smaller projected result. It also declared additional Neon Free branches unavailable without obtaining explicit policy evidence; the empty pricing-table entry alone does not justify that negative claim. “No incomplete evidence” was therefore too strong.
+
+Independent checks used the live Supabase Branching rows and header order, plus official Neon pricing/FAQ and Supabase pricing passages. They confirmed Free/Pro/Team/Enterprise branching values and the core free storage, compute, and idle figures. They do not establish every extra assertion in each answer.
+
+### Cleanup and remaining work
+
+Opus closed its capture tab. Cursor, SOL, and Flash issued `Network.disable`; that stops the network domain but does not prove debugger detachment. Cursor/SOL tabs were no longer present by the end. After preserving Flash's first-turn metrics, an untimed follow-up asked its owning chat to close the remaining capture tab; the observer's direct close was correctly refused by tab ownership. This cleanup turn is excluded from the table.
+
+The runs reinforce two shared follow-ups: a compact table extraction result that preserves headers/cells, and an explicit capture lifecycle whose stop operation releases all armed state without requiring implementation-source inspection. Durable canonical tool/result telemetry is still needed to make every lane's output-size and generation measurements equally auditable. No provider-specific code changes were made for these tests.
