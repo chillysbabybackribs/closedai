@@ -19,6 +19,8 @@ export type ApiEndpointRow = {
   channels: string[]
   count: number
   lastAtMs: number | null
+  /** Recorder labels are capped; a URL at that boundary is only a discovery hint. */
+  urlMayBeTruncated?: boolean
 }
 
 export type ApiMapResult = {
@@ -75,12 +77,18 @@ export function buildApiMap(
   }
 
   const ingest = (recording: Recording, baseUrl: string | null) => {
-    const rows = [...(recording.distinct ?? []), ...(recording.recent ?? []).map((event) => ({
-      channel: event.channel,
-      detail: event.detail,
-      count: 1
-    }))]
-    for (const row of rows) {
+    // These are two views of the same buffer. Recent supplies timestamps and endpoints
+    // absent from the bounded distinct list, never extra counts for a distinct entry.
+    const keyOf = (row: { channel: string; detail: string }) => JSON.stringify([row.channel, row.detail])
+    const rows = new Map((recording.distinct ?? []).map((row) => [keyOf(row), { ...row }]))
+    const distinctKeys = new Set(rows.keys())
+    for (const event of recording.recent ?? []) {
+      const key = keyOf(event)
+      if (distinctKeys.has(key)) continue
+      const prior = rows.get(key)
+      rows.set(key, { channel: event.channel, detail: event.detail, count: (prior?.count ?? 0) + 1 })
+    }
+    for (const row of rows.values()) {
       if (!HTTP_CHANNELS.has(row.channel) && row.channel !== 'websocket') continue
       let method = row.channel === 'websocket' ? 'WS' : ''
       let href = row.detail
@@ -112,7 +120,8 @@ export function buildApiMap(
           sameOrigin,
           channels: [row.channel],
           count,
-          lastAtMs: null
+          lastAtMs: null,
+          ...(row.detail.length >= 200 ? { urlMayBeTruncated: true } : {})
         })
       }
     }
@@ -159,7 +168,9 @@ export function buildApiMap(
   const endpoints = [...merged.values()].sort((a, b) => b.count - a.count).slice(0, options.limit)
   const hints = endpoints.slice(0, 6).map((row) => {
     const target = row.resolvedUrl.length > 120 ? `${row.resolvedUrl.slice(0, 117)}…` : row.resolvedUrl
-    return `${row.method} ${target} (×${row.count}) — session.fetch or browser_cdp.protocol for bodies`
+    return row.urlMayBeTruncated
+      ? `${row.method} ${target} (×${row.count}) — clipped label; get the full URL from network.requests or browser_cdp.protocol requests`
+      : `${row.method} ${target} (×${row.count}) — browser_cdp.protocol requests/body for captured evidence; session.fetch issues a new request`
   })
 
   const frames = (payload.frames ?? []).map((frame) => ({

@@ -15,7 +15,7 @@ export function apisAction(cdp: CdpHostProvider): ToolAction {
     action: 'apis',
     description:
       'Read-only endpoint map from browser_cdp.instrument recordings on a tab (fetch, XHR, WebSocket). ' +
-      'Requires hook before navigation/interaction. Does not install hooks itself.',
+      'Requires hook before navigation/interaction. Counts reflect the retained sample, not wire traffic; capped URL labels are flagged. Does not install hooks itself.',
     inputSchema: objectSchema({
       tab_id: DISCOVER_TAB_ID_FIELD,
       url: DISCOVER_URL_FIELD,

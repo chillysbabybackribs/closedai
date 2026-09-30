@@ -67,7 +67,7 @@ export function batchTools(registry: ToolRegistryProvider, options: BatchToolOpt
           'script.fetch for JSON that session.fetch or extract with projection should handle. ' +
           'closedai_app.state is plain: optional include array of sections, no action field; UI waits use closedai_app.ui wait_for. ' +
           'Default sequential inspect→act→verify; parallel only for independent targets. include_result:false omits successful bodies. ' +
-          'Codex exec: await each inner call.',
+          'Arguments are literal: inspect first, then use returned refs in a later batch; placeholders are not resolved.',
         inputSchema: {
           type: 'object',
           properties: {

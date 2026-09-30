@@ -37,7 +37,7 @@ test('the session tool registers with fetch and cookie actions', () => {
 
 test('fetch forwards the request, parses JSON, and keeps response headers', async () => {
   const { calls, call } = harness()
-  const result = await call({ action: 'fetch', url: 'https://api.test/x', method: 'POST', headers: { accept: 'application/json' }, body: '{}', redirect: 'manual' })
+  const result = await call({ action: 'fetch', url: 'https://api.test/x', method: 'POST', headers: { accept: 'application/json' }, body: '{}', redirect: 'manual', include_headers: true })
   assert.equal(result.isError, undefined)
   assert.deepEqual(calls[0], ['fetch', { url: 'https://api.test/x', method: 'POST', headers: { accept: 'application/json' }, body: '{}', redirect: 'manual' }])
   const body = payload(result)
@@ -58,17 +58,47 @@ test('fetch returns prose as text and binary as base64', async () => {
 
 test('fetch with format: text extracts clean document prose and title from HTML', async () => {
   const html = '<!DOCTYPE html><html><head><title>Doc Title</title><style>body{color:red}</style><script>bad()</script></head><body><nav>Nav Menu</nav><main><h1>Heading</h1><p>Main body paragraph</p></main><footer>Page Footer</footer></body></html>'
-  const raw = payload(await harness(html, 'text/html').call({ action: 'fetch', url: 'https://a.test/page' }))
+  const raw = payload(await harness(html, 'text/html').call({ action: 'fetch', url: 'https://a.test/page', format: 'raw' }))
   assert.match(raw.text as string, /<nav>Nav Menu<\/nav>/)
   assert.equal('title' in raw, false)
-  assert.equal('format' in raw, false)
+  assert.equal(raw.format, 'raw')
 
-  const extracted = payload(await harness(html, 'text/html').call({ action: 'fetch', url: 'https://a.test/page', format: 'text' }))
+  const extracted = payload(await harness(html, 'text/html').call({ action: 'fetch', url: 'https://a.test/page' }))
   assert.equal(extracted.title, 'Doc Title')
   assert.equal(extracted.format, 'text')
   assert.match(extracted.text as string, /Heading/)
   assert.match(extracted.text as string, /Main body paragraph/)
   assert.doesNotMatch(extracted.text as string, /<nav>|<script>|bad\(\)|Nav Menu|Page Footer/)
+  assert.equal('headers' in extracted, false)
+})
+
+test('text reads fit escaped envelopes and can reach evidence beyond the old 4000-character cut', async () => {
+  const document = ('quoted "text"\n').repeat(1600) + 'Branching is included.'
+  const { call } = harness(document, 'text/plain')
+  const first = await call({ action: 'fetch', url: 'https://a.test/', max_chars: 100000 })
+  const firstText = first.content[0]?.type === 'text' ? first.content[0].text : ''
+  assert.ok(firstText.length <= 16000)
+  const data = payload(first)
+  assert.equal('_closedai_truncated' in data, false)
+  assert.equal(data.bodyTruncated, true)
+  assert.equal(data.nextOffset, data.returnedChars)
+  const next = payload(await call({ action: 'fetch', url: 'https://a.test/', offset: data.nextOffset }))
+  assert.equal(next.offset, data.nextOffset)
+  assert.equal(next.text, document.slice(Number(data.nextOffset), Number(data.nextOffset) + Number(next.returnedChars)))
+  const match = payload(await call({ action: 'fetch', url: 'https://a.test/', text_contains: 'branching', max_chars: 1000 }))
+  assert.match(String(match.text), /Branching is included/)
+  assert.equal(match.matchOffset, document.indexOf('Branching'))
+  assert.equal(match.nextOffset, null)
+  const absent = payload(await call({ action: 'fetch', url: 'https://a.test/', text_contains: 'missing' }))
+  assert.equal(absent.matchOffset, null)
+  assert.equal(absent.text, '')
+})
+
+test('text paging refuses mutation retries before fetching and directs JSON to projection', async () => {
+  const { call, calls } = harness()
+  assert.equal((await call({ action: 'fetch', url: 'https://a.test/', method: 'POST', offset: 1 })).isError, true)
+  assert.equal(calls.length, 0)
+  assert.equal((await call({ action: 'fetch', url: 'https://a.test/', text_contains: 'items' })).isError, true)
 })
 
 test('fetch with format: text handles non-HTML gracefully', async () => {
