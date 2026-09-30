@@ -202,7 +202,7 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
       dragActiveListener.current(false)
     }
   }, [finishDrag])
-  const visibleTree = browserVisible ? tree : removePane(tree, BROWSER_PANE_ID)!
+  const visibleTree = browserVisible ? tree : removePane(tree, BROWSER_PANE_ID)
   const geometry = layoutGeometry(visibleTree, size.width, size.height)
   const splitPreview = useMemo(() => (dragging && drop?.edge
     ? dragSplitPreview(tree, dragging.id, drop, dragging.singleTab, size.width, size.height, browserVisible)

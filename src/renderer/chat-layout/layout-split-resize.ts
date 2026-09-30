@@ -19,7 +19,7 @@ export function paintSplitResize(
   frame: SplitResizeFrame
 ): void {
   if (!canvas || !live.active || !live.ratio) return
-  const visibleTree = frame.browserVisible ? frame.tree : removePane(frame.tree, BROWSER_PANE_ID)!
+  const visibleTree = frame.browserVisible ? frame.tree : removePane(frame.tree, BROWSER_PANE_ID)
   const overrides: SplitRatioOverrides = { [live.ratio.id]: live.ratio.ratio }
   applyLayoutGeometryDom(canvas, layoutGeometry(visibleTree, frame.width, frame.height, overrides))
 }

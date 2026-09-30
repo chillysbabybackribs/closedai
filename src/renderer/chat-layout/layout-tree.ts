@@ -160,8 +160,8 @@ function visitLayout(
  * Flat geometry of the tiled layer; minimized and floating windows take no tiled space. Keeping
  * it flat keeps React pane keys and composer state stable across tree rearrangements.
  */
-export function layoutGeometry(tree: ChatLayout, width: number, height: number, splitRatios?: SplitRatioOverrides) {
-  const tiled = tiledTree(tree)
+export function layoutGeometry(tree: ChatLayout | null, width: number, height: number, splitRatios?: SplitRatioOverrides) {
+  const tiled = tree ? tiledTree(tree) : null
   const minimum = tiled ? minimumSize(tiled) : { width: 0, height: 0 }
   const canvas = { x: 0, y: 0, width: Math.max(width, minimum.width), height: Math.max(height, minimum.height) }
   const panes: LayoutPane[] = []
