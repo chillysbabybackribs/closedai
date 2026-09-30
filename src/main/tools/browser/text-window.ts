@@ -9,7 +9,8 @@ export function textWindow(
 ): ToolResult {
   const requestedOffset = options.offset ?? 0
   const match = options.contains === undefined ? undefined : text.toLowerCase().indexOf(options.contains.toLowerCase(), requestedOffset)
-  const offset = match === undefined ? requestedOffset : match < 0 ? text.length : Math.max(requestedOffset, match - 400)
+  const contextChars = Math.min(400, Math.floor(options.maxChars / 4))
+  const offset = match === undefined ? requestedOffset : match < 0 ? text.length : Math.max(requestedOffset, match - contextChars)
   const remaining = text.slice(offset)
   const make = (length: number) => ({
     ...metadata,

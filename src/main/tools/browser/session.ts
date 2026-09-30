@@ -1,5 +1,5 @@
 import { defineActionTool, type ToolAction } from '../action-tool.js'
-import { jsonResult, objectSchema } from '../json-result.js'
+import { jsonResult, MAX_OUTPUT_CHARS, objectSchema } from '../json-result.js'
 import { booleanArg, failureResult, numberArg, stringArg, type JsonObject, type ToolDefinition } from '../tool.js'
 import { truncateText } from '../truncate-json.js'
 import { SESSION_FETCH_TRUNCATION_ADVICE } from '../truncation-advice.js'
@@ -111,21 +111,18 @@ function fetchAction(sessions: SessionHostProvider): ToolAction {
           sourceTruncated: response.truncated, canContinue: ['GET', 'HEAD'].includes(method)
         })
       }
-      const advice = isJson
-        ? SESSION_FETCH_TRUNCATION_ADVICE
-        : format === 'text'
-          ? 'Raise max_chars to see more of this document.'
-          : 'Raise max_chars, or use format: "text" to extract readable prose without markup.'
-      const bounded = truncateText(bodyText, maxChars, advice)
-      return jsonResult({
+      const bounded = truncateText(bodyText, maxChars, SESSION_FETCH_TRUNCATION_ADVICE)
+      const payload = {
         ...rest,
         base64: null,
         isJson,
         ...(pageTitle ? { title: pageTitle } : {}),
         ...(format === 'text' ? { format: 'text' } : {}),
         bodyTruncated: bounded.truncated || response.truncated,
-        ...(isJson && !bounded.truncated ? { json } : { text: bounded.text })
-      })
+        ...(!bounded.truncated ? { json } : { text: bounded.text })
+      }
+      payload.bodyTruncated ||= JSON.stringify(payload, null, 2).length > MAX_OUTPUT_CHARS
+      return jsonResult(payload)
     }
   }
 }

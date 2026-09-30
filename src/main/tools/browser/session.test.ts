@@ -85,7 +85,7 @@ test('text reads fit escaped envelopes and can reach evidence beyond the old 400
   const next = payload(await call({ action: 'fetch', url: 'https://a.test/', offset: data.nextOffset }))
   assert.equal(next.offset, data.nextOffset)
   assert.equal(next.text, document.slice(Number(data.nextOffset), Number(data.nextOffset) + Number(next.returnedChars)))
-  const match = payload(await call({ action: 'fetch', url: 'https://a.test/', text_contains: 'branching', max_chars: 1000 }))
+  const match = payload(await call({ action: 'fetch', url: 'https://a.test/', text_contains: 'branching', max_chars: 200 }))
   assert.match(String(match.text), /Branching is included/)
   assert.equal(match.matchOffset, document.indexOf('Branching'))
   assert.equal(match.nextOffset, null)
