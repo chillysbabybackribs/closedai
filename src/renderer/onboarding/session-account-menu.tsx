@@ -26,8 +26,8 @@ function Avatar({ user, className }: { user: LocalUser; className: string }): JS
 }
 
 /**
- * Signed-in local profile: an avatar in the window-control strip, like an OS account button. The
- * name lives in the menu header so the title bar stays as quiet as the window buttons beside it.
+ * Signed-in local profile: an avatar at the title bar's left edge, like an OS account button. The
+ * name lives in the menu header so the title bar stays as quiet as the window buttons.
  */
 export function SessionAccountMenu({ user, onSignOut, onConnectProviders }: SessionAccountMenuProps): JSX.Element {
   return (
@@ -44,7 +44,7 @@ export function SessionAccountMenu({ user, onSignOut, onConnectProviders }: Sess
           <Avatar user={user} className="titlebar-session-account-avatar" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" sideOffset={4} className="titlebar-session-account-menu">
+      <DropdownMenuContent align="start" sideOffset={4} className="titlebar-session-account-menu">
         <DropdownMenuLabel className="titlebar-session-account-header">
           <Avatar user={user} className="titlebar-session-account-avatar titlebar-session-account-avatar-lg" />
           <span className="titlebar-session-account-identity">

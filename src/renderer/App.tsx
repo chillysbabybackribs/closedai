@@ -291,11 +291,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
     <div className="shell" data-ui-surface="shell">
       <header className="shell-titlebar" aria-label="Window title bar">
         <TitlebarRail search={searchTools} />
-        {(!appWindow().main || (!chat.selectedPaneId && startupStalled)) && <TitlebarMenu {...applicationMenu} />}
-        <div ref={setSearchTools} className="titlebar-search-tools">
-          <HeaderChatSearch chats={chat.chats} controller={history} inputRef={searchRef} />
-        </div>
-        <AppWindowControls>
+        <div className="titlebar-start">
           {activeLocalUser && onboarding.settings.sessionUnlocked && (
             <SessionAccountMenu
               user={activeLocalUser}
@@ -303,7 +299,12 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
               onConnectProviders={onboarding.reopenProviderSetup}
             />
           )}
-        </AppWindowControls>
+          {(!appWindow().main || (!chat.selectedPaneId && startupStalled)) && <TitlebarMenu {...applicationMenu} />}
+        </div>
+        <div ref={setSearchTools} className="titlebar-search-tools">
+          <HeaderChatSearch chats={chat.chats} controller={history} inputRef={searchRef} />
+        </div>
+        <AppWindowControls />
       </header>
       <div className="shell-titlebar-divider" aria-hidden="true" />
       {shellError && (

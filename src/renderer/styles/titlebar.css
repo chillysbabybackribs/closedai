@@ -22,6 +22,18 @@
   pointer-events: none;
 }
 
+/* Left edge of the bar: the account avatar, then the fallback application menus. Sized to its
+   content so the rest of the bar stays draggable. */
+.titlebar-start {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  -webkit-app-region: no-drag;
+}
+
 .titlebar-search-tools {
   position: absolute;
   top: 5px;

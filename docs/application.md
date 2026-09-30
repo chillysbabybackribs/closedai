@@ -81,7 +81,7 @@ title-bar account menu and sign-out stay available. After the gate, the normal t
 workspace, and dock stay visible while a **provider setup** modal lists all four providers with
 install hints, Codex in-app connect, and CLI confirmation for the other lanes. Per-pane empty
 states still show connection guidance when a lane later drifts out of `ready`. **Sign out**
-(the profile avatar leading the window-control strip, whose menu names the profile, or
+(the profile avatar at the title bar's left edge, whose menu names the profile, or
 **File → Sign out…** / Start → search) clears the local session (`sessionUnlocked`, `activeUserId`,
 `keepSignedIn`) and returns to the gate without deleting saved profiles or provider-setup progress.
 

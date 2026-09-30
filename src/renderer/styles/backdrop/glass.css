@@ -56,7 +56,7 @@
 
 /* Keep in step with TITLEBAR_STRIP: the strip's controls, and the search field centred in the
    tab with the same 7px margin on every side. */
-:root[data-backdrop] .titlebar-nav-menu,
+:root[data-backdrop] .titlebar-start,
 :root[data-backdrop] .shell-window-controls { height: 32px; }
 :root[data-backdrop] .titlebar-search-tools {
   top: 7px;

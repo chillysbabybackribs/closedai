@@ -1,10 +1,8 @@
-import type { JSX, ReactNode } from 'react'
+import type { JSX } from 'react'
 
-/** Window buttons, led by any session control (the account avatar) so both share the strip. */
-export function AppWindowControls({ children }: { children?: ReactNode }): JSX.Element {
+export function AppWindowControls(): JSX.Element {
   return (
     <div className="shell-window-controls">
-      {children}
       <button
         type="button"
         className="shell-window-control"

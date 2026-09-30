@@ -249,8 +249,8 @@
 }
 
 /* ---- Title bar local profile (signed-in onboarding session) ----------------
-   An avatar in the window-control strip: it takes a .shell-window-control slot, so height, hover
-   plate and alignment follow the minimize / maximize / close buttons in both chrome modes. */
+   An avatar at the bar's left edge (.titlebar-start). It reuses the .shell-window-control slot, so
+   height and hover plate match the minimize / maximize / close buttons in both chrome modes. */
 
 .titlebar-session-account-avatar {
   position: relative;
