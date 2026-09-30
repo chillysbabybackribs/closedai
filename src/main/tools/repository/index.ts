@@ -1,5 +1,5 @@
 import { jsonResult, objectSchema } from '../json-result.js'
-import { defineTool, type ToolContext, type ToolNamespace } from '../tool.js'
+import { defineTool, usageResult, type ToolContext, type ToolNamespace } from '../tool.js'
 import { locate, readRange, search, type ReadRequest, type SearchRequest } from './retrieval.js'
 
 export type RepositoryHost = { root: (context: ToolContext) => string }
@@ -24,6 +24,7 @@ export function repositoryTools(host: RepositoryHost): ToolNamespace {
           pattern: { type: 'string', minLength: 1, maxLength: 500 }, path, regex: { type: 'boolean' }
         }, ['pattern']) } }, ['queries']),
         run: async (input, context) => {
+          if (!Array.isArray(input.queries) || input.queries.length < 1 || input.queries.length > 4) return usageResult('queries must contain 1–4 searches')
           const root = host.root(context)
           return jsonResult(await Promise.all((input.queries as SearchRequest[]).map(async query => {
             try { return { query, ...await search(root, query, context.signal) } }
@@ -38,6 +39,7 @@ export function repositoryTools(host: RepositoryHost): ToolNamespace {
           path, from_line: { type: 'integer', minimum: 1 }, to_line: { type: 'integer', minimum: 1 }
         }, ['path']) } }, ['files']),
         run: async (input, context) => {
+          if (!Array.isArray(input.files) || input.files.length < 1 || input.files.length > 4) return usageResult('files must contain 1–4 ranges')
           const root = host.root(context)
           return jsonResult(await Promise.all((input.files as ReadRequest[]).map(async file => {
             try { return await readRange(root, file, context.signal) }

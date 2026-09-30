@@ -72,7 +72,7 @@ test('flag defaults off; enabled registry reaches Codex and Claude but is exclud
   assert.equal(DEFAULT_APP_SETTINGS.chatRepositoryRetrievalEnabled, false)
   const registry = new ToolRegistry([repositoryTools({ root: () => '/tmp' })])
   const codex = await resolveCodexToolCatalog(registry, { chatToolSliceEnabled: false }, { prompt: 'repair launch', surface: null })
-  assert.equal(codex.dynamicTools.length, 3)
+  assert.equal(codex.dynamicTools[0].tools.length, 3)
   const sdk = { tool: (...args: unknown[]) => args, createSdkMcpServer: (config: unknown) => config }
   const claude = claudeMcpServers(sdk as never, registry, () => ({ threadId: null, turnId: null }))
   assert.ok(claude.repository)
