@@ -1,6 +1,7 @@
 import { EventEmitter } from 'node:events'
 import type {
   ChatAttachment,
+  ChatConnection,
   ChatEvent,
   ChatModel,
   ChatProvider,
@@ -29,6 +30,7 @@ import type { ChatMemoryCheckpoint } from '../shared/chat-memory.js'
 import { generateChatTitle } from './chat-titles/title-provider.js'
 import { restoreHubHistory, withHubHistory } from './chat-hub-history.js'
 import type { TitleGenerator } from './chat-titles/title-policy.js'
+import { runCursorCommand } from './cursor/cursor-cli.js'
 
 // One chat pane, several providers. Each provider owns its own thread, transcript, and
 // connection; the hub owns which one the pane shows, merges the model catalogs so the picker
@@ -344,13 +346,30 @@ export class ChatHub extends EventEmitter implements ChatSurface {
     await compact.call(this.current())
   }
 
-  async beginLogin(): Promise<string | null> {
-    this.dormant.delete(this.active)
-    if (this.active === 'codex') return this.providers.codex.beginChatGptLogin()
-    // Claude Code and Antigravity sign in from their own CLIs; re-checking picks up a login
-    // completed elsewhere.
-    await this.current().start({ warm: true })
+  async probeProviderConnection(provider: ChatProvider): Promise<{ connection: ChatConnection; accountEmail: string | null }> {
+    this.dormant.delete(provider)
+    const before = this.providers[provider].snapshot({ limit: 0 })
+    if (before.connection.state !== 'ready' && before.connection.state !== 'signed-out') {
+      await this.providers[provider].start({ warm: true }).catch(() => {})
+    }
+    const snap = this.providers[provider].snapshot({ limit: 0 })
+    return { connection: snap.connection, accountEmail: snap.account?.email ?? null }
+  }
+
+  async beginProviderSignIn(provider: ChatProvider): Promise<string | null> {
+    this.dormant.delete(provider)
+    if (provider === 'codex') return this.providers.codex.beginChatGptLogin()
+    if (provider === 'cursor') {
+      await runCursorCommand(['login'])
+      await this.providers.cursor.start({ warm: true }).catch(() => {})
+      return null
+    }
+    await this.providers[provider].start({ warm: true }).catch(() => {})
     return null
+  }
+
+  async beginLogin(): Promise<string | null> {
+    return this.beginProviderSignIn(this.active)
   }
 
   private current(): ChatProviderService {

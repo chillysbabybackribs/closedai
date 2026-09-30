@@ -345,6 +345,10 @@
   background: hsl(142 40% 45% / 0.06);
 }
 
+.onboarding-provider-row[data-status='disconnected'] {
+  border-color: color-mix(in srgb, var(--border) 75%, transparent);
+}
+
 .onboarding-provider-mark {
   padding-top: 2px;
 }
@@ -377,6 +381,29 @@
   display: flex;
   align-items: center;
   padding-top: 2px;
+}
+
+.onboarding-provider-sign-in {
+  border: none;
+  padding: 0;
+  background: none;
+  color: hsl(24 90% 52%);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.onboarding-provider-sign-in:hover,
+.onboarding-provider-sign-in:focus-visible {
+  color: hsl(24 90% 58%);
+  outline: none;
+}
+
+.onboarding-provider-sign-in:disabled {
+  opacity: 0.55;
+  cursor: wait;
 }
 
 .onboarding-provider-footer {

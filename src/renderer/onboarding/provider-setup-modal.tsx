@@ -9,78 +9,92 @@ import {
   DialogDescription,
   DialogTitle
 } from '../../components/ui/dialog.js'
-import type { ChatProvider, ChatSnapshot } from '../../shared/chat.js'
+import type { ChatProvider } from '../../shared/chat.js'
 import { CHAT_PROVIDERS, CHAT_PROVIDER_LABELS } from '../../shared/chat-providers.js'
-import type { ProviderAvailability } from '../../shared/provider-availability.js'
+import type { ProviderOnboardingStatus } from '../../shared/provider-onboarding.js'
+import { PROVIDER_INSTALL_HINTS } from '../../shared/provider-install-hints.js'
 
 export type ProviderSetupModalProps = {
   open: boolean
-  chat: ChatSnapshot
   connectedProviders: readonly ChatProvider[]
-  onLoginCodex: () => Promise<void>
+  onSignInProvider: (provider: ChatProvider) => Promise<void>
   onMarkConnected: (provider: ChatProvider) => void
   onClearConnected: (provider: ChatProvider) => void
   onContinue: () => void
   onSkip: () => void
 }
 
-type ProviderStatus = 'unavailable' | 'available' | 'connected'
+type RowStatus = 'unavailable' | 'disconnected' | 'connected'
 
-function providerStatus(
-  provider: ChatProvider,
-  availability: ProviderAvailability | undefined,
-  chat: ChatSnapshot,
+function rowStatus(
+  row: ProviderOnboardingStatus,
   connectedProviders: readonly ChatProvider[]
-): ProviderStatus {
-  if (!availability?.installed) return 'unavailable'
-  if (connectedProviders.includes(provider)) return 'connected'
-  if (chat.provider === provider && chat.connection.state === 'ready') return 'connected'
-  if (provider === 'codex' && chat.provider === 'codex' && chat.account) return 'connected'
-  return 'available'
+): RowStatus {
+  if (!row.installed || row.connection === 'unavailable') return 'unavailable'
+  if (connectedProviders.includes(row.provider)) return 'connected'
+  if (row.connection === 'ready') return 'connected'
+  return 'disconnected'
 }
 
-function statusLabel(status: ProviderStatus): string {
+function statusLabel(status: RowStatus, row: ProviderOnboardingStatus): string {
   switch (status) {
-    case 'unavailable': return 'Not available on this machine'
-    case 'available': return 'Available to connect'
-    case 'connected': return 'Connected'
+    case 'unavailable': return 'Not installed'
+    case 'disconnected': return row.connection === 'unknown' ? 'Checking sign-in…' : 'Not connected'
+    case 'connected':
+      return row.accountEmail ? `Connected · ${row.accountEmail}` : 'Connected'
   }
+}
+
+function installHint(provider: ChatProvider): string {
+  return PROVIDER_INSTALL_HINTS[provider]
 }
 
 export function ProviderSetupModal({
   open,
-  chat,
   connectedProviders,
-  onLoginCodex,
+  onSignInProvider,
   onMarkConnected,
   onClearConnected,
   onContinue,
   onSkip
 }: ProviderSetupModalProps): JSX.Element {
-  const [availability, setAvailability] = useState<ProviderAvailability[] | null>(null)
+  const [rows, setRows] = useState<ProviderOnboardingStatus[] | null>(null)
   const [refreshing, setRefreshing] = useState(false)
-  const [refreshTick, setRefreshTick] = useState(0)
+  const [signingIn, setSigningIn] = useState<ChatProvider | null>(null)
+
+  const load = useCallback(async (): Promise<void> => {
+    try {
+      const next = await window.closedai.chat.providerOnboarding()
+      setRows(next)
+      for (const row of next) {
+        if (row.connection === 'ready') onMarkConnected(row.provider)
+      }
+    } catch {
+      setRows(null)
+    }
+  }, [onMarkConnected])
 
   useEffect(() => {
     if (!open) return
-    let live = true
-    void window.closedai.chat.providerAvailability()
-      .then((entries) => { if (live) setAvailability(entries) })
-      .catch(() => { if (live) setAvailability(null) })
-    return () => { live = false }
-  }, [open, refreshTick])
+    void load()
+    const timer = window.setInterval(() => { void load() }, 8000)
+    return () => window.clearInterval(timer)
+  }, [load, open])
 
   const refresh = useCallback(() => {
     setRefreshing(true)
-    setRefreshTick((tick) => tick + 1)
-    void window.closedai.chat.providerAvailability()
-      .then((entries) => setAvailability(entries))
-      .catch(() => setAvailability(null))
-      .finally(() => { setRefreshing(false) })
-  }, [])
+    void load().finally(() => { setRefreshing(false) })
+  }, [load])
+
+  const signIn = useCallback((provider: ChatProvider) => {
+    setSigningIn(provider)
+    void onSignInProvider(provider)
+      .then(() => load())
+      .finally(() => { setSigningIn(null) })
+  }, [load, onSignInProvider])
 
   const hasConnected = connectedProviders.length > 0 ||
-    CHAT_PROVIDERS.some((provider) => providerStatus(provider, availability?.find((row) => row.provider === provider), chat, connectedProviders) === 'connected')
+    (rows?.some((row) => rowStatus(row, connectedProviders) === 'connected') ?? false)
 
   return (
     <Dialog open={open} onOpenChange={() => { /* first-run modal stays until Continue or Skip */ }}>
@@ -93,13 +107,18 @@ export function ProviderSetupModal({
       >
         <DialogTitle className="onboarding-provider-title">Connect a provider</DialogTitle>
         <DialogDescription className="onboarding-provider-lede">
-          Pick at least one model backend. You can add more later from the model menu.
+          Link at least one model backend for this profile. Signed-in CLIs are detected automatically.
         </DialogDescription>
 
         <ul className="onboarding-provider-list">
           {CHAT_PROVIDERS.map((provider) => {
-            const entry = availability?.find((row) => row.provider === provider)
-            const status = providerStatus(provider, entry, chat, connectedProviders)
+            const row = rows?.find((entry) => entry.provider === provider) ?? {
+              provider,
+              installed: false,
+              connection: 'unknown' as const,
+              accountEmail: null
+            }
+            const status = rowStatus(row, connectedProviders)
             return (
               <li key={provider} className="onboarding-provider-row" data-status={status}>
                 <div className="onboarding-provider-mark">
@@ -107,23 +126,23 @@ export function ProviderSetupModal({
                 </div>
                 <div className="onboarding-provider-copy">
                   <span className="onboarding-provider-name">{CHAT_PROVIDER_LABELS[provider]}</span>
-                  <span className="onboarding-provider-status">{statusLabel(status)}</span>
-                  {entry?.hint && status !== 'connected' && (
-                    <p className="onboarding-provider-hint">{entry.hint}</p>
+                  <span className="onboarding-provider-status">{statusLabel(status, row)}</span>
+                  {status === 'unavailable' && (
+                    <p className="onboarding-provider-hint">{installHint(provider)}</p>
                   )}
                 </div>
                 <div className="onboarding-provider-actions">
-                  {status === 'available' && provider === 'codex' && (
-                    <Button type="button" variant="secondary" size="sm" data-ui="onboarding.provider-connect" data-ui-key={provider}
-                      onClick={() => void onLoginCodex()}>
-                      Connect
-                    </Button>
-                  )}
-                  {status === 'available' && provider !== 'codex' && (
-                    <Button type="button" variant="secondary" size="sm" data-ui="onboarding.provider-connect" data-ui-key={provider}
-                      onClick={() => onMarkConnected(provider)}>
-                      I&apos;ve signed in
-                    </Button>
+                  {status === 'disconnected' && (
+                    <button
+                      type="button"
+                      className="onboarding-provider-sign-in"
+                      data-ui="onboarding.provider-sign-in"
+                      data-ui-key={provider}
+                      disabled={signingIn === provider}
+                      onClick={() => signIn(provider)}
+                    >
+                      {signingIn === provider ? 'Opening…' : 'Sign in'}
+                    </button>
                   )}
                   {status === 'connected' && (
                     <Button type="button" variant="ghost" size="sm" data-ui="onboarding.provider-disconnect" data-ui-key={provider}

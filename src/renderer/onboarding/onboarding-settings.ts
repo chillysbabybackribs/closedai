@@ -28,7 +28,10 @@ export function createLocalUser(
     displayName: trimmed.length > 0 ? trimmed : 'User',
     avatarHue: avatarHueForUserId(id),
     createdAt,
-    passwordHash
+    passwordHash,
+    keepSignedIn: true,
+    connectedProviders: [],
+    providerSetupComplete: false
   }
 }
 
@@ -40,8 +43,16 @@ function normalizePhase(value: unknown): OnboardingPhase {
   return value === 'gate' || value === 'providers' || value === 'done' ? value : 'gate'
 }
 
-function normalizeUsers(value: unknown): LocalUser[] {
+function normalizeConnectedProviders(value: unknown): ChatProvider[] {
   if (!Array.isArray(value)) return []
+  return [...new Set(value.filter(isChatProvider))]
+}
+
+function normalizeUsers(value: unknown, legacy: Record<string, unknown>): LocalUser[] {
+  if (!Array.isArray(value)) return []
+  const legacyConnected = normalizeConnectedProviders(legacy.connectedProviders)
+  const legacyComplete = legacy.providerSetupComplete === true
+  const legacyKeep = legacy.keepSignedIn !== false
   const users: LocalUser[] = []
   for (const entry of value) {
     if (!entry || typeof entry !== 'object') continue
@@ -57,30 +68,36 @@ function normalizeUsers(value: unknown): LocalUser[] {
       : avatarHueForUserId(id)
     const rawHash = typeof record.passwordHash === 'string' ? record.passwordHash.trim() : ''
     const passwordHash = rawHash.length > 0 ? rawHash : undefined
-    users.push({ id, displayName, avatarHue, createdAt, passwordHash })
+    const hasOwnProviders = record.connectedProviders !== undefined
+    const hasOwnComplete = record.providerSetupComplete !== undefined
+    const hasOwnKeep = record.keepSignedIn !== undefined
+    users.push({
+      id,
+      displayName,
+      avatarHue,
+      createdAt,
+      passwordHash,
+      keepSignedIn: hasOwnKeep ? record.keepSignedIn !== false : legacyKeep,
+      connectedProviders: hasOwnProviders
+        ? normalizeConnectedProviders(record.connectedProviders)
+        : [...legacyConnected],
+      providerSetupComplete: hasOwnComplete ? record.providerSetupComplete === true : legacyComplete
+    })
   }
   return users
-}
-
-function normalizeConnectedProviders(value: unknown): ChatProvider[] {
-  if (!Array.isArray(value)) return []
-  return [...new Set(value.filter(isChatProvider))]
 }
 
 export function normalizeOnboardingSettings(value: unknown): OnboardingSettings {
   if (!value || typeof value !== 'object') return { ...DEFAULT_ONBOARDING_SETTINGS }
   const record = value as Record<string, unknown>
-  const users = normalizeUsers(record.users)
+  const users = normalizeUsers(record.users, record)
   const activeUserId = typeof record.activeUserId === 'string' ? record.activeUserId : null
   const activeValid = activeUserId && users.some((user) => user.id === activeUserId) ? activeUserId : null
   return {
     phase: normalizePhase(record.phase),
     users,
     activeUserId: activeValid,
-    keepSignedIn: record.keepSignedIn !== false,
-    sessionUnlocked: record.sessionUnlocked === true,
-    connectedProviders: normalizeConnectedProviders(record.connectedProviders),
-    providerSetupComplete: record.providerSetupComplete === true
+    sessionUnlocked: record.sessionUnlocked === true
   }
 }
 
@@ -99,11 +116,35 @@ export function writeOnboardingSettings(storage: StorageLike, settings: Onboardi
   storage.setItem(ONBOARDING_STORAGE_KEY, JSON.stringify(settings))
 }
 
+export function findLocalUser(settings: OnboardingSettings, userId: string | null): LocalUser | null {
+  if (!userId) return null
+  return settings.users.find((user) => user.id === userId) ?? null
+}
+
+export function patchLocalUser(
+  settings: OnboardingSettings,
+  userId: string,
+  patch: Partial<LocalUser>
+): OnboardingSettings {
+  return {
+    ...settings,
+    users: settings.users.map((user) => (user.id === userId ? { ...user, ...patch } : user))
+  }
+}
+
+export function phaseForUser(user: LocalUser | null, sessionUnlocked: boolean): OnboardingPhase {
+  if (!sessionUnlocked || !user) return 'gate'
+  return user.providerSetupComplete ? 'done' : 'providers'
+}
+
 /** Stable id for chat-history bypass installs that skip the session gate without creating a named account. */
 export const LEGACY_BYPASS_PROFILE_ID = 'closedai-legacy-bypass-profile'
 
 export function legacyBypassProfileUser(): LocalUser {
-  return createLocalUser('Local profile', LEGACY_BYPASS_PROFILE_ID, '', 0)
+  return {
+    ...createLocalUser('Local profile', LEGACY_BYPASS_PROFILE_ID, '', 0),
+    providerSetupComplete: true
+  }
 }
 
 /** Unlocked sessions must expose a local profile for the title-bar account menu and sign-out. */
@@ -129,19 +170,17 @@ export function completedOnboardingSettings(): OnboardingSettings {
     ...DEFAULT_ONBOARDING_SETTINGS,
     phase: 'done',
     sessionUnlocked: true,
-    providerSetupComplete: true,
     users: [legacy],
     activeUserId: legacy.id
   }
 }
 
-/** End the local session and return to the sign-in gate; profiles and provider progress stay on disk. */
+/** End the local session and return to the sign-in gate; profiles and per-user provider progress stay on disk. */
 export function signOutSession(settings: OnboardingSettings): OnboardingSettings {
   return {
     ...settings,
     phase: 'gate',
     sessionUnlocked: false,
-    activeUserId: null,
-    keepSignedIn: false
+    activeUserId: null
   }
 }

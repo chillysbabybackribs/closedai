@@ -12,6 +12,12 @@
   color: var(--chrome-fg-strong);
 }
 
+/* Give the note's tab rail the same chrome step as the rest of the workspace. */
+:root:not([data-theme='warm']) .chat-layout-tile[data-view-id^='closedai:view:note:'] {
+  --chat-header-surface: var(--surface-chrome);
+  --tab-active-surface: var(--surface-card);
+}
+
 .notepad-body {
   position: relative;
   display: flex;
@@ -53,15 +59,6 @@
 
 .notepad-chat-layer > * {
   pointer-events: auto;
-}
-
-.notepad-chat-layer .quick-chat-card,
-.notepad-chat-layer .chat-pane {
-  background: color-mix(in srgb, var(--surface-card) 65%, black);
-}
-
-:root[data-theme='warm'] .notepad-chat-layer :is(.quick-chat-card, .chat-pane) {
-  background: color-mix(in srgb, var(--surface-card) 90%, black);
 }
 
 .notepad-chat-elsewhere {

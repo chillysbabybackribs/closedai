@@ -9,6 +9,12 @@ export type LocalUser = {
   createdAt: number
   /** PBKDF2 hash from `hashLocalProfilePassword`; absent on profiles created before passwords. */
   passwordHash?: string
+  /** Skip the session gate on next launch for this profile when true. */
+  keepSignedIn: boolean
+  /** Providers this profile marked connected during setup or that reached ready while signed in. */
+  connectedProviders: ChatProvider[]
+  /** When true, the provider setup modal does not block this profile after sign-in. */
+  providerSetupComplete: boolean
 }
 
 export type OnboardingPhase = 'gate' | 'providers' | 'done'
@@ -18,13 +24,8 @@ export type OnboardingSettings = {
   phase: OnboardingPhase
   users: LocalUser[]
   activeUserId: string | null
-  /** Skip the session gate on next launch when true and activeUserId is set. */
-  keepSignedIn: boolean
   /** Whether the current launch passed the gate without re-prompting. */
   sessionUnlocked: boolean
-  /** Providers the user marked connected during setup (CLI lanes) or that reached ready. */
-  connectedProviders: ChatProvider[]
-  providerSetupComplete: boolean
 }
 
 export const ONBOARDING_STORAGE_KEY = 'closedai.onboarding.v1'
@@ -33,8 +34,5 @@ export const DEFAULT_ONBOARDING_SETTINGS: OnboardingSettings = {
   phase: 'gate',
   users: [],
   activeUserId: null,
-  keepSignedIn: true,
-  sessionUnlocked: false,
-  connectedProviders: [],
-  providerSetupComplete: false
+  sessionUnlocked: false
 }

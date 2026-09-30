@@ -4,7 +4,8 @@ import type { BrowserHistoryMatch } from './browser-history.js'
 import type { BrowserBounds, BrowserDownload, BrowserShot, BrowserState, BrowserTabInfo } from './types.js'
 import type { SavedSite, SavedSiteDraft, SavedSitePatch } from './saved-sites.js'
 import type { NoteChange, NoteDoc, NoteMeta, NoteSaveResult, NotepadBinding } from './notes.js'
-import type { ChatAttachment, ChatHistoryPage } from './chat.js'
+import type { ChatAttachment, ChatHistoryPage, ChatProvider } from './chat.js'
+import type { ProviderOnboardingStatus } from './provider-onboarding.js'
 import type {
   ChatContinuationSource, ChatNewPeerOptions, ChatPaneId, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot
 } from './chat-peers.js'
@@ -117,6 +118,8 @@ export type IpcInvokeChannels = {
   'chat:clearProject': { args: [ChatPaneId]; result: void }
   'chat:selectSpace': { args: [string | null]; result: void }
   'chat:providerAvailability': { args: []; result: ProviderAvailability[] }
+  'chat:providerOnboarding': { args: []; result: ProviderOnboardingStatus[] }
+  'chat:providerSignIn': { args: [ChatProvider]; result: void }
   'agentRuns:list': { args: []; result: AgentRun[] }
   'agentRuns:start': { args: [string, AgentRunStartOptions]; result: AgentRun }
   'agentRuns:pause': { args: [string]; result: AgentRun | null }
@@ -288,7 +291,9 @@ export const IPC = {
       selectProject: 'chat:selectProject',
       clearProject: 'chat:clearProject',
       selectSpace: 'chat:selectSpace',
-      providerAvailability: 'chat:providerAvailability'
+      providerAvailability: 'chat:providerAvailability',
+      providerOnboarding: 'chat:providerOnboarding',
+      providerSignIn: 'chat:providerSignIn'
     },
     agentRuns: {
       list: 'agentRuns:list',

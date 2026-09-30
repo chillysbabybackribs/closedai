@@ -1,5 +1,8 @@
 import { EventEmitter } from 'node:events'
-import type { ChatAttachment, ChatEvent, ChatSnapshot, ChatThreadSummary } from '../../shared/chat.js'
+import type { ChatAttachment, ChatEvent, ChatProvider, ChatSnapshot, ChatThreadSummary } from '../../shared/chat.js'
+import type { ProviderOnboardingStatus } from '../../shared/provider-onboarding.js'
+import { probeProviderOnboarding } from '../chat-hub-provider-onboarding.js'
+import type { ChatHub } from '../chat-hub.js'
 import { CHAT_TURN_PAGE_SIZE, type ChatHistoryPage, type ChatHistoryWindow } from '../../shared/chat.js'
 import type {
   ChatContinuationSource,
@@ -577,6 +580,20 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
 
   beginLogin(): Promise<string | null> {
     return this.withAwake(this.selectedPaneId, (surface) => surface.beginLogin())
+  }
+
+  probeProviderOnboarding(): Promise<ProviderOnboardingStatus[]> {
+    const hub = hubForSelectedPane(this.lifecycle, this.selectedPaneId)
+    return probeProviderOnboarding(hub)
+  }
+
+  beginProviderLogin(provider: ChatProvider): Promise<string | null> {
+    return this.withAwake(this.selectedPaneId, (surface) => {
+      if ('beginProviderSignIn' in surface && typeof surface.beginProviderSignIn === 'function') {
+        return (surface as ChatHub).beginProviderSignIn(provider)
+      }
+      return surface.beginLogin()
+    })
   }
 
   listReadable(callerPaneId: string | null): ChatPeerSummary[] {

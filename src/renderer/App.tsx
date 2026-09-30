@@ -388,7 +388,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
       {onboarding.showSessionGate && (
         <SessionGate
           users={onboarding.settings.users}
-          keepSignedIn={onboarding.settings.keepSignedIn}
+          keepSignedIn={onboarding.keepSignedIn}
           backdropStatus={backdropStatus}
           onKeepSignedInChange={onboarding.setKeepSignedIn}
           onSignIn={onboarding.signIn}
@@ -399,8 +399,8 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
       <ProviderSetupModal
         open={onboarding.showProviderSetup}
         chat={chat.state}
-        connectedProviders={onboarding.settings.connectedProviders}
-        onLoginCodex={chat.loginWithChatGPT}
+        connectedProviders={onboarding.connectedProviders}
+        onSignInProvider={(provider) => window.closedai.chat.providerSignIn(provider)}
         onMarkConnected={onboarding.markProviderConnected}
         onClearConnected={onboarding.clearProviderConnected}
         onContinue={onboarding.completeProviderSetup}

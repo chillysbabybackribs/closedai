@@ -1,4 +1,5 @@
 import type { ChatProvider } from '../shared/chat.js'
+import { PROVIDER_INSTALL_HINTS } from '../shared/provider-install-hints.js'
 
 // What every provider lane says when its executable is missing, and how a spawn failure is
 // recognised as that. Node reports a missing binary as `spawn <name> ENOENT`; the one-shot CLI
@@ -11,13 +12,7 @@ export const CODEX_BINARY_ENV = 'CLOSEDAI_CODEX_PATH'
 /** How often a lane re-probes for a binary that was missing; the user is installing, not waiting on us. */
 export const MISSING_BINARY_RETRY_MS = 60_000
 
-/** Shown on the connection (and as the availability hint) when the provider is not installed. */
-export const PROVIDER_INSTALL_HINTS: Record<ChatProvider, string> = {
-  codex: 'Codex is not installed. Install the Codex CLI and sign in from the app, or choose another model.',
-  claude: 'Claude Code could not start its bundled CLI. Reinstall ClosedAI, or choose another model.',
-  antigravity: 'Antigravity is not installed. Install the Antigravity CLI (agy) and sign in with Google, or choose another model.',
-  cursor: 'Cursor is not installed. Install the Cursor CLI (cursor-agent) and run `cursor-agent login`, or choose another model.'
-}
+export { PROVIDER_INSTALL_HINTS }
 
 /** The availability hint once the provider is installed: what remains is signing in. */
 export const PROVIDER_SIGN_IN_HINTS: Record<ChatProvider, string> = {

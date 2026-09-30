@@ -3,11 +3,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ChatProvider } from '../../shared/chat.js'
 import type { ChatSnapshot } from '../../shared/chat.js'
 import { hashLocalProfilePassword, verifyLocalProfilePassword } from '../../shared/local-profile-password.js'
-import type { OnboardingSettings } from '../../shared/onboarding.js'
+import type { LocalUser, OnboardingSettings } from '../../shared/onboarding.js'
 import {
   completedOnboardingSettings,
   createLocalUser,
   ensureActiveSessionProfile,
+  findLocalUser,
+  patchLocalUser,
+  phaseForUser,
   readOnboardingSettings,
   signOutSession,
   writeOnboardingSettings
@@ -23,6 +26,9 @@ export type SessionGateCreateResult =
 
 export type OnboardingController = {
   settings: OnboardingSettings
+  activeUser: LocalUser | null
+  connectedProviders: readonly ChatProvider[]
+  keepSignedIn: boolean
   showSessionGate: boolean
   showProviderSetup: boolean
   signIn: (userId: string, password: string) => Promise<SessionGateSignInResult>
@@ -37,13 +43,18 @@ export type OnboardingController = {
   signOut: () => void
 }
 
-function unlockSession(settings: OnboardingSettings, userId: string, keepSignedIn: boolean): OnboardingSettings {
+function unlockSession(
+  settings: OnboardingSettings,
+  userId: string,
+  keepSignedIn: boolean
+): OnboardingSettings {
+  const withUser = patchLocalUser(settings, userId, { keepSignedIn })
+  const user = findLocalUser(withUser, userId)
   return {
-    ...settings,
+    ...withUser,
     activeUserId: userId,
-    keepSignedIn,
     sessionUnlocked: true,
-    phase: settings.providerSetupComplete ? 'done' : 'providers'
+    phase: phaseForUser(user, true)
   }
 }
 
@@ -52,20 +63,21 @@ function initialSettings(): OnboardingSettings {
     phase: 'gate' as const,
     users: [],
     activeUserId: null,
-    keepSignedIn: true,
-    sessionUnlocked: false,
-    connectedProviders: [],
-    providerSetupComplete: false
+    sessionUnlocked: false
   }
-  if (!stored.keepSignedIn && stored.providerSetupComplete && stored.activeUserId) {
-    return { ...stored, phase: 'gate', sessionUnlocked: false }
+  const activeUser = findLocalUser(stored, stored.activeUserId)
+  if (stored.sessionUnlocked && activeUser && !activeUser.keepSignedIn) {
+    return { ...stored, phase: 'gate', sessionUnlocked: false, activeUserId: null }
   }
-  if (stored.keepSignedIn && stored.activeUserId && stored.phase === 'gate') {
+  if (activeUser?.keepSignedIn && stored.activeUserId && !stored.sessionUnlocked) {
     return ensureActiveSessionProfile({
       ...stored,
       sessionUnlocked: true,
-      phase: stored.providerSetupComplete ? 'done' : 'providers'
+      phase: phaseForUser(activeUser, true)
     })
+  }
+  if (stored.sessionUnlocked && activeUser) {
+    return { ...stored, phase: phaseForUser(activeUser, true) }
   }
   return ensureActiveSessionProfile(stored)
 }
@@ -75,7 +87,7 @@ function bootstrapOnboardingSettings(): OnboardingSettings {
   const before = readOnboardingSettings(window.localStorage)
   if (
     before !== null
-    && (next.activeUserId !== before.activeUserId || next.users.length !== before.users.length)
+    && (next.activeUserId !== before.activeUserId || next.users.length !== before.users.length || next.phase !== before.phase)
   ) {
     writeOnboardingSettings(window.localStorage, next)
   }
@@ -84,6 +96,18 @@ function bootstrapOnboardingSettings(): OnboardingSettings {
 
 export function useOnboarding(chatSnapshot: ChatSnapshot, legacyBypass: boolean): OnboardingController {
   const [settings, setSettings] = useState(bootstrapOnboardingSettings)
+  const [pendingKeepSignedIn, setPendingKeepSignedIn] = useState(true)
+
+  const activeUser = useMemo(
+    () => findLocalUser(settings, settings.activeUserId),
+    [settings]
+  )
+
+  const connectedProviders = activeUser?.connectedProviders ?? []
+
+  const keepSignedIn = settings.sessionUnlocked
+    ? (activeUser?.keepSignedIn ?? true)
+    : pendingKeepSignedIn
 
   const persist = useCallback((next: OnboardingSettings) => {
     setSettings(next)
@@ -114,12 +138,12 @@ export function useOnboarding(chatSnapshot: ChatSnapshot, legacyBypass: boolean)
     const valid = await verifyLocalProfilePassword(password, user.passwordHash)
     if (!valid) return { ok: false, reason: 'wrong-password' }
     setSettings(() => {
-      const next = unlockSession(current, userId, current.keepSignedIn)
+      const next = unlockSession(current, userId, pendingKeepSignedIn)
       writeOnboardingSettings(window.localStorage, next)
       return next
     })
     return { ok: true }
-  }, [settings])
+  }, [pendingKeepSignedIn, settings])
 
   const setProfilePassword = useCallback(async (userId: string, password: string): Promise<SessionGateSignInResult> => {
     if (!password.trim()) return { ok: false, reason: 'wrong-password' }
@@ -132,12 +156,12 @@ export function useOnboarding(chatSnapshot: ChatSnapshot, legacyBypass: boolean)
       entry.id === userId ? { ...entry, passwordHash } : entry
     ))
     setSettings(() => {
-      const next = unlockSession({ ...current, users }, userId, current.keepSignedIn)
+      const next = unlockSession({ ...current, users }, userId, pendingKeepSignedIn)
       writeOnboardingSettings(window.localStorage, next)
       return next
     })
     return { ok: true }
-  }, [settings])
+  }, [pendingKeepSignedIn, settings])
 
   const createAccount = useCallback(async (displayName: string, password: string): Promise<SessionGateCreateResult> => {
     const trimmed = displayName.trim()
@@ -152,29 +176,33 @@ export function useOnboarding(chatSnapshot: ChatSnapshot, legacyBypass: boolean)
       const next = unlockSession(
         { ...current, users: [...current.users, user] },
         id,
-        current.keepSignedIn
+        pendingKeepSignedIn
       )
       writeOnboardingSettings(window.localStorage, next)
       return next
     })
     return { ok: true }
-  }, [settings])
+  }, [pendingKeepSignedIn, settings])
 
   const setKeepSignedIn = useCallback((value: boolean) => {
+    setPendingKeepSignedIn(value)
+    if (!settings.sessionUnlocked || !settings.activeUserId) return
     setSettings((current) => {
-      const next = { ...current, keepSignedIn: value }
+      const next = patchLocalUser(current, current.activeUserId!, { keepSignedIn: value })
       writeOnboardingSettings(window.localStorage, next)
       return next
     })
-  }, [])
+  }, [settings.activeUserId, settings.sessionUnlocked])
 
   const finishProviders = useCallback(() => {
     setSettings((current) => {
+      const userId = current.activeUserId
+      if (!userId) return current
+      const patched = patchLocalUser(current, userId, { providerSetupComplete: true })
+      const user = findLocalUser(patched, userId)
       const next: OnboardingSettings = {
-        ...current,
-        phase: 'done',
-        providerSetupComplete: true,
-        sessionUnlocked: current.keepSignedIn ? true : current.sessionUnlocked
+        ...patched,
+        phase: phaseForUser(user, current.sessionUnlocked)
       }
       writeOnboardingSettings(window.localStorage, next)
       return next
@@ -186,11 +214,13 @@ export function useOnboarding(chatSnapshot: ChatSnapshot, legacyBypass: boolean)
 
   const markProviderConnected = useCallback((provider: ChatProvider) => {
     setSettings((current) => {
-      if (current.connectedProviders.includes(provider)) return current
-      const next = {
-        ...current,
-        connectedProviders: [...current.connectedProviders, provider]
-      }
+      const userId = current.activeUserId
+      if (!userId) return current
+      const user = findLocalUser(current, userId)
+      if (!user || user.connectedProviders.includes(provider)) return current
+      const next = patchLocalUser(current, userId, {
+        connectedProviders: [...user.connectedProviders, provider]
+      })
       writeOnboardingSettings(window.localStorage, next)
       return next
     })
@@ -198,10 +228,13 @@ export function useOnboarding(chatSnapshot: ChatSnapshot, legacyBypass: boolean)
 
   const clearProviderConnected = useCallback((provider: ChatProvider) => {
     setSettings((current) => {
-      const next = {
-        ...current,
-        connectedProviders: current.connectedProviders.filter((entry) => entry !== provider)
-      }
+      const userId = current.activeUserId
+      if (!userId) return current
+      const user = findLocalUser(current, userId)
+      if (!user) return current
+      const next = patchLocalUser(current, userId, {
+        connectedProviders: user.connectedProviders.filter((entry) => entry !== provider)
+      })
       writeOnboardingSettings(window.localStorage, next)
       return next
     })
@@ -209,7 +242,14 @@ export function useOnboarding(chatSnapshot: ChatSnapshot, legacyBypass: boolean)
 
   const reopenProviderSetup = useCallback(() => {
     setSettings((current) => {
-      const next: OnboardingSettings = { ...current, phase: 'providers', providerSetupComplete: false, sessionUnlocked: true }
+      const userId = current.activeUserId
+      if (!userId) return current
+      const patched = patchLocalUser(current, userId, { providerSetupComplete: false })
+      const next: OnboardingSettings = {
+        ...patched,
+        phase: 'providers',
+        sessionUnlocked: true
+      }
       writeOnboardingSettings(window.localStorage, next)
       return next
     })
@@ -230,7 +270,6 @@ export function useOnboarding(chatSnapshot: ChatSnapshot, legacyBypass: boolean)
     return settings.sessionUnlocked
   }, [settings])
 
-  // Lift live Codex readiness into connected providers.
   useEffect(() => {
     if (chatSnapshot.provider === 'codex' && chatSnapshot.connection.state === 'ready') {
       markProviderConnected('codex')
@@ -239,6 +278,9 @@ export function useOnboarding(chatSnapshot: ChatSnapshot, legacyBypass: boolean)
 
   return {
     settings,
+    activeUser,
+    connectedProviders,
+    keepSignedIn,
     showSessionGate,
     showProviderSetup,
     signIn,

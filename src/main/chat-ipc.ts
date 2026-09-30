@@ -2,7 +2,8 @@ import { dialog, shell, type IpcMain, type WebContents } from 'electron'
 import { MAIN_WINDOW_ID } from '../shared/app-windows.js'
 import { stat } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import type { ChatAttachment } from '../shared/chat.js'
+import type { ChatAttachment, ChatProvider } from '../shared/chat.js'
+import { CHAT_PROVIDERS } from '../shared/chat-providers.js'
 import { CHAT_TURN_PAGE_SIZE } from '../shared/chat.js'
 import type { ChatContinuationSource, ChatNewPeerOptions } from '../shared/chat-peers.js'
 import { IPC } from '../shared/ipc-channels.js'
@@ -89,8 +90,16 @@ export function registerChatIpc(ipcMain: IpcMain, getService: () => ChatWorkspac
   })
   // Needs no service: a first-run screen asks this before any chat has started a provider.
   ipcMain.handle(IPC.invoke.chat.providerAvailability, () => detectProviderAvailability())
+  ipcMain.handle(IPC.invoke.chat.providerOnboarding, () => requireService().probeProviderOnboarding())
   ipcMain.handle(IPC.invoke.chat.login, async () => {
     const authUrl = await requireService().beginLogin()
+    if (authUrl) await shell.openExternal(authUrl)
+  })
+  ipcMain.handle(IPC.invoke.chat.providerSignIn, async (_event, provider: unknown) => {
+    if (typeof provider !== 'string' || !(CHAT_PROVIDERS as readonly string[]).includes(provider)) {
+      throw new Error('Choose a valid provider to sign in')
+    }
+    const authUrl = await requireService().beginProviderLogin(provider as ChatProvider)
     if (authUrl) await shell.openExternal(authUrl)
   })
 }

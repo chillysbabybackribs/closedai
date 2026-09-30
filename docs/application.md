@@ -76,15 +76,20 @@ chat starts a provider; resolution follows each lane's spawn order (env override
 First-run onboarding (renderer). Before the workspace is used on a fresh install, the shell shows
 a full-screen **session gate** (Ubuntu-style local profiles: pick a user, enter a password, create
 account with username/password confirmation, keep signed in) persisted
-in `localStorage` under `closedai.onboarding.v1` (`src/shared/onboarding.ts`). Existing installs
-with chat history skip the flow automatically and receive an implicit **Local profile** so the
-title-bar account menu and sign-out stay available. After the gate, the normal title bar,
-workspace, and dock stay visible while a **provider setup** modal lists all four providers with
-install hints, Codex in-app connect, and CLI confirmation for the other lanes. Per-pane empty
-states still show connection guidance when a lane later drifts out of `ready`. **Sign out**
+in `localStorage` under `closedai.onboarding.v1` (`src/shared/onboarding.ts`). Each **local
+profile** owns its own `keepSignedIn`, `connectedProviders`, and `providerSetupComplete` flags so
+a new account is not treated as finished with provider setup just because another profile on the
+same machine already connected. Existing installs with chat history skip the flow automatically
+and receive an implicit **Local profile** so the title-bar account menu and sign-out stay
+available. After the gate, the normal title bar, workspace, and dock stay visible while a
+**provider setup** modal lists all four providers as connected or not, probes installed CLIs for
+existing sign-in, and offers a **Sign in** action (Codex opens ChatGPT in the browser; Cursor runs
+`cursor-agent login`; Claude and Antigravity warm their lanes after CLI login elsewhere). Per-pane
+empty states still show connection guidance when a lane later drifts out of `ready`. **Sign out**
 (the profile avatar at the title bar's left edge, whose menu names the profile, or
-**File → Sign out…** / Start → search) clears the local session (`sessionUnlocked`, `activeUserId`,
-`keepSignedIn`) and returns to the gate without deleting saved profiles or provider-setup progress.
+**File → Sign out…** / Start → search) clears the local session (`sessionUnlocked`,
+`activeUserId`) and returns to the gate without deleting saved profiles or per-profile
+provider-setup progress.
 
 Launch resilience. A bootstrap failure is shown in a native error box and ends the app; an
 uncaught exception or unhandled rejection after the window exists is logged with a `[main]`

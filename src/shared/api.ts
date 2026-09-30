@@ -190,6 +190,10 @@ export type ClosedaiApi = {
     selectSpace: (projectPath: string | null) => Promise<void>
     /** Which providers can start on this machine (binary present), with an install or sign-in sentence each; for onboarding. */
     providerAvailability: () => Promise<ProviderAvailability[]>
+    /** Installed providers plus live or cached sign-in state for the first-run modal. */
+    providerOnboarding: () => Promise<import('./provider-onboarding.js').ProviderOnboardingStatus[]>
+    /** Open the provider's sign-in flow (browser or CLI login). */
+    providerSignIn: (provider: import('./chat.js').ChatProvider) => Promise<void>
     onEvent: (listener: (event: ChatWorkspaceEvent) => void) => Unsubscribe
   }
   /** Agent runs: chats the main process keeps driving cycle after cycle; see `src/shared/agent-runs.ts`. */

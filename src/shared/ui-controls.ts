@@ -122,7 +122,7 @@ export const UI_CONTROLS = {
   'onboarding.gate-create': 'Session gate: create a new local profile and continue',
   'onboarding.gate-keep-signed-in': 'Session gate: keep this profile signed in on the next launch',
   'dialog.onboarding-providers': 'First-run dialog: connect chat providers before using the workspace',
-  'onboarding.provider-connect': 'Provider setup: connect or confirm sign-in for a provider; item is codex, claude, antigravity, or cursor',
+  'onboarding.provider-sign-in': 'Provider setup: open sign-in for a provider; item is codex, claude, antigravity, or cursor',
   'onboarding.provider-disconnect': 'Provider setup: clear a provider marked connected during onboarding; item is the provider id',
   'onboarding.provider-refresh': 'Provider setup: re-check which provider binaries are installed',
   'onboarding.provider-skip': 'Provider setup: continue without connecting a provider',
