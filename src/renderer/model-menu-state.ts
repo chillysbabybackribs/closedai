@@ -90,75 +90,45 @@ export function modelContextLabel(tokens: number | undefined): string | null {
   return String(Math.round(tokens))
 }
 
-/** How many recently used models the picker remembers, across providers. */
-export const RECENT_MODELS_KEPT = 8
-/** How many of them the picker's Recent block shows. */
-export const RECENT_MODELS_SHOWN = 3
-
-export const RECENT_MODELS_STORAGE_KEY = 'closedai.composer.recentModels'
-/** Fired on `window` after `rememberRecentModel` writes so every pane's picker stays in sync. */
-export const RECENT_MODELS_CHANGED = 'closedai:composer-recent-models'
-
-export type RecentModelsStorage = Pick<Storage, 'getItem' | 'setItem'>
-
-/** The stored id list for this window, oldest first. */
-export function loadRecentModelIds(storage: RecentModelsStorage): string[] {
-  try {
-    return parseRecentModels(storage.getItem(RECENT_MODELS_STORAGE_KEY))
-  } catch {
-    return []
-  }
+/** A model's own blurb for its row's tooltip, without the subscription boilerplate every row shares. */
+export function modelBlurb(model: ChatModel): string | null {
+  return stripSubscriptionBlurb(model.description.trim()) || null
 }
 
-/** Record one model use and persist it; returns the updated id list. */
-export function rememberRecentModel(
-  modelId: string,
-  storage: RecentModelsStorage = window.localStorage,
-  notify = true
-): string[] {
-  const next = pushRecentModel(loadRecentModelIds(storage), modelId)
-  try {
-    storage.setItem(RECENT_MODELS_STORAGE_KEY, JSON.stringify(next))
-  } catch {
-    // Recent is a convenience, not state the pane depends on.
-  }
-  if (notify && typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent(RECENT_MODELS_CHANGED))
-  }
-  return next
-}
+type Box = { left: number; right: number; width: number }
 
-/** Stored recents, oldest first; anything that is not a model id string is dropped. */
-export function parseRecentModels(raw: string | null): string[] {
-  if (!raw) return []
-  try {
-    const parsed: unknown = JSON.parse(raw)
-    if (!Array.isArray(parsed)) return []
-    return parsed.filter((id): id is string => typeof id === 'string' && id.length > 0).slice(-RECENT_MODELS_KEPT)
-  } catch {
-    return []
-  }
-}
-
-/** One more use of a model: it moves to the end, the oldest falls off past the cap. */
-export function pushRecentModel(recent: readonly string[], modelId: string): string[] {
-  return [...recent.filter((id) => id !== modelId), modelId].slice(-RECENT_MODELS_KEPT)
+export type ModelFlyoutPlacement = {
+  side: 'left' | 'right'
+  align: 'start' | 'end'
+  /** From the anchoring provider row; negative when a narrow pane makes the flyout overlap the panel. */
+  sideOffset: number
+  width: number
 }
 
 /**
- * The Recent block, most recent last so the model used just before this one sits nearest the
- * trigger. The current model is already checked in its own section, and models no longer in the
- * catalogue are skipped rather than shown as dead rows.
+ * Where a provider's model flyout opens beside the provider panel. It takes whichever side of the
+ * panel has room inside the boundary (the chat pane: a DOM overlay must never reach over the
+ * browser column), preferring the right; when neither side does, it slides over the panel just far
+ * enough to stay inside. It grows the way the panel opened: upward from the row when the panel
+ * sits above the trigger, downward when it dropped below.
  */
-export function recentModels(
-  models: ChatModel[],
-  recent: readonly string[],
-  selectedModel: string | null,
-  limit = RECENT_MODELS_SHOWN
-): ChatModel[] {
-  const byId = new Map(models.map((model) => [model.id, model]))
-  return recent
-    .filter((id) => id !== selectedModel)
-    .flatMap((id) => byId.get(id) ?? [])
-    .slice(-limit)
+export function modelFlyoutPlacement(
+  panel: Box,
+  row: Box,
+  boundary: Box,
+  panelSide: string | null,
+  { width = 260, gap = 6, padding = 12 }: { width?: number; gap?: number; padding?: number } = {}
+): ModelFlyoutPlacement {
+  const fit = Math.max(0, Math.floor(Math.min(width, boundary.width - padding * 2)))
+  const roomRight = boundary.right - padding - panel.right
+  const roomLeft = panel.left - boundary.left - padding
+  const side = roomRight >= fit + gap || roomRight >= roomLeft ? 'right' : 'left'
+  const room = side === 'right' ? roomRight : roomLeft
+  const inset = side === 'right' ? panel.right - row.right : row.left - panel.left
+  return {
+    side,
+    align: panelSide === 'bottom' ? 'start' : 'end',
+    sideOffset: room >= fit + gap ? inset + gap : inset + room - fit,
+    width: fit
+  }
 }
