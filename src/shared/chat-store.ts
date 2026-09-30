@@ -2,6 +2,7 @@ import type { AgentRun } from './agent-runs.js'
 import type { ChatProvider } from './chat.js'
 import type { ChatMemoryCheckpoint } from './chat-memory.js'
 import { prefixChatId } from './chat-providers.js'
+import type { QuickChatSurface } from './quick-chat-overlay.js'
 import type { ChatSessionRotation } from './session-rotation.js'
 import type { ChatContinuation } from './types.js'
 
@@ -51,6 +52,8 @@ export type ChatRecord = {
   sessionRotations: ChatSessionRotation[]
   /** The agent run driving this chat, running or paused; null for an ordinary chat. */
   agentRun: AgentRun | null
+  /** Set when the chat was started from the browser quick chat or a notepad window chat. */
+  quickChatSurface?: QuickChatSurface | null
 }
 
 export type ChatRecordSeed = Pick<ChatRecord, 'cwd' | 'projectPath' | 'provider' | 'modelId' | 'reasoningEffort'> &

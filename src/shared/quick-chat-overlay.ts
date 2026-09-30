@@ -29,6 +29,9 @@ export type QuickChatOverlayRequest = 'open' | 'new' | 'close' | 'toggle'
 
 export const QUICK_CHAT_OVERLAY_REQUESTS: readonly QuickChatOverlayRequest[] = ['open', 'new', 'close', 'toggle']
 
+/** The browser quick chat or a notepad window's chat; stored on the chat record for history rows. */
+export type QuickChatSurface = 'browser' | 'notepad'
+
 /** Query parameter the layer's renderer is loaded with, and its value. */
 export const APP_SURFACE_QUERY = 'surface'
 export const QUICK_CHAT_SURFACE = 'quick-chat'

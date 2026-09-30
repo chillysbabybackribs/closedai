@@ -327,9 +327,10 @@ popup do not move focus, so the input keeps the keyboard.
 The dropdown groups chats into Running, Paused, Recently completed (unread), Open (still attached),
 and Closed (detached, 20 newest), newest last turn first, in a scrollable list whose captions carry the counts.
 Rows are single lines in a command-palette surface wider than the input: a live-state glyph (or the
-provider's mark when idle), the title, the project folder as a dim description, and the
-last-activity time on the right; a search result also carries an Open/Closed tag since no group
-implies it. Empty groups are omitted and each chat appears once. The closed input shows no count
+provider's mark when idle, or the notepad icon when the chat was started from a notepad window),
+the title, the project folder as a dim description, and the last-activity time on the right; a
+search result also carries an Open/Closed tag since no group implies it. The History view and Start's
+recent chats use the same notepad icon on those rows. Empty groups are omitted and each chat appears once. The closed input shows no count
 badges; at rest it shows the Ctrl+H shortcut on the right, with the magnifying glass and placeholder
 aligned left. The icon and text retain that alignment when the input is focused or contains a query.
 Unread completions use the persisted review queue and move into History when opened.

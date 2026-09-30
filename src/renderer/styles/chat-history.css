@@ -92,9 +92,9 @@
 .chat-history-open {
   display: flex;
   flex: 1 1 auto;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
   min-width: 0;
   padding: 8px 10px;
   border: 0;
@@ -106,6 +106,25 @@
 }
 
 .chat-history-open:disabled { cursor: default; }
+
+.chat-history-leading {
+  display: flex;
+  flex: none;
+  justify-content: center;
+  width: 18px;
+  color: var(--muted-foreground);
+}
+
+.chat-history-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+
+.chat-history-surface { opacity: 0.92; }
 
 .chat-history-title {
   max-width: 100%;

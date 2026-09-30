@@ -286,6 +286,10 @@
   opacity: 0.8;
 }
 
+.header-chat-search-surface {
+  opacity: 0.88;
+}
+
 .header-chat-search-row[aria-selected='true'] .header-chat-search-provider { opacity: 1; }
 .header-chat-search-row[data-status='running'] .header-chat-search-symbol { color: var(--tab-accent); }
 .header-chat-search-row[data-status='paused'] .header-chat-search-symbol { color: #dba74b; }

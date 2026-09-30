@@ -13,6 +13,7 @@ import type {
   PeerChatReadResult
 } from '../../shared/chat-peers.js'
 import { chatProviderOfId } from '../../shared/chat-providers.js'
+import type { QuickChatSurface } from '../../shared/quick-chat-overlay.js'
 import type { ChatRecordSeed } from '../../shared/chat-store.js'
 import type { ChatContinuation } from '../../shared/types.js'
 import type { AppSettingsAccess } from '../app-settings-store.js'
@@ -371,7 +372,9 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     // A requested model starts on its provider's default effort unless it is the anchor's own.
     const model = options?.modelId ?? base.selectedModel
     const effort = model === base.selectedModel ? base.selectedReasoningEffort : null
-    return this.newChat(model, effort, null, anchorPaneId ? this.store.require(anchorPaneId) : undefined, { selectPane: options?.select })
+    const seed = options?.quickChatSurface ? { quickChatSurface: options.quickChatSurface } : undefined
+    return this.newChat(model, effort, null, anchorPaneId ? this.store.require(anchorPaneId) : undefined,
+      { selectPane: options?.select, seed })
   }
 
   private async newChat(modelId: string | null, reasoningEffort: string | null, continuation: ChatContinuation | null,
@@ -483,6 +486,15 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     const record = this.store.get(chatId)
     if (!record || record.archived) throw new Error('That chat is no longer available')
     this.store.update(chatId, { pinnedAt: pinned ? record.pinnedAt ?? Date.now() : null })
+    this.emitChats()
+  }
+
+  /** Marks side chats for history; idempotent and used when a notepad re-binds its notes. */
+  tagQuickChatSurface(paneId: ChatPaneId, surface: QuickChatSurface): void {
+    const record = this.store.get(paneId)
+    if (!record || record.archived || record.quickChatSurface === surface) return
+    this.store.update(paneId, { quickChatSurface: surface })
+    this.chatRowsCache.invalidateDetached()
     this.emitChats()
   }
 

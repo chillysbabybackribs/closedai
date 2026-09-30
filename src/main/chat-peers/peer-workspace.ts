@@ -35,6 +35,7 @@ export interface ChatWorkspaceSurface {
    * `select: false` leaves the selection alone; the caller reports the new chat visible itself.
    */
   newPeer(anchorPaneId?: ChatPaneId, options?: ChatNewPeerOptions): Promise<ChatPaneId>
+  tagQuickChatSurface(paneId: ChatPaneId, surface: import('../../shared/quick-chat-overlay.js').QuickChatSurface): void
   closePeer(paneId: ChatPaneId): Promise<void>
   continueInNewPeer(source: ChatContinuationSource, modelId: string | null): Promise<ChatPaneId>
   /** Show a chat: select it if attached, else attach it, replacing the selected chat only when that one is blank. */

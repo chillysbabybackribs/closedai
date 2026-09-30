@@ -557,9 +557,13 @@ export function useChatLayout(
   // history (or away, when blank).
   // A chat that is not a tab (the quick chat, a notepad window's chat): created unselected and
   // reported visible at once, before main could discard it as a blank unselected chat.
-  const newSideChat = useCallback(async (modelId: string | null): Promise<string> => {
+  const newSideChat = useCallback(async (modelId: string | null, quickChatSurface?: import('../../shared/quick-chat-overlay.js').QuickChatSurface): Promise<string> => {
     const anchor = chatPaneIds(current.current.tree).includes(selected.current) ? selected.current : undefined
-    const id = await window.closedai.chat.newPeer(anchor, { select: false, ...(modelId ? { modelId } : {}) })
+    const id = await window.closedai.chat.newPeer(anchor, {
+      select: false,
+      ...(modelId ? { modelId } : {}),
+      ...(quickChatSurface ? { quickChatSurface } : {})
+    })
     const visible = [...chatPaneIds(current.current.tree), ...sideChats(current.current), id]
     await window.closedai.chat.setVisiblePanes(cwd, [...new Set(visible)], chatTabIds(current.current.tree))
     return id
@@ -574,7 +578,7 @@ export function useChatLayout(
     if (pending.current) return
     pending.current = true
     try {
-      const id = await newSideChat(readQuickChatModel(window.localStorage))
+      const id = await newSideChat(readQuickChatModel(window.localStorage), 'browser')
       setLayout((value) => ({ ...value, browserChat: id, browserChatOpen: true }))
       if (previous && available) await window.closedai.chat.closePeer(previous)
     } catch (reason) {

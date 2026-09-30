@@ -7,6 +7,7 @@ import {
   menuItemDisabled, runMenuItem, type MenuItem, type TitlebarMenuProps
 } from '../application-menu-model.js'
 import { formatChatTime } from '../chat-history/history-format.js'
+import { ChatHistorySurfaceMark } from '../chat-history/chat-history-surface-mark.js'
 import { chatSearchMeta } from '../chat-history/history-search.js'
 import {
   allStartMenuGroups, recentChatsForStart, searchStartMenu, startPinVisual, startPins, startScreenForRow,
@@ -79,9 +80,14 @@ export function DockStartPanel({ menu, chats, spaceName, overviewActive, overvie
                   {recentChats.map((hit) => <li key={hit.row.paneId} className="chat-history-row">
                     <button type="button" className="chat-history-open" data-ui="dock.start-chat" data-ui-key={hit.row.paneId}
                       onClick={() => { onOpenChat(hit.row.paneId); onClose() }}>
-                      <span className="chat-history-title">{hit.row.title}</span>
-                      <span className="chat-history-meta">
-                        <span>{chatSearchMeta(hit, (timestamp) => formatChatTime(timestamp, now))}</span>
+                      <span className="chat-history-leading" aria-hidden="true">
+                        <ChatHistorySurfaceMark surface={hit.row.quickChatSurface} size={16} className="chat-history-surface" />
+                      </span>
+                      <span className="chat-history-body">
+                        <span className="chat-history-title">{hit.row.title}</span>
+                        <span className="chat-history-meta">
+                          <span>{chatSearchMeta(hit, (timestamp) => formatChatTime(timestamp, now))}</span>
+                        </span>
                       </span>
                     </button>
                   </li>)}

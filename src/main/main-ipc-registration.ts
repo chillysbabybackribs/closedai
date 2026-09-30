@@ -86,7 +86,9 @@ export function registerMainProcessIpc(reg: MainIpcRegistration): void {
   registerBrowserCoreIpc(reg.ipcMain, reg.browserService, reg.savedSites, (sender) => reg.windows()?.isMain(sender) ?? true)
   registerBrowserDownloadsIpc(reg.ipcMain, reg.browserDownloads)
   registerSavedSitesIpc(reg.ipcMain, reg.savedSites)
-  registerNotesIpc(reg.ipcMain, reg.notes, reg.notepadBindings)
+  registerNotesIpc(reg.ipcMain, reg.notes, reg.notepadBindings, (chatPaneId) => {
+    reg.chatService()?.tagQuickChatSurface(chatPaneId, 'notepad')
+  })
   registerLocalFilesIpc(reg.ipcMain, reg.browserService)
   registerChatIpc(reg.ipcMain, reg.chatService, reg.windows)
   registerAgentRunsIpc(reg.ipcMain, reg.agentRuns)

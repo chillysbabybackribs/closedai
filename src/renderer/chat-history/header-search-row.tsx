@@ -2,6 +2,7 @@ import type { JSX, MouseEvent } from 'react'
 import { LoaderCircle, Pause, Play, Trash2 } from 'lucide-react'
 import { ProviderMark } from '../../components/ui/provider-mark.js'
 import { formatChatTime } from './history-format.js'
+import { chatHistorySurfaceLabel, ChatHistorySurfaceMark } from './chat-history-surface-mark.js'
 import { chatSearchMeta, chatSearchPlace, chatSearchWhen, segmentTitle, type ChatActivityHit } from './history-search.js'
 
 export type HeaderChatSearchRowProps = {
@@ -33,7 +34,8 @@ export function HeaderChatSearchRow({
   const { row, status } = hit
   const when = chatSearchWhen(hit, formatChatTime)
   const place = chatSearchPlace(hit)
-  const label = chatSearchMeta(hit, formatChatTime)
+  const surfaceLabel = chatHistorySurfaceLabel(row.quickChatSurface)
+  const label = [surfaceLabel, chatSearchMeta(hit, formatChatTime)].filter(Boolean).join(' · ')
   const turnControl = row.running ? 'pause' : row.paused ? 'resume' : null
   const turnButton = {
     className: 'header-chat-search-turn',
@@ -59,7 +61,9 @@ export function HeaderChatSearchRow({
           {status === 'running' ? <LoaderCircle size={15} className="header-chat-search-spinner" />
             : status === 'paused' ? <Pause size={14} />
             : status === 'completed' ? <span className="header-chat-search-dot" />
-            : <ProviderMark provider={row.provider} className="header-chat-search-provider" />}
+            : row.quickChatSurface === 'notepad'
+              ? <ChatHistorySurfaceMark surface={row.quickChatSurface} size={15} className="header-chat-search-surface" />
+              : <ProviderMark provider={row.provider} className="header-chat-search-provider" />}
         </span>
         <span className="header-chat-search-title">
           {segmentTitle(row.title, hit.titleRanges).map((segment, position) => segment.matched

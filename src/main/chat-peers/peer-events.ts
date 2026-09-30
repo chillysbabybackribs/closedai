@@ -186,7 +186,8 @@ export function chatRowSummariesEqual(left: ChatRowSummary[], right: ChatRowSumm
       || a.threadId !== b.threadId || a.provider !== b.provider || a.modelId !== b.modelId
       || a.parentPaneId !== b.parentPaneId || a.kind !== b.kind || a.paused !== b.paused
       || a.activity !== b.activity || a.cwd !== b.cwd || a.projectPath !== b.projectPath
-      || a.createdAt !== b.createdAt || a.lastTurnEndedAt !== b.lastTurnEndedAt) return false
+      || a.createdAt !== b.createdAt || a.lastTurnEndedAt !== b.lastTurnEndedAt
+      || a.quickChatSurface !== b.quickChatSurface) return false
     if (!pendingProjectEqual(a.pendingProject, b.pendingProject)) return false
     if (!continuedFromEqual(a.continuedFrom, b.continuedFrom)) return false
   }
@@ -228,7 +229,8 @@ export function rowSummary(record: ChatRecord, live: ChatPeerSummary | null): Ch
     projectPath: record.projectPath,
     ...(continuedFrom(record.continuation) ?? {}),
     createdAt: record.createdAt,
-    lastTurnEndedAt: record.lastTurnEndedAt
+    lastTurnEndedAt: record.lastTurnEndedAt,
+    quickChatSurface: record.quickChatSurface ?? null
   }
 }
 

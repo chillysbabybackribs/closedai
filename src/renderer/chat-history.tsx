@@ -7,6 +7,7 @@ import { Loader } from '../components/ui/loader.js'
 import { errorMessage } from './error-message.js'
 import type { ChatRowSummary } from '../shared/chat-peers.js'
 import { formatChatTime } from './chat-history/history-format.js'
+import { chatHistorySurfaceLabel, ChatHistorySurfaceMark } from './chat-history/chat-history-surface-mark.js'
 import { activityAt, rankChats, segmentTitle } from './chat-history/history-search.js'
 
 export type ChatHistoryProps = {
@@ -171,14 +172,20 @@ export function ChatHistory({ activeChatId, busy, listChats, chats, openChat, ar
                   onClick={() => void open(thread.paneId)}
                   disabled={busy || pendingId !== null}
                   aria-current={current ? 'true' : undefined}
+                  title={chatHistorySurfaceLabel(thread.quickChatSurface) ?? undefined}
                 >
-                  <span className="chat-history-title">
-                    {segmentTitle(thread.title, hit.titleRanges).map((segment, position) => segment.matched
-                      ? <mark key={position}>{segment.text}</mark> : <span key={position}>{segment.text}</span>)}
+                  <span className="chat-history-leading" aria-hidden="true">
+                    <ChatHistorySurfaceMark surface={thread.quickChatSurface} size={16} className="chat-history-surface" />
                   </span>
-                  <span className="chat-history-meta">
-                    {hit.folder && <span className="chat-history-folder">{hit.folder}</span>}
-                    <span>{current ? 'Current' : formatChatTime(activityAt(thread))}</span>
+                  <span className="chat-history-body">
+                    <span className="chat-history-title">
+                      {segmentTitle(thread.title, hit.titleRanges).map((segment, position) => segment.matched
+                        ? <mark key={position}>{segment.text}</mark> : <span key={position}>{segment.text}</span>)}
+                    </span>
+                    <span className="chat-history-meta">
+                      {hit.folder && <span className="chat-history-folder">{hit.folder}</span>}
+                      <span>{current ? 'Current' : formatChatTime(activityAt(thread))}</span>
+                    </span>
                   </span>
                 </button>
                 <Button

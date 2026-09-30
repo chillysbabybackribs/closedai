@@ -105,6 +105,12 @@ test('newPeer with a model starts on it instead of the anchor model', async () =
   assert.equal(manager.snapshot().chats.find((chat) => chat.paneId === quick)?.modelId, 'gpt')
 })
 
+test('newPeer can tag a side chat surface for history rows', async () => {
+  const { manager } = harnessWith([chatRecord('pane-a', 'gpt')], 'pane-a')
+  const pad = await manager.newPeer('pane-a', { select: false, quickChatSurface: 'notepad' })
+  assert.equal(manager.snapshot().chats.find((chat) => chat.paneId === pad)?.quickChatSurface, 'notepad')
+})
+
 test('a new chat is announced before settings are written and inherits the model', async () => {
   const { manager, settings } = harness()
   const order: string[] = []

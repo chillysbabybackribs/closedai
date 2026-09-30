@@ -22,7 +22,7 @@ type LayoutAccess = {
   windows: { change: (change: (tree: ChatLayout) => ChatLayout) => void }
   activateTab: (id: string, anchor?: string) => Promise<void>
   closeTab: (id: string) => Promise<void>
-  newSideChat: (modelId: string | null) => Promise<string>
+  newSideChat: (modelId: string | null, quickChatSurface?: import('../../shared/quick-chat-overlay.js').QuickChatSurface) => Promise<string>
 }
 
 /**
@@ -49,7 +49,7 @@ export function useNotepadHost({ layout, chats, dispatch, appearance, onError }:
   const setWindowChat = useCallback((tabId: string, chatId: string | null) => {
     access.current.windows.change((tree) => withNotepadChat(tree, tabId, chatId))
   }, [])
-  const newChat = useCallback(() => access.current.newSideChat(readQuickChatModel(window.localStorage, MODEL_KEY)), [])
+  const newChat = useCallback(() => access.current.newSideChat(readQuickChatModel(window.localStorage, MODEL_KEY), 'notepad'), [])
   const closeChat = useCallback(async (chatId: string) => { await window.closedai.chat.closePeer(chatId) }, [])
 
   // The model last picked in any notepad chat is the one the next notepad chat starts on.

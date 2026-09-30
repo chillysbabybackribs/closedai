@@ -1,4 +1,5 @@
 import type { ChatProvider, ChatSnapshot, ChatTranscriptItem } from './chat.js'
+import type { QuickChatSurface } from './quick-chat-overlay.js'
 
 export type ChatPaneId = string
 
@@ -63,13 +64,14 @@ export type ChatRowSummary = ChatPeerSummary & {
   }
   createdAt: number
   lastTurnEndedAt: number | null
+  quickChatSurface?: QuickChatSurface | null
 }
 
 /**
  * `select: false` creates the chat without selecting it; the caller reports it visible (the browser's
  * quick chat). `modelId` starts it on that model instead of the anchor's (the quick chat keeps its own).
  */
-export type ChatNewPeerOptions = { select?: boolean; modelId?: string }
+export type ChatNewPeerOptions = { select?: boolean; modelId?: string; quickChatSurface?: QuickChatSurface }
 
 export type ChatContinuationSource = {
   /** Include conversation only through this completed assistant message. */

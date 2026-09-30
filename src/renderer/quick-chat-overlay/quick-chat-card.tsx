@@ -7,6 +7,7 @@ import { chatRunning, initialChatState, type ChatWorkspaceAction } from '../chat
 import { WorkspaceChat } from '../chat-layout/workspace-chat.js'
 import { useWorkspacePaneSlice } from '../chat-layout/workspace-pane-subscription.js'
 import type { AppearanceSettings } from '../settings/appearance-settings.js'
+import type { QuickChatSurface } from '../../shared/quick-chat-overlay.js'
 import { feedLead, quickChatFeed, type QuickChatFeed } from './quick-chat-feed.js'
 import { formatRunSeconds, useRunSeconds } from './run-clock.js'
 
@@ -14,8 +15,7 @@ const overlayRequest = (value: QuickChatRequest): void => { void window.closedai
 
 export type QuickChatRequest = 'new' | 'close'
 export type QuickChatMode = 'full' | 'compact'
-/** Which quick chat a control belongs to; it is the controls' `data-ui-key`. */
-export type QuickChatSurface = 'browser' | 'notepad'
+export type { QuickChatSurface }
 type Mode = QuickChatMode
 
 // The shape the user last chose for each chat, so hiding and reopening it keeps that shape.

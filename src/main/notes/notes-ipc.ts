@@ -9,7 +9,8 @@ import type { NotesStore } from './notes-store.js'
 export function registerNotesIpc(
   ipcMain: Pick<IpcMain, 'handle'>,
   getNotes: () => NotesStore | null,
-  bindings: NotepadBindings
+  bindings: NotepadBindings,
+  tagNotepadChat?: (chatPaneId: string) => void
 ): void {
   const store = (): NotesStore => {
     const notes = getNotes()
@@ -29,6 +30,7 @@ export function registerNotesIpc(
   ipcMain.handle(IPC.invoke.notes.bind, (_event, binding: NotepadBinding) => {
     if (!binding || typeof binding.chatPaneId !== 'string' || !Array.isArray(binding.noteIds)) throw new Error('Invalid notepad binding')
     bindings.bind(binding)
+    tagNotepadChat?.(binding.chatPaneId)
   })
   ipcMain.handle(IPC.invoke.notes.unbind, (_event, chatPaneId: string) => bindings.unbind(String(chatPaneId)))
 }
