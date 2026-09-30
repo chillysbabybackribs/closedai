@@ -59,7 +59,7 @@
     },
     {
       "id": "ledger-on-empty-store",
-      "prompt": "Refactor the message scroller helper precedence",
+      "prompt": "Read-only: assess whether the message scroller helper precedence needs refactor",
       "paths": [],
       "expectFreshCount": 0,
       "expectStaleCount": 0,
