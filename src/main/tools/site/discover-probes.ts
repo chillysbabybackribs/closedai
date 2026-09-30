@@ -117,6 +117,97 @@ export function parseRobots(text: string): RobotsParse {
   return { sitemaps, rules }
 }
 
+/** Longest-prefix robots.txt match for User-agent * (or named agent when present). */
+export function isRobotsAllowed(url: string, rules: RobotsParse, userAgent = '*'): boolean {
+  let pathname: string
+  try {
+    pathname = new URL(url).pathname || '/'
+  } catch {
+    return false
+  }
+  const block = rules.rules.find((row) => row.agent === userAgent) ?? rules.rules.find((row) => row.agent === '*')
+  if (!block) return true
+  let bestAllow = -1
+  let bestDisallow = -1
+  for (const pattern of block.allow) {
+    const len = robotsRuleMatchLength(pathname, pattern)
+    if (len > bestAllow) bestAllow = len
+  }
+  for (const pattern of block.disallow) {
+    const len = robotsRuleMatchLength(pathname, pattern)
+    if (len > bestDisallow) bestDisallow = len
+  }
+  if (bestDisallow < 0) return true
+  if (bestAllow < 0) return false
+  return bestAllow >= bestDisallow
+}
+
+function robotsRuleMatchLength(pathname: string, rule: string): number {
+  if (!rule) return -1
+  if (rule === '/') return 1
+  return pathname.startsWith(rule) ? rule.length : -1
+}
+
+export function excerptFromBody(
+  text: string,
+  contentType: string | null,
+  maxChars: number
+): { title: string; excerpt: string; sparse?: boolean } {
+  if (isHtmlContentType(contentType)) {
+    const doc = documentText(text, 'text/html')
+    const body = doc.text
+    const excerpt = body.length > maxChars ? `${body.slice(0, maxChars)}…` : body
+    const sparse = body.length < 200 && text.includes('<script')
+    return { title: doc.title, excerpt, sparse: sparse || undefined }
+  }
+  if (contentType?.includes('json')) {
+    try {
+      const serialized = JSON.stringify(JSON.parse(text))
+      const excerpt = serialized.length > maxChars ? `${serialized.slice(0, maxChars)}…` : serialized
+      return { title: '', excerpt }
+    } catch {
+      return { title: '', excerpt: text.length > maxChars ? `${text.slice(0, maxChars)}…` : text }
+    }
+  }
+  return { title: '', excerpt: text.length > maxChars ? `${text.slice(0, maxChars)}…` : text }
+}
+
+export function normalizeExpandUrls(input: unknown, origin: string, maxList: number): string[] {
+  if (!Array.isArray(input)) return []
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const item of input) {
+    if (typeof item !== 'string' || !item.trim()) continue
+    let href: string
+    try {
+      href = new URL(item.trim()).toString()
+    } catch {
+      continue
+    }
+    if (originOf(href) !== origin) continue
+    if (seen.has(href)) continue
+    seen.add(href)
+    out.push(href)
+    if (out.length >= maxList) break
+  }
+  return out
+}
+
+export function rankExpandUrls(urls: string[], tokens: string[]): string[] {
+  if (!tokens.length) return urls
+  const scored = urls.map((url) => {
+    const hay = url.toLowerCase()
+    let score = 0
+    for (const token of tokens) {
+      if (hay.includes(token)) score += 10
+    }
+    if (DEPRIORITIZE_PATH.test(url)) score -= 3
+    return { url, score }
+  })
+  scored.sort((a, b) => b.score - a.score)
+  return scored.map((row) => row.url)
+}
+
 export function parseSitemapLocs(xml: string, cap: number): { locs: SitemapEntry[]; childSitemaps: string[] } {
   const locs: SitemapEntry[] = []
   const childSitemaps: string[] = []

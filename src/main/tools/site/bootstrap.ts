@@ -25,9 +25,16 @@ import {
   type ProbeFetchMeta,
   type SitemapEntry
 } from './discover-probes.js'
+import {
+  DISCOVER_FOCUS_FIELD,
+  DISCOVER_MAX_PROBE_BYTES_FIELD,
+  DISCOVER_TIMEOUT_MS_FIELD,
+  DISCOVER_URL_FIELD
+} from './discover-fields.js'
+import { expandAction } from './expand.js'
 
 const DEFAULT_TIMEOUT_MS = 15_000
-const MAX_TIMEOUT_MS = 30_000
+const MAX_TIMEOUT_MS = 45_000
 const DEFAULT_MAX_SITEMAP = 40
 const MAX_MAX_SITEMAP = 200
 const DEFAULT_MAX_NAV = 30
@@ -40,8 +47,8 @@ export function discoverTool(sessions: SessionHostProvider, browser?: BrowserHos
     name: 'discover',
     deferLoading: true,
     description:
-      'Read-only site bootstrap for a URL origin. Parallel probes (robots, sitemap, llms.txt, OpenAPI hints, landing HTML, feeds) use the signed-in browser session. Returns a structured site card and deterministic hints — not a crawl. Pair with embedded_browser.page navigate and embedded_browser.session fetch.',
-    actions: [bootstrapAction(sessions, browser)]
+      'Read-only site discovery for a URL origin. bootstrap probes robots, sitemap, llms.txt, OpenAPI hints, and landing HTML in parallel. expand fetches a bounded list of same-origin URLs with robots enforcement and prose excerpts. Uses the signed-in browser session — not a crawl. Pair with embedded_browser.page navigate and embedded_browser.session fetch.',
+    actions: [bootstrapAction(sessions, browser), expandAction(sessions)]
   })
 }
 
@@ -51,8 +58,8 @@ function bootstrapAction(sessions: SessionHostProvider, browser?: BrowserHostPro
     description:
       'Fetch well-known discovery documents for the seed URL origin in parallel. Optional tab_id merges HTML nav/meta from a live tab when its URL shares the origin. Use focus to rank sitemap and nav links.',
     inputSchema: objectSchema({
-      url: { type: 'string', minLength: 1, description: 'Absolute http(s) seed URL; origin drives probes.' },
-      focus: { type: 'string', description: 'Keywords to rank sitemap locs and nav links.' },
+      url: DISCOVER_URL_FIELD,
+      focus: DISCOVER_FOCUS_FIELD,
       channels: {
         type: 'array',
         items: { type: 'string', enum: ALL_DISCOVER_CHANNELS },
@@ -67,13 +74,8 @@ function bootstrapAction(sessions: SessionHostProvider, browser?: BrowserHostPro
       },
       max_nav_links: { type: 'integer', minimum: 1, maximum: 100, description: `Nav links returned; default ${DEFAULT_MAX_NAV}.` },
       max_llms_chars: { type: 'integer', minimum: 200, maximum: 20_000, description: `llms.txt excerpt size; default ${DEFAULT_MAX_LLMS}.` },
-      max_probe_bytes: {
-        type: 'integer',
-        minimum: 10_000,
-        maximum: 2_000_000,
-        description: `Ignore probe bodies larger than this; default ${DEFAULT_MAX_PROBE_BYTES}. The HTML channel still parses the first max_probe_bytes of text/html when the full document is larger.`
-      },
-      timeout_ms: { type: 'integer', minimum: 3000, maximum: MAX_TIMEOUT_MS, description: `Total budget; default ${DEFAULT_TIMEOUT_MS}.` }
+      max_probe_bytes: DISCOVER_MAX_PROBE_BYTES_FIELD,
+      timeout_ms: DISCOVER_TIMEOUT_MS_FIELD
     }, ['url']),
     timeoutMs: MAX_TIMEOUT_MS,
     run: async (input, context) => {

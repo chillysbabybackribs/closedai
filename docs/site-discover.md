@@ -1,20 +1,25 @@
 # Site discovery (`site.discover`)
 
-Source review: 2026-09-30. Proposal implemented as v0 **`bootstrap`** action.
+Source review: 2026-09-30. **`bootstrap`** and **`expand`** actions.
 
 ## Purpose
 
-One read-only call builds a **site card** for an http(s) seed URL's origin before the model
-commits tokens to whole-page reads or ad-hoc fetches. Probes run in the main process on the
-**browser session partition** (same cookies as `embedded_browser.session`), not inside a tab.
+Read-only **origin discovery** before the model commits tokens to whole-page reads or ad-hoc
+fetches. Probes and expand fetches run in the main process on the **browser session partition**
+(same cookies as `embedded_browser.session`), not inside a tab.
 
 ## Tool shape
 
 | Namespace | Tool | Action | Trust |
 |-----------|------|--------|-------|
 | `site` | `discover` | `bootstrap` | Read-only GET; `deferLoading: true` |
+| `site` | `discover` | `expand` | Read-only GET; same session; robots-aware |
 
-## Input (summary)
+## Action: bootstrap
+
+One parallel probe pass builds a **site card** for an http(s) seed URL's origin.
+
+### Input (summary)
 
 - **`url`** (required) — absolute http(s) seed; origin drives probes.
 - **`focus`** — optional keywords; rank sitemap `loc`s and same-origin nav links.
@@ -22,29 +27,50 @@ commits tokens to whole-page reads or ad-hoc fetches. Probes run in the main pro
 - **`tab_id`** — optional; HTML channel reads the live tab when its URL shares the origin.
 - Caps: `max_sitemap_urls`, `max_nav_links`, `max_llms_chars`, `max_probe_bytes`, `timeout_ms`.
 
-Large HTML documents (for example Next.js doc sites) may exceed `max_probe_bytes`; the **html**
-channel still parses the **first** `max_probe_bytes` of `text/html` for title, canonical, nav
-links, and feed hints. Other channels reject oversize bodies. `html.fetch.parseTruncated` marks
-when the full response was larger.
+Large HTML documents may exceed `max_probe_bytes`; the **html** channel still parses the **first**
+`max_probe_bytes` of `text/html`. Other channels reject oversize bodies.
+`html.fetch.parseTruncated` marks when the full response was larger.
 
-## Execution order
+### Execution order
 
 1. **`robots`** runs first when enabled (feeds sitemap URLs into the sitemap channel).
-2. Remaining channels run concurrently (pool of 6): llms.txt candidates, OpenAPI JSON candidates,
-   HTML (tab or seed fetch), standalone feeds, sitemap expansion (default `/sitemap.xml` plus robots
-   `Sitemap:` lines, up to three index children).
+2. Remaining channels run concurrently (pool of 6).
 
-## Output
+### Output
 
-Structured JSON: `seed`, per-channel objects (`robots`, `llmsTxt`, `sitemap`, `openapi`, `html`,
-`feeds`), deterministic **`hints`** (max 8 lines), and **`errors`** for probe failures.
+Structured JSON: `seed`, per-channel objects, deterministic **`hints`** (max 8 lines), and **`errors`**.
 
-Implementation: `src/main/tools/site/` (`discover-probes.ts`, `bootstrap.ts`).
+## Action: expand
+
+After **bootstrap**, pass ranked **`urls`** (sitemap `loc`s, nav links, llms.txt hrefs) to fetch a
+**bounded batch** of same-origin pages and return **prose excerpts** (HTML run through the same
+text extractor as research sources).
+
+### Input (summary)
+
+- **`url`** (required) — seed URL; defines allowed origin (every `urls` entry must match).
+- **`urls`** (required) — array of absolute same-origin URLs (max 40 listed).
+- **`focus`** — optional; reorder `urls` before `max_pages`.
+- **`max_pages`** — default 6, max 20 pages fetched after robots filtering.
+- **`max_excerpt_chars`** — per page (default 2500).
+- **`max_probe_bytes`**, **`timeout_ms`** — per-fetch and total budgets.
+- **`respect_robots`** — default true; loads `/robots.txt` and skips disallowed paths (longest
+  prefix Allow/Disallow match for `User-agent: *`).
+
+### Output
+
+`seed`, `requested`, `queued`, `fetched`, **`pages`** (url, title, excerpt, fetch meta,
+optional `sparse` for script-heavy shells), **`skipped`** (`robots` | `over_cap`), **`errors`**.
+
+Non-HTML bodies larger than `max_probe_bytes` are rejected; HTML may truncate like bootstrap.
+
+## Implementation
+
+`src/main/tools/site/` — `discover-probes.ts`, `bootstrap.ts`, `expand.ts`.
 
 ## Follow-ons (not implemented)
 
-- **`expand`** — bounded crawl with robots enforcement and excerpt store.
 - **`apis`** — summarize `browser_cdp.instrument` recordings into an endpoint map.
 - **`summary`** — rolling per-tab/origin index for token-efficient turns.
 
-See notepad note **Browser agent optimizations backlog** for the full product backlog.
+See notepad note **Browser agent optimizations backlog** for the wider product backlog.

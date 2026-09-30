@@ -5,6 +5,7 @@ import { ToolRegistry } from '../registry.js'
 import { siteTools } from './index.js'
 import {
   buildHints,
+  isRobotsAllowed,
   parseLlmsTxt,
   parseRobots,
   parseSitemapLocs,
@@ -153,4 +154,61 @@ test('site.discover bootstrap returns robots and sitemap card', async () => {
   assert.equal(payload.robots.ok, true)
   assert.equal(payload.sitemap.returned, 1)
   assert.equal(payload.html.ok, true)
+})
+
+test('isRobotsAllowed uses longest disallow prefix', () => {
+  const rules = parseRobots('User-agent: *\nDisallow: /private\nAllow: /private/public\n')
+  assert.equal(isRobotsAllowed('https://example.com/private/secret', rules), false)
+  assert.equal(isRobotsAllowed('https://example.com/private/public/page', rules), true)
+  assert.equal(isRobotsAllowed('https://example.com/docs', rules), true)
+})
+
+test('site.discover expand fetches allowed urls and skips robots-blocked', async () => {
+  const registry = new ToolRegistry([
+    sessionHarness({
+      '/robots.txt': {
+        status: 200,
+        ok: true,
+        contentType: 'text/plain',
+        text: 'User-agent: *\nDisallow: /private\n'
+      },
+      'https://example.com/docs': {
+        status: 200,
+        ok: true,
+        contentType: 'text/html',
+        text: '<html><head><title>Docs</title></head><body><main><p>API overview here.</p></main></body></html>'
+      },
+      'https://example.com/private/x': {
+        status: 200,
+        ok: true,
+        contentType: 'text/html',
+        text: '<html><body><p>secret</p></body></html>'
+      }
+    })
+  ])
+  const result = await registry.call(
+    {
+      namespace: 'site',
+      tool: 'discover',
+      arguments: {
+        action: 'expand',
+        url: 'https://example.com/',
+        urls: ['https://example.com/private/x', 'https://example.com/docs'],
+        max_pages: 2
+      }
+    },
+    { threadId: null, turnId: null, callId: 'e1' }
+  )
+  const text = result.content[0]?.type === 'text' ? result.content[0].text ?? '' : ''
+  const payload = JSON.parse(text) as {
+    queued: number
+    fetched: number
+    skipped: Array<{ url: string; reason: string }>
+    pages: Array<{ url: string; title: string; excerpt: string }>
+  }
+  assert.equal(payload.queued, 1)
+  assert.equal(payload.fetched, 1)
+  assert.ok(payload.skipped.some((row) => row.reason === 'robots' && row.url.includes('/private')))
+  assert.equal(payload.pages[0]?.title, 'Docs')
+  assert.match(payload.pages[0]?.excerpt ?? '', /API overview/)
 })

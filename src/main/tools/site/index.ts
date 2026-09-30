@@ -10,7 +10,7 @@ import { discoverTool } from './bootstrap.js'
 export function siteTools(sessions: SessionHostProvider, browser?: BrowserHostProvider): ToolNamespace {
   return {
     name: 'site',
-    description: 'Read-only discovery helpers for web origins: bootstrap metadata before deep browsing or API work.',
+    description: 'Read-only discovery helpers for web origins: bootstrap metadata and bounded expand excerpts before deep browsing or API work.',
     tools: [discoverTool(sessions, browser)]
   }
 }
