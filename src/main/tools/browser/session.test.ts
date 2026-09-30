@@ -32,7 +32,7 @@ function payload(result: { content: Array<{ type: string; text?: string }> }): R
 test('the session tool registers with fetch and cookie actions', () => {
   const { registry } = harness()
   assert.deepEqual(registry.names(), ['embedded_browser.page', 'embedded_browser.script', 'embedded_browser.session'])
-  assert.deepEqual(registry.namespaces[0].tools[2].actions?.map((action) => action.name), ['fetch', 'cookies', 'set_cookie', 'remove_cookie'])
+  assert.deepEqual(registry.namespaces[0].tools[2].actions?.map((action) => action.name), ['fetch', 'fetch_many', 'cookies', 'set_cookie', 'remove_cookie'])
 })
 
 test('fetch forwards the request, parses JSON, and keeps response headers', async () => {
@@ -116,6 +116,23 @@ test('a large JSON response is projected rather than truncated into a bare note'
   assert.deepEqual([projected.matched, projected.returned, projected.limited], [2, 1, true])
   const missing = await call({ action: 'fetch', url: 'https://api.test/x', json_path: 'data.absent' })
   assert.equal(missing.isError, true)
+})
+
+test('fetch_many runs parallel GET session fetches and returns per-url results', async () => {
+  const { calls, call } = harness('{"ok":true}')
+  const result = await call({
+    action: 'fetch_many',
+    urls: ['https://a.test/one', 'https://b.test/two'],
+    json_path: 'ok'
+  })
+  assert.equal(result.isError, undefined)
+  assert.equal(calls.length, 2)
+  const body = payload(result)
+  assert.equal(body.returned, 2)
+  const rows = body.results as Array<Record<string, unknown>>
+  assert.equal(rows[0]?.url, 'https://a.test/one')
+  assert.equal(rows[1]?.url, 'https://b.test/two')
+  assert.equal(rows[0]?.ok, true)
 })
 
 test('cookie actions map their arguments', async () => {

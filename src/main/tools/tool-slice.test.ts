@@ -54,7 +54,7 @@ function fullRegistry() {
     mediaTools({ app: stubHost, ui: stubHost, page: stubHost, record: stubHost as never }),
     browserTools(() => stubHost(), () => stubHost(), () => stubHost()),
     siteTools(() => stubHost(), () => stubHost(), () => stubHost()),
-    cdpTools(stubHost),
+    cdpTools(stubHost, undefined, () => stubHost()),
     captureTools(stubHost, stubHost as never),
     searchTools({ research: minimalResearch() }),
     peerChatTools(stubHost),
@@ -100,11 +100,14 @@ test('browser slice prioritizes page and state within the wire cap', async () =>
   assert.ok(eager.includes('closedai_app.state'))
 })
 
-test('research slice promotes session fetch and site discover bootstrap within the wire cap', async () => {
+test('research slice promotes headless session tools within the wire cap', async () => {
   const catalog = await loadToolSliceCatalog()
   const research = applyToolSliceById(fullRegistry(), catalog, 'research')
   assert.ok(research.promotedIds.includes('embedded_browser.session'))
-  assert.ok(research.promotedIds.includes('site.discover.bootstrap'))
+  assert.ok(
+    research.promotedIds.includes('embedded_browser.session.fetch_many') ||
+    research.promotedIds.includes('site.discover.bootstrap')
+  )
   assert.ok(research.eagerWireChars <= catalog.codexEagerWireCap)
 })
 

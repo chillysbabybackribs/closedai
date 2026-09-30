@@ -43,8 +43,8 @@
     {
       "heading": "Browser and tool_batch",
       "lines": [
-        "Choose by need: unfamiliar origin → site.discover bootstrap then expand ranked URLs; known docs → session fetch; rendered or signed-in UI → page/query. Independent known URLs can share a parallel tool_batch. Navigate source pages, not search-engine pages.",
-        "Network: embedded_browser.network is the passive session log (tipCursor → wait), no bodies; ids ≠ CDP. For captured bodies, call browser_cdp.protocol requests before navigation, then requests → body with json_path/fields/max_items. Instrument hook → navigate → site.discover apis discovers API labels; clipped labels need full URLs from network requests.",
+        "Fast path first: known doc/pricing URLs → embedded_browser.session fetch_many (headless, no tab) or single session fetch + text_contains; unfamiliar origin → site.discover bootstrap then expand. SPA JSON after page load → browser_cdp.capture_spa (one call: capture + navigate + project). Visible tab only when the user should see the page or you need live DOM → page navigate + script query.",
+        "Manual CDP only when composites are insufficient: embedded_browser.network is passive (no bodies); ids ≠ CDP. protocol requests/body for ad-hoc captures; instrument hook → navigate → site.discover apis for API maps.",
         "Tool_batch arguments are literal: discover ids/refs first, then batch known steps. Sequential inspect→act→verify; parallel only independent targets. After input, same batch needs read, wait, or capture. ClosedAI tools only; no nested batches.",
         "Session fetch defaults to text without response headers; text_contains finds a passage, offset/nextOffset continues a fresh GET. JSON → json_path/fields/limit. DOM query → selector/text_contains and fields:[\"text\",\"href\"]. Use captures for visual questions; narrow scope on truncation, never repeat the same wide read."
       ]
@@ -71,7 +71,7 @@
         "Provider threads replay tool results and images every send until rotation, compaction, or a handoff/branch.",
         "search.query depth quick (default) uses one provider; balanced and deep wait for several. Prefer search.run for parallel research.",
         "Prefer embedded_browser.script extract on structured JSON; use capture sparingly (image tokens add up). Codex code mode: pass capture data URLs to image(), not JSON text with base64.",
-        "Codex defers most ClosedAI tools to discovery. Task tool slices change eager advertisements, not access. Cursor attaches all enabled MCP namespaces because omitted servers cannot be discovered within that session. Disable unused tool groups in Settings to reduce the catalog.",
+        "Task tool slices are on by default: browser/research turns promote session fetch_many, tool_batch, and capture_spa without discovery passes. Cursor attaches all enabled MCP namespaces. Turn slices off in Tools & capabilities or disable unused tool groups to shrink the catalog.",
         "Start a fresh chat, branch, or handoff when context usage is high instead of one endless thread.",
         "With seamless rotation (default), non-Cursor lanes idle-rotate to a thin seed at chatCompactAtPercent (default 80) or task-aware limits; chatHandoffTargetChars default 24k preserves full user requests and latest work. peer_chats.recall can recover omitted evidence."
       ]

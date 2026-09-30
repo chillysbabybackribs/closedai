@@ -125,7 +125,7 @@ export function useToolsController(active: boolean): ToolsController {
     clearTelemetry,
     setEnabled,
     setEnabledMany,
-    chatToolSliceEnabled: manifest?.chatToolSliceEnabled === true,
+    chatToolSliceEnabled: manifest?.chatToolSliceEnabled !== false,
     setChatToolSliceEnabled,
     chatWorkspaceLedgerEnabled: manifest?.chatWorkspaceLedgerEnabled !== false,
     setChatWorkspaceLedgerEnabled

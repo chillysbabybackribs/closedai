@@ -11,14 +11,16 @@ import {
   tabIdFrom
 } from './fields.js'
 import { requireCdp, type CdpHostProvider } from './host.js'
+import { captureSpaTool } from './capture-spa.js'
 import { bodyAction, requestsAction } from './network.js'
+import type { BrowserHostProvider } from '../browser/host.js'
 import { cdpEmulateTool } from './emulate.js'
 import { cdpInstrumentTool } from './instrument.js'
 import { cdpPageTool } from './page.js'
 import { cdpProfileTool } from './profile.js'
 import { jsonResult, objectSchema } from '../json-result.js'
 
-export function cdpTools(cdp: CdpHostProvider, artifacts?: ArtifactService): ToolNamespace {
+export function cdpTools(cdp: CdpHostProvider, artifacts?: ArtifactService, browser?: BrowserHostProvider): ToolNamespace {
   return {
     name: 'browser_cdp',
     description:
@@ -34,6 +36,7 @@ export function cdpTools(cdp: CdpHostProvider, artifacts?: ArtifactService): Too
           'Input.* commands are real input. Results are JSON text; parse them in exec.',
         actions: actions(cdp, artifacts)
       }),
+      ...(browser ? [captureSpaTool(cdp, browser)] : []),
       cdpPageTool(cdp),
       cdpProfileTool(cdp),
       cdpInstrumentTool(cdp),

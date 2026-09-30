@@ -327,7 +327,7 @@ async function main(): Promise<void> {
     mediaTools({ app: () => appCommandAccess, ui: () => appAutomationAccess, page: () => pageAccess, record: recordPageVideo }, videoJobs),
     browserTools(() => pageAccess, () => networkAccess, () => networkAccess),
     siteTools(() => networkAccess, () => pageAccess, () => cdpAccess),
-    cdpTools(() => cdpAccess, artifacts.service),
+    cdpTools(() => cdpAccess, artifacts.service, () => pageAccess),
     captureTools(() => captureAccess, screenshots),
     research.namespace,
     peerChatTools(() => chatService),

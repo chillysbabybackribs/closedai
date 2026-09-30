@@ -28,7 +28,7 @@ export function registerToolsIpc(ipcMain: IpcMain, deps: ToolsIpcDeps): void {
     const settings = deps.settings()?.get()
     return {
       ...manifest,
-      chatToolSliceEnabled: settings?.chatToolSliceEnabled === true,
+      chatToolSliceEnabled: settings?.chatToolSliceEnabled !== false,
       chatWorkspaceLedgerEnabled: settings?.chatWorkspaceLedgerEnabled !== false
     }
   })

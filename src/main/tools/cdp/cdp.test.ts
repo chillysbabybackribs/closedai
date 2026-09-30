@@ -3,6 +3,7 @@ import test from 'node:test'
 import { ToolRegistry } from '../registry.js'
 import { cdpTools } from './index.js'
 import type { CdpToolHost } from './host.js'
+import type { BrowserToolHost } from '../browser/host.js'
 
 function harness(overrides: Partial<CdpToolHost> = {}) {
   const calls: unknown[] = []
@@ -55,7 +56,14 @@ function harness(overrides: Partial<CdpToolHost> = {}) {
     },
     ...overrides
   } as CdpToolHost
-  const registry = new ToolRegistry([cdpTools(() => host)])
+  const page = {
+    navigate: async (url: string) => ({
+      ok: true as const,
+      tabId: 'tab-1',
+      ready: { url, title: 'Loaded', loadState: 'complete' as const, timedOut: false }
+    })
+  } as BrowserToolHost
+  const registry = new ToolRegistry([cdpTools(() => host, undefined, () => page)])
   const call = (arguments_: Record<string, unknown>) => registry.call(
     { namespace: 'browser_cdp', tool: 'protocol', arguments: arguments_ },
     { threadId: null, turnId: null, callId: 'call-1', source: 'exec' }
@@ -70,7 +78,7 @@ function textOf(result: { content: Array<{ type: string; text?: string }> }): st
 test('CDP tool advertises its foundational protocol and target lifecycle actions', () => {
   const { registry } = harness()
   assert.deepEqual(registry.names(), [
-    'browser_cdp.protocol', 'browser_cdp.page', 'browser_cdp.profile', 'browser_cdp.instrument', 'browser_cdp.emulate'
+    'browser_cdp.protocol', 'browser_cdp.capture_spa', 'browser_cdp.page', 'browser_cdp.profile', 'browser_cdp.instrument', 'browser_cdp.emulate'
   ])
   assert.deepEqual(registry.namespaces[0].tools[0].actions?.map((action) => action.name), [
     'capabilities', 'targets', 'command', 'target', 'events', 'requests', 'body'
@@ -81,6 +89,40 @@ test('CDP tool advertises its foundational protocol and target lifecycle actions
       assert.equal(tool.restrictActions?.([tool.actions[0].name])?.deferLoading, true)
     }
   }
+})
+
+test('capture_spa enables capture, navigates, and projects a matching JSON body', async () => {
+  const { calls, registry } = harness({
+    networkRequests: async (tabId, filter) => {
+      calls.push(['networkRequests', tabId, filter])
+      return {
+        capturing: true,
+        requests: [
+          { url: 'https://news.test/api/query', method: 'POST', type: 'XHR', requestId: 'req-9', sessionId: null, status: 200 }
+        ]
+      }
+    },
+    responseBody: async (tabId, requestId) => {
+      calls.push(['responseBody', tabId, requestId])
+      return { requestId, text: '{"hits":[{"title":"A"},{"title":"B"}]}' }
+    }
+  })
+  const spa = await registry.call(
+    { namespace: 'browser_cdp', tool: 'capture_spa', arguments: {
+      url: 'https://news.test/?q=x',
+      url_contains: '/api/query',
+      json_path: 'hits',
+      fields: ['title'],
+      max_items: 2
+    } },
+    { threadId: null, turnId: null, callId: 'call-spa' }
+  )
+  const result = spa
+  assert.equal(result.isError, undefined)
+  assert.ok(calls.some((entry) => Array.isArray(entry) && entry[0] === 'networkRequests'))
+  const body = JSON.parse(textOf(result)) as Record<string, unknown>
+  assert.deepEqual(body.json, [{ title: 'A' }, { title: 'B' }])
+  assert.equal((body.matchedRequest as { requestId: string }).requestId, 'req-9')
 })
 
 test('requests lists network traffic and body reads one captured response', async () => {

@@ -39,7 +39,10 @@
       "promotePriority": [
         "embedded_browser.page",
         "closedai_app.state",
+        "tool_batch.run",
         "embedded_browser.session",
+        "embedded_browser.session.fetch_many",
+        "browser_cdp.capture_spa",
         "embedded_browser.script",
         "site.discover.bootstrap",
         "search.query"
@@ -54,13 +57,17 @@
         "search",
         "site",
         "embedded_browser",
+        "browser_cdp",
         "tool_batch",
         "peer_chats"
       ],
       "promotePriority": [
         "closedai_app.state",
         "embedded_browser.session",
-        "site.discover.bootstrap"
+        "embedded_browser.session.fetch_many",
+        "site.discover.bootstrap",
+        "tool_batch.run",
+        "browser_cdp.capture_spa"
       ]
     },
     "full": {
