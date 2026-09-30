@@ -423,7 +423,15 @@ export function useChatLayout(
   const hide = useCallback(async (id: string): Promise<void> => {
     const tree = current.current.tree
     const remaining = removePane(tree, id)
-    if (!remaining || !paneIds(remaining).length || pending.current) return
+    if (pending.current) return
+    // A layout always holds a window, so closing the last one minimizes it: only the dock is left.
+    if (!remaining || !paneIds(remaining).length) {
+      setLayout((value) => {
+        const docked = minimizeWindow(value.tree, id)
+        return docked === value.tree ? value : { ...value, tree: docked }
+      })
+      return
+    }
     pending.current = true
     try {
       if (selected.current === id) {

@@ -51,7 +51,6 @@ export function ChatLayoutContextMenuContent(props: Parameters<typeof ChatLayout
   const { activeId, tabs, chatCount, busy, hideHint, closeHint, tabActivity, pinned, onTop, onToggleOnTop, onOpenPresets, onRename,
     onTogglePin, onPause, onResume, onCloseTab, onHide } = props
   const { moveTab, detachTab, returnTab } = useContext(ChatLayoutActions)
-  const canHidePane = chatCount >= 2
   const canCloseTab = tabs.length > 1
   // The keyboard path for a tab drag between tiles; the chat stays selected, so no IPC is involved.
   const canMoveTab = Boolean(moveTab) && chatCount >= 2
@@ -60,17 +59,14 @@ export function ChatLayoutContextMenuContent(props: Parameters<typeof ChatLayout
   const turnControl = tabActivity?.state === 'working' ? 'pause'
     : tabActivity?.state === 'paused' ? 'resume' : null
   const hasChatActions = Boolean(onRename || onTogglePin || turnControl)
-  const hasCloseActions = canCloseTab || canHidePane || canMoveTab || canDetachTab || Boolean(returnTab)
 
   return <ContextMenu.Content className="titlebar-menu-content chat-layout-context-menu" loop>
     {canCloseTab && (
       <LayoutMenuRow data-ui="layout.tab-close" data-ui-key={activeId} label="Close tab" hint={closeHint}
         shortcut="Ctrl+W" icon={<X size={ICON} aria-hidden="true" />} disabled={busy} onSelect={onCloseTab} />
     )}
-    {canHidePane && (
-      <LayoutMenuRow data-ui="layout.pane-hide" data-ui-key={activeId} label="Close window" hint={hideHint}
-        icon={<PanelLeftClose size={ICON} aria-hidden="true" />} disabled={busy} onSelect={onHide} />
-    )}
+    <LayoutMenuRow data-ui="layout.pane-hide" data-ui-key={activeId} label="Close window" hint={hideHint}
+      icon={<PanelLeftClose size={ICON} aria-hidden="true" />} disabled={busy} onSelect={onHide} />
     {canMoveTab && <>
       <LayoutMenuRow data-ui="layout.tab-move" data-ui-key="next" label="Move tab to next pane"
         icon={<ArrowRightToLine size={ICON} aria-hidden="true" />} disabled={busy} onSelect={() => moveTab!(activeId, 'next')} />
@@ -85,7 +81,7 @@ export function ChatLayoutContextMenuContent(props: Parameters<typeof ChatLayout
       <LayoutMenuRow data-ui="layout.tab-return" data-ui-key={activeId} label="Move to main window"
         icon={<SquareArrowDownLeft size={ICON} aria-hidden="true" />} disabled={busy} onSelect={() => returnTab(activeId)} />
     )}
-    {hasCloseActions && <ContextMenu.Separator className="titlebar-menu-separator" />}
+    <ContextMenu.Separator className="titlebar-menu-separator" />
     <ContextMenu.CheckboxItem className="titlebar-menu-item chat-layout-menu-item" data-ui="layout.keep-on-top"
       data-ui-key={activeId} checked={onTop} onCheckedChange={onToggleOnTop}>
       <div className="chat-layout-menu-item-main">

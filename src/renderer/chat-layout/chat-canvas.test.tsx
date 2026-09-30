@@ -60,7 +60,7 @@ test('ChatCanvas renders multi-pane split with context menu trigger and dividers
   assert.doesNotMatch(html, /data-ui="layout\.pane-hide" data-ui-key="pane-a"[^>]*disabled/)
 })
 
-test('ChatCanvas renders single pane with disabled pane-hide and no dividers', () => {
+test('ChatCanvas renders single pane with an enabled pane-hide and no dividers', () => {
   const html = renderToStaticMarkup(createElement(ChatCanvas, {
     tree: singlePaneTree,
     selectedId: 'pane-single',
@@ -85,7 +85,7 @@ test('ChatCanvas renders single pane with disabled pane-hide and no dividers', (
   // Context menu trigger installed on header
   assert.match(html, /class="chat-layout-header"[^>]*data-state="closed"/)
   // In single chat mode without browser, hide button is disabled
-  assert.match(html, /data-ui="layout\.pane-hide" data-ui-key="pane-single"[^>]*disabled/)
+  assert.doesNotMatch(html, /data-ui="layout\.pane-hide" data-ui-key="pane-single"[^>]*disabled/)
   // No dividers in single pane
   assert.doesNotMatch(html, /data-ui="layout\.divider"/)
 })
