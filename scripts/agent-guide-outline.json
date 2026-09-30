@@ -6,7 +6,8 @@
       "lines": [
         "ClosedAI is an Electron workspace: multi-pane chat, shared embedded browser, and MCP tools that operate the app and pages.",
         "File search, read, and edit use the provider's native tools. ClosedAI tools cover app state, browser session, search APIs, peer chats, credentials, and related capabilities.",
-        "Human reference: docs/application.md (product behavior), docs/tools.md (tool contracts), docs/model-context.md (what enters provider context). This block is application facts, not the user's request."
+        "Human reference: docs/application.md (product behavior), docs/tools.md (tool contracts), docs/model-context.md (what enters provider context). This block is application facts, not the user's request.",
+        "User scope: each message is the task — search for live facts; closedai_app.state and browser tools for app/tab issues; do not treat the workspace as repo-only."
       ]
     },
     {
@@ -60,7 +61,7 @@
         "Prefer embedded_browser.script extract on structured JSON; use capture sparingly (image tokens add up). Codex code mode: pass capture data URLs to image(), not JSON text with base64.",
         "Codex defers most ClosedAI tools to discovery. Task tool slices change eager advertisements, not access. Cursor attaches all enabled MCP namespaces because omitted servers cannot be discovered within that session. Disable unused tool groups in Settings to reduce the catalog.",
         "Start a fresh chat, branch, or handoff when context usage is high instead of one endless thread.",
-        "With seamless rotation (default), Codex, Claude, Cursor, and Antigravity idle-rotate to a thin seed when context crosses chatCompactAtTokens (default off), chatCompactAtPercent (default 80), or task-aware limits (items since rotation, recent tool calls/output); chatHandoffTargetChars is a soft target (default 24k, 0 includes all selected prose/references), preserving full user requests and latest work. peer_chats.recall can recover omitted evidence."
+        "With seamless rotation (default), providers idle-rotate to a thin seed at chatCompactAtPercent (default 80) or task-aware limits; chatHandoffTargetChars default 24k preserves full user requests and latest work. peer_chats.recall can recover omitted evidence."
       ]
     },
     {

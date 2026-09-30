@@ -2,8 +2,13 @@
 
 import { needsActiveBrowserContext } from '../turn-context.js'
 
+const REPO_ANCHOR =
+  /\b(?:bug|bugs|issue|issues|tests?|test:one|code|repo|repository|codebase|module|helper|component|function|file|files|settings|store|error|errors|failing|failure|src\/|\w[\w.-]*\/[\w./-]+\.(?:ts|tsx|js|mjs))\b/i
+
 const WORKSPACE_CONTEXT_CUES = [
-  /\b(?:fix|implement|refactor|debug|patch|add|update|remove|migrate)\b/i,
+  /\b(?:implement|refactor|debug|patch|add|update|remove|migrate)\b/i,
+  new RegExp(`\\bfix\\b.{0,64}${REPO_ANCHOR.source}`, 'i'),
+  new RegExp(`${REPO_ANCHOR.source}.{0,64}\\bfix\\b`, 'i'),
   /\b(?:test:one|typecheck|unit test|run tests|npm test)\b/i,
   /\b(?:read-only|assess|review|audit)\b.{0,40}\b(?:code|repo|repository|module|helper|tests?)\b/i,
   /\b(?:continue|handoff|pick up|as before|previous chat)\b/i,

@@ -23,7 +23,7 @@ Implementation: `src/main/chat-context/workspace-ledger-pilot/`.
 Main CI (`npm test`) skips `*.pilot.test.ts` files so this pilot does not collide with the default
 suite or provider harnesses.
 
-## Promote
+## Status
 
-After A/B validation, wire `buildWorkspaceLedgerAdditionalContext` into `buildTurnSendContext`
-and add host hooks that populate the ledger from `fileChange` and verification commands.
+Shipped in production: `workspace-ledger/runtime.ts`, transcript hooks, and **Workspace ledger**
+in Tools. This harness remains the deterministic gate/injection suite for regressions.

@@ -36,7 +36,9 @@ thread can retain instructions from an earlier version.
 `buildChatInput` validates user text and attachments, which provider adapters translate into
 their native turn input. A browser-related message can receive a timestamped ambient active-tab
 fragment from `buildTurnAdditionalContext`. It is labeled `untrusted` and marks relevance as
-undetermined. Ordinary coding turns receive no automatic browser snapshot.
+undetermined. Ambient tab metadata is omitted for embedded-browser chrome support (reload/fix
+wording) and for abstract browser/product discussion without a visible-page ask. Ordinary coding
+turns receive no automatic browser snapshot.
 
 A notepad window's chat instead receives `closedai.notepad` (`kind: untrusted`, `contextRole:
 subject`) on every turn: the active note with numbered lines (whole up to 12,000 characters and 400
@@ -57,8 +59,9 @@ quoted text cannot close its enclosing block. New chats without a continuation r
 historical digest.
 
 The session guide (`closedai.guide`, `kind: application`) is separate from handoffs: product
-routing, trust boundaries, recency expectations for external facts, and the default verification
-guidance, including build/reload/restart boundaries and verification of the actual target surface.
+routing (including that the open project does not limit user questions — live facts and browser/app
+support stay in scope), trust boundaries, recency expectations for external facts, and the default
+verification guidance, including build/reload/restart boundaries and verification of the actual target surface.
 Verification is proportional to the change and reuses valid results from the current work.
 Repository navigation starts with filenames and scoped content searches; `.rgignore` excludes
 generated workspace maps from default searches. The guide also calls out checks for new test
@@ -74,7 +77,7 @@ date, local timestamp, UTC ISO time, and IANA timezone. Models should treat it a
 "today" when deciding whether a question needs web lookup or freshness filters on `search.query`.
 It is not injected into the user-visible transcript.
 
-On coding-related turns (regex-gated, or when the user names repo paths), ClosedAI may attach
+On coding-related turns (regex-gated for repo-work cues, or when the user names repo paths), ClosedAI may attach
 `closedai.workspace.ledger` (`kind: untrusted`): host-verified paths from the current project
 with content hashes, stale markers after re-read, and path hints from the prompt. The host fills
 the ledger from completed `fileChange` rows and successful `test:one` commands in the transcript;

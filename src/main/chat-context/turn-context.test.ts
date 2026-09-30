@@ -9,6 +9,7 @@ import {
   escapeContextEnvelope,
   mergeTurnAdditionalContext,
   needsActiveBrowserContext,
+  needsActiveBrowserTabMetadata,
   type ActiveBrowserContext
 } from './turn-context.ts'
 import { ToolRegistry } from '../tools/registry.ts'
@@ -49,6 +50,15 @@ test('active tab metadata skips embedded-browser chrome support prompts', () => 
     undefined
   )
   assert.ok(buildTurnAdditionalContext('What is on the current page?', activeTab))
+})
+
+test('active tab metadata skips abstract browser product discussion', () => {
+  assert.equal(needsActiveBrowserTabMetadata('browser related tasks should not be rejected'), false)
+  assert.equal(
+    buildTurnAdditionalContext('browser related tasks should not be rejected', activeTab),
+    undefined
+  )
+  assert.equal(needsActiveBrowserTabMetadata('What is on the current page?'), true)
 })
 
 test('an unrelated turn carries no additional context', () => {
