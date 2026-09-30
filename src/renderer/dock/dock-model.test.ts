@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  DEFAULT_DOCK_PREFS, DOCK_REACH, DOCK_RESERVE, DOCK_HEIGHT, TAB_RISE, TRAY_ICON, TRAY_LIFT, TRAY_MAGNIFIED, HOLD_BAND, REVEAL_EDGE, dockLocation, dockLocationLabel, dockOutlinePath, pointerReveal, readDockPrefs,
+  DEFAULT_DOCK_PREFS, DOCK_REACH, DOCK_REST, DOCK_RESERVE, DOCK_HEIGHT, TRAY_ICON, TRAY_LIFT, TRAY_MAGNIFIED, HOLD_BAND, REVEAL_EDGE, dockLocation, dockLocationLabel, pointerReveal, readDockPrefs,
   saveDockPrefs, trayApps, type TrayInput
 } from './dock-model.js'
 
@@ -33,45 +33,15 @@ describe('dock prefs', () => {
     assert.deepEqual(readDockPrefs(memoryStorage({ 'closedai.dock.v1': '{not json' })), DEFAULT_DOCK_PREFS)
   })
 
-  it('reserves room past the strip so a pinned dock never overlaps the browser edge margin', () => {
+  it('reserves room past the resting tiles so a pinned dock never overlaps the browser edge margin', () => {
     // titlebar-browser-freeze.ts widens the browser box by 3px when testing overlap.
-    assert.ok(DOCK_RESERVE - DOCK_REACH > 3)
+    assert.ok(DOCK_RESERVE - DOCK_REST > 3)
   })
 
-  it('reaches past a magnified tile and the tab, which rises above the strip over the resting tiles', () => {
+  it('stands the resting tiles out of the flat strip, and a magnified tile reaches further', () => {
+    assert.ok(TRAY_LIFT + TRAY_ICON > DOCK_HEIGHT)
     assert.ok(DOCK_REACH >= TRAY_LIFT + TRAY_MAGNIFIED)
-    assert.ok(DOCK_REACH >= DOCK_HEIGHT + TAB_RISE)
-    assert.ok(TAB_RISE > 0 && TRAY_LIFT + TRAY_ICON > DOCK_HEIGHT)
-  })
-})
-
-describe('dockOutlinePath', () => {
-  const box = { width: 1000, height: DOCK_HEIGHT + TAB_RISE, tabLeft: 400, tabWidth: 200 }
-  const numbers = (path: string): number[] => path.match(/-?[\d.]+/g)!.map(Number)
-
-  it('runs along the strip edge, over the tab, and back, symmetric about the tab centre', () => {
-    const path = dockOutlinePath(box)
-    assert.match(path, new RegExp(`^M 0 ${TAB_RISE} H [\\d.]+ A `))
-    assert.match(path, / H 1000$/)
-    const points = path.split(/ (?=[A-Z])/)
-    const top = points.find((part) => part.startsWith('H') && Number(part.slice(2)) > box.tabLeft)!
-    const [left, right] = [Number(points[1].slice(2)), Number(points.at(-2)!.split(' ').at(-2))]
-    assert.equal(left + right, 2 * (box.tabLeft + box.tabWidth / 2))
-    assert.ok(left < box.tabLeft, 'the join starts outside the tab')
-    assert.ok(Number(top.slice(2)) < box.tabLeft + box.tabWidth)
-    assert.ok(numbers(path).every((value) => Number.isFinite(value) && value >= 0 && value <= box.width))
-  })
-
-  it('closes round the strip bottom for the clip and insets the stroke inside the fill', () => {
-    assert.match(dockOutlinePath(box, 0, true), new RegExp(` H 1000 V ${DOCK_HEIGHT + TAB_RISE} H 0 Z$`))
-    assert.ok(dockOutlinePath(box, 0.5).startsWith(`M 0 ${TAB_RISE + 0.5} `))
-    assert.match(dockOutlinePath(box, 0.5), / H [\d.]+ 0.5 | 0.5 H /)
-  })
-
-  it('keeps a straight side when the tab rises past both curves', () => {
-    const tall = dockOutlinePath({ ...box, height: DOCK_HEIGHT + 60 })
-    assert.match(tall, / L 400 \d+/)
-    assert.ok(tall.includes('L 400 16'), 'the side runs up to where the top corner starts')
+    assert.ok(DOCK_REACH > DOCK_REST)
   })
 })
 

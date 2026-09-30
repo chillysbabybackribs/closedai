@@ -10,7 +10,7 @@ import { dockSummary, dockTiles } from '../agent-runs/agent-run-overview-model.j
 import { useBrowserDownloadsController } from '../browser-downloads-controller.js'
 import { useSavedSitesList } from '../browser-saved-sites-controller.js'
 import type { SpacesDockNav } from '../spaces/spaces-stage.js'
-import { DOCK_HEIGHT, DOCK_REACH, TRAY_LIFT, dockLocation, dockLocationLabel, trayApps, type DockPrefs, type TrayAppId } from './dock-model.js'
+import { DOCK_HEIGHT, DOCK_REACH, DOCK_REST, TRAY_LIFT, dockLocation, dockLocationLabel, trayApps, type DockPrefs, type TrayAppId } from './dock-model.js'
 import { DockSurface } from './dock-surface.js'
 import { DockStartPanel } from './dock-start-panel.js'
 import type { StartView } from './dock-start-model.js'
@@ -69,8 +69,6 @@ export const AppDock = memo(function AppDock({ menu, nav, chats, chatTitle, brow
   }, [shown])
   useEffect(() => { if (!shown) setOpenList(null) }, [shown])
   const root = useRef<HTMLDivElement>(null)
-  // State, not a ref: the surface renders first and has to measure the tray once it exists.
-  const [tray, setTray] = useState<HTMLDivElement | null>(null)
 
   const runs = useAgentRuns()
   const downloads = useBrowserDownloadsController().downloads
@@ -95,14 +93,14 @@ export const AppDock = memo(function AppDock({ menu, nav, chats, chatTitle, brow
 
   return <TooltipProvider>
     <div ref={root} data-slot="app-dock" data-ui="dock.bar" data-state={shown || !down ? 'open' : 'closed'}
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-40" style={{ height: DOCK_REACH }}
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-40" style={{ height: DOCK_REST }}
       onFocus={(event) => { if (event.target.matches(':focus-visible')) { setKeyboard(true); show() } }}
       onBlur={(event) => { if (!root.current?.contains(event.relatedTarget as Node | null)) setKeyboard(false) }}>
-      {/* The strip; the tray's tab rises out of its centre, so hiding moves both past the edge. */}
+      {/* The strip; the tray's tiles stand out of it, so hiding moves both past the edge. */}
       <div style={{ height: DOCK_HEIGHT, transform: shown ? undefined : `translateY(${DOCK_REACH + 8}px)` }}
         className="pointer-events-auto absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 px-3 transition-transform duration-200 ease-out motion-reduce:transition-none">
         {/* Behind the strip's controls: the strip's transform keeps -z-10 inside the dock. */}
-        <DockSurface tray={tray} />
+        <DockSurface />
         {openList !== 'start' && <button type="button" tabIndex={-1} aria-hidden="true"
           className="pointer-events-none absolute size-0 overflow-hidden opacity-0"
           data-ui="dock.overview" aria-pressed={nav.overview} onClick={nav.toggleOverview} />}
@@ -115,7 +113,7 @@ export const AppDock = memo(function AppDock({ menu, nav, chats, chatTitle, brow
           </DockIconButton>
         </div>
         <Popover open={openList === 'start'} onOpenChange={(open) => setOpenList(open ? 'start' : null)}>
-          <div ref={setTray} className="absolute left-1/2 flex -translate-x-1/2 flex-col items-center" style={{ bottom: TRAY_LIFT }}>
+          <div className="absolute left-1/2 flex -translate-x-1/2 flex-col items-center" style={{ bottom: TRAY_LIFT }}>
             <DockTray startTrigger={
               <StartTrayButton open={openList === 'start'} overviewActive={nav.overview} />
             } apps={apps} magnify={prefs.magnify}

@@ -1,5 +1,4 @@
 import type { AppIconId } from '../app-icons.js'
-import { tabOutlinePath, type TabOutlineBox, type TabShape } from '../rail/tab-outline.js'
 
 // The dock's rules, kept apart from React so they are testable: its saved settings, when the
 // pointer shows or hides it, what each tray entry says, and the "where you are" line.
@@ -37,23 +36,19 @@ export const TRAY_ICON = 48
 export const TRAY_MAGNIFIED = 64
 /** The resting tiles' bottom edge, above the window's bottom edge. */
 export const TRAY_LIFT = 12
-/** Room around the tiles inside the tab: at the sides and above them. */
-export const TAB_PADDING = 10
-/** The tab over the tray: how far it rises above the strip, its top corners, and the concave joins. */
-export const TAB_RISE = TRAY_LIFT + TRAY_ICON + TAB_PADDING - DOCK_HEIGHT
-export const TAB_RADIUS = 16
-export const TAB_FILLET = 10
 /**
- * How far above the window's bottom edge the dock can draw: a magnified tile, or the tab when it is
- * taller. The dock's box is this tall, so a browser under any part of it counts as covered.
+ * How far above the window's bottom edge the resting tiles reach: the strip is flat, and the tiles
+ * stand out of it. The dock's box is this tall, so a browser under any part of it counts as covered.
  */
-export const DOCK_REACH = Math.max(DOCK_HEIGHT + TAB_RISE, TRAY_LIFT + TRAY_MAGNIFIED) + 3
+export const DOCK_REST = TRAY_LIFT + TRAY_ICON + 3
+/** How far a magnified tile reaches; it may overlap a window's bottom edge while the pointer is on it. */
+export const DOCK_REACH = Math.max(DOCK_HEIGHT, TRAY_LIFT + TRAY_MAGNIFIED) + 3
 /**
  * With Keep visible on, the workspace ends this far above the window's bottom edge. The gap past
- * the dock's reach keeps the browser's edge margin (titlebar-browser-freeze.ts) clear of it, so a
+ * the resting tiles' reach keeps the browser's edge margin (titlebar-browser-freeze.ts) clear of it, so a
  * dock that is always shown never turns the page into a still.
  */
-export const DOCK_RESERVE = DOCK_REACH + 6
+export const DOCK_RESERVE = DOCK_REST + 6
 /** The workspace's own bottom padding: a renderer strip no native browser view ever covers. */
 export const REVEAL_EDGE = 10
 /** Above this the pointer has left the dock, so a shown dock starts its hide delay. */
@@ -125,13 +120,4 @@ export function dockLocation(input: { overview: boolean; space: string; chat: st
 /** Breadcrumb text for tooltips and screen readers. */
 export function dockLocationLabel(parts: readonly string[]): string {
   return parts.join(' › ')
-}
-
-export type DockOutline = TabOutlineBox
-
-export const DOCK_TAB: TabShape = { strip: DOCK_HEIGHT, radius: TAB_RADIUS, fillet: TAB_FILLET, opens: 'up' }
-
-/** The dock's strip and the tab rising over its tray; see tabOutlinePath. */
-export function dockOutlinePath(box: DockOutline, inset = 0, closed = false): string {
-  return tabOutlinePath(box, DOCK_TAB, inset, closed)
 }
