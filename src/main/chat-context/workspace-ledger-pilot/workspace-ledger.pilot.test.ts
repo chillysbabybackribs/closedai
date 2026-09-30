@@ -1,6 +1,6 @@
 /**
  * Workspace ledger pilot — isolated from `npm test` (see package.json test:pilot:workspace-ledger).
- * Not wired into buildTurnSendContext until promoted.
+ * Production wiring: workspace-ledger/runtime.ts (toggle chatWorkspaceLedgerEnabled).
  */
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'

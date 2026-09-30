@@ -20,6 +20,7 @@ import {
   sessionGuideThreadKey,
   type SessionGuideDeliveryState
 } from '../chat-context/session-guide.js'
+import { workspaceLedgerContextForTurn } from '../chat-context/workspace-ledger/index.ts'
 import {
   buildTurnAdditionalContext,
   mergeTurnAdditionalContext,
@@ -182,11 +183,17 @@ export class AntigravityChatService extends EventEmitter {
         session.conversationId,
         this.paneId ?? 'pane'
       )
+      const workspaceLedgerContext = await workspaceLedgerContextForTurn({
+        settings: this.settings.get(),
+        prompt,
+        cwd: this.cwd
+      })
       const { context: guided, attachGuide } = buildTurnSendContext({
         threadKey: guideThreadKey,
         state: this.sessionGuideState,
         transcriptWasEmpty,
         pendingHandoff,
+        workspaceLedgerContext,
         browserContext: this.turnAdditionalContext(text)
       })
       const context = mergeTurnAdditionalContext(

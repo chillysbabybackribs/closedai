@@ -1,4 +1,5 @@
 import { activityPhase, type ActivityTiming, type ChatAttachmentSummary, type ChatEvent, type ChatTranscriptItem } from '../shared/chat.js'
+import { observeWorkspaceLedgerTranscriptItem } from './chat-context/workspace-ledger/index.ts'
 import { cloneItem, normalizeItem, nullableString, recordOf, stringOf } from './chat-normalizers.js'
 import type { ChatHistoryPage, ChatHistoryWindow } from '../shared/chat.js'
 import { tailTurnSlice, turnsBeforeIndex } from '../shared/chat-turn-page.js'
@@ -144,11 +145,15 @@ export class ChatTranscript {
   }
 
   upsert(incoming: ChatTranscriptItem): void {
+    const previous = this.items.get(incoming.id)
     const item = this.stampTiming(incoming)
     const appended = !this.items.has(item.id)
     this.indexItem(item)
     this.items.set(item.id, item)
-    if (!this.replaying) this.emit({ type: 'item', item: cloneItem(item), appended })
+    if (!this.replaying) {
+      this.emit({ type: 'item', item: cloneItem(item), appended })
+      void observeWorkspaceLedgerTranscriptItem(this.cwd, previous, item)
+    }
   }
 
   private indexItem(item: ChatTranscriptItem): void {

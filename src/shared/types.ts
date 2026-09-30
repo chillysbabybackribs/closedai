@@ -217,6 +217,11 @@ export type AppSettings = {
    * registry default pair. Slice changes rotate the thread like a catalog drift.
    */
   chatToolSliceEnabled: boolean
+  /**
+   * When true (default), coding turns may attach `closedai.workspace.ledger` with host-verified
+   * paths from this project. Set false for A/B or baseline runs without ledger injection.
+   */
+  chatWorkspaceLedgerEnabled: boolean
 }
 
 /** A still of the page the user is looking at; `imageUrl` is a data URL. */

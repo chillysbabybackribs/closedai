@@ -50,6 +50,7 @@ import {
   sessionGuideThreadKey,
   type SessionGuideDeliveryState
 } from './chat-context/session-guide.js'
+import { workspaceLedgerContextForTurn } from './chat-context/workspace-ledger/index.ts'
 import { AppServerToolCalls } from './tools/app-server-tools.js'
 import { ToolRegistry } from './tools/registry.js'
 import { reasoningEffortForModel } from './chat-model-catalog.js'
@@ -216,11 +217,17 @@ export class ChatService extends EventEmitter {
       const threadId = await this.ensureThread(clientUserMessageId)
       const pendingHandoff = this.settings.get().chatContinuation?.handoff ?? null
       const guideThreadKey = sessionGuideThreadKey(this.settings.get().chatThreadId, threadId, this.paneId ?? 'pane')
+      const workspaceLedgerContext = await workspaceLedgerContextForTurn({
+        settings: this.settings.get(),
+        prompt,
+        cwd: this.cwd
+      })
       const { context: additionalContext, attachGuide } = buildTurnSendContext({
         threadKey: guideThreadKey,
         state: this.sessionGuideState,
         transcriptWasEmpty,
         pendingHandoff,
+        workspaceLedgerContext,
         browserContext: this.turnAdditionalContext(prompt)
       })
       if (this.threadId !== threadId || this.activeTurnId || this.stopping) throw new Error('Codex conversation changed while preparing the turn')

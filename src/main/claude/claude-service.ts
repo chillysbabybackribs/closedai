@@ -37,6 +37,7 @@ import {
   sessionGuideThreadKey,
   type SessionGuideDeliveryState
 } from '../chat-context/session-guide.js'
+import { workspaceLedgerContextForTurn } from '../chat-context/workspace-ledger/index.ts'
 import {
   buildTurnAdditionalContext,
   type TurnSurfaceContext
@@ -175,11 +176,17 @@ export class ClaudeChatService extends EventEmitter {
         session.sessionId,
         this.paneId ?? 'pane'
       )
+      const workspaceLedgerContext = await workspaceLedgerContextForTurn({
+        settings: this.settings.get(),
+        prompt,
+        cwd: this.cwd
+      })
       const { context, attachGuide } = buildTurnSendContext({
         threadKey: guideThreadKey,
         state: this.sessionGuideState,
         transcriptWasEmpty,
         pendingHandoff,
+        workspaceLedgerContext,
         browserContext: this.turnAdditionalContext(text)
       })
       const turn = await buildClaudeUserMessage(text, shrunk, context, session.sessionId)

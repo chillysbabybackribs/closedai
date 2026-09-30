@@ -12,6 +12,7 @@ import {
   type SessionGuideDeliveryState
 } from './session-guide.ts'
 import { contextBlockText } from './turn-context.ts'
+import { WORKSPACE_LEDGER_CONTEXT } from './workspace-ledger-pilot/constants.ts'
 
 test('generated guide fits the session budget', () => {
   assert.ok(AGENT_GUIDE_TEXT.length > 200)
@@ -86,6 +87,30 @@ test('buildTurnSendContext orders clock before guide and handoff', () => {
   assert.equal(keys[0], 'closedai.clock')
   assert.equal(keys[1], SESSION_GUIDE_CONTEXT)
   assert.equal(keys[2], 'closedai.chat.handoff')
+})
+
+test('buildTurnSendContext places workspace ledger after handoff and before browser', () => {
+  const state: SessionGuideDeliveryState = { lastDeliveredThreadKey: 't1' }
+  const ledger = {
+    [WORKSPACE_LEDGER_CONTEXT]: { kind: 'untrusted' as const, value: '{"fresh":[]}' }
+  }
+  const browser = {
+    'closedai.browser.active-tab': { kind: 'untrusted' as const, value: '{}' }
+  }
+  const { context } = buildTurnSendContext({
+    threadKey: 't1',
+    state,
+    transcriptWasEmpty: false,
+    pendingHandoff: 'digest',
+    workspaceLedgerContext: ledger,
+    browserContext: browser
+  })
+  assert.deepEqual(Object.keys(context!), [
+    'closedai.clock',
+    'closedai.chat.handoff',
+    WORKSPACE_LEDGER_CONTEXT,
+    'closedai.browser.active-tab'
+  ])
 })
 
 test('buildTurnSendContext always attaches clock even without guide', () => {

@@ -1,7 +1,8 @@
 # Workspace ledger pilot (isolated)
 
-Experimental regex-gated `closedai.workspace.ledger` context. **Not** connected to live sends,
-`harness:live`, or `harness-sim` model runs.
+Experimental regex-gated `closedai.workspace.ledger` context. **Wired** into live sends via
+`workspace-ledger/runtime.ts` (toggle `chatWorkspaceLedgerEnabled` in app settings). This harness
+stays isolated from `harness:live` and `harness-sim` model runs.
 
 ## Run
 

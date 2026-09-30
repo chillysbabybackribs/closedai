@@ -74,6 +74,13 @@ date, local timestamp, UTC ISO time, and IANA timezone. Models should treat it a
 "today" when deciding whether a question needs web lookup or freshness filters on `search.query`.
 It is not injected into the user-visible transcript.
 
+On coding-related turns (regex-gated, or when the user names repo paths), ClosedAI may attach
+`closedai.workspace.ledger` (`kind: untrusted`): host-verified paths from the current project
+with content hashes, stale markers after re-read, and path hints from the prompt. The host fills
+the ledger from completed `fileChange` rows and successful `test:one` commands in the transcript;
+models must still re-read before citing semantics. Disable injection for A/B runs with app setting
+`chatWorkspaceLedgerEnabled: false` (default on).
+
 Saved credentials are never put into turn context. When enabled, the credential tools expose
 masked metadata and scoped field reads; the registry redacts sensitive results from the Turn
 Trace and persisted tool rows. The tool and security settings own their enforcement.

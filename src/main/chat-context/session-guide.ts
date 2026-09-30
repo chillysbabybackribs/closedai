@@ -50,6 +50,7 @@ export function buildTurnSendContext(input: {
   state: SessionGuideDeliveryState
   transcriptWasEmpty: boolean
   pendingHandoff: string | null
+  workspaceLedgerContext?: AdditionalContext | undefined
   browserContext: AdditionalContext | undefined
 }): { context: AdditionalContext | undefined; attachGuide: boolean } {
   const attachGuide = shouldAttachSessionGuide({
@@ -62,6 +63,7 @@ export function buildTurnSendContext(input: {
     buildClockAdditionalContext(),
     attachGuide ? agentGuideAdditionalContext() : undefined,
     input.pendingHandoff ? handoffAdditionalContext(input.pendingHandoff) : undefined,
+    input.workspaceLedgerContext,
     input.browserContext
   )
   return { context, attachGuide }
