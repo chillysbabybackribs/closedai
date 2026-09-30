@@ -1,3 +1,4 @@
+import { readProviderUsage } from '../chat-context/provider-usage.js'
 import { randomUUID } from 'node:crypto'
 import { EventEmitter } from 'node:events'
 import type {
@@ -217,20 +218,11 @@ export class CursorChatService extends EventEmitter {
     }
   }
 
-  /**
-   * ACP reports no quota, and the CLI has no usage verb — `about` names only the tier. So the
-   * hover card shows the plan with an explicit "no windows" rather than an invented number.
-   */
+  /** Share the footer's account probe and minute cache; no model turn is needed. */
   async refreshPlanUsage(): Promise<void> {
-    if (this.connection.state !== 'ready' || this.planUsage) return
-    const about = await readCursorAbout()
-    this.setPlanUsage({
-      plan: about.ok ? parseCursorPlan(about.stdout) : null,
-      windows: [],
-      note: null,
-      unavailable: 'The Cursor CLI does not report subscription usage.',
-      updatedAt: Date.now()
-    })
+    if (this.connection.state !== 'ready') return
+    const reading = await readProviderUsage('cursor')
+    if (reading.usage) this.setPlanUsage(reading.usage)
   }
 
   async interrupt(): Promise<void> {

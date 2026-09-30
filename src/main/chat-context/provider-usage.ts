@@ -8,7 +8,7 @@ import { loadClaudeSdk } from '../claude/claude-sdk.js'
 import { ClaudeRuntime } from '../claude/claude-runtime.js'
 import { claudeQueryOptions } from '../claude/claude-options.js'
 import { readAntigravityPlanUsage, cachedAntigravityPlanUsage } from '../antigravity/antigravity-quota.js'
-import { readCursorAbout, parseCursorAccountEmail, parseCursorPlan } from '../cursor/cursor-cli.js'
+import { readCursorUsage } from '../cursor/cursor-usage.js'
 import { codexPlanUsage, planUsageUnavailable } from './plan-usage.js'
 
 /** Account probes never create/resume a chat or send a model turn. */
@@ -17,13 +17,7 @@ async function probe(provider: ChatProvider): Promise<ProviderUsageSnapshot> {
     const reading = await readAntigravityPlanUsage()
     return { provider, account: { type: 'google', email: null, planType: null }, usage: typeof reading === 'string' ? cachedAntigravityPlanUsage() : reading }
   }
-  if (provider === 'cursor') {
-    const about = await readCursorAbout()
-    if (!about.ok) throw new Error('Could not read Cursor account')
-    const plan = parseCursorPlan(about.stdout)
-    return { provider, account: { type: 'other', email: parseCursorAccountEmail(about.stdout), planType: plan },
-      usage: { ...planUsageUnavailable('The Cursor CLI does not report subscription usage.'), plan } }
-  }
+  if (provider === 'cursor') return readCursorUsage()
   if (provider === 'codex') {
     const client = new AppServerClient(codexExecutable(), homedir())
     try {
