@@ -1,4 +1,4 @@
-import { mkdir, readFile, readdir, unlink, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, readdir, unlink } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { ChatTranscriptItem } from '../../shared/chat.js'
 import type {
@@ -80,7 +80,7 @@ function buildLines(items: ChatTranscriptItem[]): ChatMemoryIndexRecord['lines']
     })
   }
   lines.push(...spineEvidenceLines(items))
-  return trimLines(lines)
+  return lines
 }
 
 function trimLines(lines: ChatMemoryIndexRecord['lines'], maxChars: number): ChatMemoryIndexRecord['lines'] {

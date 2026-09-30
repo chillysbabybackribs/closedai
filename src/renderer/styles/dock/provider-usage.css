@@ -1,10 +1,10 @@
 /* Text and marks sit on the existing rail; no second surface, meter track, or chip border. */
 .provider-usage-rail {
   position: absolute;
-  right: 12px;
+  left: 84px;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 4px;
   min-width: 32px;
 }
@@ -13,7 +13,7 @@
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   flex: 1;
   min-width: 0;
   gap: 2px;
@@ -40,7 +40,7 @@
 .provider-usage-chip svg { width: 14px; height: 14px; }
 .provider-usage-anchor {
   position: absolute;
-  right: 0;
+  left: 0;
   width: 1px;
   padding: 0;
   opacity: 0;
@@ -74,7 +74,7 @@
 .provider-usage-windows dt { font-weight: 500; }
 .provider-usage-windows dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
 .provider-usage-windows p { grid-column: 1 / -1; font-size: 11px; }
-.provider-usage-stale { display: flex; justify-content: flex-end; align-items: center; gap: 4px; font-size: 10px; margin-top: 3px; }
+.provider-usage-stale { display: flex; justify-content: flex-start; align-items: center; gap: 4px; font-size: 10px; margin-top: 3px; }
 .provider-usage-stale svg { width: 11px; height: 11px; }
 .provider-usage-note { padding: 10px 0; }
 .provider-usage-detail footer { margin-top: 14px; color: var(--muted-foreground); font-size: 10px; line-height: 1.5; }

@@ -27,6 +27,9 @@ import { DeferredProjectSwitch } from './deferred-project-switch.js'
 import { ChatMemory } from '../chat-context/chat-memory.js'
 import type { ChatStore } from '../chat-store/chat-store.js'
 import { ChatTranscriptCache } from '../chat-store/chat-transcript-cache.js'
+import { ChatMemoryIndex } from '../chat-store/chat-memory-index.js'
+import type { ChatIndexSearchRequest, ChatIndexSearchResult } from '../../shared/chat-index.js'
+import { DEFAULT_CHAT_MEMORY_INDEX_MAX_CHATS } from '../../shared/chat-index.js'
 import { traceLog } from '../trace/trace-log.js'
 import { PeerChatCatalog } from './peer-chat-catalog.js'
 import { PeerEmitThrottle, syncStoreCheckpoint } from './peer-events.js'
@@ -93,6 +96,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     idleParkMs?: number,
     private readonly workspaceSelector?: ChatWorkspaceSelector,
     private readonly transcripts: ChatTranscriptCache = ChatTranscriptCache.inMemory(),
+    private readonly memoryIndex: ChatMemoryIndex | null = null,
     private readonly cancelPaneWork: (paneId: ChatPaneId) => void = () => {},
     private readonly browserAssignmentIdle: BrowserAssignmentIdleRelease | null = null
   ) {
@@ -162,7 +166,10 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       },
       withAwake: (chatId, fn) => this.withAwake(chatId, fn),
       closePeer: (chatId) => this.closePeer(chatId, { keepRecord: true }),
-      forgetTranscript: (chatId) => this.transcripts.forget(chatId),
+      forgetTranscript: (chatId) => {
+        this.transcripts.forget(chatId)
+        this.memoryIndex?.drop(chatId)
+      },
       invalidateCatalog: () => this.catalog.invalidate(),
       emitChats: () => this.emitChats()
     })
@@ -228,6 +235,8 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     // The chat the user left is on screen before any provider runs: its saved view paints now,
     // and the replay below replaces it.
     await this.transcripts.load(this.selectedPaneId)
+    await this.memoryIndex?.load()
+    this.memoryIndex?.sync(this.store.ids().map((id) => this.store.get(id)!).filter(Boolean))
     this.emitWorkspace()
     void this.transcripts.prune(new Set(this.store.ids())).catch((error: unknown) => {
       console.warn('[chat-peers] could not prune saved transcripts:', error instanceof Error ? error.message : String(error))
@@ -612,6 +621,18 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     return peerManagerReadReadable(this.supportHost(), chatId, callerPaneId, options)
   }
 
+  searchIndex(callerPaneId: string | null, request: ChatIndexSearchRequest): ChatIndexSearchResult {
+    if (!this.memoryIndex || !this.settings.get().chatMemoryIndexEnabled) {
+      return {
+        hits: [],
+        indexedChatCount: 0,
+        maxChats: this.settings.get().chatMemoryIndexMaxChats ?? DEFAULT_CHAT_MEMORY_INDEX_MAX_CHATS,
+        trust: 'historical-data'
+      }
+    }
+    return this.memoryIndex.search(request, callerPaneId ?? undefined)
+  }
+
   private supportHost(): PeerManagerSupportHost {
     return {
       lifecycle: this.lifecycle,
@@ -620,6 +641,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       projectSwitch: this.projectSwitch,
       projectChanges: this.projectChanges,
       transcripts: this.transcripts,
+      memoryIndex: this.memoryIndex,
       parking: this.parking,
       catalog: this.catalog,
       chatsEmit: this.chatsEmit,

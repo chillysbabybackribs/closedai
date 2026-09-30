@@ -77,7 +77,7 @@ export function handlePeerPaneEvent(host: PeerPaneOpsHost, entry: PeerEntry, eve
   if (turnBoundary && !running) host.catalog.invalidate()
   if ((turnBoundary && !running) || (event.type === 'context' && !running) ||
     (event.type === 'replace' && event.snapshot.items.length > 0)) {
-    rememberPeerTranscript(host.store, host.transcripts, entry, host.memoryIndex)
+    rememberPeerTranscript(host.store, host.transcripts, host.memoryIndex, entry)
   }
   if (running) {
     host.parking.cancel(entry)

@@ -15,6 +15,7 @@
       "promotePriority": [
         "closedai_app.state",
         "peer_chats.recall",
+        "peer_chats.search",
         "search.query",
         "peer_chats.list",
         "closedai_app.command",

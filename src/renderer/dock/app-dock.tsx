@@ -149,8 +149,10 @@ export function AppDock({ menu, nav, chats, chatTitle, browserVisible, prefs, on
               onClose={() => setOpenList(null)} view={startView} onViewChange={setStartView} services={startServices} />
           </PopoverContent>
         </Popover>
-        <div className="provider-usage-rail" style={{ left: `calc(50% + ${trayWidth / 2 + 14}px)` }}>
+        <div className="provider-usage-rail" style={{ right: `calc(50% + ${trayWidth / 2 + 14}px)` }}>
           <ProviderUsage chats={chats} visible={shown} open={openList === 'usage'} onOpenChange={(open) => setOpenList(open ? 'usage' : null)} />
+        </div>
+        <div>
           {/* Dock lists do not hand focus back on close: the button's tooltip would reopen over the page. */}
           <Popover open={openList === 'settings'} onOpenChange={(open) => setOpenList(open ? 'settings' : null)}>
             <Tooltip>

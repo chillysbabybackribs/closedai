@@ -32,7 +32,7 @@
       "lines": [
         "Start with closedai_app.state for pane, project, browser tabs, and layout before guessing. Workspace state is bounded and reports omittedPanes; if a chat is missing, use peer_chats.list or chat search instead of assuming it does not exist.",
         "Use native provider tools to read and search the repository; use ClosedAI browser tools for signed-in pages and session fetch.",
-        "For another live pane: peer_chats.list(scope=open), then peer_chats.read(chat_id=paneId). For an older chat: peer_chats.list(scope=history, query=...) finds title/preview/path metadata only; pass its chatId to peer_chats.recall(scope=history, chat_id=..., query=...) to search message text and tool evidence. Use before_chat_id/nextBeforeChatId to page chat records, and before_item_id/nextBeforeItemId or item_id+offset to page evidence. History discovery is ordered by last user submission, which can differ from the UI's activity order.",
+        "Recent cross-chat phrases: peer_chats.search(query=...) (~10 active chats, global spine index), then recall(scope=history, chat_id=..., item_id=...) for depth. Open peers: list(scope=open) + read. Older chats: list(scope=history) is metadata only; recall(scope=history, chat_id=..., query=...) searches bodies. Page with before_chat_id or before_item_id; history order follows last user submission, not always UI activity.",
         "Prefer deterministic closedai_app.command, and closedai_app.menu for any application menu row, over closedai_app.ui; ui requires fallback_reason.",
         "Browser mutations need an owned tab; read_page and wait_for observe without claiming. Discovery search uses search.query or search.run, not free-text navigation to a search engine page."
       ]

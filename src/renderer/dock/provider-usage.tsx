@@ -87,7 +87,7 @@ export function ProviderUsage({ chats, visible, open, onOpenChange }: {
         </Button>
       </PopoverTrigger>
       {!compact && entries.map(trigger)}
-      <PopoverContent side="top" align="end" sideOffset={12} collisionPadding={12}
+      <PopoverContent side="top" align="start" sideOffset={12} collisionPadding={12}
         className="dock-panel provider-usage-panel" aria-label="Provider subscription usage"
         onCloseAutoFocus={(event) => {
           event.preventDefault()

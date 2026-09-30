@@ -29,6 +29,7 @@ import { AgentRunService } from './agent-runs/agent-run-service.js'
 import { AgentLibraryStore } from './agent-library/agent-library-store.js'
 import { ChatStore } from './chat-store/chat-store.js'
 import { ChatTranscriptCache } from './chat-store/chat-transcript-cache.js'
+import { ChatMemoryIndex } from './chat-store/chat-memory-index.js'
 import { migrateChatPeersIntoStore } from './chat-store/chat-store-migration.js'
 import { ProviderCatalogCache } from './chat-context/provider-catalog-cache.js'
 import { stopAllProcessGroups } from './process-tree.js'
@@ -107,6 +108,7 @@ let browserTabSession: BrowserTabSessionStore | null = null
 let settings: AppSettingsStore | null = null
 let chatStore: ChatStore | null = null
 let chatTranscripts: ChatTranscriptCache | null = null
+let chatMemoryIndex: ChatMemoryIndex | null = null
 let providerCatalogs: ProviderCatalogCache | null = null
 let chatService: ChatPeerManager | null = null
 let agentRuns: AgentRunService | null = null
@@ -352,6 +354,7 @@ async function main(): Promise<void> {
   providerCatalogs = catalogCache
   // What each chat last looked like, so opening one paints before its provider has replayed it.
   chatTranscripts = new ChatTranscriptCache(join(userData(), 'chat-transcripts'))
+  chatMemoryIndex = new ChatMemoryIndex(join(userData(), 'chat-memory-index'), () => settings!.get())
   chatService = new ChatPeerManager(settings, chatStore, (peerSettings, record) => createPaneChatHub({
     app,
     settings: settings!,
@@ -368,7 +371,7 @@ async function main(): Promise<void> {
     peerSettings,
     record,
     catalogs: catalogCache.forWorkspace(record.cwd)
-  }), undefined, workspaceSelector, chatTranscripts, (paneId) => {
+  }), undefined, workspaceSelector, chatTranscripts, chatMemoryIndex, (paneId) => {
     const snapshot = chatService?.paneSnapshot(paneId)
     researchService?.cancelPane(paneId, snapshot?.threadId, snapshot?.activeTurnId)
   }, browserAssignmentIdle)
@@ -546,6 +549,7 @@ app.on('before-quit', (event) => {
     settings?.set({}),
     chatStore?.flush(),
     chatTranscripts?.flush(),
+    chatMemoryIndex?.flush(),
     artifactStore?.close(),
     providerCatalogs?.flush(),
     flushSession,

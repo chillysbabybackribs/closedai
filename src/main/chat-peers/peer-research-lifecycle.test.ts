@@ -12,7 +12,7 @@ test('Stop cancels app-owned pane work before waiting for the provider; detachme
     const surface = new FakeSurface(record.modelId)
     surfaces.push(surface)
     return surface
-  }, undefined, undefined, undefined, (paneId) => cancelled.push(paneId))
+  }, undefined, undefined, undefined, null, (paneId) => cancelled.push(paneId))
   t.after(() => manager.stop())
   let release!: () => void
   surfaces[0].interrupt = () => new Promise<void>((resolve) => { release = resolve })

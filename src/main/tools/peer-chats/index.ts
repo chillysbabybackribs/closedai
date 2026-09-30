@@ -1,3 +1,4 @@
+import type { ChatIndexSearchRequest, ChatIndexSearchResult } from '../../../shared/chat-index.js'
 import type { ChatPeerSummary, PeerChatReadOptions, PeerChatReadResult } from '../../../shared/chat-peers.js'
 import { PEER_READ_DEFAULT_CHARS, PEER_READ_MAX_CHARS } from '../../../shared/chat-peers.js'
 import { defineTool, failureResult, numberArg, stringArg, textResult, usageResult, type ToolNamespace, type ToolResult } from '../tool.js'
@@ -8,6 +9,7 @@ const READABLE_ITEM_TYPES = ['user', 'assistant', 'tool', 'command', 'fileChange
 
 export type PeerChatDirectory = {
   memory?: PeerMemoryAccess
+  searchIndex?(callerPaneId: string | null, request: ChatIndexSearchRequest): ChatIndexSearchResult
   listReadable(callerPaneId: string | null): ChatPeerSummary[]
   readReadable(
     chatId: string,
@@ -93,6 +95,37 @@ export function peerChatTools(getDirectory: () => PeerChatDirectory | null): Too
           return result
             ? textResult(JSON.stringify(result))
             : failureResult(`Peer chat ${JSON.stringify(chatId)} is temporarily unreadable. Call list again; the pane may be closing.`)
+        }
+      }),
+      defineTool({
+        name: 'search',
+        deferLoading: true,
+        description:
+          'Cross-chat phrase search over the global hot memory index (default: the 10 most recently active chats). ' +
+          'Matches conversation spine text (user/assistant/plan and compact tool/command labels), not raw tool output. ' +
+          'Results are historical; use recall(scope=history, chat_id=..., item_id=...) for depth. query is a required ' +
+          'literal case-insensitive phrase. cwd optionally narrows hits to one project directory. limit defaults to 5, max 8. ' +
+          'The calling chat is excluded from hits.',
+        inputSchema: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['query'],
+          properties: {
+            query: { type: 'string', minLength: 1, maxLength: 200 },
+            cwd: { type: 'string', minLength: 1, maxLength: 4096 },
+            limit: { type: 'integer', minimum: 1, maximum: 8 }
+          }
+        },
+        run: async (input, context) => {
+          const directory = getDirectory()
+          if (!directory?.searchIndex) return failureResult('Chat memory index is unavailable')
+          const query = stringArg(input, 'query')
+          if (!query) return usageResult('query is required')
+          return textResult(JSON.stringify(directory.searchIndex(context.paneId ?? null, {
+            query,
+            cwd: stringArg(input, 'cwd'),
+            limit: numberArg(input, 'limit', 5)
+          })))
         }
       }),
       ...memoryTools(() => getDirectory()?.memory ?? null)

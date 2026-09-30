@@ -872,7 +872,7 @@ the overview does: in the main window, once a chat is selected.
 Left: back and forward (`dock.back`, `dock.forward`) step through the zoom history as Alt+←/→ and
 are disabled at either end and while a zoom is moving; their tooltips name where you are
 (workspace and selected chat, or "All workspaces"). Right: Layout and dock settings
-(`dock.settings`). The right side also holds text-and-provider-mark subscription chips
+(`dock.settings`). The left side, after the navigation arrows, holds text-and-provider-mark subscription chips
 (`dock.provider-usage`), on the existing rail without meter tracks or separate pill surfaces.
 They show the lowest reported remaining allowance, keeping known accounts separate and using the
 newest reading across their attached chats; they never sum quotas across conversations. The popup
@@ -1516,6 +1516,7 @@ directory holds its own copy of every store below; `profiles.json` exists once, 
 | `profiles.json` (root only) | The local accounts: the renderer's onboarding settings as written (names, PBKDF2 password hashes, per-account provider progress, signed-in account), the home account, the last active account, a one-launch resume marker set by a profile switch, and deletions waiting for the next launch. Written synchronously and atomically at 0600; an unreadable file is set aside as `profiles.json.corrupt-<time>` |
 | `provider-catalogs.json` | The last model catalog read per workspace and provider, so a relaunch starts only the active provider and the picker still offers every model; a provider refreshes its own entry when selected |
 | `chat-transcripts/<chat id>.json` | The bounded tail of each chat as the app last showed it, so opening one paints before its provider replays; display-only, pruned against the store's live chat ids on launch |
+| `chat-memory-index/` | Derived global LRU spine index (default 10 recently active chats) for `peer_chats.search`; conversation spine only, not authoritative over provider stores |
 | `chats.json` | Every chat record: id, project directory, provider, model and effort, per-provider thread ids, title, preview, created/updated/last-turn times, archived flag, pin timestamp, parent chat, continuation digest, checkpoint, and the agent run driving the chat (`agentRun`: prompt, status, cycle, limits, failure count, last thread, and `stats`: step, edit, error and rotation counts, summed turn time, last reply and error excerpts, latest context and plan readings). Debounced atomic writes; flushed on quit |
 | `app-settings.json` | Cookie-import latch; active workspace/project; the open chat ids (`chatOpenIds`) and `chatSelectedPaneId`; saved per-project open ids and selection in `chatWorkspaces`; tool switches and context/batch settings. Legacy `chatPeers` and `chatWorkspaces[].peers` are imported into `chats.json` once, keeping each pane id as the chat id, and removed |
 | `browser-tabs.json`, `browser-history.json` | Restored tabs and omnibox history |

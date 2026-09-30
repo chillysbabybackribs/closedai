@@ -43,7 +43,7 @@ function text(result: Awaited<ReturnType<ToolRegistry['call']>>): string {
 
 test('peer reads exclude the caller; recall is available', async () => {
   const registry = new ToolRegistry([peerChatTools(() => directory)])
-  assert.deepEqual(registry.names(), ['peer_chats.list', 'peer_chats.read', 'peer_chats.recall'])
+  assert.deepEqual(registry.names(), ['peer_chats.list', 'peer_chats.read', 'peer_chats.search', 'peer_chats.recall'])
   const listTool = registry.namespaces[0].tools.find((tool) => tool.name === 'list')
   assert.equal(listTool?.deferLoading, true)
   const readTool = registry.namespaces[0].tools.find((tool) => tool.name === 'read')
