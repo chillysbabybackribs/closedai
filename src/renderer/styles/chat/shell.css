@@ -34,9 +34,10 @@
   --surface-raised: #262626;
   --surface-control: #2c2c2c;
   --surface-control-hover: #343434;
-  /* Header: chrome grip, darker tab rail, active tab raised to meet the body (browser-like). */
+  /* Header: one dark rail behind the grip, tabs and window buttons, like the browser's strip;
+     only the active tab is raised to meet the body. */
   --tab-active-surface: #191919;
-  --chat-header-surface: var(--surface-chrome);
+  --chat-header-surface: var(--tab-active-surface);
   --chat-tab-active-fg: #fff;
   --tab-fill-active: color-mix(in srgb, var(--surface-card) 96%, white);
   --tab-fill-hover: color-mix(in srgb, var(--surface-raised) 55%, #191919);
