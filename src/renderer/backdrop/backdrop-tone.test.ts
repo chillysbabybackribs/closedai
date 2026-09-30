@@ -23,8 +23,8 @@ test('each rail is tinted to the band behind it so a bright sky and dark ground 
   const bottom = railTint(0.082)
   assert.ok(top > bottom)
   assert.ok(Math.abs((1 - top) * 0.348 - (1 - bottom) * 0.082) < 0.005, 'both rails land at the same darkness')
-  assert.equal(railTint(0), 0.5)
-  assert.equal(railTint(1), 0.9)
+  assert.equal(railTint(0), 0.7)
+  assert.equal(railTint(1), 0.96)
 })
 
 test('the tone stays inside its legibility bounds for any input', () => {

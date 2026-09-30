@@ -29,7 +29,7 @@ export function backdropTone(luminance: number): BackdropTone {
 }
 
 /** Linear light a rail settles at, whatever the wallpaper behind it: the dock's depth over the Fuji foreground. */
-const RAIL_TARGET = 0.04
+const RAIL_TARGET = 0.015
 
 /**
  * Dark tint alpha for a rail (title bar, dock) from the luminance of the wallpaper band behind it.
@@ -39,7 +39,7 @@ const RAIL_TARGET = 0.04
  */
 export function railTint(bandLuminance: number): number {
   const light = Math.max(bandLuminance, 0.001)
-  return round(clamp(1 - RAIL_TARGET / light, 0.5, 0.9))
+  return round(clamp(1 - RAIL_TARGET / light, 0.7, 0.96))
 }
 
 const HUE_BINS = 24
