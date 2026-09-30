@@ -1,6 +1,6 @@
 # Scoped slice: bounded conversation spine read (`peer_chats.spine`)
 
-Status: **proposal** (not implemented). Supersedes ad-hoc “read `chat-memory-index/*.json`” for models.
+Status: **implemented** (`peer_chats.spine` v1).
 
 ## Problem
 

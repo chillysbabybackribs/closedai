@@ -242,3 +242,23 @@ test('checkpoints and frozen source boundaries survive disk reload and ordinary 
   assert.equal(loaded.require('p').reasoningEffort, 'high')
   assert.equal(settings.get().chatReasoningEffort, 'high', 'the selected chat mirrors into the flat fields')
 })
+
+test('spine returns turn-shaped history prose without loading when index covers the chat', async () => {
+  const h = harness()
+  addHistory(h.store, 'older', 10)
+  h.setRead(async () => ({
+    threadId: 'thread-older', threadName: null, items: [
+      { type: 'user', id: 'u1', turnId: 't1', text: 'Question one' },
+      { type: 'assistant', id: 'a1', turnId: 't1', text: 'Answer one', phase: 'final_answer', streaming: false },
+      { type: 'user', id: 'u2', turnId: 't2', text: 'Question two' },
+      { type: 'assistant', id: 'a2', turnId: 't2', text: 'Answer two', phase: 'final_answer', streaming: false }
+    ]
+  }))
+  const result = await h.memory.spine(caller, { scope: 'history', chatId: 'older', limit: 1 })
+  assert.equal(result.chatId, 'older')
+  assert.equal(result.provenance, 'transcript')
+  assert.equal(result.turns.length, 1)
+  assert.equal(result.turns[0]?.user, 'Question two')
+  assert.equal(result.turns[0]?.assistant?.text, 'Answer two')
+  await assert.rejects(h.memory.spine(caller, { scope: 'current', chatId: 'older' }), /history/)
+})

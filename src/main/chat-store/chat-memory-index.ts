@@ -18,9 +18,9 @@ import {
 import type { ChatRecord } from '../../shared/chat-store.js'
 import type { AppSettings } from '../../shared/types.js'
 import {
-  conversationSpineChangedFiles,
-  conversationSpineEntries
+  conversationSpineChangedFiles
 } from '../chat-context/thread-handoff.js'
+import { conversationSpineTurns } from '../chat-context/conversation-spine.js'
 import { writeAtomic } from '../atomic-write.js'
 
 export type ChatMemoryIndexSettings = Pick<
@@ -46,40 +46,14 @@ function sanitizeChatFileName(chatId: string): string {
   return chatId.replace(/[^a-zA-Z0-9._-]+/g, '_')
 }
 
-function spineEvidenceLines(items: ChatTranscriptItem[]): ChatMemoryIndexRecord['lines'] {
-  const lines: ChatMemoryIndexRecord['lines'] = []
-  for (const item of items) {
-    if (item.type === 'command') {
-      lines.push({
-        itemId: item.id,
-        role: 'evidence',
-        text: `command: ${clip(item.command, 300)}; status=${item.status}`
-      })
-    } else if (item.type === 'tool') {
-      lines.push({
-        itemId: item.id,
-        role: 'evidence',
-        text: `tool: ${clip(item.label, 200)}; status=${item.status}`
-      })
-    } else if (item.type === 'fileChange') {
-      lines.push({ itemId: item.id, role: 'evidence', text: `fileChange; status=${item.status}` })
-    } else if (item.type === 'plan' && item.text.trim()) {
-      lines.push({ itemId: item.id, role: 'plan', text: item.text.trim() })
-    }
-  }
-  return lines
-}
-
 function buildLines(items: ChatTranscriptItem[]): ChatMemoryIndexRecord['lines'] {
   const lines: ChatMemoryIndexRecord['lines'] = []
-  for (const entry of conversationSpineEntries(items)) {
-    lines.push({
-      itemId: entry.id,
-      role: entry.speaker === 'User' ? 'user' : 'assistant',
-      text: entry.text
-    })
+  for (const turn of conversationSpineTurns(items)) {
+    lines.push({ itemId: turn.userItemId, role: 'user', text: turn.userText })
+    if (turn.plan) lines.push({ itemId: turn.plan.itemId, role: 'plan', text: turn.plan.text })
+    for (const evidence of turn.evidence) lines.push({ itemId: evidence.itemId, role: 'evidence', text: evidence.text })
+    if (turn.assistant) lines.push({ itemId: turn.assistant.itemId, role: 'assistant', text: turn.assistant.text })
   }
-  lines.push(...spineEvidenceLines(items))
   return lines
 }
 
@@ -199,6 +173,10 @@ export class ChatMemoryIndex {
     for (const chatId of [...this.manifest.chatIds]) {
       if (!live.has(chatId)) this.drop(chatId)
     }
+  }
+
+  getRecord(chatId: string): ChatMemoryIndexRecord | undefined {
+    return this.records.get(chatId)
   }
 
   search(request: ChatIndexSearchRequest, excludeChatId?: string | null): ChatIndexSearchResult {

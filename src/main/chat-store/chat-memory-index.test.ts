@@ -78,6 +78,20 @@ test('ChatMemoryIndex excludes caller chat and filters cwd', () => {
   assert.equal(index.search({ query: 'find', cwd: '/b' }).hits.length, 1)
 })
 
+test('ChatMemoryIndex interleaves evidence lines within turns', () => {
+  const index = ChatMemoryIndex.inMemory(settings)
+  index.upsert(record('chat', 100), [
+    userItem('u1', 'hello'),
+    { type: 'tool', id: 't1', turnId: 'u1', label: 'grep', detail: '', status: 'completed' },
+    { type: 'assistant', id: 'a1', turnId: 'u1', text: 'done', phase: 'final_answer', streaming: false },
+    userItem('u2', 'second')
+  ])
+  const stored = index.getRecord('chat')
+  assert.ok(stored)
+  const roles = stored.lines.map((line) => line.role)
+  assert.deepEqual(roles, ['user', 'evidence', 'assistant', 'user'])
+})
+
 test('ChatMemoryIndex persists manifest and chat files', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'chat-index-'))
   const index = new ChatMemoryIndex(dir, () => settings)

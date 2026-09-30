@@ -65,3 +65,36 @@ export type ChatRecallResult = {
   sessionRotationEpoch?: number
   trust: 'historical-data'
 }
+
+export type ChatSpineTurnEvidence = { itemId: string; text: string }
+
+export type ChatSpineTurn = {
+  userItemId: string
+  user: string
+  assistant?: { itemId: string; text: string }
+  plan?: { itemId: string; text: string }
+  evidence?: ChatSpineTurnEvidence[]
+}
+
+export type ChatSpineRequest = {
+  scope: 'current' | 'history'
+  chatId?: string
+  limit?: number
+  beforeUserItemId?: string
+  includeEvidence?: boolean
+  includeChangedFiles?: boolean
+}
+
+export type ChatSpineResult = {
+  chatId?: string
+  threadId: string
+  title: string | null
+  cwd: string
+  lastActivityAt: number
+  changedFiles?: string[]
+  turns: ChatSpineTurn[]
+  hasMore: boolean
+  nextBeforeUserItemId: string | null
+  provenance: 'index' | 'transcript'
+  trust: 'historical-data'
+}

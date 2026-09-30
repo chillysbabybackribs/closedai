@@ -2,8 +2,14 @@ import type { ChatProvider, ChatTranscriptItem } from '../../shared/chat.js'
 import type { AdditionalContext } from './turn-context.js'
 import type { ChatMemoryCheckpoint } from '../../shared/chat-memory.js'
 import type { ChatContinuation } from '../../shared/types.js'
-import { handoffSourceTitle, stripContextBlocks } from '../../shared/chat-display.js'
+import { handoffSourceTitle } from '../../shared/chat-display.js'
 import { normalizeMemoryCheckpoint } from './memory-checkpoint.js'
+import {
+  conversationSpineEntriesFromTurns,
+  conversationSpineTurns
+} from './conversation-spine.js'
+
+export type { ConversationSpineEntry } from './conversation-spine.js'
 
 // Deterministic continuity seed: preserve requests and current work in full, then spend a
 // configurable soft budget on older answers and an index into recoverable evidence.
@@ -23,9 +29,7 @@ export type ThreadHandoffOptions = {
 }
 const MAX_PREVIEW_ENTRY_CHARS = 1_500
 
-export type ConversationSpineEntry = { id: string; speaker: 'User' | 'Assistant'; text: string }
-
-type HandoffEntry = ConversationSpineEntry
+type HandoffEntry = import('./conversation-spine.js').ConversationSpineEntry
 
 export type ThreadHandoff = {
   /** The thread's name, else its opening request as the history list would show it. */
@@ -139,34 +143,11 @@ function overviewLines(items: ChatTranscriptItem[], entries: HandoffEntry[], cwd
 }
 
 /** User messages plus one assistant answer per turn: the final answer, else the last message. */
-export function conversationSpineEntries(items: ChatTranscriptItem[]): ConversationSpineEntry[] {
-  const entries: HandoffEntry[] = []
-  const answerIndexByTurn = new Map<string, number>()
-  const finalTurns = new Set<string>()
-  for (const item of items) {
-    if (item.type === 'user') {
-      const attachments = item.attachments?.map((attachment) => attachment.name) ?? []
-      const text = [stripContextBlocks(item.text.trim()), attachments.length ? `[attached: ${attachments.join(', ')}]` : '']
-        .filter(Boolean).join(' ')
-      if (text) entries.push({ id: item.id, speaker: 'User', text })
-      continue
-    }
-    if (item.type !== 'assistant' || !item.text.trim()) continue
-    const turnKey = item.turnId ?? item.id
-    if (finalTurns.has(turnKey) && item.phase !== 'final_answer') continue
-    if (item.phase === 'final_answer') finalTurns.add(turnKey)
-    const existing = answerIndexByTurn.get(turnKey)
-    if (existing === undefined) {
-      answerIndexByTurn.set(turnKey, entries.length)
-      entries.push({ id: item.id, speaker: 'Assistant', text: item.text.trim() })
-    } else if (item.phase === 'final_answer' || entries[existing]!.text !== item.text.trim()) {
-      // Commentary streams before the answer; the answer (or the latest message) wins.
-      const current = entries[existing]!
-      if (item.phase === 'final_answer' || current.speaker === 'Assistant') entries[existing] = { id: item.id, speaker: 'Assistant', text: item.text.trim() }
-    }
-  }
-  return entries
+export function conversationSpineEntries(items: ChatTranscriptItem[]): import('./conversation-spine.js').ConversationSpineEntry[] {
+  return conversationSpineEntriesFromTurns(conversationSpineTurns(items))
 }
+
+export { conversationSpineTurns } from './conversation-spine.js'
 
 /** Paths touched in file-change items, for index and handoff summaries. */
 export function conversationSpineChangedFiles(items: ChatTranscriptItem[]): string[] {

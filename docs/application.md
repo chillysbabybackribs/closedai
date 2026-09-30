@@ -915,7 +915,8 @@ observation age, plan and provider notes. Session connection is shown separately
 At <=20% remaining the quota is low, <=10% critical, and 0% exhausted; a reading older than five
 minutes or past its reported reset is stale, never assumed replenished. Partial Claude events
 retain each untouched window's observation time. Missing data says unavailable. Cursor's CLI
-currently supplies no quota percentages. Background chat summaries carry this telemetry even
+currently supplies no quota percentages; its chip shows the reported plan followed by “usage unavailable”
+(for example, “Pro · usage unavailable”). Background chat summaries carry this telemetry even
 when their transcript is not subscribed. Ready provider sessions refresh at most once per minute
 while the rail is visible and the document foregrounded, without waking parked chats or extending
 their idle lifetime (Cursor is event/manual only); provider
@@ -1550,7 +1551,7 @@ directory holds its own copy of every store below; `profiles.json` exists once, 
 | `profiles.json` (root only) | The local accounts: the renderer's onboarding settings as written (names, PBKDF2 password hashes, per-account provider progress, signed-in account), the home account, the last active account, a one-launch resume marker set by a profile switch, and deletions waiting for the next launch. Written synchronously and atomically at 0600; an unreadable file is set aside as `profiles.json.corrupt-<time>` |
 | `provider-catalogs.json` | The last model catalog read per workspace and provider, so a relaunch starts only the active provider and the picker still offers every model; a provider refreshes its own entry when selected |
 | `chat-transcripts/<chat id>.json` | The bounded tail of each chat as the app last showed it, so opening one paints before its provider replays; display-only, pruned against the store's live chat ids on launch |
-| `chat-memory-index/` | Derived global LRU spine index (default 10 recently active chats) for `peer_chats.search`; conversation spine only, not authoritative over provider stores |
+| `chat-memory-index/` | Derived global LRU spine index (default 10 recently active chats) for `peer_chats.search` and fresh `peer_chats.spine` reads; conversation spine only, not authoritative over provider stores |
 | `chats.json` | Every chat record: id, project directory, provider, model and effort, per-provider thread ids, title, preview, created/updated/last-turn times, archived flag, pin timestamp, parent chat, continuation digest, checkpoint, and the agent run driving the chat (`agentRun`: prompt, status, cycle, limits, failure count, last thread, and `stats`: step, edit, error and rotation counts, summed turn time, last reply and error excerpts, latest context and plan readings). Debounced atomic writes; flushed on quit |
 | `app-settings.json` | Cookie-import latch; active workspace/project; the open chat ids (`chatOpenIds`) and `chatSelectedPaneId`; saved per-project open ids and selection in `chatWorkspaces`; tool switches and context/batch settings. Legacy `chatPeers` and `chatWorkspaces[].peers` are imported into `chats.json` once, keeping each pane id as the chat id, and removed |
 | `browser-tabs.json`, `browser-history.json` | Restored tabs and omnibox history |

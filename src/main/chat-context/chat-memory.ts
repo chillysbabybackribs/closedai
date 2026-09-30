@@ -1,7 +1,10 @@
-import type { ChatHistoryRequest, ChatHistoryResult, ChatMemoryCheckpoint, ChatRecallRequest, ChatRecallResult } from '../../shared/chat-memory.js'
+import type { ChatHistoryRequest, ChatHistoryResult, ChatMemoryCheckpoint, ChatRecallRequest, ChatRecallResult, ChatSpineRequest, ChatSpineResult } from '../../shared/chat-memory.js'
 import type { ChatRecord } from '../../shared/chat-store.js'
 import type { ChatSurface } from '../chat-hub.js'
+import type { ChatMemoryIndex } from '../chat-store/chat-memory-index.js'
+import { conversationSpineTurnsFromIndexLines } from './conversation-spine.js'
 import { validateMemoryState } from './memory-checkpoint.js'
+import { spineFromTurns, spineTranscript } from './memory-spine.js'
 import { recallTranscript } from './memory-recall.js'
 
 export type MemoryCaller = { paneId?: string | null; threadId: string | null; turnId: string | null; signal?: AbortSignal }
@@ -16,7 +19,12 @@ export type MemoryRecords = {
 
 /** One app-owned checkpoint per chat; transcripts stay in their existing provider stores. */
 export class ChatMemory {
-  constructor(private readonly records: MemoryRecords, private readonly surface: (paneId: string) => MemorySurface | null) {}
+  constructor(
+    private readonly records: MemoryRecords,
+    private readonly surface: (paneId: string) => MemorySurface | null,
+    private readonly memoryIndex: ChatMemoryIndex | null = null,
+    private readonly indexEnabled: () => boolean = () => true
+  ) {}
 
   /** Discovery uses existing records only: no transcript loading, model calls, or new index. */
   history(caller: MemoryCaller, request: ChatHistoryRequest): ChatHistoryResult {
@@ -106,6 +114,59 @@ export class ChatMemory {
     const result = recallTranscript(content.items, source.sourceThreadId, source.checkpoint ?? null, request, source.sourceThroughItemId)
     const epoch = resolved.pane.sessionRotations?.at(-1)?.epoch
     return epoch === undefined ? result : { ...result, sessionRotationEpoch: epoch }
+  }
+
+  async spine(caller: MemoryCaller, request: ChatSpineRequest): Promise<ChatSpineResult> {
+    const { pane, surface } = this.resolve(caller)
+    if (request.chatId && request.scope !== 'history') throw new Error('chat_id requires history scope')
+    if (request.scope === 'current') {
+      const snapshot = surface.snapshot()
+      return spineTranscript(snapshot.items, {
+        threadId: caller.threadId!,
+        title: pane.title,
+        cwd: pane.cwd,
+        lastActivityAt: historyActivity(pane),
+        provenance: 'transcript'
+      }, request)
+    }
+    if (request.scope !== 'history') throw new Error('Unknown spine scope')
+    const target = request.chatId
+      ? this.historyRecords(pane).find((record) => record.id === request.chatId)
+      : this.historyRecords(pane)[0]
+    if (!target?.threadId) throw new Error('No matching conversation is available in history')
+    const indexed = this.spineFromIndex(target, request)
+    if (indexed) return indexed
+    const content = await this.read(target.id, target.threadId, surface, target.cwd)
+    const resolved = this.resolve(caller)
+    if (resolved.surface !== surface) throw new Error('Workspace changed while loading memory')
+    const latest = this.historyRecords(resolved.pane).find((record) => record.id === target.id)
+    if (latest?.threadId !== target.threadId) throw new Error('History chat changed while loading memory')
+    return spineTranscript(content.items, {
+      threadId: target.threadId,
+      title: latest.title,
+      cwd: latest.cwd,
+      lastActivityAt: historyActivity(latest),
+      chatId: target.id,
+      provenance: 'transcript'
+    }, request)
+  }
+
+  private spineFromIndex(record: ChatRecord, request: ChatSpineRequest): ChatSpineResult | null {
+    if (!this.memoryIndex || !this.indexEnabled()) return null
+    const indexed = this.memoryIndex.getRecord(record.id)
+    if (!indexed || !record.threadId) return null
+    if (indexed.lastActivityAt < historyActivity(record)) return null
+    const turns = conversationSpineTurnsFromIndexLines(indexed.lines)
+    if (!turns.length) return null
+    const changedFiles = request.includeChangedFiles === false ? undefined : indexed.changedFiles
+    return spineFromTurns(turns, {
+      threadId: record.threadId,
+      title: record.title,
+      cwd: record.cwd,
+      lastActivityAt: indexed.lastActivityAt,
+      chatId: record.id,
+      provenance: 'index'
+    }, request, changedFiles)
   }
 
   private historyRecords(pane: ChatRecord): ChatRecord[] {

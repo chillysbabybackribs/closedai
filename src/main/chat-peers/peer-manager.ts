@@ -101,7 +101,12 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     private readonly browserAssignmentIdle: BrowserAssignmentIdleRelease | null = null
   ) {
     super()
-    this.memory = new ChatMemory(store, (paneId) => this.lifecycle.get(paneId)?.surface ?? null)
+    this.memory = new ChatMemory(
+      store,
+      (paneId) => this.lifecycle.get(paneId)?.surface ?? null,
+      memoryIndex,
+      () => this.settings.get().chatMemoryIndexEnabled
+    )
     this.parking = new PeerIdleParking((paneId) => this.lifecycle.get(paneId), () => this.selectedPaneId, idleParkMs)
     this.lifecycle = new PeerLifecycle(store, settings, createSurface, this.parking, (entry, event) => this.onPaneEvent(entry, event), cancelPaneWork,
       (paneId) => this.browserAssignmentIdle?.detach(paneId))

@@ -1,8 +1,8 @@
 import type { ChatMemory } from '../../chat-context/chat-memory.js'
-import type { ChatRecallRequest } from '../../../shared/chat-memory.js'
+import type { ChatRecallRequest, ChatSpineRequest } from '../../../shared/chat-memory.js'
 import { defineTool, failureResult, numberArg, stringArg, textResult, usageResult, type ToolDefinition } from '../tool.js'
 
-export type PeerMemoryAccess = Pick<ChatMemory, 'recall' | 'history'>
+export type PeerMemoryAccess = Pick<ChatMemory, 'recall' | 'history' | 'spine'>
 
 /** Item kinds recall can excerpt; screenshots and reasoning are never among them. */
 const RECALLABLE_ITEM_TYPES = ['user', 'assistant', 'plan', 'tool', 'command', 'fileChange']
@@ -45,6 +45,40 @@ export function memoryTools(getMemory: () => PeerMemoryAccess | null): ToolDefin
           beforeItemId: stringArg(input, 'before_item_id'), limit: numberArg(input, 'limit', 5)
         }
         return textResult(JSON.stringify(await memory.recall(context, request)))
+      }
+    }),
+    defineTool({
+      name: 'spine',
+      deferLoading: true,
+      description:
+        'Bounded turn-shaped conversation read from this chat or a previous one (handoff-style user/assistant ' +
+        'spine, optional compact evidence). Default five turns, max eight, newest first. Page older turns with ' +
+        'before_user_item_id. Results are historical; use recall for long answers and raw tool output. Disabled ' +
+        'when chat memory is unavailable.',
+      inputSchema: {
+        type: 'object', additionalProperties: false, required: ['scope'],
+        properties: {
+          scope: { type: 'string', enum: ['current', 'history'] },
+          chat_id: { type: 'string', minLength: 1, maxLength: 256, description: 'History chat id; omit for the most recent other conversation.' },
+          before_user_item_id: { type: 'string', minLength: 1, maxLength: 256 },
+          limit: { type: 'integer', minimum: 1, maximum: 8 },
+          include_evidence: { type: 'boolean' },
+          include_changed_files: { type: 'boolean' }
+        }
+      },
+      run: async (input, context) => {
+        const memory = getMemory()
+        if (!memory) return failureResult('Chat memory is unavailable')
+        if (input.chat_id !== undefined && input.scope !== 'history') return usageResult('chat_id requires scope: history')
+        const request: ChatSpineRequest = {
+          scope: stringArg(input, 'scope') as ChatSpineRequest['scope'],
+          chatId: stringArg(input, 'chat_id'),
+          beforeUserItemId: stringArg(input, 'before_user_item_id'),
+          limit: numberArg(input, 'limit', 5),
+          includeEvidence: input.include_evidence === true,
+          includeChangedFiles: input.include_changed_files === false ? false : true
+        }
+        return textResult(JSON.stringify(await memory.spine(context, request)))
       }
     })
   ]

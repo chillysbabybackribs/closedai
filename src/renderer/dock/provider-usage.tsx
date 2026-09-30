@@ -59,18 +59,21 @@ export function ProviderUsage({ chats, visible, open, onOpenChange }: {
     return () => observer.disconnect()
   }, [hasEntries])
   if (!hasEntries) return null
-  const compact = width < entries.length * 94
+  const compact = width < entries.reduce((total, item) => total + (item.provider === 'cursor' ? 190 : 94), 0)
   const entry = entries.find((item) => item.key === selected) ?? entries[0]
   const trigger = (item: ProviderUsageEntry): JSX.Element => {
     const headline = usageHeadline(item.usage, now)
     const label = CHAT_PROVIDER_LABELS[item.provider]
-    const detail = `${label}: ${headline.text}${headline.window ? ` · lowest reported: ${headline.window.label}` : ''}`
+    const plan = item.usage?.plan ?? item.source.providerUsage?.account?.planType
+    const text = item.provider === 'cursor' && headline.level === 'unknown'
+      ? `${plan ? `${plan} · ` : ''}usage unavailable` : headline.text
+    const detail = `${label}: ${text}${headline.window ? ` · lowest reported: ${headline.window.label}` : ''}`
     return <Tooltip key={item.key}>
       <TooltipTrigger asChild><Button variant="ghost" className="provider-usage-chip" data-ui="dock.provider-usage"
         data-ui-item={item.key} data-level={headline.level} aria-label={detail} aria-expanded={open && entry.key === item.key}
         onClick={(event) => { lastTrigger.current = event.currentTarget; setSelected(item.key); onOpenChange(!(open && entry.key === item.key)) }}>
         <ProviderMark provider={item.provider} />
-        <span>{headline.text}</span>
+        <span>{text}</span>
       </Button></TooltipTrigger>
       {!open && <TooltipContent side="top">{detail}</TooltipContent>}
     </Tooltip>

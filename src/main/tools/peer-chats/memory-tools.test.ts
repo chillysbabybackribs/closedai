@@ -18,6 +18,20 @@ function harness() {
         calls.push({ caller, request })
         return { threadId: caller.threadId!, checkpoint: null, matches: [], hasMore: false,
           nextBeforeItemId: null, throughItemId: null, trust: 'historical-data' }
+      },
+      spine: async (caller, request) => {
+        calls.push({ caller, request })
+        return {
+          threadId: caller.threadId!,
+          title: null,
+          cwd: '/w',
+          lastActivityAt: 1,
+          turns: [],
+          hasMore: false,
+          nextBeforeUserItemId: null,
+          provenance: 'transcript',
+          trust: 'historical-data'
+        }
       }
     }
   }))])

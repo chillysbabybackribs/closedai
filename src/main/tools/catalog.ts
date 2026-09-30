@@ -50,6 +50,7 @@ export const TOOL_CATALOG: Readonly<Record<string, ToolCatalogEntry>> = {
   'peer_chats.read': { group: 'controls-app', label: 'Read another chat', summary: 'Page through another chat’s transcript in bounded excerpts.', offEffect: 'Other chats can be listed but not read.' },
   'peer_chats.recall': { group: 'controls-app', label: 'Recall past conversations', summary: 'Search earlier turns of this chat or a previous conversation.', offEffect: 'Nothing beyond the current context can be recalled after rotation.' },
   'peer_chats.search': { group: 'controls-app', label: 'Search recent chat index', summary: 'Find phrase matches across the hot global chat spine index.', offEffect: 'Cross-chat phrase lookup falls back to metadata search and per-chat recall only.' },
+  'peer_chats.spine': { group: 'controls-app', label: 'Read conversation spine', summary: 'Turn-shaped user/assistant read of this chat or a previous one.', offEffect: 'Cross-chat synthesis falls back to search plus item-by-item recall only.' },
   'notes.list': { group: 'controls-app', label: 'List notes', summary: 'See your notes and which ones a notepad window has open.', offEffect: 'Notes other than the one a notepad chat is about stay hidden.' },
   'notes.read': { group: 'controls-app', label: 'Read notes', summary: 'Read a note as numbered lines.', offEffect: 'Only the active note a notepad chat carries is visible; long notes are cut short.' },
   'notes.edit': { group: 'controls-app', label: 'Edit notes', summary: 'Change a note; the edit lands live in your editor with the lines marked.', offEffect: 'Models can read notes but never change them.' },
@@ -72,6 +73,7 @@ export const READ_ONLY_TOOL_IDS: readonly string[] = [
   'peer_chats.read',
   'peer_chats.recall',
   'peer_chats.search',
+  'peer_chats.spine',
   'notes.list',
   'notes.read'
 ]

@@ -16,6 +16,7 @@
         "closedai_app.state",
         "peer_chats.recall",
         "peer_chats.search",
+        "peer_chats.spine",
         "search.query",
         "peer_chats.list",
         "closedai_app.command",
