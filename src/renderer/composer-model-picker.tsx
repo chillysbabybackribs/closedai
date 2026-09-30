@@ -1,4 +1,4 @@
-import { useRef, useState, type JSX, type KeyboardEvent, type ReactNode } from 'react'
+import { useRef, useState, type JSX, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
 import { Check, ChevronRight } from 'lucide-react'
 
 import { Command, CommandItem, CommandList } from '../components/ui/command.js'
@@ -41,6 +41,7 @@ export function ModelPicker({
   const [highlighted, setHighlighted] = useState<string>(() => activeProvider)
   const [open, setOpen] = useState<{ provider: ChatProvider; placement: ModelFlyoutPlacement } | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
+  const flyoutRef = useRef<HTMLDivElement>(null)
   const rows = useRef(new Map<ChatProvider, HTMLDivElement>())
   const anchor = useRef<HTMLDivElement | null>(null)
   // Set when a model is chosen: the whole panel is closing, so focus must not return to the rows.
@@ -56,6 +57,10 @@ export function ModelPicker({
     const row = rows.current.get(next)
     const panel = listRef.current?.closest<HTMLElement>('[data-slot="popover-content"]')
     if (!row || !panel) return
+    if (open?.provider === next) {
+      flyoutRef.current?.querySelector<HTMLElement>('[cmdk-root]')?.focus()
+      return
+    }
     const edge = boundary?.getBoundingClientRect() ?? { left: 0, right: window.innerWidth, width: window.innerWidth }
     anchor.current = row
     setHighlighted(next)
@@ -111,9 +116,11 @@ export function ModelPicker({
         </CommandList>
       </Command>
       <Popover open={openGroup !== null} onOpenChange={(next) => { if (!next) setOpen(null) }} modal={false}>
-        <PopoverAnchor virtualRef={anchor as React.RefObject<HTMLDivElement>} />
+        <PopoverAnchor virtualRef={anchor as RefObject<HTMLDivElement>} />
         {openGroup && open && (
           <PopoverContent
+            key={open.provider}
+            ref={flyoutRef}
             className="composer-model-flyout"
             style={{ width: open.placement.width }}
             side={open.placement.side}

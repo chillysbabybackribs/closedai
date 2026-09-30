@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useImperativeHandle, useRef, useState, type JSX, type Ref } from 'react'
+import { useCallback, useImperativeHandle, useRef, useState, type JSX, type Ref } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover.js'
 
@@ -7,13 +7,7 @@ import { PROVIDER_LABELS } from './chat-state.js'
 import { ModelPicker } from './composer-model-picker.js'
 import { ContextSection, EffortSection } from './composer-setup-sections.js'
 import { errorMessage } from './error-message.js'
-import {
-  loadRecentModelIds,
-  RECENT_MODELS_CHANGED,
-  rememberRecentModel,
-  modelTriggerLabel,
-  recentModels
-} from './model-menu-state.js'
+import { modelTriggerLabel } from './model-menu-state.js'
 import { CAPSULE_PANEL_OFFSET, composerPanelBoundary } from './composer-layout.js'
 
 /** Opens the panel from outside its trigger, e.g. the empty pane's "Choose model" hint. */
@@ -41,9 +35,9 @@ export type ComposerSetupMenuProps = {
 }
 
 /**
- * The model trigger below the composer and the fixed-height panel behind it: a context line at
- * the far end, every model sectioned by provider, effort, and Recent nearest the trigger. The
- * chat pane is the collision boundary.
+ * The model trigger below the composer and the panel behind it: a context line, then one row per
+ * provider, each opening its models (and, for the selected model's provider, effort) in a flyout.
+ * The chat pane is the collision boundary for both.
  */
 export function ComposerSetupMenu({
   ref,
@@ -62,7 +56,6 @@ export function ComposerSetupMenu({
   onCompact,
   compactEnabled
 }: ComposerSetupMenuProps): JSX.Element {
-  const [recent, reloadRecent] = useRecentModels(selectedModel)
   const triggerRef = useRef<HTMLButtonElement>(null)
   // Set when a model row closes the panel, so the following close-focus lands in the composer
   // textarea rather than snapping back to the trigger the way Radix would by default.
@@ -74,12 +67,10 @@ export function ComposerSetupMenu({
     setOpenState(next)
     if (next) {
       setBoundary(composerPanelBoundary(triggerRef.current))
-      // Other panes add to the same history, so Recent is read fresh on every open.
-      reloadRecent()
       // The plan windows are asked for fresh each time the panel opens, mid-turn included.
       void onRefreshPlanUsage()
     }
-  }, [onRefreshPlanUsage, reloadRecent])
+  }, [onRefreshPlanUsage])
   useImperativeHandle(ref, () => ({ open: () => setOpen(true) }), [setOpen])
 
   const trigger = modelTriggerLabel(models, selectedModel, selectedReasoningEffort)
@@ -89,7 +80,6 @@ export function ComposerSetupMenu({
     // user can start typing without a second click.
     focusInputOnCloseRef.current = true
     setOpen(false)
-    if (value !== selectedModel) reloadRecent(rememberRecentModel(value))
     void onModelChange(value).catch((error: unknown) => onError(errorMessage(error, 'Could not change the model')))
   }
   const chooseEffort = (value: string): void => {
@@ -148,10 +138,10 @@ export function ComposerSetupMenu({
             models={models}
             selectedModel={selectedModel}
             provider={provider}
-            recent={recentModels(models, recent, selectedModel)}
             disabled={!modelsEnabled}
+            boundary={boundary}
             onChoose={chooseModel}
-            footer={
+            effort={
               <EffortSection
                 efforts={selected?.supportedReasoningEfforts ?? []}
                 selected={selectedReasoningEffort}
@@ -165,26 +155,4 @@ export function ComposerSetupMenu({
       </PopoverContent>
     </Popover>
   )
-}
-
-/**
- * The models this window has used, most recent last, kept in this window rather than settings.
- * Every model the pane lands on counts — picked here, restored with the pane, or set by a tool.
- */
-function useRecentModels(selectedModel: string | null): [string[], (next?: string[]) => void] {
-  const [recent, setRecent] = useState<string[]>([])
-  useEffect(() => {
-    setRecent(loadRecentModelIds(window.localStorage))
-    const sync = (): void => setRecent(loadRecentModelIds(window.localStorage))
-    window.addEventListener(RECENT_MODELS_CHANGED, sync)
-    return () => window.removeEventListener(RECENT_MODELS_CHANGED, sync)
-  }, [])
-  useEffect(() => {
-    if (!selectedModel) return
-    setRecent(rememberRecentModel(selectedModel))
-  }, [selectedModel])
-  const reload = useCallback((next?: string[]) => {
-    setRecent(next ?? loadRecentModelIds(window.localStorage))
-  }, [])
-  return [recent, reload]
 }
