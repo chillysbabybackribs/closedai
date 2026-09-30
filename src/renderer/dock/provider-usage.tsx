@@ -39,7 +39,7 @@ export function ProviderUsage({ chats, visible, open, onOpenChange }: {
         .map(async (item) => {
           attempts.current.set(item.key, now)
           inFlight.current.add(item.key)
-          try { await window.closedai.chat.refreshPlanUsage(item.source.paneId) }
+          try { await window.closedai.chat.refreshPlanUsage(item.source.paneId, true) }
           finally { inFlight.current.delete(item.key) }
         }))
     }

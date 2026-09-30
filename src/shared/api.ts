@@ -168,7 +168,8 @@ export type ClosedaiApi = {
     selectModel: (paneId: ChatPaneId, modelId: string) => Promise<void>
     selectReasoningEffort: (paneId: ChatPaneId, effort: string) => Promise<void>
     /** Re-read the pane provider's subscription usage; a no-op where it is not reported. */
-    refreshPlanUsage: (paneId: ChatPaneId) => Promise<void>
+    /** Passive callers pass onlyIfAwake to preserve parking and its idle deadline. */
+    refreshPlanUsage: (paneId: ChatPaneId, onlyIfAwake?: boolean) => Promise<void>
     loginWithChatGPT: () => Promise<void>
     /** Every chat of this workspace from the app's own store, newest first; provider catalogs are reconciled behind it. */
     listChats: () => Promise<ChatRowSummary[]>

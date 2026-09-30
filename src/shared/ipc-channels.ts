@@ -102,7 +102,7 @@ export type IpcInvokeChannels = {
   'chat:setVisiblePanes': { args: [string, ChatPaneId[], ChatPaneId[]?]; result: void }
   'chat:selectModel': { args: [ChatPaneId, string]; result: void }
   'chat:selectReasoningEffort': { args: [ChatPaneId, string]; result: void }
-  'chat:refreshPlanUsage': { args: [ChatPaneId]; result: void }
+  'chat:refreshPlanUsage': { args: [ChatPaneId, boolean?]; result: void }
   'chat:login': { args: []; result: void }
   'chat:listChats': { args: []; result: ChatRowSummary[] }
   'chat:newPeer': { args: [ChatPaneId?, ChatNewPeerOptions?]; result: ChatPaneId }

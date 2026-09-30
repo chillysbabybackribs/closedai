@@ -43,7 +43,7 @@ export function registerChatIpc(ipcMain: IpcMain, getService: () => ChatWorkspac
   ipcMain.handle(IPC.invoke.chat.selectReasoningEffort, (_event, paneId: string, effort: string) =>
     requireService().selectReasoningEffort(paneId, effort)
   )
-  ipcMain.handle(IPC.invoke.chat.refreshPlanUsage, (_event, paneId: string) => requireService().refreshPlanUsage(paneId))
+  ipcMain.handle(IPC.invoke.chat.refreshPlanUsage, (_event, paneId: string, onlyIfAwake?: boolean) => requireService().refreshPlanUsage(paneId, onlyIfAwake))
   ipcMain.handle(IPC.invoke.chat.listChats, () => requireService().listChats())
   ipcMain.handle(IPC.invoke.chat.newPeer, (_event, anchorPaneId?: string, options?: ChatNewPeerOptions) => {
     if (options !== undefined && (typeof options !== 'object' || options === null

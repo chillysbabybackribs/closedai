@@ -26,7 +26,7 @@ export interface ChatWorkspaceSurface {
   releaseWindow(windowId: string): void
   selectModel(paneId: ChatPaneId, modelId: string): Promise<void>
   selectReasoningEffort(paneId: ChatPaneId, effort: string): Promise<void>
-  refreshPlanUsage(paneId: ChatPaneId): Promise<void>
+  refreshPlanUsage(paneId: ChatPaneId, onlyIfAwake?: boolean): Promise<void>
   /** The workspace's chats now, from the store; provider catalogs are reconciled in the background. */
   listChats(): Promise<ChatRowSummary[]>
   /** Every thread the providers and the store know, reconciled first; for tools that search by title. */

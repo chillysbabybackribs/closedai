@@ -883,7 +883,8 @@ minutes or past its reported reset is stale, never assumed replenished. Partial 
 retain each untouched window's observation time. Missing data says unavailable. Cursor's CLI
 currently supplies no quota percentages. Background chat summaries carry this telemetry even
 when their transcript is not subscribed. Ready provider sessions refresh at most once per minute
-while the rail is visible and the document foregrounded (Cursor is event/manual only); provider
+while the rail is visible and the document foregrounded, without waking parked chats or extending
+their idle lifetime (Cursor is event/manual only); provider
 push events update the chips between reads. The popup offers an explicit refresh
 (`dock.provider-usage-refresh`). On narrower rails, a single **Usage** trigger
 (`dock.provider-usage-all`) opens the same provider/account tabs (`dock.provider-usage-tab`)

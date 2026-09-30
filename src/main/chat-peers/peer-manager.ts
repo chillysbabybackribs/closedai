@@ -333,7 +333,13 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   }
 
   /** Read the pane's provider plan usage now; the hover card asks each time it opens. */
-  async refreshPlanUsage(paneId: ChatPaneId): Promise<void> {
+  async refreshPlanUsage(paneId: ChatPaneId, onlyIfAwake = false): Promise<void> {
+    if (onlyIfAwake) {
+      // Passive footer refresh must neither spawn a parked runtime nor reset its idle timer.
+      const entry = this.lifecycle.get(paneId)
+      if (entry && !entry.parked) await entry.surface.refreshPlanUsage()
+      return
+    }
     await this.withAwake(paneId, (surface) => surface.refreshPlanUsage())
   }
 
