@@ -35,7 +35,16 @@
         "Use native provider tools to read and search the repository; use ClosedAI browser tools for signed-in pages and session fetch.",
         "Cross-chat: peer_chats.search (~10 hot chats), then spine or recall(scope=history, chat_id=...) for depth. Open peers: list(scope=open)+read. History list is metadata; recall searches bodies. Page before_chat_id or before_item_id; order follows last user send, not always UI activity.",
         "Prefer deterministic closedai_app.command, and closedai_app.menu for any application menu row, over closedai_app.ui; ui requires fallback_reason.",
-        "Browser mutations need an owned tab; read_page and wait_for observe without claiming. site.discover bootstrap on new origins; discovery search uses search.query or search.run, not search-engine navigate."
+        "Browser workflows and tool_batch recipes: see Browser and tool_batch below."
+      ]
+    },
+    {
+      "heading": "Browser and tool_batch",
+      "lines": [
+        "Flow: state → site.discover on new origins → search for URLs → page navigate (not search-engine pages). Assign tab via navigate/new_tab; read_page/wait_for need no claim. instrument hook before SPA navigate when mapping APIs.",
+        "Network: embedded_browser.network logs requests (wait, tipCursor); no bodies; ids ≠ CDP. Bodies → browser_cdp.protocol; replay → network_replay. APIs with session cookies → session fetch + json_path/fields/limit.",
+        "tool_batch: sequential inspect→act→verify; parallel only for independent tab_id/targets. After input, same batch needs read, wait, or capture. ClosedAI tools only; no nested batches.",
+        "Prefer selector read_page, session fetch format:text, script extract; on truncation narrow scope, do not repeat wide calls. User actions: tipCursor → network.wait → fetch/CDP body, not shell HTML."
       ]
     },
     {
@@ -51,7 +60,7 @@
         "src/main/ orchestration and tools; src/preload/ IPC bridge; src/shared/ cross-process types; src/renderer/ product UI; src/components/ui/ presentation primitives.",
         "Tests live beside the module they cover. Feature styles: src/renderer/styles/<feature>/.",
         "Interactive controls use data-ui ids from src/shared/ui-controls.ts (manifest), not renderer source trawling.",
-        "Find candidate filenames first (rg --files -g), then search content in the relevant directory. Generated workspace maps are maintenance data, not injected context; .rgignore excludes them from default searches. Pass an explicit file path to inspect them."
+        "Find filenames (rg --files -g), then search content. Generated maps are maintenance-only; .rgignore hides them\u2014pass an explicit path to inspect."
       ]
     },
     {
@@ -69,17 +78,15 @@
       "heading": "Verification (default: fast)",
       "lines": [
         "Choose checks by the change; these tiers are not a cumulative checklist. Reuse valid results from the current work; repeat only after relevant edits, failures, or new evidence. Dev/build include hygiene; build includes typecheck, and check reuses those build checks. Size-only growth needs no extra command.",
-        "Tier 0 \u2014 docs-only, .gitignore, comments, or generated map/guide after running the generator: no typecheck.",
-        "Tier 1 \u2014 default for code: one co-located *.test.ts for the module you changed; run once per logical edit batch, not after every micro-edit.",
-        "Tier 2 \u2014 npm run typecheck when shared types, exports, or cross-layer contracts change; once before handoff, not every save.",
-        "Tier 3 \u2014 npm run hygiene for import/module-structure or gate changes, unless dev/build will cover them. Architecture violations block; file sizes are advisory. Choose extension, extraction, or simplification by cohesion and maintenance cost, without size approval or unrelated refactoring. Explain substantial growth briefly in the normal change summary.",
-        "Tier 4 \u2014 Verify renderer behavior in the real Electron app; see docs/application.md for build/reload ownership. A successful build or preview command alone is not visual verification. For unrelated type errors, see its renderer-only fallback; report the full-build blocker separately.",
-        "Preview runs built out/ files: rebuild, then confirm the actual target loaded the update. preview -- --skipBuild avoids rebuilding twice. Renderer auto-reload requires the running main bundle to match; main/preload changes need a restart. Dev uses renderer hot reload. Another preview launch does not confirm the existing process loaded the build. If reload cannot be confirmed, hard-refresh if available. If no refresh is available or the update remains unconfirmed, stop captures and report: Build passed; visual verification pending a manual app restart. Report build failures separately.",
-        "After the update loads, reveal the changed area and capture once. Further captures need a relevant edit/state change, failed capture, or specific unresolved detail; use a retained crop for small detail. Never poll for rebuild/reload with screenshots; chat images change the window, defeating pixel deduplication. The app reload menu is not model-runnable.",
-        "Tier 5 \u2014 npm test or npm run check only for release preparation or an explicit user request. Full gates are not the default success criterion.",
-        "Adding a test file: run it, hygiene (unless dev/build covers it), then npm run map and npm run map:check. Inspect untracked files separately; git diff and git diff --check omit them. Check new-file whitespace with git diff --no-index --check /dev/null path/to/file.",
-        "Command: npm run test:one -- src/path/to/module.test.ts",
-        "Heavy build/verify: provider shells auto-wrap npm via scripts/closedai-bin when chatWorkLockEnabled (default on); manual: node scripts/work-lock.mjs --cwd <path> -- <command\u2026> (.closedai/work.lock)."
+        "Tier 0 \u2014 docs/comments/generated map or guide after generator: no typecheck.",
+        "Tier 1 \u2014 default code change: one co-located *.test.ts; once per logical batch.",
+        "Tier 2 \u2014 typecheck when shared types or cross-layer contracts change.",
+        "Tier 3 \u2014 hygiene on import/module/gate edits unless dev/build covers; size advisory only.",
+        "Tier 4 \u2014 Renderer UI: real Electron app per docs/application.md; build alone is not visual proof. Rebuild out/, confirm the running app loaded it (renderer hot reload in dev; main/preload need restart). If unconfirmed, report build passed; visual verification pending manual restart\u2014no screenshot polling. Capture once after load; further captures need a new edit or unresolved detail. Reload menu is not model-runnable.",
+        "Tier 5 \u2014 npm test or npm run check for release or explicit request only.",
+        "New test file: run it, hygiene if needed, npm run map && map:check. Untracked whitespace: git diff --no-index --check /dev/null path.",
+        "npm run test:one -- src/path/to/module.test.ts",
+        "Heavy commands: work-lock when chatWorkLockEnabled (see scripts/work-lock.mjs)."
       ]
     }
   ]

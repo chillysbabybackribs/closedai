@@ -37,6 +37,37 @@ Limits enforced at startup: snake_case names, unique names, non-empty descriptio
 `type: object` schemas, at most 8 actions per tool, and a field that appears in two actions
 must have the same schema in both.
 
+## Browser agent routing
+
+Cold-start orientation also lives in the generated session guide (`closedai.guide` on Codex,
+Claude, and Antigravity; not injected on Cursor). The patterns below match that guide section
+**Browser and tool_batch**.
+
+**Discovery flow:** `closedai_app.state` → `site.discover` bootstrap on unfamiliar origins →
+`search.query` / `search.run` for URLs → `embedded_browser.page` `navigate` on canonical links.
+Navigate refuses search-engine result pages and free-text queries.
+
+**Tabs:** The first `navigate` or `new_tab` in a pane assigns a tab; assigned tabs run at full
+speed when not selected. `read_page` and `wait_for` observe without claiming. For SPA API maps,
+`browser_cdp.instrument` `hook` before navigate.
+
+**Two network layers:** `embedded_browser.network` is the session `webRequest` log (`requests`,
+`wait`, `tipCursor`, rules). It has **no response bodies**; log row ids are **not** CDP ids.
+Response bodies → `browser_cdp.protocol`. Replay → `embedded_browser.network_replay`. Timing-only
+URLs are hints, not evidence. Session-authenticated APIs → `embedded_browser.session` `fetch`;
+bound JSON with `json_path`, `fields`, and `limit` before `max_chars`.
+
+**`tool_batch.run`:** Default sequential **inspect → act → verify**. `parallel: true` only for
+independent targets (different `tab_id` or non-conflicting read-only work). After navigate, click,
+or type, the same sequential batch needs `read_page`, `wait_for`, `network.wait`, or capture.
+Route ClosedAI `namespace.tool` ids only; no nested batches or provider-native tools inside
+`calls`.
+
+**Token discipline:** Avoid whole-page `read_page`; prefer selector scope, `session.fetch`
+`format: text` on HTML docs, and `embedded_browser.script` `extract` on JSON. When output
+truncates, narrow projection instead of repeating the same wide call. After user actions, prefer
+`tipCursor` → `network.wait` → `session.fetch` or CDP body over scraping shell HTML.
+
 ## Layout
 
 ```

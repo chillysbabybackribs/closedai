@@ -19,6 +19,7 @@ test('generated guide fits the session budget', () => {
   assert.ok(AGENT_GUIDE_TEXT.length <= SESSION_GUIDE_MAX_CHARS)
   assert.match(AGENT_GUIDE_TEXT, /Tier 1/)
   assert.match(AGENT_GUIDE_TEXT, /npm run test:one/)
+  assert.match(AGENT_GUIDE_TEXT, /Browser and tool_batch/)
 })
 
 test('session guide is application context', () => {
