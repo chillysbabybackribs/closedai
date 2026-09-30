@@ -23,7 +23,9 @@ export type ThreadHandoffOptions = {
 }
 const MAX_PREVIEW_ENTRY_CHARS = 1_500
 
-type HandoffEntry = { id: string; speaker: 'User' | 'Assistant'; text: string }
+export type ConversationSpineEntry = { id: string; speaker: 'User' | 'Assistant'; text: string }
+
+type HandoffEntry = ConversationSpineEntry
 
 export type ThreadHandoff = {
   /** The thread's name, else its opening request as the history list would show it. */
@@ -51,7 +53,7 @@ export function buildThreadHandoff(
   const target = options?.maxChars ?? DEFAULT_HANDOFF_TARGET_CHARS
   const maxChars = target === 0 ? Infinity : Math.max(0, target)
   const framing = options?.framing ?? 'handoff'
-  const entries = conversationEntries(items)
+  const entries = conversationSpineEntries(items)
   if (entries.length === 0) return null
   const firstUser = entries.find((entry) => entry.speaker === 'User')?.text ?? ''
   const title = clip(handoffSourceTitle(threadName, firstUser), 120)
@@ -81,7 +83,7 @@ export function buildThreadHandoff(
   if (memory && items.some((item) => item.id === memory.throughItemId)) {
     header.push(`Model-authored checkpoint (may be stale; later messages take precedence):\n${JSON.stringify(memory.state)}`)
   }
-  const files = changedFiles(items)
+  const files = conversationSpineChangedFiles(items)
   if (files.length > 0) header.push(`Files changed there: ${files.join(', ')}`)
   const plan = [...items].reverse().find((item) => item.type === 'plan' && item.text.trim())
   if (plan?.type === 'plan') header.push(`Latest recorded plan (may be stale), item_id=${JSON.stringify(plan.id)}:\n${plan.text}`)
@@ -137,7 +139,7 @@ function overviewLines(items: ChatTranscriptItem[], entries: HandoffEntry[], cwd
 }
 
 /** User messages plus one assistant answer per turn: the final answer, else the last message. */
-function conversationEntries(items: ChatTranscriptItem[]): HandoffEntry[] {
+export function conversationSpineEntries(items: ChatTranscriptItem[]): ConversationSpineEntry[] {
   const entries: HandoffEntry[] = []
   const answerIndexByTurn = new Map<string, number>()
   const finalTurns = new Set<string>()
@@ -166,7 +168,8 @@ function conversationEntries(items: ChatTranscriptItem[]): HandoffEntry[] {
   return entries
 }
 
-function changedFiles(items: ChatTranscriptItem[]): string[] {
+/** Paths touched in file-change items, for index and handoff summaries. */
+export function conversationSpineChangedFiles(items: ChatTranscriptItem[]): string[] {
   const paths = new Set<string>()
   for (const item of items) {
     if (item.type !== 'fileChange') continue
@@ -231,7 +234,7 @@ function clip(text: string, max: number): string {
 
 /** Last user line and optional answer for the continued-chat preview before the first send. */
 export function handoffPreviewExchange(items: ChatTranscriptItem[]): { user: string; assistant: string | null } | null {
-  const entries = conversationEntries(items)
+  const entries = conversationSpineEntries(items)
   if (entries.length === 0) return null
   const last = entries.at(-1)!
   if (last.speaker === 'Assistant') {

@@ -3,6 +3,7 @@ import type { ChatPaneId, ChatWorkspaceEvent } from '../../shared/chat-peers.js'
 import type { ChatSurface } from '../chat-hub.js'
 import type { ChatStore } from '../chat-store/chat-store.js'
 import { cachedChatThreadId, CACHED_TRANSCRIPT_ITEMS, type ChatTranscriptCache } from '../chat-store/chat-transcript-cache.js'
+import type { ChatMemoryIndex } from '../chat-store/chat-memory-index.js'
 import { traceLog } from '../trace/trace-log.js'
 import type { BrowserAssignmentIdleRelease } from '../tools/browser/assignment-idle-release.js'
 import type { DeferredProjectSwitch } from './deferred-project-switch.js'
@@ -17,6 +18,7 @@ export type PeerPaneOpsHost = {
   parking: PeerIdleParking
   store: ChatStore
   transcripts: ChatTranscriptCache
+  memoryIndex: ChatMemoryIndex | null
   projectSwitch: DeferredProjectSwitch
   projectChanges: PeerProjectChanges
   catalog: PeerChatCatalog
@@ -41,12 +43,14 @@ export function peerRendererView(
 export function rememberPeerTranscript(
   store: ChatStore,
   transcripts: ChatTranscriptCache,
+  memoryIndex: ChatMemoryIndex | null,
   entry: PeerEntry
 ): void {
   const record = store.get(entry.chatId)
   const threadId = cachedChatThreadId(record)
   if (!threadId) return
   transcripts.remember(entry.chatId, threadId, entry.surface.snapshot({ limit: CACHED_TRANSCRIPT_ITEMS, unit: 'item' }))
+  if (record && memoryIndex) memoryIndex.upsert(record, entry.surface.snapshot().items)
 }
 
 export function handlePeerPaneEvent(host: PeerPaneOpsHost, entry: PeerEntry, event: ChatEvent): void {
@@ -73,7 +77,7 @@ export function handlePeerPaneEvent(host: PeerPaneOpsHost, entry: PeerEntry, eve
   if (turnBoundary && !running) host.catalog.invalidate()
   if ((turnBoundary && !running) || (event.type === 'context' && !running) ||
     (event.type === 'replace' && event.snapshot.items.length > 0)) {
-    rememberPeerTranscript(host.store, host.transcripts, entry)
+    rememberPeerTranscript(host.store, host.transcripts, entry, host.memoryIndex)
   }
   if (running) {
     host.parking.cancel(entry)

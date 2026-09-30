@@ -223,6 +223,14 @@ export type AppSettings = {
    * paths from this project. Set false for A/B or baseline runs without ledger injection.
    */
   chatWorkspaceLedgerEnabled: boolean
+  /** When true (default), maintain a global LRU spine index for peer_chats.search. */
+  chatMemoryIndexEnabled: boolean
+  /** How many recently active chats stay in the hot index (default 10). */
+  chatMemoryIndexMaxChats: number
+  /** Recency half-life in days for search ranking (default 7). */
+  chatMemoryIndexHalfLifeDays: number
+  /** Maximum indexed spine characters retained per chat. */
+  chatMemoryIndexMaxCharsPerChat: number
 }
 
 /** A still of the page the user is looking at; `imageUrl` is a data URL. */

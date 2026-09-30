@@ -13,6 +13,7 @@ import type { AppSettingsAccess } from '../app-settings-store.js'
 import type { ChatSurface } from '../chat-hub.js'
 import type { ChatStore } from '../chat-store/chat-store.js'
 import type { ChatTranscriptCache } from '../chat-store/chat-transcript-cache.js'
+import type { ChatMemoryIndex } from '../chat-store/chat-memory-index.js'
 import type { BrowserAssignmentIdleRelease } from '../tools/browser/assignment-idle-release.js'
 import { chatRowSummariesEqual, rowSummary } from './peer-events.js'
 import { handlePeerPaneEvent, peerRendererView, rememberPeerTranscript, withSerializedAwake, type PeerPaneOpsHost } from './peer-manager-pane-ops.js'
@@ -34,6 +35,7 @@ export type PeerManagerSupportHost = {
   projectSwitch: DeferredProjectSwitch
   projectChanges: PeerProjectChanges
   transcripts: ChatTranscriptCache
+  memoryIndex: ChatMemoryIndex | null
   parking: PeerIdleParking
   catalog: PeerChatCatalog
   chatsEmit: PeerEmitThrottle
@@ -123,7 +125,7 @@ export function peerManagerRendererView(host: PeerManagerSupportHost, entry: Pee
 }
 
 export function peerManagerRememberTranscript(host: PeerManagerSupportHost, entry: PeerEntry): void {
-  rememberPeerTranscript(host.store, host.transcripts, entry)
+  rememberPeerTranscript(host.store, host.transcripts, host.memoryIndex, entry)
 }
 
 export function peerManagerPaneOpsHost(host: PeerManagerSupportHost): PeerPaneOpsHost {
@@ -132,6 +134,7 @@ export function peerManagerPaneOpsHost(host: PeerManagerSupportHost): PeerPaneOp
     parking: host.parking,
     store: host.store,
     transcripts: host.transcripts,
+    memoryIndex: host.memoryIndex,
     projectSwitch: host.projectSwitch,
     projectChanges: host.projectChanges,
     catalog: host.catalog,

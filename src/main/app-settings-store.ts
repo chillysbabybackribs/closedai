@@ -7,6 +7,11 @@ import { bareChatId, chatProviderOfId, isChatProvider } from '../shared/chat-pro
 import { peerThreadId } from './chat-peers/peer-settings.js'
 import { DEFAULT_BATCH_MAX_CALLS, normalizeBatchMaxCalls } from './batch-config.js'
 import { normalizeMemoryCheckpoint } from './chat-context/memory-checkpoint.js'
+import {
+  normalizeChatMemoryIndexHalfLifeDays,
+  normalizeChatMemoryIndexMaxCharsPerChat,
+  normalizeChatMemoryIndexMaxChats
+} from './chat-store/chat-memory-index.js'
 
 export type AppSettingsAccess = {
   get(): AppSettings
@@ -54,7 +59,11 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   chatClaudePrecomputeCompaction: true,
   chatWorkLockEnabled: true,
   chatToolSliceEnabled: false,
-  chatWorkspaceLedgerEnabled: true
+  chatWorkspaceLedgerEnabled: true,
+  chatMemoryIndexEnabled: true,
+  chatMemoryIndexMaxChats: 10,
+  chatMemoryIndexHalfLifeDays: 7,
+  chatMemoryIndexMaxCharsPerChat: 48_000
 }
 
 const MAX_COMPACT_AT_PERCENT = 95
@@ -122,7 +131,11 @@ function normalize(parsed: unknown): AppSettings {
     chatHandoffTargetChars: normalizeRotationThreshold(record.chatHandoffTargetChars, DEFAULT_APP_SETTINGS.chatHandoffTargetChars, Number.MAX_SAFE_INTEGER),
     chatWorkLockEnabled: record.chatWorkLockEnabled !== false,
     chatToolSliceEnabled: record.chatToolSliceEnabled === true,
-    chatWorkspaceLedgerEnabled: record.chatWorkspaceLedgerEnabled !== false
+    chatWorkspaceLedgerEnabled: record.chatWorkspaceLedgerEnabled !== false,
+    chatMemoryIndexEnabled: record.chatMemoryIndexEnabled !== false,
+    chatMemoryIndexMaxChats: normalizeChatMemoryIndexMaxChats(record.chatMemoryIndexMaxChats),
+    chatMemoryIndexHalfLifeDays: normalizeChatMemoryIndexHalfLifeDays(record.chatMemoryIndexHalfLifeDays),
+    chatMemoryIndexMaxCharsPerChat: normalizeChatMemoryIndexMaxCharsPerChat(record.chatMemoryIndexMaxCharsPerChat)
   }
 }
 
