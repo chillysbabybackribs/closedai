@@ -672,8 +672,10 @@ creation), capped by `chatMemoryIndexMaxChats` (default 10, max 100 in settings)
 an exponential recency decay (`chatMemoryIndexHalfLifeDays`, default 7) and a modest boost for
 pinned chats. Disabled when `chatMemoryIndexEnabled` is false. Results are historical; use
 `peer_chats.spine` for turn-shaped reads of one chat or
-`peer_chats.recall(scope=history, chat_id=..., item_id=...)` for depth. Chats older than the hot
-window are reachable only through history discovery and recall, not the index.
+`peer_chats.recall(scope=history, chat_id=..., item_id=...)` for depth. A `chat_id` from search
+works with `spine` and `recall` under `scope: history` for open panes and closed chats (not only
+rows returned from `list(scope=history)`). Chats older than the hot window are reachable only
+through history discovery and recall, not the index.
 
 `peer_chats.spine` is read-only and accepts `scope: current|history`, optional `chat_id` for history
 (defaults to the most recent other conversation), `limit` (default 5, max 8), and

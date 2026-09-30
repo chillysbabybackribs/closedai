@@ -1,6 +1,6 @@
 # Scoped slice: bounded conversation spine read (`peer_chats.spine`)
 
-Status: **implemented** (`peer_chats.spine` v1).
+Status: **implemented** (`peer_chats.spine` v1; history `chat_id` resolution v1.1).
 
 ## Problem
 
@@ -170,3 +170,8 @@ Index miss (chat #11+ LRU): still works via transcript load; search + spine + re
 - Handoff text for continued chats **byte-stable** within existing test tolerances.
 - Index files interleave evidence with turns (no 100-line tool tail).
 - Docs state: index may lag one turn; transcript path used when index missing or stale.
+- **`search` → `spine`/`recall`:** explicit `chat_id` under `scope: history` resolves any other store chat with a thread id, including **open panes**; when a chat is omitted from `list(scope=history)` metadata but still in the hot index, `chat_id` from search still resolves via the index pointer.
+
+## History `chat_id` resolution (v1.1)
+
+`list(scope=history)` skips empty metadata rows; `search` can still hit hot-index spine text. **`recall` and `spine`** now resolve explicit `chat_id` through the store first, then accept hot-index rows when discovery would omit the chat. Default “latest other chat” ordering is unchanged. Post-load stability checks use the store record, not rediscovery membership.

@@ -88,15 +88,12 @@ export class ChatMemory {
       return recallTranscript(snapshot.items, caller.threadId!, checkpoint, request, null)
     }
     if (request.scope === 'history') {
-      const target = request.chatId
-        ? this.historyRecords(pane).find((record) => record.id === request.chatId)
-        : this.historyRecords(pane)[0]
+      const target = this.resolveHistoryTarget(pane, request.chatId)
       if (!target?.threadId) throw new Error('No matching conversation is available in history')
       const content = await this.read(target.id, target.threadId, surface, target.cwd)
       const resolved = this.resolve(caller)
       if (resolved.surface !== surface) throw new Error('Workspace changed while loading memory')
-      const latest = this.historyRecords(resolved.pane).find((record) => record.id === target.id)
-      if (latest?.threadId !== target.threadId) throw new Error('History chat changed while loading memory')
+      const latest = this.assertHistoryTargetStable(resolved.pane, target.id, target.threadId)
       return recallTranscript(content.items, target.threadId, latest.checkpoint, { ...request, chatId: target.id }, null)
     }
     if (request.scope !== 'source') throw new Error('Unknown recall scope')
@@ -130,17 +127,14 @@ export class ChatMemory {
       }, request)
     }
     if (request.scope !== 'history') throw new Error('Unknown spine scope')
-    const target = request.chatId
-      ? this.historyRecords(pane).find((record) => record.id === request.chatId)
-      : this.historyRecords(pane)[0]
+    const target = this.resolveHistoryTarget(pane, request.chatId)
     if (!target?.threadId) throw new Error('No matching conversation is available in history')
     const indexed = this.spineFromIndex(target, request)
     if (indexed) return indexed
     const content = await this.read(target.id, target.threadId, surface, target.cwd)
     const resolved = this.resolve(caller)
     if (resolved.surface !== surface) throw new Error('Workspace changed while loading memory')
-    const latest = this.historyRecords(resolved.pane).find((record) => record.id === target.id)
-    if (latest?.threadId !== target.threadId) throw new Error('History chat changed while loading memory')
+    const latest = this.assertHistoryTargetStable(resolved.pane, target.id, target.threadId)
     return spineTranscript(content.items, {
       threadId: target.threadId,
       title: latest.title,
@@ -172,8 +166,35 @@ export class ChatMemory {
   private historyRecords(pane: ChatRecord): ChatRecord[] {
     return this.records.ids().map((id) => this.records.get(id))
       .filter((record): record is ChatRecord => !!record && record.id !== pane.id && !!record.threadId && !record.archived)
-      .filter((record) => record.messageSentAt !== null || record.lastTurnEndedAt !== null || record.preview.trim() || record.continuation)
+      .filter((record) => this.isHistoryDiscoverable(record))
       .sort((a, b) => historyActivity(b) - historyActivity(a) || a.id.localeCompare(b.id))
+  }
+
+  /** Default latest-other chat, or an explicit id from list/search (including open panes and hot-index hits). */
+  private resolveHistoryTarget(pane: ChatRecord, chatId?: string | null): ChatRecord | null {
+    if (chatId) return this.lookupHistoryChat(pane, chatId)
+    return this.historyRecords(pane)[0] ?? null
+  }
+
+  private lookupHistoryChat(callerPane: ChatRecord, chatId: string): ChatRecord | null {
+    const record = this.records.get(chatId)
+    if (!record || record.id === callerPane.id || record.archived || !record.threadId) return null
+    if (this.isHistoryDiscoverable(record)) return record
+    if (!this.indexEnabled() || !this.memoryIndex) return null
+    const indexed = this.memoryIndex.getRecord(chatId)
+    return indexed?.lines.length ? record : null
+  }
+
+  private assertHistoryTargetStable(callerPane: ChatRecord, chatId: string, threadId: string): ChatRecord {
+    const latest = this.records.get(chatId)
+    if (!latest || latest.id === callerPane.id || latest.archived || latest.threadId !== threadId) {
+      throw new Error('History chat changed while loading memory')
+    }
+    return latest
+  }
+
+  private isHistoryDiscoverable(record: ChatRecord): boolean {
+    return record.messageSentAt !== null || record.lastTurnEndedAt !== null || record.preview.trim().length > 0 || !!record.continuation
   }
 
   /** Self-rotated chats keep the full transcript in memory while the provider thread id changes. */

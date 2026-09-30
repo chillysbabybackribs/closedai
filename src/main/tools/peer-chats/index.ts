@@ -103,7 +103,8 @@ export function peerChatTools(getDirectory: () => PeerChatDirectory | null): Too
         description:
           'Cross-chat phrase search over the global hot memory index (default: the 10 most recently active chats). ' +
           'Matches conversation spine text (user/assistant/plan and compact tool/command labels), not raw tool output. ' +
-          'Results are historical; use recall(scope=history, chat_id=..., item_id=...) for depth. query is a required ' +
+          'Results are historical; use spine or recall(scope=history, chat_id=..., item_id=...) for depth (chat_id works for open ' +
+          'panes and closed chats). query is a required ' +
           'literal case-insensitive phrase. cwd optionally narrows hits to one project directory. limit defaults to 5, max 8. ' +
           'The calling chat is excluded from hits. For turn-shaped reads of one chat, use spine after search.',
         inputSchema: {

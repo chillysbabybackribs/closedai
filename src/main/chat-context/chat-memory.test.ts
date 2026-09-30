@@ -9,7 +9,10 @@ import type { ChatRecord } from '../../shared/chat-store.js'
 import { DEFAULT_APP_SETTINGS } from '../app-settings-store.js'
 import { chatRecord, MemorySettings } from '../chat-peers/peer-manager-harness.js'
 import { PeerSettings } from '../chat-peers/peer-settings.js'
+import type { ChatMemoryIndexRecord } from '../../shared/chat-index.js'
+import { CHAT_MEMORY_INDEX_VERSION } from '../../shared/chat-index.js'
 import { ChatStore } from '../chat-store/chat-store.js'
+import { ChatMemoryIndex } from '../chat-store/chat-memory-index.js'
 import { ChatMemory } from './chat-memory.js'
 
 const state = { goal: 'Optimize long chats', constraints: ['Keep history'], decisions: [], progress: [], nextSteps: ['Measure recall'], files: [] }
@@ -241,6 +244,46 @@ test('checkpoints and frozen source boundaries survive disk reload and ordinary 
   assert.equal(loaded.require('p').continuation?.sourceThroughItemId, 'old')
   assert.equal(loaded.require('p').reasoningEffort, 'high')
   assert.equal(settings.get().chatReasoningEffort, 'high', 'the selected chat mirrors into the flat fields')
+})
+
+test('explicit history chat_id resolves open panes and hot-index hits outside history discovery', async () => {
+  const h = harness()
+  const indexed = addHistory(h.store, 'open-indexed', 30, {
+    messageSentAt: null,
+    lastTurnEndedAt: null,
+    preview: '',
+    continuation: null
+  })
+  assert.equal(h.memory.history(caller, {}).chats.find((chat) => chat.chatId === 'open-indexed'), undefined)
+  const indexRecord: ChatMemoryIndexRecord = {
+    version: CHAT_MEMORY_INDEX_VERSION,
+    chatId: 'open-indexed',
+    cwd: indexed.cwd,
+    title: indexed.title,
+    lastActivityAt: 30,
+    pinnedAt: null,
+    changedFiles: [],
+    lines: [{ itemId: 'u1', role: 'user', text: 'Indexed question' }, { itemId: 'a1', role: 'assistant', text: 'Indexed answer' }],
+    updatedAt: 30
+  }
+  const memory = new ChatMemory(h.store, (id) => id === 'p' ? h.surface : null, ChatMemoryIndex.inMemory(DEFAULT_APP_SETTINGS, [indexRecord]))
+  h.setRead(async (threadId) => ({
+    threadId,
+    threadName: null,
+    items: [
+      { type: 'user', id: 'u1', turnId: 't1', text: 'Indexed question' },
+      { type: 'assistant', id: 'a1', turnId: 't1', text: 'Indexed answer', phase: 'final_answer', streaming: false }
+    ]
+  }))
+  const spine = await memory.spine(caller, { scope: 'history', chatId: 'open-indexed', limit: 1 })
+  assert.equal(spine.chatId, 'open-indexed')
+  assert.equal(spine.provenance, 'index')
+  assert.equal(spine.turns[0]?.user, 'Indexed question')
+  assert.equal(h.reads(), 0)
+  const recalled = await memory.recall(caller, { scope: 'history', chatId: 'open-indexed', query: 'Indexed question' })
+  assert.equal(recalled.chatId, 'open-indexed')
+  assert.equal(recalled.matches[0]?.text, 'Indexed question')
+  assert.equal(h.reads(), 1)
 })
 
 test('spine returns turn-shaped history prose without loading when index covers the chat', async () => {
