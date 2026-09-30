@@ -106,8 +106,9 @@ async function antigravity(run: ProviderRun) {
           const line = buffer.slice(0, end); buffer = buffer.slice(end + 1)
           try {
             const event = JSON.parse(line)
-            if (typeof event.model === 'string') run.modelObserved(event.model)
-            if (event.event === 'result') finish(event.is_error ? new Error('Antigravity result error') : undefined)
+            const parsed = antigravityEvent(event)
+            if (parsed.model) run.modelObserved(parsed.model)
+            if (parsed.done) finish(parsed.error ? new Error(parsed.error) : undefined)
           } catch { /* CLI banner/non-JSON */ }
         }
       })
@@ -116,4 +117,15 @@ async function antigravity(run: ProviderRun) {
       child.stdin.write(antigravityTurnLine(run.prompt))
     })
   } finally { await bridge.stop() }
+}
+
+
+export function antigravityEvent(event: Record<string, unknown>): { model?: string; done?: boolean; error?: string } {
+  if (event.event === 'init') {
+    const init = event.init as { model?: unknown } | undefined
+    return typeof init?.model === 'string' ? { model: init.model } : {}
+  }
+  if (event.event !== 'result') return {}
+  const result = event.result as { status?: string; error?: string } | undefined
+  return { done: true, ...(result?.status === 'SUCCESS' ? {} : { error: result?.error ?? `Antigravity result: ${result?.status ?? 'missing'}` }) }
 }

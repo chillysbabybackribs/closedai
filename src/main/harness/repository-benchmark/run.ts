@@ -49,7 +49,7 @@ async function trial(provider: BenchmarkProvider, fixture: RepairFixture, retrie
       const correct = correctSnapshot(fixture, files)
       result.finalCorrect = correct
       if (correct && result.firstCorrectEditMs === null) result.firstCorrectEditMs = Math.round(observedAt - started)
-    } catch { /* Atomic replacement may briefly remove a file. Next sample retries. */ }
+    } catch { result.finalCorrect = false /* Atomic replacement may briefly remove a file. Next sample retries. */ }
   }
   let sampling = false
   const interval = setInterval(() => {

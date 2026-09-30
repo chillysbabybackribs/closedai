@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { REPAIR_FIXTURES, correctSnapshot } from './fixtures.js'
+import { antigravityEvent } from './providers.js'
 import { summarize, type Trial } from './run.js'
 
 test('oracles reject initial bugs and regressions, and accept behavioral repairs', () => {
@@ -22,4 +23,11 @@ test('failed runs and model mismatches cannot become speed wins', () => {
   for (const change of [{ error: 'failed' }, { finalCorrect: false }, { observedModel: 'other' }, { firstCorrectEditMs: null }]) {
     assert.equal(summarize([row, { ...row, retrieval: true, ...change }])[0].pairs[0].comparable, false)
   }
+})
+
+
+test('Antigravity observations use nested protocol model and result status', () => {
+  assert.deepEqual(antigravityEvent({ event: 'init', init: { model: 'model-a' } }), { model: 'model-a' })
+  assert.deepEqual(antigravityEvent({ event: 'result', result: { status: 'SUCCESS' } }), { done: true })
+  assert.equal(antigravityEvent({ event: 'result', result: { status: 'ERROR', error: 'denied' } }).error, 'denied')
 })
