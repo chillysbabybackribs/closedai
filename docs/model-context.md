@@ -73,7 +73,11 @@ for omitted evidence.
 The session guide (`closedai.guide`, `kind: application`) is separate from handoffs: product
 routing (user scope, search-first for public live facts, browser/app support when the session or
 a pointed page matters), trust boundaries, recency expectations for external facts, and the default
-verification guidance, including build/reload/restart boundaries and verification of the actual target surface.
+verification guidance, including build/reload/restart boundaries, confirmation that the actual
+target surface loaded the update, and a screenshot stop rule when it has not. Once loaded, models
+capture the changed area once and need a concrete reason for another capture; screenshots must
+not be used to poll for reload completion. The capture tool description carries the same rule
+for all providers, including Cursor, which receives no session guide.
 Verification is proportional to the change and reuses valid results from the current work.
 Repository navigation starts with filenames and scoped content searches; `.rgignore` excludes
 generated workspace maps and the generated guide (search its outline) from default searches. The guide also calls out checks for new test
@@ -83,7 +87,9 @@ to the implementing model. Size-only growth requires no extra check or approval.
 On Codex, Claude, and Antigravity it is attached once per provider thread (including the first
 send after a handoff to a new thread), omitted on later turns in the same thread, and stripped
 from the user-visible transcript like other context blocks. Edit `scripts/agent-guide-outline.json` and run `npm run guide:generate`;
-`guide:check` guards drift.
+`guide:check` guards drift. The generated guide and capture descriptions are main-process code:
+rebuild and restart to load changes, then use a new provider thread or handoff to receive the
+updated guide. Restarting alone does not guarantee an existing thread receives a new guide.
 
 `closedai.clock` (`kind: application`) is attached on **every** user turn with the host's calendar
 date, local timestamp, UTC ISO time, and IANA timezone. Models should treat it as authoritative

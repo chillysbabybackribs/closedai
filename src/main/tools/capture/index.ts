@@ -37,7 +37,11 @@ export function captureTools(
         description:
           'Screenshots when visual evidence is needed: action is required — app_window, browser_page, or crop. ' +
           `At most ${budget.maxPerTurn} distinct images per turn; pixel-identical back-to-back captures return text only (no duplicate transcript screenshot). ` +
-          'Prefer embedded_browser.page read_page for text. Batch UI changes, then capture once.',
+          'Prefer embedded_browser.page read_page for text. Batch UI changes, reveal the changed area, then capture once. ' +
+          'Another capture needs a relevant edit/state change, a failed capture, or a specific unresolved visual detail; use a retained crop for small detail. ' +
+          'For preview UI verification, rebuild and confirm the running app loaded the update first. Do not assume auto-reload succeeded. ' +
+          'If refresh is unavailable or the update cannot be confirmed, stop captures and report "Build passed; visual verification pending a manual app restart" (report build failures separately). ' +
+          'Never poll for rebuild/reload completion with screenshots; chat screenshots can change the image without a feature change, defeating pixel deduplication.',
         actions: actions.map((action) => withBudget(action, budget))
       })
     ]

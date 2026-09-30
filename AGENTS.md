@@ -89,8 +89,19 @@ the structural choice in the normal change summary; no separate report or extra 
 
 ## Verification and Testing
 
-- For renderer UI work, run the real Electron app (`npm run build && npm run preview`, or
-  `npm run dev` for hot reload). Do not add a second browser-only entry or duplicate bridge.
+- For renderer UI work, run the real Electron app (`npm run build && npm run preview -- --skipBuild`,
+  or `npm run dev` for hot reload). Do not add a second browser-only entry or duplicate bridge.
+  Preview runs built `out/` files: rebuild, then confirm the actual target surface loaded the update
+  before visual verification. Renderer rebuilds can auto-reload only when the running main bundle
+  matches; main-process or preload changes require a restart (see `docs/application.md`). Starting
+  another preview does not prove the existing app loaded the rebuild. If automatic reload is
+  unavailable or the update cannot be confirmed, hard-refresh if available; otherwise stop captures
+  and report: "Build passed; visual verification pending a manual app restart." Report build failures
+  separately. Models cannot run the application's reload menu through the menu tool.
+  Once the update is loaded, reveal the changed area and capture once. Another capture needs a
+  concrete reason: a relevant edit or state change, a failed capture, or a specific unresolved visual
+  detail. Use a retained crop when detail is too small. Never repeat screenshots to wait for a rebuild
+  or reload; each screenshot changes the chat, so pixel deduplication is not a sufficient stop rule.
 
 - Default verification: one co-located test via `npm run test:one -- src/path/to/target.test.ts`. Run
   `npm run typecheck` when shared types or cross-layer contracts change, not after every micro-edit.

@@ -33,6 +33,21 @@ verification. Launching another preview can hand off to the existing single-inst
 does not prove that process loaded the new build. Verify the actual target surface after reload
 or restart, and report pending restart separately from build success.
 
+For model visual verification, first use `closedai_app.state` and successful tool calls to orient
+to the actual target surface. Rebuild before checking preview UI, then confirm the running app
+loaded the update; do not assume the process has the current reload watcher or that it succeeded.
+If automatic reload is unavailable or loading the update cannot be confirmed, hard-refresh if
+available. The application's `reload-renderer` menu key is not model-runnable through
+`closedai_app.menu`; when no usable refresh path is available, stop captures and report
+"Build passed; visual verification pending a manual app restart." Report build failures separately.
+Existing UI tools remain usable; a pending restart limits verification of the new behavior.
+
+After the update loads, reveal the changed area and capture once. A further capture needs a
+relevant edit or state change, a failed capture, or a specific unresolved visual detail; use a
+retained crop when the first image lacks detail. Never poll for rebuild/reload completion with
+screenshots. Captures inserted into the chat can change the next window image even when the
+feature is unchanged, so pixel deduplication does not replace this stop rule.
+
 ### Renderer-only fallback
 
 If `npm run build` stops at unrelated TypeScript errors, a renderer-only change can still be
