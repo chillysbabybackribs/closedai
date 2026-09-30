@@ -638,13 +638,13 @@ catch up with the new chat before reconciling tabs; menu focus restoration canno
 The tab's full surface, including its title, activity icon, and padding, drags that conversation
 (tab split, stack, or join). A 36 × 38 pixel grip at the left of the tile header (matching the
 browser tab strip) drags the whole pane with every tab in it, as does empty header space after the
-tabs. Tabs keep their content width (96–220 px); a long title fades out into the close button
-instead of ending in an ellipsis. Opening a view keeps conversation tabs at their usual width. The close button sits
-beside the label (always shown on the active tab, on hover for others) and keeps its own click action; its
-hit area is a 24 × tab-height strip around the existing 11 px icon, without a larger hover chip.
+tabs. Every tile header (chat, view, notepad) uses the same browser-like strip: a dark rail, tabs
+that share it (72–240 px) and light up on hover, and a raised active tab that meets the body below.
+Opening a view keeps conversation tabs at their usual width. The close button is an 11 px icon in a
+16 px round chip beside the label, always shown on the active tab and on hover for others.
 Click a tab to return to its conversation; arrow keys and Home/End
 also switch tabs, and Delete closes the focused tab. Only the active tab's close button is in the
-tab order. Tab strips scroll horizontally when full: tabs keep a 96 px floor so the list
+tab order. Tab strips scroll horizontally when full: tabs keep a 72 px floor so the list
 overflows instead of collapsing labels, a wheel over the strip pans it, and selecting a tab
 scrolls it into view. The new-tab + follows the last tab and stays pinned at the strip's end
 when the tabs overflow; it never scrolls out of view. Mounted drafts and attachments survive

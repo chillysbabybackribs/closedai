@@ -22,7 +22,7 @@ export function ChatTabs({ ids, activeId, busy, canClose, title, activity, revie
   onDrag: (id: string) => void
   /** Sits after the last tab, outside the scroller, so it never scrolls out of view (the new-tab +). */
   trailing?: ReactNode
-  /** Notepad windows: browser-like tab strip, still on the tile header rail. */
+  /** Notepad windows name their tab list for assistive tech; every strip looks the same. */
   variant?: 'default' | 'note'
 }) {
   const list = useRef<HTMLDivElement>(null)
@@ -43,8 +43,8 @@ export function ChatTabs({ ids, activeId, busy, canClose, title, activity, revie
   }, [activeId, ids.length])
 
   // Only the tabs scroll; the trailing control follows the last tab and pins to the edge on overflow.
-  return <div className={variant === 'note' ? 'chat-layout-tab-strip chat-layout-tab-strip--note' : 'chat-layout-tab-strip'}>
-    <div ref={list} className={variant === 'note' ? 'chat-layout-tabs chat-layout-tabs--note' : 'chat-layout-tabs'} role="tablist"
+  return <div className="chat-layout-tab-strip">
+    <div ref={list} className="chat-layout-tabs" role="tablist"
       aria-label={variant === 'note' ? 'Note tabs' : 'Chat conversations'}
       onWheel={(event) => {
         const strip = event.currentTarget
@@ -55,7 +55,7 @@ export function ChatTabs({ ids, activeId, busy, canClose, title, activity, revie
         ? <ChatTabRowLive key={id} id={id} index={index} ids={ids} activeId={activeId} busy={busy} canClose={canClose}
             title={title} reviewQueue={reviewQueue} list={list} onSelect={onSelect} onClose={onClose} onDrag={onDrag} />
         : <ChatTabRow key={id} id={id} index={index} ids={ids} activeId={activeId} busy={busy} canClose={canClose}
-            title={title} activity={activity} list={list} onSelect={onSelect} onClose={onClose} onDrag={onDrag} noteStrip={variant === 'note'} />)}
+            title={title} activity={activity} list={list} onSelect={onSelect} onClose={onClose} onDrag={onDrag} />)}
     </div>
     {trailing}
   </div>
@@ -99,16 +99,15 @@ type ChatTabRowProps = {
   onSelect: (id: string) => void
   onClose: (id: string) => void
   onDrag: (id: string) => void
-  noteStrip?: boolean
 }
 
-function ChatTabRowBody({ id, index, ids, activeId, busy, canClose, title, status, list, onSelect, onClose, onDrag, noteStrip }: ChatTabRowProps & {
+function ChatTabRowBody({ id, index, ids, activeId, busy, canClose, title, status, list, onSelect, onClose, onDrag }: ChatTabRowProps & {
   status: TabActivity | undefined
 }) {
   const viewKind = viewKindOf(id)
   const closeHint = viewKind ? 'Chats stay open' : tabCloseHint(status?.state)
   return <div className="chat-layout-tab" data-active={id === activeId} data-status={status?.state} data-kind={viewKind ?? undefined} role="presentation">
-    {noteStrip && viewKind === 'note' ? <span className="chat-layout-note-tab-separator" aria-hidden="true" /> : null}
+    <span className="chat-layout-tab-separator" aria-hidden="true" />
     <button type="button" role="tab" data-ui="layout.tab" data-ui-key={id}
       id={`chat-tab-${id}`} aria-controls={`chat-panel-${id}`} aria-selected={id === activeId}
       tabIndex={id === activeId ? 0 : -1} disabled={busy} draggable={!busy}
