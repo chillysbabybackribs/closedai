@@ -41,8 +41,9 @@ Use native file search and read tools to navigate this repository. Tests sit bes
 feature stylesheets live under `src/renderer/styles/<feature>/`. The generated index is a maintenance
 artifact, not injected model context or a replacement for native file tools.
 Find candidate filenames first (`rg --files -g '*name*'`), then search content in the relevant
-directory. `.rgignore` excludes generated workspace maps from default searches; pass an explicit
-file path when inspecting them.
+directory. `.rgignore` excludes generated workspace maps and the generated session guide from
+default and path-scoped searches; pass an explicit file path when inspecting them, and search
+`scripts/agent-guide-outline.json` for guide text.
 
 ## Visual concept work
 

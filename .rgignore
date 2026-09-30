@@ -1,3 +1,7 @@
 # Generated maintenance data; pass its explicit path to rg when needed.
-/src/main/tools/workspace/workspace-index.generated.ts
-/src/main/tools/workspace/workspace-control-families.generated.ts
+# Patterns stay unanchored: a leading-slash pattern stops matching once rg is given a path such as `src`.
+workspace-index.generated.ts
+workspace-control-families.generated.ts
+# Generated session guide: one ~10K-char line that any match prints whole. Edit and search
+# scripts/agent-guide-outline.json instead.
+agent-guide.generated.ts
