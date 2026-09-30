@@ -31,3 +31,10 @@ export const DISCOVER_RESPECT_ROBOTS_FIELD: JsonObject = {
   type: 'boolean',
   description: 'expand only: when true (default), load robots.txt and skip disallowed paths. Ignored by bootstrap.'
 }
+
+export const DISCOVER_TAB_ID_FIELD: JsonObject = {
+  type: 'string',
+  minLength: 1,
+  description:
+    'ClosedAI tab id. bootstrap: optional live HTML channel. apis: required tab with an instrument recorder.'
+}

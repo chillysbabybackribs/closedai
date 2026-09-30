@@ -12,8 +12,7 @@ fetches. Probes and expand fetches run in the main process on the **browser sess
 
 | Namespace | Tool | Action | Trust |
 |-----------|------|--------|-------|
-| `site` | `discover` | `bootstrap` | Read-only GET; `deferLoading: true` |
-| `site` | `discover` | `expand` | Read-only GET; same session; robots-aware |
+| `site` | `discover` | `bootstrap`, `expand`, `apis` | Read-only GET; `deferLoading: true` |
 
 ## Action: bootstrap
 
@@ -64,13 +63,30 @@ optional `sparse` for script-heavy shells), **`skipped`** (`robots` | `over_cap`
 
 Non-HTML bodies larger than `max_probe_bytes` are rejected; HTML may truncate like bootstrap.
 
+## Action: apis
+
+Summarize **`browser_cdp.instrument`** recordings on a tab into a ranked **endpoint map**
+(fetch, XHR, WebSocket). Read-only: does not install hooks. Call **`instrument` `hook`** before
+navigate/interaction, then **`apis`** with the same `tab_id`.
+
+### Input (summary)
+
+- **`tab_id`** (required)
+- **`url`** (optional) — seed origin for `origin_only` filtering
+- **`origin_only`** — drop cross-origin resolved URLs
+- **`limit`** — max endpoints (default 30)
+
+### Output
+
+`installed`, `pageUrl`, `origin`, `channelCounts`, **`endpoints`** (method, resolvedUrl, count,
+channels, lastAtMs), **`frames`**, deterministic **`hints`**, and `message` when no recorder.
+
 ## Implementation
 
-`src/main/tools/site/` — `discover-probes.ts`, `bootstrap.ts`, `expand.ts`.
+`src/main/tools/site/` — `discover-probes.ts`, `bootstrap.ts`, `expand.ts`, `apis-map.ts`, `apis.ts`.
 
 ## Follow-ons (not implemented)
 
-- **`apis`** — summarize `browser_cdp.instrument` recordings into an endpoint map.
 - **`summary`** — rolling per-tab/origin index for token-efficient turns.
 
 See notepad note **Browser agent optimizations backlog** for the wider product backlog.

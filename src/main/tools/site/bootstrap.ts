@@ -3,6 +3,7 @@ import { jsonResult, objectSchema } from '../json-result.js'
 import { describeMissingTab } from '../../../shared/browser-tabs.js'
 import { failureResult, numberArg, stringArg } from '../tool.js'
 import type { BrowserHostProvider } from '../browser/host.js'
+import type { CdpHostProvider } from '../cdp/host.js'
 import { requireBrowser } from '../browser/host.js'
 import { requireSession, type SessionHostProvider } from '../browser/network-host.js'
 import {
@@ -28,10 +29,12 @@ import {
 import {
   DISCOVER_FOCUS_FIELD,
   DISCOVER_MAX_PROBE_BYTES_FIELD,
+  DISCOVER_TAB_ID_FIELD,
   DISCOVER_TIMEOUT_MS_FIELD,
   DISCOVER_URL_FIELD
 } from './discover-fields.js'
 import { expandAction } from './expand.js'
+import { apisAction } from './apis.js'
 
 const DEFAULT_TIMEOUT_MS = 15_000
 const MAX_TIMEOUT_MS = 45_000
@@ -42,13 +45,17 @@ const DEFAULT_MAX_LLMS = 4000
 const DEFAULT_MAX_PROBE_BYTES = 512_000
 const MAX_CONCURRENT = 6
 
-export function discoverTool(sessions: SessionHostProvider, browser?: BrowserHostProvider) {
+export function discoverTool(
+  sessions: SessionHostProvider,
+  browser?: BrowserHostProvider,
+  cdp?: CdpHostProvider
+) {
   return defineActionTool({
     name: 'discover',
     deferLoading: true,
     description:
-      'Read-only site discovery for a URL origin. bootstrap probes robots, sitemap, llms.txt, OpenAPI hints, and landing HTML in parallel. expand fetches a bounded list of same-origin URLs with robots enforcement and prose excerpts. Uses the signed-in browser session — not a crawl. Pair with embedded_browser.page navigate and embedded_browser.session fetch.',
-    actions: [bootstrapAction(sessions, browser), expandAction(sessions)]
+      'Read-only site discovery for a URL origin. bootstrap probes robots, sitemap, llms.txt, OpenAPI hints, and landing HTML in parallel. expand fetches a bounded list of same-origin URLs with robots enforcement and prose excerpts. apis summarizes browser_cdp.instrument fetch/XHR/WebSocket recordings for a tab. Uses the signed-in browser session — not a crawl. Pair with embedded_browser.page navigate and embedded_browser.session fetch.',
+    actions: [bootstrapAction(sessions, browser), expandAction(sessions), apisAction(cdp ?? (() => null))]
   })
 }
 
@@ -65,7 +72,7 @@ function bootstrapAction(sessions: SessionHostProvider, browser?: BrowserHostPro
         items: { type: 'string', enum: ALL_DISCOVER_CHANNELS },
         description: 'Probes to run; default all.'
       },
-      tab_id: { type: 'string', description: 'Optional tab id when HTML channel reads the live document.' },
+      tab_id: DISCOVER_TAB_ID_FIELD,
       max_sitemap_urls: {
         type: 'integer',
         minimum: 1,
