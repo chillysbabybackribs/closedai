@@ -81,6 +81,7 @@ valid results for the same code state and match the change scope.
 | Switch workspaces or return to a saved arrangement | [Workspace overview](#workspace-overview-spaces) |
 | Change a chat's folder or continue work in another project | [Projects, chats, panes, and conversations](#projects-chats-panes-and-conversations) |
 | Open the browser quick chat or understand its controls | [Browser quick chat](#browser-quick-chat) |
+| Write notes or chat with a model about a note | [Notepad](#notepad) |
 | Understand what context models receive | [Model context](model-context.md) |
 | Find a tool's arguments, limits, or trust boundary | [Tools](tools.md) |
 
@@ -112,10 +113,13 @@ not a fault: the lane sets its connection to `unavailable` with one install sent
 from the app, or choose another model.") instead of the raw `spawn codex ENOENT`. The Codex
 restart loop then re-probes every 60 s rather than every 15 s and recovers on its own once the
 binary appears; Claude, Antigravity, and Cursor map the same condition to their own sentence. A
-first-run screen reads `window.closedai.chat.providerAvailability()` (`ProviderAvailability[]`
-from `src/shared/provider-availability.ts`: provider, installed, resolved path, hint) before any
-chat starts a provider; resolution follows each lane's spawn order (env override, the installer's
-`~/.local/bin`, then PATH; Claude is the bundled SDK and always present).
+pane's empty state (`chat-connection.tsx`) reads `window.closedai.chat.providerAvailability()`
+(`ProviderAvailability[]` from `src/shared/provider-availability.ts`: provider, installed, resolved
+path, hint) before any chat starts a provider; resolution follows each lane's spawn order (env
+override, the installer's `~/.local/bin`, then PATH; Claude is the bundled SDK and always present).
+The provider setup modal reads `window.closedai.chat.providerOnboarding()`
+(`ProviderOnboardingStatus[]`, `src/shared/provider-onboarding.ts`), which adds each installed
+lane's connection state and account email (`src/main/chat-hub-provider-onboarding.ts`).
 
 First-run onboarding (renderer). Before the workspace is used on a fresh install, the shell shows
 a full-screen **session gate** (Ubuntu-style local profiles: pick a user, enter a password, create
@@ -133,9 +137,26 @@ available. After the gate, the normal title bar, workspace, and dock stay visibl
 **provider setup** modal lists all four providers as connected or not, probes installed CLIs for
 existing sign-in, and offers a **Sign in** action (Codex opens ChatGPT in the browser; Cursor runs
 `cursor-agent login`; Claude and Antigravity warm their lanes after CLI login elsewhere). Per-pane
-empty states still show connection guidance when a lane later drifts out of `ready`. The single
-**File** dropdown at the title bar's left edge uses the shared Radix/shadcn menu and shows the
-profile name, device-local sign-in status, **Connect providers…**, and **Log out**. Logging out
+empty states still show connection guidance when a lane later drifts out of `ready`. The modal
+cannot be dismissed with Escape or an outside click; it re-probes every 8 s and on **Check again**.
+**Continue** needs at least one connected provider; **Skip for now** also marks setup complete for
+the profile. **Disconnect** clears only the profile's `connectedProviders` entry and does not sign
+the CLI out, so a lane that is still `ready` keeps showing as connected. A Codex pane reaching
+`ready` marks Codex connected without the modal. **Connect providers…** clears
+`providerSetupComplete` and reopens the modal.
+
+Passwords need at least 4 characters and a matching confirmation. A profile without a password
+(the implicit **Local profile** of an install that predates the gate) cannot be signed in to until
+one is set: its password step asks for a new password and signs in once it is saved. Hashes are
+PBKDF2-SHA256, 210,000 iterations, 16-byte salt, compared in constant time
+(`src/shared/local-profile-password.ts`); this is a machine-local deterrent, not cloud
+authentication.
+
+The title bar's left edge holds the account menu (`titlebar.session-account`, labelled **File**,
+`session-account-menu.tsx`): the profile name, "Signed in on this device", **Connect providers…**
+(`titlebar.session-connect-providers`), and **Log out** (`titlebar.session-sign-out`). The
+application File/View/Agent/Developer menus live in the dock's Start panel; the title bar shows
+them only when startup stalled before a pane exists, or in a detached window. Logging out
 (also available through the application **File → Sign out…** / Start → search) clears the local session (`sessionUnlocked`,
 `activeUserId`) and returns to the gate without deleting saved profiles or per-profile
 provider-setup progress.
@@ -149,7 +170,10 @@ is the data that existed before profiles had their own; every other account live
 `profiles/<id>/` and starts empty. One process holds one profile for its whole life: signing in
 to (or creating) an account whose data is not the open profile shows an "Opening your workspace"
 cover and relaunches into it after the normal quit flush, and that relaunch continues the
-session even without keep-signed-in. Signing in to the account that is already open does not
+session even without keep-signed-in. Any other launch whose signed-in account lacks
+`keepSignedIn` opens at the gate. Settings from before per-account flags copy their top-level
+`keepSignedIn` (default on), `connectedProviders`, and `providerSetupComplete` onto every account
+when read. Signing in to the account that is already open does not
 relaunch. A launch opens the signed-in account, else the last one, else the home account, so the
 gate is painted over that profile. Provider CLIs are signed in per OS user, so the provider
 modal detects the same CLI sign-ins for every account; their thread stores are shared too, which
@@ -162,9 +186,11 @@ account from the list, and moves its workspace data to the OS trash; data the tr
 deleted outright. Data that is not open is renamed to `profiles/.deleted-<time>-<id>` at once
 and trashed in the background. Data the running process has open is recorded in
 `pendingRemovals`, the app relaunches, and the next launch sets it aside before any store
-opens. The home account's files are moved out of the root one by one, leaving `profiles.json`
-and `profiles/`; the root is never handed to another account afterwards. Provider CLI sign-ins
-and the providers' own thread stores are not touched.
+opens. The home account's files are moved out of the root one by one, leaving `profiles.json*`,
+`profiles/`, and Chromium's `Singleton*` lock files; the root is never handed to another account
+afterwards. Provider CLI sign-ins and the providers' own thread stores are not touched. Deletion
+is offered only on the gate. Deleting the last account opens Create account. Every launch hands any
+`profiles/.deleted-*` directory left by an earlier one to the trash when main registers its IPC.
 
 Launch resilience. A bootstrap failure is shown in a native error box and ends the app; an
 uncaught exception or unhandled rejection after the window exists is logged with a `[main]`
@@ -1096,7 +1122,7 @@ either kind, so a new icon never changes the tray's size or spacing.
   completes, and Pause between turns retires the process, marking those tasks stopped.
 - Completed assistant responses offer copy and branching. Timestamps appear when recorded;
   older history does not acquire invented timestamps.
-- There is no project rail: the folder lives in the composer's setup panel. The title bar has four menus.
+- There is no project rail: the folder lives in the composer's setup panel. The four application menus (File, View, Agent, Developer) are listed in Start's All apps; the main window's title bar shows them only as a startup fallback.
   File owns chat creation, history, Settings (Appearance, Models, Credentials, and Security tabs), and closing the
   window; View owns browser visibility, Saved sites, layout, chat zoom, and fullscreen; Agent owns the
   Agents view (Agents…, the saved-agent Library with its Build and Runs screens, one tab per
@@ -1253,8 +1279,8 @@ commands.
 
 Closed, the layer is a round button (`browser.quick-chat`). While its chat runs, the button carries
 a progress ring and the name of the site the browser shows (`quickChat` view `site`, from the active
-tab's address); a turn that ends while the chat is closed leaves "Done on espn.com" beside it until
-the chat is opened. Open, it is the chat's own `ChatPane` in a card with two shapes. Whole is the
+tab's address); a turn that ends while the chat is closed leaves "Done on espn.com" (or "Stopped on …", "Paused on …";
+"this page" off the web) beside it until the chat is opened. Open, it is the chat's own `ChatPane` in a card with two shapes. Whole is the
 chat under a header with shrink `quick-chat.compact` (once there is a transcript), a menu
 `quick-chat.menu` holding **Clear chat** `quick-chat.new` (disabled while a task
 runs), and hide `quick-chat.close`; these card controls are shared with notepad windows and carry the
@@ -1277,10 +1303,14 @@ collision boundary (`composerPanelBoundary`).
 
 The main window's layout owns which chat it is and whether it is open, and reports both with
 `quickChat.setState`; the layer's requests (`quickChat.request`: open, new, close, toggle) reach the layout as
-a `quickChat` window command (`chat-layout/use-quick-chat-overlay.ts`). It is a real chat:
-`chat.newPeer(anchor, { select: false, modelId })` creates it in the focused tile's folder without
-changing the selection. It starts on the model the quick chat last used (`chat-layout/quick-chat-model.ts`,
-remembered in localStorage whenever the quick chat's model changes), and on the focused tile's model
+a `quickChat` window command (`chat-layout/use-quick-chat-overlay.ts`). Only the main window may call
+`quickChat.setState`; `view`, `setSize`, and `request` answer only the layer's own page, and requests
+are checked against that list (`quick-chat-overlay/ipc.ts`). The layer denies navigation and new
+windows and reloads if its renderer process dies. It is a real chat: `newSideChat` calls
+`chat.newPeer(anchor, { select: false, modelId, quickChatSurface: 'browser' })`, which creates it in
+the focused tile's folder without changing the selection and tags the record so History shows its
+surface. It starts on the model the quick chat last used (`chat-layout/quick-chat-model.ts`,
+`closedai.quickChat.modelId` in localStorage, updated whenever the quick chat's model changes), and on the focused tile's model
 only before any quick chat has had one, and main skips its early wake so the blank chat is not discarded before the
 layout reports it. The layout saves it per space (`SavedChatLayout.browserChat`/`browserChatOpen`),
 adds it to the ids sent to `setVisiblePanes` so main keeps it attached and streaming while closed, and
@@ -1297,12 +1327,19 @@ A notepad window (`src/renderer/notepad/`) is an ordinary tile whose tabs are no
 restores like any window. It opens from the dock's **Notes** icon (`dock.app` `note`), View →
 **Notepad**, or Ctrl+Shift+N: the open notepad window comes forward, else the latest note opens in a
 new floating window, else a new note does. **New** (`notepad.new`) and the **Notes** menu
-(`notepad.notes`: other notes, and **Delete this note**) sit in the status line under the editor with the
-caret position (`notepad.caret`). Tab titles are the note's first line until a note is named.
+(`notepad.notes`: up to 30 notes not open in the window, and **Delete this note**) sit in the status
+line under the editor with the caret position (`notepad.caret`). Tab titles are the note's first
+non-empty line, with Markdown heading, list, and quote markers removed and cut at 60 characters
+(`derivedNoteTitle`), unless the note was created with a name (`notes.create` `title`); the editor
+has no rename control yet.
 
 Notes are buffers, not files: main's `NotesStore` (`src/main/notes/notes-store.ts`) keeps each
-note's text as `<userData>/notes/<id>.txt` beside an `index.json`, written atomically after a
-250 ms debounce, so typing saves on its own and untitled notes survive a restart. An empty note
+note's text as `<userData>/notes/<id>.txt` beside an `index.json`; the editor saves after 300 ms
+of typing (`note-sync.ts`) and the store writes atomically after a further 250 ms debounce, flushed
+on quit, so typing saves on its own and untitled notes survive a restart. A note holds up to
+2,000,000 characters and the store up to 5,000 notes. The text files are the notes and the index
+only their names and times: an unreadable index is set aside as `index.json.corrupt-<time>`, and
+every note file it no longer lists is adopted back under its derived title. An empty note
 whose tab closes (and is open in no other window) is removed. The editor (`notepad.editor`) is
 CodeMirror 6 with line numbers, Ctrl+F search, undo, Markdown colouring, and list continuation on
 Enter; each note keeps one editing session for the window's life (`note-sessions.ts`), so undo
@@ -1320,11 +1357,14 @@ tab in front tells main which notes the chat is about (`notes.bind`: the window'
 active note). Every turn carries that note (see [model context](model-context.md)), and a turn
 pins the note it started on: switching tabs while it runs leaves the task there, shrinks a whole
 card to its status line, and shows "The task stays on <note>" with **Go to it**
-(`notepad.chat-go-to-task`). Otherwise the card changes shape only on its own controls. Ctrl+J
-while typing in a note toggles that window's chat (main's shortcut is routed to the focused
-notepad before the browser's quick chat; a detached window catches it in the renderer), and Esc
-hides the card only when pressed inside it. **Clear chat** starts a new chat for the window and
-sends the old one to History. Moving a note to another window leaves the chat behind.
+(`notepad.chat-go-to-task`). Closed, the round button carries the note's name while the task runs
+and "Done in <note>" or "Stopped in <note>" after. Otherwise the card changes shape only on its own
+controls. Ctrl+J while typing in a note toggles that window's chat: when main catches it (browser
+page on screen), the layout's `toggle` goes to the focused notepad before the browser's quick chat;
+otherwise the note view catches it in the renderer. Esc hides the card only when pressed inside it.
+Binding also tags the chat record `quickChatSurface: 'notepad'`; bindings live in main's memory
+(`notepad-bindings.ts`) and are re-reported whenever the active note view mounts. **Clear chat**
+unbinds and starts a new chat for the window; the old one goes to History, or away when blank. Moving a note to another window leaves the chat behind.
 
 On Linux, startup disables accelerated video decode by default because affected driver stacks can
 accept and advance H.264 playback while compositing blank frames. This leaves GPU compositing and
@@ -1502,6 +1542,7 @@ instrumentation.
 | Bootstrap, service composition, project persistence | `src/main/index.ts`, `src/main/app-settings-store.ts` |
 | Launch fault handling, renderer-loss recovery, bounded quit | `src/main/app-crash-guard.ts`, `src/main/main-window-recovery.ts`, `src/main/app-quit.ts` |
 | Local profiles: account list, per-account data directory, relaunch into a profile | `src/main/profiles/`, `src/shared/local-profiles.ts`, `src/renderer/onboarding/profile-storage.ts` |
+| Session gate, local sign-in and passwords, provider setup modal, account menu | `src/renderer/onboarding/`, `src/shared/onboarding.ts`, `src/shared/local-profile-password.ts`, `src/main/chat-hub-provider-onboarding.ts` |
 | Provider install detection and missing-binary messages | `src/main/provider-availability.ts`, `src/main/provider-binary.ts`, `src/shared/provider-availability.ts` |
 | Chat records and persistence, settings migration | `src/main/chat-store/`, `src/shared/chat-store.ts` |
 | Store file reads that set a damaged file aside, durable atomic writes | `src/main/store-recovery.ts`, `src/main/atomic-write.ts` |
@@ -1526,6 +1567,8 @@ instrumentation.
 | Dock: bottom-edge reveal, zoom navigation, app tray and its lists; the shared feature icon list | `src/renderer/dock/`, `src/renderer/app-icons.tsx`, `src/components/ui/dock.tsx` |
 | Chat/project/history orchestration | `src/renderer/chat-pane.tsx`, `src/renderer/project-menu.tsx`, `src/renderer/chat-history/` |
 | Transcript steps, background work, response actions | `src/renderer/transcript-rows.ts`, `src/renderer/activity-steps.ts`, `src/renderer/background-tasks.tsx`, `src/renderer/message-actions.tsx` |
+| Notes store, model edits, notepad chat bindings | `src/main/notes/`, `src/shared/notes.ts`, `src/main/tools/notes/`, `src/renderer/notepad/` |
+| Browser quick chat layer | `src/main/quick-chat-overlay/`, `src/shared/quick-chat-overlay.ts`, `src/renderer/quick-chat-overlay/`, `src/renderer/chat-layout/use-quick-chat-overlay.ts` |
 | Reusable presentation and scrolling | `src/components/ui/`; backend access stays outside this layer |
 
 `src/shared/` remains dependency-free. Renderer backend calls go through preload; model calls go
@@ -1557,10 +1600,11 @@ directory holds its own copy of every store below; `profiles.json` exists once, 
 | `provider-catalogs.json` | The last model catalog read per workspace and provider, so a relaunch starts only the active provider and the picker still offers every model; a provider refreshes its own entry when selected |
 | `chat-transcripts/<chat id>.json` | The bounded tail of each chat as the app last showed it, so opening one paints before its provider replays; display-only, pruned against the store's live chat ids on launch |
 | `chat-memory-index/` | Derived global LRU spine index (default 10 recently active chats) for `peer_chats.search` and fresh `peer_chats.spine` reads; conversation spine only, not authoritative over provider stores |
-| `chats.json` | Every chat record: id, project directory, provider, model and effort, per-provider thread ids, title, preview, created/updated/last-turn times, archived flag, pin timestamp, parent chat, continuation digest, checkpoint, and the agent run driving the chat (`agentRun`: prompt, status, cycle, limits, failure count, last thread, and `stats`: step, edit, error and rotation counts, summed turn time, last reply and error excerpts, latest context and plan readings). Debounced atomic writes; flushed on quit |
+| `chats.json` | Every chat record: id, project directory, provider, model and effort, per-provider thread ids, title, preview, created/updated/last-turn times, `quickChatSurface` (`browser`/`notepad`), archived flag, pin timestamp, parent chat, continuation digest, checkpoint, and the agent run driving the chat (`agentRun`: prompt, status, cycle, limits, failure count, last thread, and `stats`: step, edit, error and rotation counts, summed turn time, last reply and error excerpts, latest context and plan readings). Debounced atomic writes; flushed on quit |
 | `app-settings.json` | Cookie-import latch; active workspace/project; the open chat ids (`chatOpenIds`) and `chatSelectedPaneId`; saved per-project open ids and selection in `chatWorkspaces`; tool switches and context/batch settings. Legacy `chatPeers` and `chatWorkspaces[].peers` are imported into `chats.json` once, keeping each pane id as the chat id, and removed |
 | `browser-tabs.json`, `browser-history.json` | Restored tabs and omnibox history |
 | `agent-library.json` | Agents the user built and kept: id, name, standing instructions, cycle cap, created/updated times, last run and run count. Seeded with the built-in repair agent only when the file is missing; never pruned, debounced atomic writes, flushed on quit |
+| `notes/index.json`, `notes/<id>.txt` | Notepad notes: the index holds id, title, `named`, created/updated times, and revision; each note's text is its own file. Up to 5,000 notes of 2,000,000 characters each; empty untitled notes are removed when their last tab closes; debounced atomic writes, flushed on quit. An unreadable index is set aside as `index.json.corrupt-<time>` and the note files are adopted back |
 | `saved-sites.json` | Sites the user saved on purpose: id, url, title, favicon, note, tags, saved/updated times, and the `lastCheckedAt`/`lastSummary` slots a daily brief will write; never pruned, debounced atomic writes, flushed on quit |
 | `Partitions/browser`, `code-cache/` | Chromium session data and app-configured code cache |
 | `browser-cache-state.json` | Last measured regenerable browser cache size and prune timestamp; when Cache + Service Worker + GPU caches exceed 768MB and the seven-day cooldown has elapsed, startup and periodic maintenance clear only regenerable stores (cookies, localStorage, and IndexedDB stay intact) |
@@ -1568,7 +1612,7 @@ directory holds its own copy of every store below; `profiles.json` exists once, 
 | `security-settings.json` | Settings ▸ Security: `credentialsRequireApproval`, `secretsRequireKeychain`, `webPermissions`, `importBrowserCookies`. A missing file is every default, which is the behavior before the tab existed; an unreadable one is set aside as `security-settings.json.corrupt-<time>` and never overwritten |
 | `credential-vault.json` | Saved credentials: service id, entry label, timestamps, per-entry `agentAccess` (absent on older records, read as on), and one record per field. Secret fields are `safeStorage` ciphertext (base64); hosts, usernames and URLs stay readable so the list renders without decrypting. Written atomically at 0600. Only a missing file is an empty vault; a file that cannot be read is set aside as `credential-vault.json.corrupt-<time>` before the vault continues empty, so the next save never overwrites it. Entries the earlier localStorage vault held are moved here on first open and the localStorage copy is cleared only after every entry lands |
 | `antigravity/profile/`, `antigravity/attachments/`, `antigravity/transcripts/` | Generated agent plugin, materialized image attachments, and app-recorded transcripts; the CLI retains its own conversation store |
-| Renderer localStorage | Appearance, model-picker usage, completion review queue (including review time; legacy storage key retained), message timestamps, per-space and per-window layouts (`closedai.chat-layout.v1:*`), spaces, and unsent composer drafts |
+| Renderer localStorage | Appearance, model-picker usage, quick chat and notepad chat models (`closedai.quickChat.modelId`, `closedai.notepadChat.modelId`), completion review queue (including review time; legacy storage key retained), message timestamps, per-space and per-window layouts (`closedai.chat-layout.v1:*`), spaces, and unsent composer drafts |
 | In-memory trace | At most 4,000 entries and 24,000,000 detail characters, 48,000 characters per detail before its truncation marker; cleared on restart |
 
 Only a missing store file means a fresh start. When `chats.json`, `app-settings.json`, or

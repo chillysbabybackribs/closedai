@@ -44,9 +44,10 @@ browser snapshot.
 
 A notepad window's chat instead receives `closedai.notepad` (`kind: untrusted`, `contextRole:
 subject`) on every turn: the active note with numbered lines (whole up to 12,000 characters and 400
-lines, else its first 120 lines with a pointer to `notes.read`), its revision, and the window's other
-tabs by title and length. Sending pins the turn to that note, so `notes` tools that name no note
-edit it even after the user switches tabs.
+lines, else its first 120 lines, each cut at 400 characters, with a `truncated` pointer to
+`notes.read`), its revision, and the window's other tabs (id, title, line count). Sending pins the
+turn to that note, so `notes` tools that name no note edit it even after the user switches tabs. A
+bound notepad chat never receives `closedai.browser.active-tab`.
 
 Explicit conversation continuation, branching, provider switching, project switching, and
 session rotation may carry a handoff or compacted seed with a configurable soft target.

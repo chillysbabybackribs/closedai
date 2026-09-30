@@ -35,6 +35,13 @@ workspace or the application checkout on first launch. The composer's project me
 the directory after startup. Manual project switches keep running chats in their original
 directories; model-requested deferred switches wait for all chats to become idle.
 
+First launch on a fresh install shows a sign-in gate for a local account (a password on this
+machine, not a cloud login); installs that already have chat history open into an implicit
+**Local profile**. Each account owns its own workspace: the first keeps `~/.config/closedai/`,
+others live under `~/.config/closedai/profiles/<id>/` and start empty. Provider CLI sign-ins are
+per OS user and shared by every account. See
+[the application guide](docs/application.md#projects-chats-panes-and-conversations).
+
 `scripts/launch-electron-vite.mjs` removes inherited GPU-offload and Electron identity variables
 so development uses the Electron installed here. Approval prompts are disabled in all four
 providers; the accepted browser permission and sandbox policy is recorded in
