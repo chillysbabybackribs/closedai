@@ -318,6 +318,30 @@ test('explicit history chat_id resolves open panes and hot-index hits outside hi
   assert.equal(h.reads(), 1)
 })
 
+test('a rotated chat awaiting its next send stays discoverable and readable through its retired thread', async () => {
+  const h = harness()
+  addHistory(h.store, 'rotated', 30, {
+    codexThreadId: null, threadId: null, title: 'Spine v1',
+    continuation: {
+      sourcePaneId: 'rotated', sourceThreadId: 'retired-thread', sourceProvider: 'codex', sourceTitle: 'Spine v1',
+      sourceThroughItemId: 'a1', handoff: null, createdAt: 30
+    },
+    sessionRotations: [{ epoch: 1, sourceThroughItemId: 'a1', providerThreadId: 'retired-thread', at: 30 }]
+  })
+  h.setRead(async (threadId) => ({ threadId, threadName: null, items: [
+    { type: 'user', id: 'u1', turnId: 't1', text: 'implement spine v1' },
+    { type: 'assistant', id: 'a1', turnId: 't1', text: 'Spine v1 is wired', phase: 'final_answer', streaming: false }
+  ] }))
+  assert.deepEqual(h.memory.history(caller, { query: 'spine' }).chats.map((chat) => [chat.chatId, chat.threadId]),
+    [['rotated', 'retired-thread']])
+  const recalled = await h.memory.recall(caller, { scope: 'history', chatId: 'rotated', query: 'implement spine' })
+  assert.equal(recalled.threadId, 'retired-thread')
+  assert.equal(recalled.matches[0]?.itemId, 'u1')
+  const spine = await h.memory.spine(caller, { scope: 'history', chatId: 'rotated' })
+  assert.equal(spine.provenance, 'transcript')
+  assert.equal(spine.turns[0]?.assistant?.text, 'Spine v1 is wired')
+})
+
 test('spine returns turn-shaped history prose without loading when index covers the chat', async () => {
   const h = harness()
   addHistory(h.store, 'older', 10)

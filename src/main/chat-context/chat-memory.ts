@@ -14,6 +14,7 @@ import { recallCheckpointFacet } from './memory-recall.js'
 import type { ChatRecord } from '../../shared/chat-store.js'
 import type { ChatSurface } from '../chat-hub.js'
 import type { ChatMemoryIndex } from '../chat-store/chat-memory-index.js'
+import { cachedChatThreadId } from '../chat-store/chat-transcript-cache.js'
 import { conversationSpineTurnsFromIndexLines } from './conversation-spine.js'
 import { validateMemoryState } from './memory-checkpoint.js'
 import { spineFromTurns, spineTranscript } from './memory-spine.js'
@@ -232,6 +233,7 @@ export class ChatMemory {
 
   private historyRecords(pane: ChatRecord): ChatRecord[] {
     return this.records.ids().map((id) => this.records.get(id))
+      .map((record) => record && withHistoryThread(record))
       .filter((record): record is ChatRecord => !!record && record.id !== pane.id && !!record.threadId && !record.archived)
       .filter((record) => this.isHistoryDiscoverable(record))
       .sort((a, b) => historyActivity(b) - historyActivity(a) || a.id.localeCompare(b.id))
@@ -244,7 +246,8 @@ export class ChatMemory {
   }
 
   private lookupHistoryChat(callerPane: ChatRecord, chatId: string): ChatRecord | null {
-    const record = this.records.get(chatId)
+    const stored = this.records.get(chatId)
+    const record = stored && withHistoryThread(stored)
     if (!record || record.id === callerPane.id || record.archived) return null
     if (record.threadId && this.isHistoryDiscoverable(record)) return record
     if (!this.indexEnabled() || !this.memoryIndex) return null
@@ -254,7 +257,7 @@ export class ChatMemory {
 
   private assertHistoryTargetStable(callerPane: ChatRecord, chatId: string, threadId: string | null): ChatRecord {
     const latest = this.records.get(chatId)
-    if (!latest || latest.id === callerPane.id || latest.archived || latest.threadId !== threadId) {
+    if (!latest || latest.id === callerPane.id || latest.archived || cachedChatThreadId(latest) !== threadId) {
       throw new Error('History chat changed while loading memory')
     }
     return latest
@@ -307,6 +310,12 @@ export class ChatMemory {
     }, scope)
     return items
   }
+}
+
+/** Rotation clears threadId until the next send; the retired thread still holds the conversation. */
+function withHistoryThread(record: ChatRecord): ChatRecord {
+  const threadId = cachedChatThreadId(record)
+  return threadId === record.threadId ? record : { ...record, threadId }
 }
 
 /** User submissions outrank background completion, pinning, and incidental record updates. */

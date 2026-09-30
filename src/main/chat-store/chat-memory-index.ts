@@ -16,6 +16,7 @@ import {
   MAX_CHAT_MEMORY_INDEX_MAX_CHATS
 } from '../../shared/chat-index.js'
 import type { ChatRecord } from '../../shared/chat-store.js'
+import { cachedChatThreadId } from './chat-transcript-cache.js'
 import type { AppSettings } from '../../shared/types.js'
 import {
   conversationSpineChangedFiles
@@ -218,7 +219,7 @@ export class ChatMemoryIndex {
         const snippet = clip(line.text.slice(Math.max(0, index - 80), index + SEARCH_SNIPPET_CHARS), SEARCH_SNIPPET_CHARS)
         const matchQuality = query.length / Math.max(line.text.length, query.length)
         candidates.push({
-          ...(resolveChat ? { evidenceAvailability: chat?.threadId
+          ...(resolveChat ? { evidenceAvailability: cachedChatThreadId(chat)
             ? { status: 'not-checked' as const }
             : { status: 'unavailable' as const, reason: 'missing-thread' as const } } : {}),
           chatId: record.chatId,

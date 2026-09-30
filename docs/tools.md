@@ -705,7 +705,9 @@ within `chatMemoryIndexMaxCharsPerChat` (default 48,000).
 
 Search filters deleted and archived chat records before ranking/limiting. Each hit reports
 `evidenceAvailability`: `not-checked` when a provider thread id exists (not proof its history
-can still be loaded), or `unavailable` with reason `missing-thread`. Missing thread ids do not
+can still be loaded), or `unavailable` with reason `missing-thread`. A rotated chat that has not
+sent since its rotation has no active thread; history discovery, search, `spine`, and `recall` use
+its retired provider thread (the one its saved transcript view belongs to). Missing thread ids do not
 prevent reading retained index text. `spine` returns indexed turns where possible;
 `recall(scope=history, chat_id=..., item_id=...)` reads the exact retained line, including
 orphaned lines whose user turn was trimmed. Exact-item recall accepts any eligible item kind.
