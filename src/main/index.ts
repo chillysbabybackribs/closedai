@@ -182,7 +182,7 @@ async function main(): Promise<void> {
     SavedSitesStore.open(join(userData(), 'saved-sites.json')),
     BrowserTabSessionStore.open(join(userData(), 'browser-tabs.json')),
     AppSettingsStore.open(join(userData(), 'app-settings.json')),
-    ChatStore.open(join(userData(), 'chats.json')),
+    ChatStore.open(join(userData(), 'chats.json'), { adoptsProviderHistory: profiles.ownsOriginalData() }),
     SecuritySettingsStore.open(join(userData(), 'security-settings.json')),
     AgentLibraryStore.open(join(userData(), 'agent-library.json')),
     AppWindowStore.open(join(userData(), 'app-windows.json')),

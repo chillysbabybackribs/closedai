@@ -25,13 +25,20 @@ export class ChatStore extends EventEmitter {
   private writeTimer: NodeJS.Timeout | null = null
   private writing: Promise<void> = Promise.resolve()
   private dirty = false
+  /**
+   * Whether threads found in the providers' own stores become chats here. Those stores belong to
+   * the OS user, not to a local account, so only the account that owns the original data takes
+   * them in; every other account lists the chats it made.
+   */
+  adoptsProviderHistory = true
 
   private constructor(private readonly filePath: string | null) {
     super()
   }
 
-  static async open(filePath: string): Promise<ChatStore> {
+  static async open(filePath: string, options: { adoptsProviderHistory?: boolean } = {}): Promise<ChatStore> {
     const store = new ChatStore(filePath)
+    store.adoptsProviderHistory = options.adoptsProviderHistory ?? true
     // A damaged file is set aside before the store starts empty; otherwise the first debounced
     // write would replace every chat record the user has with none.
     const parsed = await readStoreFile(filePath, '[chat-store]', (text) => JSON.parse(text) as Partial<ChatStoreFile>)

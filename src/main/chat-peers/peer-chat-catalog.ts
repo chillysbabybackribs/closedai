@@ -33,7 +33,11 @@ export class PeerChatCatalog {
     this.inFlight ??= this.withSelected((surface) => surface.listThreads())
       .then((threads) => {
         if (this.workspace().cwd !== cwd) return
-        for (const thread of threads) this.store.adopt(cwd, projectPath, thread, null)
+        for (const thread of threads) {
+          // Known threads still get their titles and times refreshed; unknown ones are another account's.
+          if (!this.store.adoptsProviderHistory && !this.store.get(thread.id) && !this.store.findByThreadId(thread.id)) continue
+          this.store.adopt(cwd, projectPath, thread, null)
+        }
         this.scanned = { at: Date.now(), cwd }
       })
       .finally(() => { this.inFlight = null })

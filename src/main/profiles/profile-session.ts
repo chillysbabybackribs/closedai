@@ -45,6 +45,11 @@ export class ProfileSession {
     return this.dataDir === this.root ? this.registry.homeUserId : this.launchedUserId
   }
 
+  /** True when the open data is the root: the data that existed before accounts had their own. */
+  ownsOriginalData(): boolean {
+    return this.dataDir === this.root
+  }
+
   bootstrap(): ProfileBootstrap {
     return { currentUserId: this.currentUserId(), onboarding: this.registry.onboarding, resumed: this.resumed }
   }
