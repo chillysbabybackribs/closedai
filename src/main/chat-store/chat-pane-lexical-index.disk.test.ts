@@ -3,6 +3,7 @@ import test from 'node:test'
 import { mkdtemp, readFile, readdir, rm, stat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { DatabaseSync } from 'node:sqlite'
 import { chatRecord } from '../chat-peers/peer-manager-harness.js'
 import { ChatPaneLexicalIndex } from './chat-pane-lexical-index.js'
 
@@ -89,4 +90,30 @@ test('worker failure uses current authoritative lines, including forgiving searc
   index.upsert(chatRecord('a', null), items('Remember Spine-V1 purple buttons'), meta)
   assert.ok((await index.searchPane('a', { query: 'purple buttons' })).hits.length)
   assert.equal((await index.searchPane('a', { query: 'spinev1' })).hits[0]?.match, 'spacing')
+})
+
+
+test('SQLite lock waits stay off the main event loop and searches return the new content', async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), 'closedai-pane-responsive-'))
+  const index = new ChatPaneLexicalIndex(dir, () => settings, workerUrl)
+  t.after(async () => { await index.close(); await rm(dir, { recursive: true, force: true }) })
+  await index.load()
+  const record = chatRecord('a', null)
+  index.upsert(record, items('initial purple buttons'), meta)
+  await index.searchPane('a', { query: 'purple' })
+  const lock = new DatabaseSync(join(dir, 'search.sqlite'))
+  lock.exec('BEGIN IMMEDIATE')
+  let ticks = 0
+  const heartbeat = setInterval(() => { ticks++ }, 5)
+  const release = setTimeout(() => lock.exec('COMMIT'), 100)
+  try {
+    index.upsert(record, items('changed orange buttons'), meta)
+    const result = await index.searchPane('a', { query: 'orange' })
+    assert.ok(result.hits.length)
+    assert.ok(ticks >= 3, `main loop must keep ticking during SQLite contention (ticks=${ticks})`)
+  } finally {
+    clearInterval(heartbeat)
+    clearTimeout(release)
+    lock.close()
+  }
 })
