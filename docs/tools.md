@@ -98,6 +98,14 @@ read `requests` and `body` with `json_path`, `fields`, and `max_items`. Captured
 `max_chars` (default 6,000) and `offset`/`nextOffset` without reissuing the request. A timing-only
 row has no body id. `session.fetch` makes a new request, not a historical-body read.
 
+### Efficiency Best Practices
+
+When interacting with live browser state, prioritize approaches that avoid sequential blocking and raw UI manipulation:
+- **Prioritize `session.fetch` over UI navigation:** Once authenticated and an endpoint is discovered (via `browser_cdp.instrument` or `site.discover apis`), use `embedded_browser.session fetch` to interact directly with internal APIs. It inherits the page's cookies and avoids CORS, providing a much faster and more reliable mechanism than driving the UI with raw clicks.
+- **Leverage concurrent operations:** Group independent `session.fetch` or `read_page` calls (with explicit `tab_id`s) into a `tool_batch.run` with `parallel: true`. This prevents blocking and accelerates retrieval across different targets.
+- **Targeted extraction over whole-page reads:** Avoid full-page reads (`read_page`) when looking for specific data. Instead, use `embedded_browser.script extract` or `query` to pull only the precise elements or JSON subtrees required.
+- **Reserve `browser_cdp.page` for explicit interaction:** Raw CDP clicks and keyboard inputs are slower, require strict fallback reasons, and create lock barriers. Always exhaust structured API interactions and semantic DOM queries before falling back to manual coordinate clicks.
+
 ## Layout
 
 ```
