@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type JSX } from 'react'
 import { CircleAlert, Clock3, Gauge, RefreshCw } from 'lucide-react'
+import { Badge } from '../../components/ui/badge.js'
 import { Button } from '../../components/ui/button.js'
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover.js'
 import { ProviderMark } from '../../components/ui/provider-mark.js'
@@ -9,8 +10,10 @@ import { CHAT_PROVIDERS, CHAT_PROVIDER_LABELS } from '../../shared/chat-provider
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import { ageNote, resetNote } from '../context-meter.js'
 import { errorMessage } from '../error-message.js'
-import { UsageMeterRing } from '../../components/ui/usage-meter-ring.js'
-import { providerUsageEntries, usageChipDisplay, usageHeadline, usageWindowState, type ProviderUsageEntry } from './provider-usage-model.js'
+import { Progress } from '../../components/ui/progress.js'
+import { providerUsageEntries, usageChipDisplay, usageWindowState, type ProviderUsageEntry, type UsageChipDisplay } from './provider-usage-model.js'
+
+const WARNING_LEVELS = ['low', 'critical', 'exhausted']
 
 export function ProviderUsage({ chats, open, onOpenChange }: {
   chats: readonly ChatRowSummary[]; visible: boolean; open: boolean; onOpenChange: (open: boolean) => void
@@ -51,41 +54,40 @@ export function ProviderUsage({ chats, open, onOpenChange }: {
     return () => observer.disconnect()
   }, [hasEntries])
   if (!hasEntries) return null
-  const chipWidth = (item: ProviderUsageEntry): number => {
-    const plan = item.usage?.plan ?? item.account?.planType ?? null
-    const display = usageChipDisplay(item.provider, item.usage, plan, now, CHAT_PROVIDER_LABELS[item.provider])
-    return display.kind === 'label' ? Math.max(120, display.text.length * 6.5) : 46
-  }
-  const compact = width < entries.reduce((total, item) => total + chipWidth(item), 0)
+  const chip = (item: ProviderUsageEntry): UsageChipDisplay =>
+    usageChipDisplay(item.usage, item.usage?.plan ?? item.account?.planType ?? null, now, CHAT_PROVIDER_LABELS[item.provider])
+  // Button xs padding + mark + gaps, then the figure, then the bar for numeric chips.
+  const chipWidth = (display: UsageChipDisplay): number => 30 + display.text.length * 6.5 + (display.remaining === null ? 0 : 24)
+  const displays = entries.map(chip)
+  const compact = width < displays.reduce((total, display) => total + chipWidth(display), 0)
   const entry = entries.find((item) => item.key === selected) ?? entries[0]
-  const trigger = (item: ProviderUsageEntry): JSX.Element => {
-    const label = CHAT_PROVIDER_LABELS[item.provider]
-    const plan = item.usage?.plan ?? item.account?.planType ?? null
-    const display = usageChipDisplay(item.provider, item.usage, plan, now, label)
-    return <Tooltip key={item.key}>
-      <TooltipTrigger asChild><Button variant="ghost" className="provider-usage-chip" data-ui="dock.provider-usage"
-        data-ui-item={item.key} data-level={display.level} aria-label={display.ariaLabel} aria-expanded={open && entry.key === item.key}
-        onClick={(event) => { lastTrigger.current = event.currentTarget; setSelected(item.key); onOpenChange(!(open && entry.key === item.key)) }}>
-        <ProviderMark provider={item.provider} />
-        {display.kind === 'meter'
-          ? <UsageMeterRing remaining={display.remaining} level={display.level} />
-          : <span className="provider-usage-chip-label">{display.text}</span>}
-      </Button></TooltipTrigger>
-      {!open && <TooltipContent side="top">{display.ariaLabel}</TooltipContent>}
-    </Tooltip>
-  }
+  // The collapsed trigger carries the worst numeric reading so the rail still says something at a glance.
+  const worst = displays.filter((display) => display.remaining !== null)
+    .reduce<UsageChipDisplay | null>((lowest, next) => !lowest || (next.remaining ?? 100) < (lowest.remaining ?? 100) ? next : lowest, null)
+  const warning = displays.some((display) => WARNING_LEVELS.includes(display.level))
+  const trigger = (item: ProviderUsageEntry, display: UsageChipDisplay): JSX.Element => <Tooltip key={item.key}>
+    <TooltipTrigger asChild><Button variant="ghost" size="xs" className="provider-usage-chip" data-ui="dock.provider-usage"
+      data-ui-item={item.key} data-level={display.level} aria-label={display.ariaLabel} aria-expanded={open && entry.key === item.key}
+      onClick={(event) => { lastTrigger.current = event.currentTarget; setSelected(item.key); onOpenChange(!(open && entry.key === item.key)) }}>
+      <ProviderMark provider={item.provider} />
+      <span className="provider-usage-chip-value">{display.text}</span>
+      {display.remaining !== null && <Progress value={display.remaining} className="provider-usage-chip-bar" aria-hidden="true" />}
+    </Button></TooltipTrigger>
+    {!open && <TooltipContent side="top">{display.ariaLabel}</TooltipContent>}
+  </Tooltip>
   return <div ref={root} className="provider-usage">
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" className={`provider-usage-chip${compact ? '' : ' provider-usage-anchor'}`}
+        <Button variant="ghost" size="xs" className={`provider-usage-chip${compact ? '' : ' provider-usage-anchor'}`}
           data-ui="dock.provider-usage-all" aria-label="Provider subscription usage" tabIndex={compact ? 0 : -1}
           aria-hidden={compact ? undefined : true} onClick={(event) => { lastTrigger.current = event.currentTarget }}>
           <Gauge aria-hidden="true" /><span>Usage</span>
-          {entries.some((item) => ['low', 'critical', 'exhausted'].includes(usageHeadline(item.usage, now).level))
-            && <CircleAlert aria-hidden="true" className="provider-usage-warning" />}
+          {worst && <Badge variant="secondary" className="provider-usage-worst" data-level={worst.level}>
+            {warning && <CircleAlert aria-hidden="true" />}{worst.text}
+          </Badge>}
         </Button>
       </PopoverTrigger>
-      {!compact && entries.map(trigger)}
+      {!compact && entries.map((item, index) => trigger(item, displays[index]))}
       <PopoverContent side="top" align="start" sideOffset={12} collisionPadding={12}
         className="dock-panel provider-usage-panel" aria-label="Provider subscription usage"
         onCloseAutoFocus={(event) => {

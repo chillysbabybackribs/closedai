@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { ChatPlanUsage } from '../../shared/chat.js'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
-import { providerUsageEntries, usageChipText, usageHeadline, usageWindowState, USAGE_STALE_MS } from './provider-usage-model.js'
+import { providerUsageEntries, usageChipDisplay, usageChipText, usageHeadline, usageWindowState, USAGE_STALE_MS } from './provider-usage-model.js'
 
 const NOW = 1_800_000_000_000
 function usage(percent = 38, updatedAt = NOW): ChatPlanUsage {
@@ -55,11 +55,15 @@ test('unknown, missing and invalid readings never become a healthy zero', () => 
   assert.equal(usageHeadline(usage(0, 0), NOW).level, 'stale')
 })
 
-test('codex and cursor chips name the plan when quota windows are missing', () => {
+test('chips name the plan when quota windows are missing and the percent when they exist', () => {
   const missing = { plan: 'Pro Lite', note: null, unavailable: 'No windows', updatedAt: NOW, windows: [] }
-  assert.equal(usageChipText('codex', missing, null, NOW), '—')
-  assert.equal(usageChipText('cursor', { ...missing, plan: 'Pro' }, null, NOW), '—')
-  assert.equal(usageChipText('codex', usage(28), 'prolite', NOW), '72')
+  assert.equal(usageChipText(missing, null, NOW), 'Pro Lite')
+  assert.equal(usageChipText({ ...missing, plan: 'Pro' }, null, NOW), 'Pro')
+  assert.equal(usageChipText({ ...missing, plan: null }, 'prolite', NOW), 'prolite')
+  assert.equal(usageChipText({ ...missing, plan: null }, null, NOW), 'Unavailable')
+  assert.equal(usageChipText(usage(28), 'prolite', NOW), '72%')
+  assert.equal(usageChipDisplay(usage(28), null, NOW, 'Codex').ariaLabel, 'Codex: 72% remaining · lowest: 5-hour')
+  assert.equal(usageChipDisplay(missing, null, NOW, 'Cursor').ariaLabel, 'Cursor: Pro Lite · usage unavailable')
 })
 
 

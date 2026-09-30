@@ -949,9 +949,10 @@ the overview does: in the main window, once a chat is selected.
 Left: back and forward (`dock.back`, `dock.forward`) step through the zoom history as Alt+←/→ and
 are disabled at either end and while a zoom is moving; their tooltips name where you are
 (workspace and selected chat, or "All workspaces"). Right: Layout and dock settings
-(`dock.settings`). The left side, after the navigation arrows, holds provider-mark chips with a compact remaining
-allowance ring (`dock.provider-usage`), on the existing rail without separate pill surfaces.
-Text-only chips appear when a provider reports plan metadata but no numeric windows (for example Cursor).
+(`dock.settings`). The left side, after the navigation arrows, holds one ghost-button chip per provider
+(`dock.provider-usage`): the provider mark, the remaining percent as text, and a short `Progress` bar,
+on the existing rail without separate pill surfaces. Level ink colours the figure and bar only, never
+the mark. A provider with plan metadata but no numeric windows (for example Cursor) shows its plan name alone.
 All four providers appear on startup, before any provider chat connects. They show the lowest reported remaining allowance, keeping known accounts separate and using the
 newest reading across account probes and attached chats; they never sum quotas across conversations. The popup
 names every provider window, including model-specific scopes, remaining allowance, reset time,
@@ -961,8 +962,8 @@ minutes or past its reported reset is stale, never assumed replenished. Partial 
 retain each untouched window's observation time. Missing data says unavailable. Codex reads `account/rateLimits/read` only: zero, one, or two
 rolling windows (primary/secondary) plus optional credit metadata; the footer shows reported windows
 and plan, not inferred buckets. Credit balances appear in the composer usage card, not the footer
-chips. Cursor's CLI currently supplies no quota percentages; its chip shows the reported plan
-followed by “usage unavailable” (for example, “Pro · usage unavailable”). Background chat summaries carry telemetry even
+chips. Cursor's CLI currently supplies no quota percentages; its chip shows the reported plan (for
+example “Pro”) and its tooltip adds “usage unavailable”. Background chat summaries carry telemetry even
 when their transcript is not subscribed. The footer also reads each signed-in CLI account through
 `chat:readProviderUsage`, independently of chat runtimes, on mount and every minute while the
 document is foregrounded. Reads are shared across windows for one minute, including failures;
@@ -971,7 +972,8 @@ processes, Antigravity uses `/quota`, and Cursor uses `about`. These reads send 
 and do not wake or extend the idle lifetime of parked chats. Provider push events can supply
 newer readings between polls. The popup offers an explicit refresh
 (`dock.provider-usage-refresh`). On narrower rails, a single **Usage** trigger
-(`dock.provider-usage-all`) opens the same provider/account tabs (`dock.provider-usage-tab`)
+(`dock.provider-usage-all`), carrying the lowest remaining reading in a `Badge`, opens the same
+provider/account tabs (`dock.provider-usage-tab`)
 without overlapping the measured central tray. Centre: the **app tray**, Magic UI's `Dock` (`src/components/ui/dock.tsx`,
 `@magicui/dock`), with **Start** centred in the tray and one rounded-square tile per ClosedAI surface
 on either side (`dock.app`, item is the surface), 48 px and growing to 64 px under the pointer.

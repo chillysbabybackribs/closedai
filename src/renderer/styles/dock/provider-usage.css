@@ -1,4 +1,4 @@
-/* Text and marks sit on the existing rail; no second surface, meter track, or chip border. */
+/* Marks, figures and bars sit on the existing rail; no second surface or chip border. */
 .provider-usage-rail {
   position: absolute;
   left: 84px;
@@ -18,12 +18,14 @@
   min-width: 0;
   gap: 2px;
 }
+/* Chip: shadcn Button (ghost, xs) holding the provider mark, the remaining percent, and a short
+   shadcn Progress bar. Level ink goes on the figure and bar only; brand marks keep their colour. */
 .provider-usage-chip {
-  height: 30px;
+  height: 24px;
   min-width: 0;
   flex-shrink: 0;
   padding: 0 8px;
-  gap: 6px;
+  gap: 4px;
   border: 0;
   border-radius: 6px;
   background: transparent;
@@ -37,53 +39,38 @@
   background: var(--chrome-control-hover);
   color: var(--chrome-control-strong, var(--foreground));
 }
-.provider-usage-chip > svg:not(.usage-meter-ring-svg) { width: 14px; height: 14px; }
-.provider-usage-chip-label { max-width: 168px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.usage-meter-ring {
-  position: relative;
-  display: inline-grid;
+.provider-usage-chip > svg { width: 14px; height: 14px; }
+.provider-usage-chip-value { max-width: 168px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.provider-usage-chip-bar {
+  height: 3px;
+  width: 20px;
   flex: none;
-  place-items: center;
+  background: color-mix(in srgb, var(--foreground) 20%, transparent);
 }
-.usage-meter-ring-svg { transform: rotate(-90deg); }
-.usage-meter-ring-track {
-  fill: none;
-  stroke: color-mix(in srgb, var(--foreground) 14%, transparent);
-  stroke-width: 1.5;
+.provider-usage-chip-bar [data-slot='progress-indicator'] {
+  border-radius: 9999px;
+  background: var(--chrome-control-strong, var(--foreground));
 }
-.usage-meter-ring-fill {
-  fill: none;
-  stroke: var(--usage-meter-ink, var(--muted-foreground));
-  stroke-width: 1.5;
-  stroke-linecap: round;
-  transition: stroke-dasharray 260ms var(--ease-chrome, ease);
-}
-.usage-meter-ring[data-indeterminate='true'] .usage-meter-ring-track {
-  stroke-dasharray: 2 2.5;
-  opacity: 0.55;
-}
-.usage-meter-ring[data-level='low'] { --usage-meter-ink: light-dark(#8b5d00, #dfbd79); }
-.usage-meter-ring[data-level='critical'],
-.usage-meter-ring[data-level='exhausted'] { --usage-meter-ink: light-dark(#b03528, #eaa08d); }
-.usage-meter-ring[data-level='stale'] { --usage-meter-ink: var(--muted-foreground); opacity: 0.72; }
-.usage-meter-ring-value {
-  position: absolute;
-  font-size: 8px;
-  font-weight: 600;
+.provider-usage-chip[data-level='stale'] .provider-usage-chip-value { color: var(--muted-foreground); }
+.provider-usage-chip[data-level='stale'] [data-slot='progress-indicator'] { background: var(--muted-foreground); opacity: 0.6; }
+.provider-usage-chip[data-level='low'] .provider-usage-chip-value,
+.provider-usage-worst[data-level='low'] { color: light-dark(#8b5d00, #dfbd79); }
+.provider-usage-chip[data-level='low'] [data-slot='progress-indicator'] { background: light-dark(#8b5d00, #dfbd79); }
+.provider-usage-chip[data-level='critical'] .provider-usage-chip-value,
+.provider-usage-chip[data-level='exhausted'] .provider-usage-chip-value,
+.provider-usage-worst[data-level='critical'],
+.provider-usage-worst[data-level='exhausted'] { color: light-dark(#b03528, #eaa08d); }
+.provider-usage-chip[data-level='critical'] [data-slot='progress-indicator'],
+.provider-usage-chip[data-level='exhausted'] [data-slot='progress-indicator'] { background: light-dark(#b03528, #eaa08d); }
+/* Collapsed rail: the Usage trigger carries the worst reading in a shadcn Badge. */
+.provider-usage-worst {
+  padding: 0 6px;
+  gap: 3px;
+  font-size: 10.5px;
+  line-height: 16px;
   font-variant-numeric: tabular-nums;
-  line-height: 1;
-  color: var(--chrome-control-strong, var(--foreground));
-  pointer-events: none;
 }
-.usage-meter-ring[data-digits='3'] .usage-meter-ring-value { font-size: 7px; }
-.usage-meter-ring[data-indeterminate='true'] .usage-meter-ring-value {
-  font-size: 9px;
-  font-weight: 500;
-  color: var(--muted-foreground);
-}
-@media (prefers-reduced-motion: reduce) {
-  .usage-meter-ring-fill { transition: none; }
-}
+.provider-usage-worst > svg { width: 11px; height: 11px; }
 .provider-usage-anchor {
   position: absolute;
   left: 0;
@@ -93,9 +80,7 @@
   pointer-events: none;
   overflow: hidden;
 }
-.provider-usage [data-level='low'], .provider-usage-warning,
 .provider-usage-windows [data-level='low'] dd { color: light-dark(#8b5d00, #dfbd79); }
-.provider-usage [data-level='critical'], .provider-usage [data-level='exhausted'],
 .provider-usage-windows [data-level='critical'] dd,
 .provider-usage-windows [data-level='exhausted'] dd { color: light-dark(#b03528, #eaa08d); }
 .provider-usage-panel {

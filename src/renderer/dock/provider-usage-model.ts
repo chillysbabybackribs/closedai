@@ -80,46 +80,41 @@ export function usageHeadline(usage: ChatPlanUsage | null, now: number): {
   return { text, level, window, remaining }
 }
 
-export type UsageChipDisplay =
-  | { kind: 'meter'; remaining: number | null; level: UsageLevel; window: ChatPlanUsageWindow | null; ariaLabel: string }
-  | { kind: 'label'; text: string; level: UsageLevel; ariaLabel: string }
+export type UsageChipDisplay = {
+  /** Remaining percent for the bar and figure; null when the provider reports no numeric quota. */
+  remaining: number | null
+  /** The chip figure: a percent, or the plan name when no quota is reported. */
+  text: string
+  level: UsageLevel
+  ariaLabel: string
+}
 
-/** Rail chip: ring meter when a numeric remaining window exists; short text otherwise. */
+/** Rail chip: mark, remaining percent and a short bar; the plan name alone when no numeric window exists. */
 export function usageChipDisplay(
-  provider: ChatProvider,
   usage: ChatPlanUsage | null,
   plan: string | null,
   now: number,
   providerLabel: string
 ): UsageChipDisplay {
   const headline = usageHeadline(usage, now)
-  const detail = headline.window ? ` · lowest: ${headline.window.label}` : ''
-  if ((provider === 'cursor' || provider === 'codex') && headline.level === 'unknown') {
-    const label = usage?.plan ?? plan
-    const detailText = label ? `${label} · usage unavailable` : headline.text
+  if (headline.remaining === null) {
+    const name = usage?.plan ?? plan
     return {
-      kind: 'meter',
       remaining: null,
-      level: 'unknown',
-      window: null,
-      ariaLabel: `${providerLabel}: ${detailText}`
-    }
-  }
-  if (headline.remaining !== null) {
-    return {
-      kind: 'meter',
-      remaining: headline.remaining,
+      text: name ?? 'Unavailable',
       level: headline.level,
-      window: headline.window,
-      ariaLabel: `${providerLabel}: ${headline.text}${detail}`
+      ariaLabel: `${providerLabel}: ${name ? `${name} · usage unavailable` : headline.text}`
     }
   }
-  return { kind: 'label', text: headline.text, level: headline.level, ariaLabel: `${providerLabel}: ${headline.text}` }
+  const detail = headline.window ? ` · lowest: ${headline.window.label}` : ''
+  return {
+    remaining: headline.remaining,
+    text: `${headline.remaining}%`,
+    level: headline.level,
+    ariaLabel: `${providerLabel}: ${headline.text}${detail}`
+  }
 }
 
-export function usageChipText(provider: ChatProvider, usage: ChatPlanUsage | null, plan: string | null, now: number): string {
-  const display = usageChipDisplay(provider, usage, plan, now, '')
-  return display.kind === 'meter'
-    ? display.remaining === null ? '—' : String(display.remaining)
-    : display.text
+export function usageChipText(usage: ChatPlanUsage | null, plan: string | null, now: number): string {
+  return usageChipDisplay(usage, plan, now, '').text
 }
