@@ -166,6 +166,10 @@ export class ChatPaneLexicalIndex {
     if (!record) return { ...empty, indexPartial: true }
     const limit = Math.max(1, Math.min(SEARCH_MAX_LIMIT, Math.floor(request.limit ?? SEARCH_DEFAULT_LIMIT)))
     const literal = await this.searchPaneFts(query, limit, record) ?? this.searchPaneScan(record, query, limit)
+    // An archive, update, or settings change can arrive while the worker is answering.
+    if (this.records.get(chatId) !== record || !this.settings().chatMemoryIndexEnabled) {
+      return this.searchPane(chatId, request)
+    }
     const hits = literal.length ? literal : this.searchPaneForgiving(record, query, limit)
     return {
       hits,

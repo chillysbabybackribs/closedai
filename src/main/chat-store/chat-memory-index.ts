@@ -5,6 +5,7 @@ import type {
   ChatIndexSearchHit,
   ChatIndexSearchRequest,
   ChatIndexSearchResult,
+  ChatIndexTitleMatch,
   ChatMemoryIndexManifest,
   ChatMemoryIndexRecord
 } from '../../shared/chat-index.js'
@@ -23,7 +24,7 @@ import {
 } from '../chat-context/thread-handoff.js'
 import { conversationSpineTurns } from '../chat-context/conversation-spine.js'
 import { writeAtomic } from '../atomic-write.js'
-import { matchLabel, matchText, prepareTextQuery } from './forgiving-text-match.js'
+import { matchLabel, matchText, prepareTextQuery, type PreparedTextQuery } from './forgiving-text-match.js'
 
 export type ChatMemoryIndexSettings = Pick<
   AppSettings,
@@ -95,6 +96,8 @@ export class ChatMemoryIndex {
     updatedAt: 0
   }
   private readonly records = new Map<string, ChatMemoryIndexRecord>()
+  /** Every live store chat seen by sync/upsert, for title search beyond the hot index. Not persisted. */
+  private readonly catalog = new Map<string, ChatRecord>()
   private writeTimer: NodeJS.Timeout | null = null
   private writing: Promise<void> = Promise.resolve()
   private loaded = false
@@ -139,6 +142,8 @@ export class ChatMemoryIndex {
   }
 
   upsert(record: ChatRecord, items: ChatTranscriptItem[]): void {
+    if (record.archived) this.catalog.delete(record.id)
+    else this.catalog.set(record.id, record)
     if (!this.settings().chatMemoryIndexEnabled || record.archived) {
       this.drop(record.id)
       return
@@ -177,6 +182,8 @@ export class ChatMemoryIndex {
     for (const record of records) {
       if (!record.archived) live.set(record.id, record)
     }
+    this.catalog.clear()
+    for (const [id, record] of live) this.catalog.set(id, record)
     for (const chatId of [...this.manifest.chatIds]) {
       if (!live.has(chatId)) this.drop(chatId)
     }
@@ -241,7 +248,55 @@ export class ChatMemoryIndex {
     const exact = scan(false)
     const candidates = exact.length ? exact : scan(true)
     candidates.sort((a, b) => b.score - a.score || b.lastActivityAt - a.lastActivityAt || a.chatId.localeCompare(b.chatId))
-    return { ...empty, hits: candidates.slice(0, limit) }
+    const titles = this.searchTitles(query, limit, now, halfLife, excludeChatId, cwd, resolveChat)
+    return { ...empty, hits: candidates.slice(0, limit), ...(titles.length ? { titleMatches: titles } : {}) }
+  }
+
+  /** Chat-level title matches over hot records and the store catalog, using live titles when resolvable. */
+  private searchTitles(
+    query: PreparedTextQuery,
+    limit: number,
+    now: number,
+    halfLife: number,
+    excludeChatId: string | null | undefined,
+    cwd: string | undefined,
+    resolveChat: ((id: string) => ChatRecord | undefined) | undefined
+  ): ChatIndexTitleMatch[] {
+    const chatIds = new Set([...this.manifest.chatIds, ...this.catalog.keys()])
+    const scan = (fuzzy: boolean) => {
+      const found: Array<ChatIndexTitleMatch & { score: number }> = []
+      for (const chatId of chatIds) {
+        if (excludeChatId && chatId === excludeChatId) continue
+        const live = resolveChat ? resolveChat(chatId) : this.catalog.get(chatId)
+        if (resolveChat && (!live || live.archived)) continue
+        const hot = this.records.get(chatId)
+        const title = live?.title ?? hot?.title
+        const chatCwd = live?.cwd ?? hot?.cwd
+        if (!title || chatCwd === undefined || (cwd && chatCwd !== cwd)) continue
+        const match = matchText(query, title, { fuzzy })
+        if (!match) continue
+        const lastActivityAt = live ? indexActivity(live) : hot!.lastActivityAt
+        // Titles name the whole chat, so age matters less than for message lines.
+        const recency = 0.5 + 0.5 * recencyFactor(now - lastActivityAt, halfLife)
+        const pinBoost = (live?.pinnedAt ?? hot?.pinnedAt) ? 1.25 : 1
+        found.push({
+          chatId,
+          title: clip(title, 120),
+          cwd: chatCwd,
+          lastActivityAt,
+          ...(match.kind === 'exact' ? {} : { match: match.kind }),
+          ...(resolveChat ? { evidenceAvailability: cachedChatThreadId(live)
+            ? { status: 'not-checked' as const }
+            : { status: 'unavailable' as const, reason: 'missing-thread' as const } } : {}),
+          score: recency * pinBoost * match.quality
+        })
+      }
+      return found
+    }
+    const literal = scan(false)
+    const found = literal.length ? literal : scan(true)
+    found.sort((a, b) => b.score - a.score || b.lastActivityAt - a.lastActivityAt || a.chatId.localeCompare(b.chatId))
+    return found.slice(0, limit).map(({ score: _score, ...entry }) => entry)
   }
 
   async flush(): Promise<void> {

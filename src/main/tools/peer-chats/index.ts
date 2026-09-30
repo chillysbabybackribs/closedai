@@ -105,6 +105,7 @@ export function peerChatTools(getDirectory: () => PeerChatDirectory | null): Too
           'Forgiving query: literal phrase first; then the same letters ignoring spaces/punctuation/case ("spinev1" finds "spine v1"); ' +
           'only when neither matches, small typos and all-words-anywhere. Non-literal hits carry match (spacing|fuzzy) and matched text. ' +
           'Cross-chat phrase search over the global hot memory index (scope global, default: the 10 most recently active chats) ' +
+          'plus titleMatches: chats whose title matches, from all non-archived chats, not only hot ones; open one with spine(scope=history, chat_id). ' +
           'or lexical search over this pane’s merged transcript (scope chat), including prerotation turns when indexed. ' +
           'Matches conversation spine text (user/assistant/plan and compact tool/command labels), not raw tool output. ' +
           'scope chat accepts multiple whitespace-separated terms (all must match) over transcript spine lines and checkpoint facets (role checkpoint, cp.* item ids). ' +

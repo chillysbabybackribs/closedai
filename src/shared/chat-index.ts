@@ -82,8 +82,21 @@ export type ChatIndexSearchHit = {
   title: string | null
 }
 
+/** A chat whose title matches the query (global scope); reaches chats outside the hot index. */
+export type ChatIndexTitleMatch = {
+  chatId: string
+  title: string
+  cwd: string
+  lastActivityAt: number
+  /** Present only when the title matched up to spacing or typos, not literally. */
+  match?: Exclude<ChatTextMatchKind, 'exact'>
+  evidenceAvailability?: ChatEvidenceAvailability
+}
+
 export type ChatIndexSearchResult = {
   hits: ChatIndexSearchHit[]
+  /** Global scope: chats whose title matches, strongest first; omitted when none match. */
+  titleMatches?: ChatIndexTitleMatch[]
   indexedChatCount: number
   maxChats: number
   scope: ChatIndexSearchScope

@@ -694,6 +694,12 @@ ordering as history (`messageSentAt`, then turn end, then creation), capped by
 that cap; each keeps the newest spine lines up to the larger of 96,000 characters or
 `chatMemoryIndexMaxCharsPerChat`. On disk, pane search uses SQLite FTS5 (`search.sqlite`) with
 BM25 ranking; JSON pane files remain authoritative and repopulate FTS after schema changes.
+Global search also returns `titleMatches`: chat-level entries (`chatId`, title, `cwd`,
+`lastActivityAt`, optional `match`, `evidenceAvailability`) for chats whose current title matches.
+They cover every non-archived store chat the index has seen through startup sync or a turn end,
+not only the hot chats, and read live titles so renames apply. They are ranked apart from line hits,
+with a softer recency decay (floor of half weight), and follow the same `limit`. The field is
+omitted when no title matches. Open a title match with `spine(scope=history, chat_id=...)`.
 Queries are forgiving (`src/main/chat-store/forgiving-text-match.ts`). Global search and the
 scope-chat fallback try, in order: the literal phrase (whitespace runs collapsed); the same
 letters and digits ignoring spaces, punctuation, case, and accents (`spinev1` finds `spine v1`,

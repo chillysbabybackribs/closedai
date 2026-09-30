@@ -130,3 +130,22 @@ test('ChatMemoryIndex search tolerates spacing, then typos only when nothing mat
   assert.equal(literal.length, 1)
   assert.equal(literal[0]?.match, undefined)
 })
+
+test('ChatMemoryIndex search matches chat titles, including chats outside the hot index', () => {
+  const index = ChatMemoryIndex.inMemory({ ...settings, chatMemoryIndexMaxChats: 1 })
+  const cold = { ...record('cold', 100), title: 'Post-restart chat memory index verification' }
+  const hot = { ...record('hot', 500), title: 'Spine v1 follow-up' }
+  const renamed = { ...record('renamed', 50), title: 'Old name' }
+  index.sync([cold, hot, renamed])
+  index.upsert(hot, [userItem('u1', 'unrelated text')])
+  const live = new Map([cold, hot, { ...renamed, title: 'Vermont October trip' }].map((chat) => [chat.id, chat]))
+  const resolve = (id: string) => live.get(id)
+  const spaced = index.search({ query: 'spinev1' }, null, resolve)
+  assert.deepEqual(spaced.hits, [])
+  assert.deepEqual(spaced.titleMatches?.map((chat) => [chat.chatId, chat.match]), [['hot', 'spacing']])
+  const typo = index.search({ query: 'memroy index verificaton' }, null, resolve)
+  assert.deepEqual(typo.titleMatches?.map((chat) => [chat.chatId, chat.match]), [['cold', 'fuzzy']])
+  assert.equal(index.search({ query: 'vermont october' }, null, resolve).titleMatches?.[0]?.chatId, 'renamed')
+  assert.equal(index.search({ query: 'old name' }, null, resolve).titleMatches, undefined)
+  assert.equal(index.search({ query: 'spine v1' }, 'hot', resolve).titleMatches, undefined)
+})
