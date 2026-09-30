@@ -144,6 +144,6 @@ Independent checks used the live Supabase Branching rows and header order, plus 
 
 ### Cleanup and remaining work
 
-Opus closed its capture tab. Cursor, SOL, and Flash issued `Network.disable`; that stops the network domain but does not prove debugger detachment. Cursor/SOL tabs were no longer present by the end. After preserving Flash's first-turn metrics, an untimed follow-up asked its owning chat to close the remaining capture tab; the observer's direct close was correctly refused by tab ownership. This cleanup turn is excluded from the table.
+Opus closed its capture tab. Cursor, SOL, and Flash issued `Network.disable`; that stops the network domain but does not prove debugger detachment. Cursor/SOL tabs were no longer present by the end. After preserving Flash's first-turn metrics, an untimed follow-up had its owning chat close the remaining capture tab; the observer's direct close was correctly refused by tab ownership. The owner successfully closed `tab-81`, and app state confirmed only the pre-existing `tab-71` remained. This cleanup turn is excluded from the table.
 
 The runs reinforce two shared follow-ups: a compact table extraction result that preserves headers/cells, and an explicit capture lifecycle whose stop operation releases all armed state without requiring implementation-source inspection. Durable canonical tool/result telemetry is still needed to make every lane's output-size and generation measurements equally auditable. No provider-specific code changes were made for these tests.
