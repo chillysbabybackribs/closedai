@@ -83,13 +83,21 @@ function greedyPromote(registry: ToolRegistryType, priority: readonly string[], 
 }
 
 function toolAdvertised(registry: ToolRegistryType, toolId: string): boolean {
-  const [namespace, name] = toolId.split('.')
-  if (!namespace || !name) return false
-  const ns = registry.enabledNamespaces().find((entry) => entry.name === namespace)
-  const tool = ns?.tools.find((entry) => entry.name === name)
-  if (!tool) return false
-  if (!tool.actions?.length) return registry.isEnabled(toolId)
-  return tool.actions.some((action) => registry.isEnabled(`${toolId}.${action.name}`))
+  for (const ns of registry.enabledNamespaces()) {
+    for (const tool of ns.tools) {
+      const base = `${ns.name}.${tool.name}`
+      if (toolId === base) {
+        if (!tool.actions?.length) return registry.isEnabled(toolId)
+        return tool.actions.some((action) => registry.isEnabled(`${base}.${action.name}`))
+      }
+      if (tool.actions) {
+        for (const action of tool.actions) {
+          if (toolId === `${base}.${action.name}`) return registry.isEnabled(toolId)
+        }
+      }
+    }
+  }
+  return false
 }
 
 function cloneNamespaces(registry: ToolRegistryType, promote: Set<string>, resetEager: boolean): ToolNamespace[] {

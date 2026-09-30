@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "codexEagerWireCap": 7200,
+  "codexEagerWireCap": 7800,
   "slices": {
     "core": {
       "label": "Default workspace",
