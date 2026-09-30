@@ -10,6 +10,8 @@ import { windowMinimum } from './floating/window-layout.js'
 // ordinary tree, so drags, resizes and presets treat the new tile like any other.
 
 export type AutoPlaceCanvas = { width: number; height: number; browserVisible: boolean }
+/** Builds the tree with a new window; `tile` places `id` into the tiled layout, or returns null. */
+export type WindowOpen = (tree: ChatLayout, tile: (tree: ChatLayout, id: string) => ChatLayout | null) => ChatLayout
 export type Placement = { target: string; edge: DockEdge; rect: Rect }
 
 /** Tiles whose areas differ by less than this count as the same size. */

@@ -15,6 +15,7 @@ import { setWindowOnTop, tileWindows } from './floating/window-arrange.js'
 import { absorbCrossDockAtPointer } from './floating/cross-window-dock-target.js'
 import { crossWindowDockCanvasSize } from '../app-windows/cross-window-dock-store.js'
 import { assignGroups, presetLayout, presetSlots, singleGroup, type CanvasSize, type LayoutPreset } from './layout-presets.js'
+import { autoPlace, type WindowOpen } from './auto-place.js'
 const ERROR_TTL_MS = 8000
 /** Main announces a selection within one workspace event; past this the layout resyncs instead of staying locked. */
 const CONFIRM_TIMEOUT_MS = 5000
@@ -261,7 +262,34 @@ export function useChatLayout(
 
   const newChat = useCallback((target: string) => dock(null, target, null), [dock])
 
-  /** A blank chat in its own floating window (own tab strip), leaving every existing tile as it was. */
+  // The tiled canvas's last measured size: where a window opened from the dock fits (auto-place.ts).
+  const canvasSize = useRef<CanvasSize>({ width: 0, height: 0 })
+  const setCanvasSize = useCallback((size: CanvasSize) => { canvasSize.current = size }, [])
+  /**
+   * Open a new window (a dock chat, the notepad). `change` gets `tile`, which halves the roomiest
+   * tile for `id` and returns null when none can be halved, so the caller floats it instead. A
+   * tiled window ends any maximized one, or it would open hidden behind it.
+   */
+  const openWindowIn = (value: typeof layout, change: WindowOpen): typeof layout => {
+    let tiled = false
+    const tile = (tree: ChatLayout, id: string): ChatLayout | null => {
+      const next = autoPlace(tree, id, { ...canvasSize.current, browserVisible: self.main && value.browserVisible },
+        crypto.randomUUID(), tabOwner(tree, selected.current))
+      if (next) tiled = true
+      return next
+    }
+    const tree = change(value.tree, tile)
+    if (tree === value.tree) return value
+    if (!tiled || !value.maximized) return { ...value, tree }
+    const { maximized: _cleared, ...rest } = value
+    return { ...rest, tree }
+  }
+  const openWindow = useCallback((change: WindowOpen): void => {
+    if (pending.current) return
+    setLayout((value) => openWindowIn(value, change))
+  }, [])
+
+  /** A blank chat in a window of its own: tiled into the layout when a tile can be halved, else floating. */
   const newChatWindow = useCallback(async (): Promise<void> => {
     if (pending.current) return
     const host = paneIds(current.current.tree).find((id) => !isViewTabId(id))
@@ -272,7 +300,8 @@ export function useChatLayout(
     try {
       const added = await window.closedai.chat.newPeer(host)
       selected.current = added
-      setLayout((value) => ({ ...value, tree: chatInNewWindow(value.tree, added, host, crypto.randomUUID()) }))
+      setLayout((value) => openWindowIn(value, (tree, tile) => tile(tree, added)
+        ?? chatInNewWindow(tree, added, host, crypto.randomUUID())))
       setSelectionToConfirm(added)
     } catch (reason) {
       fail(reason)
@@ -610,7 +639,7 @@ export function useChatLayout(
   const showBrowser = useCallback(() => setLayout((value) => value.browserVisible ? value : { ...value, browserVisible: true }), [])
   return {
     ...layout, browserVisible: self.main && layout.browserVisible, detached: !self.main,
-    error: error?.text ?? '', notice: notice?.text ?? '', busy, dock, newChat, newChatWindow, continueChat, focusPane,
+    error: error?.text ?? '', notice: notice?.text ?? '', busy, dock, newChat, newChatWindow, openWindow, setCanvasSize, continueChat, focusPane,
     activateTab, openView, toggleView, pinView, moveTabToTile, closeTab, hide, closeFocused, focusedCloseTarget, resize, arrange,
     toggleBrowser, showBrowser, detachTab, returnTab, windows: windowActions,
     maximized: layout.maximized ?? null, setMaximized,

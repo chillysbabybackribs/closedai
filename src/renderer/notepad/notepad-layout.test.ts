@@ -36,3 +36,11 @@ test('the window keeps its chat while its notes change', () => {
   assert.deepEqual(notepadChats(tree), ['pad-chat'])
   assert.deepEqual(notepadChats(withNotepadChat(tree, noteTabId('n2'), null)), [])
 })
+
+test('a new notepad window takes the tile `place` finds, and floats only when it finds none', () => {
+  const placed = openNoteInTree(chatTile, 'n1', null, 'split-1', false,
+    (tree, id) => ({ kind: 'split', id: 'auto', axis: 'vertical', ratio: 0.5, first: tree, second: { kind: 'pane', id } }))
+  assert.equal(tabOwner(placed, noteTabId('n1')), noteTabId('n1'))
+  assert.equal(findWindow(placed, noteTabId('n1'))?.float, undefined)
+  assert.ok(findWindow(openNoteInTree(chatTile, 'n1', null, 'split-1', false, () => null), noteTabId('n1'))?.float)
+})

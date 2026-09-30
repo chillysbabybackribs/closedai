@@ -3,6 +3,7 @@ import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import { UNTITLED_NOTE } from '../../shared/notes.js'
 import type { ChatWorkspaceAction } from '../chat-state.js'
 import type { ChatLayout } from '../chat-layout/layout-tree.js'
+import type { WindowOpen } from '../chat-layout/auto-place.js'
 import { tabIds } from '../chat-layout/layout-tabs.js'
 import { layoutGroups } from '../chat-layout/layout-docking.js'
 import { readQuickChatModel, rememberQuickChatModel } from '../chat-layout/quick-chat-model.js'
@@ -20,6 +21,7 @@ const MODEL_KEY = 'closedai.notepadChat.modelId'
 type LayoutAccess = {
   tree: ChatLayout
   windows: { change: (change: (tree: ChatLayout) => ChatLayout) => void }
+  openWindow: (change: WindowOpen) => void
   activateTab: (id: string, anchor?: string) => Promise<void>
   closeTab: (id: string) => Promise<void>
   newSideChat: (modelId: string | null, quickChatSurface?: import('../../shared/quick-chat-overlay.js').QuickChatSurface) => Promise<string>
@@ -40,7 +42,7 @@ export function useNotepadHost({ layout, chats, dispatch, appearance, onError }:
   const access = useRef(layout)
   access.current = layout
   const openNote = useCallback((noteId: string, near: string | null) => {
-    access.current.windows.change((tree) => openNoteInTree(tree, noteId, near, crypto.randomUUID()))
+    access.current.openWindow((tree, tile) => openNoteInTree(tree, noteId, near, crypto.randomUUID(), false, tile))
   }, [])
   const newNote = useCallback(async (near: string | null) => {
     const note = await window.closedai.notes.create('')

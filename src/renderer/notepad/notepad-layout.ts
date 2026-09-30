@@ -92,14 +92,18 @@ function notepadTile(tree: ChatLayout, near: string | null): string | null {
 
 /**
  * Show a note: its tab where it already is, else a new tab in a notepad window (the one `near`
- * is in, or any), else a new floating notepad window of its own.
+ * is in, or any), else a new notepad window of its own: tiled by `place` (the layout's auto
+ * placement) when it finds room, else floating.
  */
-export function openNoteInTree(tree: ChatLayout, noteId: string, near: string | null, splitId: string, newWindow = false): ChatLayout {
+export function openNoteInTree(tree: ChatLayout, noteId: string, near: string | null, splitId: string, newWindow = false,
+  place?: (tree: ChatLayout, id: string) => ChatLayout | null): ChatLayout {
   const tab = noteTabId(noteId)
   const holder = tabOwner(tree, tab)
   if (holder) return selectTab(tree, holder, tab)
   const tile = newWindow ? null : notepadTile(tree, near)
   if (tile) return addTab(tree, tile, tab)
+  const placed = place?.(tree, tab)
+  if (placed) return placed
   const host = paneIds(tree).find((id) => !isViewTabId(id)) ?? paneIds(tree)[0]
   if (!host) return tree
   // Tear the new tab straight off the host tile, the way a dragged-out tab becomes a window, and

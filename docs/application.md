@@ -1033,7 +1033,7 @@ detached windows and startup retain the header menus because no dock is availabl
 tile holds its icon from the shared list in
 `src/renderer/app-icons.tsx`, which the view tabs use too. The strip is 44 px tall and a step lighter than the workspace
 (`--surface-raised`); the tray sits in a tab that rises out of its centre, drawn with the strip as
-one shape and one outline (`dock-surface.tsx`). The dock's box reaches as high as a magnified tile, so a browser under any of it is covered. **Chats** opens a new floating chat window with its own tabs (history stays in header Search chats and File → Manage chat history). **Browser** shows or hides the
+one shape and one outline (`dock-surface.tsx`). The dock's box reaches as high as a magnified tile, so a browser under any of it is covered. **Chats** opens a new chat window with its own tabs (history stays in header Search chats and File → Manage chat history). A window opened from the dock (Chats, or Notes when no notepad window is open) is **auto-placed** into the current tiled layout (`chat-layout/auto-place.ts`): it halves the roomiest chat or notepad tile, top/bottom when the tile is taller than wide and side by side otherwise, preferring the selected chat's tile among tiles of about the same size (within 4%). With chat, browser, chat, the first opens under one side chat, the second under the other, and the next halves one of those quarters side by side where it stays above the 300x280 minimum. The browser, floating, and minimized windows are never split; a maximized window is un-maximized so the new tile shows. When no tile can be halved above the minimum (or the canvas has not been measured) the window floats as before. The result is an ordinary split, so it drags, snaps, resizes, and floats like any other tile. **Browser** shows or hides the
 browser. **Notes** opens the notepad (its open window, else the latest note, else a new one). **Agent runs** opens the Agents view; its tooltip carries the runs summary. **Saved
 sites** and **Downloads** open a list above the icon. In Saved sites, a row (`dock.saved-site`)
 shows the browser and opens the site, and **All saved sites** (`dock.all-saved-sites`) opens the
@@ -1376,7 +1376,7 @@ A notepad window (`src/renderer/notepad/`) is an ordinary tile whose tabs are no
 (`closedai:view:note:<noteId>`, view kind `note`), so it floats, snaps, minimizes, tears off, and
 restores like any window. It opens from the dock's **Notes** icon (`dock.app` `note`), View →
 **Notepad**, or Ctrl+Shift+N: the open notepad window comes forward, else the latest note opens in a
-new floating window, else a new note does. **New** (`notepad.new`) and the **Notes** menu
+new window, else a new note does. A new notepad window is auto-placed into the tiled layout like the dock's Chats (see [Dock](#dock)), floating only when no tile can be halved. **New** (`notepad.new`) and the **Notes** menu
 (`notepad.notes`: up to 30 notes not open in the window, and **Delete this note**) sit in the status
 line under the editor with the caret position (`notepad.caret`). Tab titles are the note's first
 non-empty line, with Markdown heading, list, and quote markers removed and cut at 60 characters

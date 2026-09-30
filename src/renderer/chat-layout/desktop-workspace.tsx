@@ -230,7 +230,10 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, on
   const onResumeTab = useCallback((id: string) => { void chat.resumePane(id) }, [chat.resumePane])
   const onOpenPresets = useCallback(() => setPresetsOpen(true), [])
   const onHide = useCallback((id: string) => { void layout.hide(id) }, [layout.hide])
-  const onSizeChange = useCallback((size: CanvasSize) => { canvasSize.current = size }, [])
+  const onSizeChange = useCallback((size: CanvasSize) => {
+    canvasSize.current = size
+    layout.setCanvasSize(size)
+  }, [layout.setCanvasSize])
   const actions = useMemo(() => ({
     moveTab: layout.moveTabToTile,
     detachTab: (id: string) => { void layout.detachTab(id) },
