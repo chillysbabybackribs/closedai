@@ -74,6 +74,9 @@ export function useChatLayout(
   const selected = useRef(chatTabIds(layout.tree).includes(snapshot.selectedPaneId) ? snapshot.selectedPaneId
     : restored.focused && chatPaneIds(layout.tree).includes(restored.focused) ? restored.focused
       : chatPaneIds(layout.tree)[0] ?? snapshot.selectedPaneId)
+  // The chat whose last window the user closed: main still selects it, but it stays out of the
+  // layout until something (History, a new chat) asks for a chat again.
+  const closedLast = useRef<string | null>(null)
   const current = useRef(layout)
   current.current = layout
   // Main hears about chats only: a tile showing a view has no visible chat, its chats are retained.
@@ -160,6 +163,8 @@ export function useChatLayout(
     const next = getSnapshot().selectedPaneId
     // The browser's quick chat floats over the page; a selection never pulls it into a tile.
     if (next === current.current.browserChat) return
+    if (next === closedLast.current && !paneIds(current.current.tree).length) return
+    closedLast.current = null
     // Another window's chat is never opened twice. A chat no window holds yet (a new chat, one a
     // tool opened) goes to the window in front; the main window takes it when none is.
     if (!tabIds(current.current.tree).includes(next) && (tabsHeldElsewhere().has(next) || !adoptsUnheldChats())) return
@@ -327,8 +332,10 @@ export function useChatLayout(
     }
     const view = isViewTabId(id)
     if (!view) selected.current = id
+    closedLast.current = null
     const focusTab = (): void => {
       setLayout((value) => {
+        if (!paneIds(value.tree).length) return { ...value, tree: withBrowser({ kind: 'pane', id }) }
         const tile = anchor && paneIds(value.tree).includes(anchor) ? anchor : paneIds(value.tree)[0]!
         return { ...value, tree: selectTab(value.tree, tile, id) }
       })
@@ -353,6 +360,10 @@ export function useChatLayout(
   const openView = useCallback((kind: ViewKind, target: string): void => {
     if (pending.current) return
     const tree = current.current.tree
+    if (!paneIds(tree).length) {
+      setLayout((value) => ({ ...value, tree: withBrowser({ kind: 'pane', id: viewTabId(kind, crypto.randomUUID()) }) }))
+      return
+    }
     const anywhere = isWorkspaceViewKind(kind) ? workspaceView(tree, kind) : null
     if (anywhere) { void activateTab(anywhere); return }
     const tile = paneIds(tree).includes(target) ? target : tabOwner(tree, target) ?? paneIds(tree)[0]!
@@ -423,25 +434,19 @@ export function useChatLayout(
   const hide = useCallback(async (id: string): Promise<void> => {
     const tree = current.current.tree
     const remaining = removePane(tree, id)
-    if (pending.current) return
-    // A layout always holds a window, so closing the last one minimizes it: only the dock is left.
-    if (!remaining || !paneIds(remaining).length) {
-      setLayout((value) => {
-        const docked = minimizeWindow(value.tree, id)
-        return docked === value.tree ? value : { ...value, tree: docked }
-      })
-      return
-    }
+    if (!remaining || pending.current) return
+    // Closing the last window leaves the browser alone with the wallpaper; the chat stays in History.
+    if (!paneIds(remaining).length) closedLast.current = id
     pending.current = true
     try {
-      if (selected.current === id) {
+      if (selected.current === id && paneIds(remaining).length) {
         selected.current = paneIds(remaining)[0]!
         await window.closedai.chat.selectPane(selected.current)
       }
       setLayout((value) => {
         const removed = removePane(value.tree, id)
         const next = removed ? ensureExpandedGroup(removed) : removed
-        return next && paneIds(next).length ? { ...value, tree: next } : value
+        return next ? { ...value, tree: next } : value
       })
       clearError()
       reportRemoval(tabIds(tree).filter((tab) => tabOwner(tree, tab) === id), 'Window closed')
