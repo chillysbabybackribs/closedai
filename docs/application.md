@@ -1534,7 +1534,8 @@ archiving a provider thread are distinct operations.
 
 Codex-specific settings are `chatCompactAtPercent` (default 80), `chatCompactAtTokens` (default
 0, opt-in between-turn token threshold; 0 disables), and `chatMidTurnCompactTokens` (default zero,
-leaves the CLI's limit). The percentage and between-turn token triggers are independent; setting
+leaves the CLI's limit). Settings files without `chatCompactionPolicyVersion` 1 migrate the
+retired defaults once on load (60% becomes 80, a 28000-token budget becomes 0). The percentage and between-turn token triggers are independent; setting
 both to zero disables app-triggered compaction. Window-percent triggers wait 15 seconds of idle
 time; the token trigger waits 8 seconds;
 a new send cancels it if it has not started. Repeated token-triggered compactions require three
