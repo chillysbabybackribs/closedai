@@ -163,7 +163,9 @@ export function useChatLayout(
     const next = getSnapshot().selectedPaneId
     // The browser's quick chat floats over the page; a selection never pulls it into a tile.
     if (next === current.current.browserChat) return
-    if (next === closedLast.current && !paneIds(current.current.tree).length) return
+    // Opening Notes or another view does not request the closed chat back. Only an explicit
+    // activation (which clears closedLast) or a different main selection does that.
+    if (next === closedLast.current) return
     closedLast.current = null
     // Another window's chat is never opened twice. A chat no window holds yet (a new chat, one a
     // tool opened) goes to the window in front; the main window takes it when none is.
@@ -437,13 +439,16 @@ export function useChatLayout(
     for (const tab of tabIds(tree)) {
       if (tabOwner(tree, tab) === id && !isViewTabId(tab)) onChatTabClosed?.(tab)
     }
-    // Closing the last window leaves the browser alone with the wallpaper; the chat stays in History.
-    if (!paneIds(remaining).length) closedLast.current = id
+    const closesSelection = tabOwner(tree, selected.current) === id
+    const nextChat = closesSelection ? chatPaneIds(remaining)[0] : undefined
+    // A view id is never a chat-service selection. With no remaining visible chat, retain the
+    // backend selection but suppress its automatic adoption, even when Notes remains open.
+    if (closesSelection && !nextChat) closedLast.current = selected.current
     pending.current = true
     try {
-      if (selected.current === id && paneIds(remaining).length) {
-        selected.current = paneIds(remaining)[0]!
-        await window.closedai.chat.selectPane(selected.current)
+      if (nextChat) {
+        await window.closedai.chat.selectPane(nextChat)
+        selected.current = nextChat
       }
       setLayout((value) => {
         const removed = removePane(value.tree, id)
