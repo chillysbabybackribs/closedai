@@ -35,7 +35,7 @@ open protocol, so the wire format is not the fragile part — the subcommand's a
 | Reasoning effort | **None offered.** The advertised model config accepts only a verbatim listed id; every bracket override was rejected with "Invalid model value", including efforts that `cursor-agent models` advertises. Effort is part of the model, so the picker shows one entry per model. |
 | Model switching | `session/set_config_option` with the session-advertised `category: "model"` config id, so an open chat keeps its history — no respawn. The older experimental `session/set_model` can reject a loaded session with `Invalid params`. |
 | Chat history | `session/list` (agent-generated titles, `cwd`-scoped) and `session/load`, which replays the whole conversation as `session/update` notifications before resolving. Replay retains the returned session setup so continuing that session reuses the load. Startup restores saved history before checking for an uncached catalog, obtaining both from one load. The app records **no** transcript of its own, unlike the Antigravity lane. |
-| Thread title | `session_info_update` carries a title the agent writes a turn or two in. |
+| Thread title | `session_info_update` is ignored: cursor-agent titles from the start of the first prompt, which is always app context (clock, session guide). The pane titles itself from the first message and the app's generated title, like the other lanes (2026-09-29). |
 | Interrupt | `session/cancel`; the session stays usable afterwards. |
 | Approvals | `session/request_permission` is answered automatically with the broadest allow offered. This is narrower than the CLI's blanket `--force` and keeps ClosedAI's no-approval-dialog rule. |
 | Tools | The ClosedAI registry is served over MCP by the shared HTTP bridge (`src/main/tools/mcp-http-bridge.ts`), passed to `session/new` as `mcpServers`. Each pane's endpoints carry the bridge's per-launch token and its own key (`/mcp/<token>/<key>/<namespace>`), so a served call is attributed to that pane and turn exactly; a request without the token, with a Host that is not this loopback listener, or with an Origin header is refused. |
@@ -92,9 +92,13 @@ Verified live on 2026-09-03, and each point cost a real bug or would have:
   session opened during a turn had all of them. `CursorSession` also records the endpoint set its
   live session was opened with and reopens the session when that set changes, so a pane repairs
   itself instead of staying toolless for its lifetime.
-- `session/load` of a session that has no messages yet fails with "Invalid params"; a real
-  conversation loads and replays normally. `ensureSession` falls back to `session/new`, so an
-  empty saved id costs a session rather than a turn.
+- A `session/new` id that was never prompted is gone from later processes: `session/load` fails
+  with -32602 and `Session "<id>" not found` in `data.message`, which the error text now carries
+  (verified 2026-09-29). The pane therefore saves a session id only once the session has loaded or
+  taken a turn (`onSessionSaved`). A saved session that cannot be reopened is replaced, and the
+  visible transcript goes with the next turn as a handoff with the notice "Cursor no longer had this
+  conversation…"; other resume failures keep the saved id. One session opens at a time, and the
+  session is warmed before the prompt is assembled.
 - An `mcpServers` entry **must** carry `headers` (an array). Omitting it fails `session/new` schema
   validation with "expected array" rather than being treated as absent.
 - A served call arrives as `kind: "other"`, announced as `title: "MCP: tool"` with an empty

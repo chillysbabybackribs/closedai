@@ -48,6 +48,11 @@ src/main/tools/
   manifest.ts          renderer-facing registry snapshot for the Tools modal
   telemetry.ts         aggregate run/error counters + compact JSON persistence
   index.ts             public exports and createToolRegistry factory
+  tool-slice.ts        task slice catalog load, eager promotion under the Codex wire cap, validation
+  tool-slice-select.ts per-send slice choice from prompt and surface
+  slice-tool-registry.ts  advertisement-only registry view; execution stays on the live registry
+  provider-tool-slice-turn.ts  Claude/Antigravity per-send slice apply + trace
+  codex-tool-catalog.ts, cursor-tool-catalog.ts  lane catalog resolution
   <namespace>/
     index.ts           namespace and its tool definitions
     <action>.ts        optional ToolAction modules for an action tool

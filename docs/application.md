@@ -2,7 +2,8 @@
 
 Chat renders Markdown, but does not interpret the Visualize skill's inline content-reference
 markers or provide its `Tweak`/`window.openai` host runtime. HTML comparisons can be served locally
-and viewed in the embedded browser; local HTML file links instead open a text preview.
+and viewed in the embedded browser; local HTML and SVG links open as their rendered page, with a
+Page | Code toggle (see [Browser surface](#browser-surface)).
 
 Native image generation from Codex (`imageGeneration`), Cursor (`GenerateImage`), Antigravity
 (`generate_image`), and Claude tools with the same names render inline in the transcript as
@@ -14,7 +15,7 @@ browser-pane image viewer when a path is available. Pending generation remains a
 failures display an error. The revised generation prompt is not used as a caption. These images
 are display data, not instructions.
 
-Source review: 2026-09-23. This describes implemented behavior, not a new live UI or provider
+Source review: 2026-09-30. This describes implemented behavior, not a new live UI or provider
 verification. Protocol measurements retain their dates in the provider guides. Provider context
 delivery lives in [Model context](model-context.md); registry contracts live in
 [Tools](tools.md).
@@ -26,7 +27,8 @@ entry or fixture bridge. A running checkout launch (unpackaged, not the dev serv
 showing the built renderer (windows, detached windows, the quick chat layer), whoever ran the
 build. It skips the reload and logs `[renderer-build] … restart the app` once when `out/main`
 differs from the bundle the process launched with, because main-process changes still need a
-restart (`src/main/renderer-build-reload.ts`). Preload changes also require a restart for
+restart (`src/main/renderer-build-reload.ts`). Only `out/main` is compared, so a preload-only
+rebuild still reloads the renderer against the old preload; preload changes require a restart for
 verification. Launching another preview can hand off to the existing single-instance app; it
 does not prove that process loaded the new build. Verify the actual target surface after reload
 or restart, and report pending restart separately from build success.
@@ -687,7 +689,23 @@ draft in the middle; then the setup chip, whose model half (`composer.setup`, wi
 folder half (`composer.folder`) each open their own panel; and Send on the right. Send and the
 focus ring are the chat's one colour: the theme accent, or the wallpaper's most vivid hue while a
 backdrop is on. Sent user messages are cards cut from the same capsule material. New chat and
-Browser are not in the composer: the tile header **+** and the dock own them. **Fresh context** continues the full thread in a new tab with a digest on the first send. Agents opens a menu of saved agents: **Start new run**
+Browser are not in the composer: the tile header **+** and the dock own them. **Fresh context**
+continues the full thread in a new tab with a digest on the first send. There is no collapsed mode;
+pending attachment chips sit above the line inside the card. The setup trigger opens a fixed-height
+panel (520px, or less when the pane is shorter), top to bottom: a Context line (`composer.context`;
+used/window tokens, the first plan window, a meter) that expands to the full usage card with Compact
+conversation; every model in one scrolling list sectioned by provider under pinned headings
+(`composer.model-item`, context-size badges, no search or folding; sections of another provider say
+**new thread**), opening scrolled to the current model's section; Effort (segmented
+`composer.effort-item`, or a same-height "Set by <provider>" line for models without levels); and
+**Recent** (`composer.model-recent`), the last three models used in this window from any provider,
+most recent nearest the trigger. Recent is kept in the renderer's localStorage
+(`closedai.composer.recentModels`) and records every model a pane lands on, whether picked,
+restored, or set by a tool. The folder trigger opens a separate panel with the current folder,
+recent chips, and choose/clear actions (`composer.project-new`, `composer.project-recent`,
+`composer.project-clear`). Model and effort rows are disabled while a turn runs; folder changes
+queue until the chat is idle when a turn is in flight. The trigger does not change while a turn
+runs: no spinner or elapsed clock. Agents opens a menu of saved agents: **Start new run**
 (`composer.agents-start`, a new tab beside **this** chat's tile and the run starts at once; only a
 **live** run for that agent offers **Open** instead), **New agent…** (`composer.agents-new`) and
 **Manage** (`composer.agents-manage`) for the workspace Agents tab. The icon badges how many runs are
@@ -757,23 +775,10 @@ note, fix) are stored, in the checkout's gitignored `.closedai/ui-coverage.json`
 budget is one `closedai_app.menu` call and a control job's is three calls; failures and
 over-budget results form the backlog `status` prints. Controls whose description deletes, clears,
 resets, or closes something are marked `caution`. When `next` reports COMPLETE the agent reports
-the backlog and calls `finish`. There is no collapsed mode;
-pending attachment chips sit above the line inside the card. The setup trigger opens a
-fixed-height panel (520px, or less when the pane is shorter), top to bottom: a Context line
-(`composer.context`; used/window tokens, the first plan window, a meter) that expands to the
-full usage card with Compact conversation; every model in one scrolling list sectioned by
-provider under pinned headings (`composer.model-item`, context-size badges, no search or
-folding; sections of another provider say **new thread**), opening scrolled to the current
-model's section; Effort (segmented `composer.effort-item`, or a same-height "Set by <provider>"
-line for models without levels); and **Recent** (`composer.model-recent`), the last three models
-used in this window from any provider, most recent nearest the trigger. Recent is kept in the
-renderer's localStorage (`closedai.composer.recentModels`) and records every model a pane lands
-on, whether picked, restored, or set by a tool. The folder trigger opens a separate panel with the current folder, recent
-chips, and choose/clear actions (`composer.project-new`, `composer.project-recent`,
-`composer.project-clear`). Model and effort rows are disabled while a turn runs; folder changes
-queue until the chat is idle when a turn is in flight. The
-trigger does not change while a turn runs: no spinner or elapsed clock. Right-clicking
-any tile header or tab opens a context menu led by **Close tab** (`layout.tab-close`, Ctrl/Cmd+W),
+the backlog and calls `finish`. A menu job run by any path other than `menu` counts as over
+budget; `status` also lists stale results whose job no longer exists.
+
+Right-clicking any tile header or tab opens a context menu led by **Close tab** (`layout.tab-close`, Ctrl/Cmd+W),
 then **Hide pane** (`layout.pane-hide`) and, with another tile open,
 **Move tab to next pane** / **Move tab to previous pane**
 (`layout.tab-move`, item `next` or `previous`) move the active conversation into the neighbouring
@@ -1138,14 +1143,15 @@ either kind, so a new icon never changes the tray's size or spacing.
 - Completed assistant responses offer copy and branching. Timestamps appear when recorded;
   older history does not acquire invented timestamps.
 - There is no project rail: the folder lives in the composer's setup panel. The four application menus (File, View, Agent, Developer) are listed in Start's All apps; the main window's title bar shows them only as a startup fallback.
-  File owns chat creation, history, Settings (Appearance, Models, Credentials, and Security tabs), and closing the
-  window; View owns browser visibility, Saved sites, layout, chat zoom, and fullscreen; Agent owns the
+  File owns New chat, Search chats, Manage chat history, Settings (Appearance, Models, Credentials,
+  and Security tabs), Sign out…, Close tab, and Close window; View owns browser visibility, Notepad,
+  Workspace overview, Tile windows, layout presets, chat zoom, and fullscreen; Agent owns the
   Agents view (Agents…, the saved-agent Library with its Build and Runs screens, one tab per
   workspace), what the model is given (Tools & capabilities, likewise a view tab) and a "Selected chat" section naming
   the pane its rows act on (Shrink provider context, Stop turn; rows that do not apply are disabled, not
   hidden). **Shrink provider context** rotates or compacts the provider thread while keeping the visible
   transcript; it is available for Codex, Claude, Cursor, and Antigravity when seamless rotation is on
-  (and for Codex native compaction or Antigravity native compact when it is off). Developer owns Turn trace (a view tab), Reload renderer, and Toggle DevTools.
+  (and for Codex native compaction or Antigravity native compact when it is off). Developer owns Turn trace and Saved sites (view tabs), Reload renderer, and Toggle DevTools.
   Shortcuts: Ctrl+Shift+T tools, Ctrl+Shift+I trace, Ctrl+R reload, F12 DevTools.
   Send, pause,
   and resume controls live in the composer; Pause and Resume also appear in header search rows.
@@ -1186,9 +1192,11 @@ either kind, so a new icon never changes the tray's size or spacing.
   exists the same guidance is a strip above the composer instead of replacing the messages.
   Failed pause, model, and effort changes appear in the composer's alert row; a failed compaction
   or refused shell shortcut appears as a dismissible notice. Compact conversation is available from
-  the setup panel's Context section (`composer.compact`) and Agent → Compact context when the provider supports manual
+  the setup panel's Context section (`composer.compact`) and Agent → Shrink provider context when the provider supports manual
   compaction. The composer preserves unsubmitted drafts (text and pending attachments) per
-  conversation pane across tab switching and unmounting, clearing them only on submission.
+  conversation pane across tab switching, unmounting, and relaunch, clearing them only on
+  submission. The saved copy (`closedai.composer.drafts.v1` in localStorage) keeps the 50 newest
+  drafts and leaves out any attachment over 64,000 characters, such as a large pasted image.
   Appearance settings separate message and composer font sizes
   (defaults 14 and 15 px, range 13–22) from chat zoom. The workspace wallpaper is opt-in
   (default Off) and chosen in the wallpaper picker (`renderer/backdrop/wallpaper-dialog.tsx`), opened

@@ -46,8 +46,10 @@ desktop app's OAuth client and call the internal endpoint directly are deliberat
 - **Tools** are the shared registry, served to the CLI over MCP (`antigravity-mcp.ts`, below). The
   model sees `mcp_embedded_browser_page` where Claude sees `mcp__embedded_browser__page`. Every call
   runs through `ToolRegistry.call`, so validation, timeouts, telemetry, and the Tools modal's switches
-  apply. Namespaces are registered with the CLI when the bridge starts; a namespace switched on later
-  is advertised after the next app launch.
+  apply. Registration is re-asserted before every send from the live registry, so a namespace
+  switched on later reaches the CLI config on the next send and the model on the next `agy` spawn.
+  With task tool slices on, the eager map is the slice's promoted set, and a slice change retires an
+  idle process.
 - **The custom agent** (`antigravity-profile.ts`) is written under `<userData>/antigravity/profile` and
   reaches the CLI as an extra `--add-dir` plus `--agent closedai`. Its frontmatter `tools:` list is the
   agent's native tool grant (files, shell, tasks, and images). Without it a
@@ -156,7 +158,7 @@ servers, which is harmless.
 Every edit is an atomic temp-file-and-rename write, re-read afterwards and re-applied (up to three
 times) if another instance replaced the file in between. A zero-byte file reads as empty config,
 and one that does not parse is moved aside to `mcp_config.json.corrupt-<ms>` rather than
-overwritten. Before each CLI spawn the service re-asserts the registration, a read-only no-op when
+overwritten. Before every send the service re-asserts the registration, a read-only no-op when
 the entries are current, so an entry another instance dropped comes back on the next turn. This
 replaced a truncating write that a killed headless run left at zero bytes (2026-09-23); every
 later launch failed to parse it and ran Antigravity with no ClosedAI tools.

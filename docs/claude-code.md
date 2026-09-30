@@ -32,8 +32,8 @@ and transcript notes were reviewed against current source on 2026-09-03, without
   default; ClosedAI passes `alwaysLoad` unless the registry marks a tool `deferLoading`. The MCP request
   metadata carries the model's tool_use id (`_meta['claudecode/toolUseId']`), which becomes the call id,
   the transcript item id, and the screenshot store key. Switches toggled in the Tools modal apply to
-  calls immediately and to what is advertised when the next Claude process starts (new chat, or after
-  the idle close).
+  calls immediately. The MCP server set is keyed by the disabled ids plus the task slice; when either
+  changes, the next send retires an idle process so the new process advertises the new set.
 - **Thinking** is requested with `display: 'summarized'` on models that support adaptive thinking.
   Without it every current model streams thinking blocks with empty text and the reasoning items would
   be blank. Haiku 4.5 reports no adaptive thinking and gets no thinking option.

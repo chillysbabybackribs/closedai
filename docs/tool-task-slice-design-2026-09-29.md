@@ -4,7 +4,13 @@ Current correction (2026-09-29): Cursor namespace filtering is withdrawn because
 discover omitted servers. Cursor retains all enabled namespaces and records slice selection
 for telemetry only. The phase descriptions below document the earlier design.
 
-Status: **Phases 1–3 landed** — slice manifest + `applyToolSlice()`, shared `resolveSlicedToolRegistry()` when `chatToolSliceEnabled` is true: Codex `thread/start` via `resolveCodexToolCatalog()`, Cursor `session/new` namespace allowlists via `resolveCursorToolCatalog()`, Claude MCP `alwaysLoad` via slice advertisement + process retire on change, Antigravity MCP config `eager` map via the same advertisement + CLI retire on change. Trace labels: `codex.tool_slice`, `cursor.tool_slice`, `claude.tool_slice`, `antigravity.tool_slice`.
+Implementation notes (2026-09-30): selection is hard-coded in `tool-slice-select.ts` (browser,
+then research, then core; `full` is never picked unless `signals` names it); there is no user
+preset layer and no `tool_slice.apply` meta-tool; `cursorNamespaces` is reserved and ignored at
+runtime but still validated by `validateToolSliceCatalog`. [Tools](tools.md) owns the current
+contract; the "Next implementation step" section below has landed.
+
+Status: **Phases 1–3 landed** — slice manifest + `applyToolSlice()`, shared `resolveSlicedToolRegistry()` when `chatToolSliceEnabled` is true: Codex `thread/start` via `resolveCodexToolCatalog()`, Cursor slice telemetry via `resolveCursorToolCatalog()` (namespaces always `null`), Claude MCP `alwaysLoad` via slice advertisement + process retire on change, Antigravity MCP config `eager` map via the same advertisement + CLI retire on change. Trace labels: `codex.tool_slice`, `cursor.tool_slice`, `claude.tool_slice`, `antigravity.tool_slice`.
 
 ## Problem
 
@@ -83,7 +89,7 @@ All user-enabled tools remain **callable** after discovery / ToolSearch / loadin
 - [x] Wire slice selection into `ensureCodexThread` / turn build (`chatToolSliceEnabled`)
 - [x] Telemetry: trace `codex.tool_slice` with slice id and promoted ids
 - [ ] Guide outline: one line on slice + discovery fallback
-- [x] Cursor namespace filter + session reload tests
+- [ ] ~~Cursor namespace filter + session reload tests~~ (withdrawn; see correction above)
 - [ ] Property: promoted ⊆ enabled switchable ids
 
 ## Experimental track: hyper-reduced “template” tools (lab only)
