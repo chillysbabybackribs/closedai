@@ -1,0 +1,99 @@
+## Scope
+
+**“Normal coding turn”** here means a **project chat pane** (not a notepad-bound chat), **same provider thread** as the previous message (not first send, not after handoff/rotation/compaction), default settings (`chatWorkspaceLedgerEnabled` on), and a message that **looks like repo work** (so the ledger gate can open). Examples: “fix the failing test in `src/…`”, “refactor the handler”.
+
+Tool catalogs / MCP endpoints are **not** `closedai_*` context blocks; they are separate provider wiring (`chat-service`, `claude-service`, `antigravity-service`, `cursor-service` + tool registry).
+
+---
+
+## Context blocks by provider
+
+| Block | Codex | Claude | Antigravity | Cursor |
+| --- | --- | --- | --- | --- |
+| **`closedai.clock`** | **Always** | **Always** | **Always** | **Always** |
+| **`closedai.guide`** | **Sometimes** | **Sometimes** | **Sometimes** | **Never** |
+| **`closedai.chat.handoff`** | **Sometimes** | **Sometimes** | **Sometimes** | **Sometimes** |
+| **`closedai.workspace.ledger`** | **Sometimes** | **Sometimes** | **Sometimes** | **Never** |
+| **`closedai.browser.active-tab`** | **Never**† | **Never**† | **Never**† | **Never**† |
+| **`closedai.notepad`** | N/A | N/A | N/A | N/A |
+| **`closedai.chat.compacted`** | **Never** | **Never** | **Rarely** | **Never** |
+
+†On a **typical** coding prompt with no “read this page / current tab” intent; see browser row below.
+
+### Per-block triggers and primary owner
+
+1. **`closedai.clock`** (`kind: application`)  
+   - **Always** on every user send for all four lanes.  
+   - Built by `buildClockAdditionalContext()` in `turn-context.ts`.  
+   - Codex/Claude/Antigravity: merged in `buildTurnSendContext()` (`session-guide.ts`). Cursor: merged directly in `CursorService.send()` (no guide/ledger).  
+   - Docs: *“attached on **every** user turn”* (`docs/model-context.md`).
+
+2. **`closedai.guide`** (`kind: application`)  
+   - **Codex, Claude, Antigravity — sometimes:** first send on a **new provider thread** (`transcriptWasEmpty`) **or** first send after **`chatContinuation.handoff`** (handoff to new thread). **Omitted** when `sessionGuideState.lastDeliveredThreadKey` already matches the thread key (`shouldAttachSessionGuide` / `markSessionGuideDelivered` in `session-guide.ts`).  
+   - **Cursor — never:** explicit comment in `cursor-service.ts`: *“No shared guide or workspace ledger”*; tests assert no guide on sends (`cursor-service.test.ts`: `doesNotMatch(/closedai\.guide/)`).  
+   - **Owner:** `session-guide.ts` (+ `agent-guide.generated`); wired from each provider’s `send()` except Cursor.
+
+3. **`closedai.chat.handoff`** (`kind: untrusted`)  
+   - **Sometimes** on any lane when `settings.get().chatContinuation?.handoff` is set (peer continue, provider switch, **session rotation**, explicit Cursor compact, lost Cursor session, etc.), then cleared after send (`clearDeliveredHandoff`).  
+   - **Never** on a plain mid-thread coding message with no queued continuation.  
+   - **Owner:** `thread-handoff.ts` (`THREAD_HANDOFF_CONTEXT`, `handoffAdditionalContext`); rotation planning in `rotate-provider-session.ts`.
+
+4. **`closedai.workspace.ledger`** (`kind: untrusted`)  
+   - **Codex / Claude / Antigravity — sometimes** when `chatWorkspaceLedgerEnabled !== false` and `buildWorkspaceLedgerAdditionalContext()` returns a block: regex gate `needsWorkspaceContext()` **or** path hints from `extractPathHints()` (`needs-workspace-context.ts` + `workspace-ledger-pilot/ledger.ts`), fed by `workspaceLedgerContextForTurn()` (`workspace-ledger/runtime.ts`).  
+   - On a normal repo-work coding line, gate is usually **open**; payload can be mostly empty if the in-memory ledger has no entries yet.  
+   - **Cursor — never** (not passed into merge in `CursorService.send`; test sends with ledger enabled still omit it).  
+   - **Owner:** `workspace-ledger/runtime.ts` + pilot ledger builder; orchestration via `buildTurnSendContext` on non-Cursor lanes.
+
+5. **`closedai.browser.active-tab`** (`kind: untrusted`, ambient)  
+   - **Sometimes** on **all four** when: pane surface is a **browser** tab (not notepad), **and** `needsActiveBrowserTabMetadata(prompt)` is true (`turn-context.ts` — visible-page intent, not chrome-support-only).  
+   - **Never** on ordinary coding turns (*“Ordinary coding turns receive no automatic browser snapshot”* — `docs/model-context.md`; enforced by `buildTurnAdditionalContext` returning `undefined` without metadata cues).  
+   - Notepad chats get **`closedai.notepad` every turn** instead and **never** active-tab (`turn-context.ts` notepad branch; docs `model-context.md`).  
+   - **Owner:** `turn-context.ts` (`buildTurnAdditionalContext`); each provider passes `browserContext: this.turnAdditionalContext(prompt)`.
+
+6. **`closedai.chat.compacted`** (`kind: untrusted`)  
+   - **Antigravity only, rarely:** next send after **`compactConversation()` with `chatSeamlessRotation` off**, when `takePendingSeed()` returns a seed → `compactedAdditionalContext()` (`provider-compaction.ts`, wired in `antigravity-service.ts`).  
+   - Seamless rotation / other providers use **`closedai.chat.handoff`**, not this key.  
+   - **Owner:** `provider-compaction.ts` + Antigravity session `pendingSeed`.
+
+### Merge order (when multiple blocks apply)
+
+`buildTurnSendContext` documents order: **clock → guide → handoff → ledger → browser** (`session-guide.test.ts` asserts key order). Cursor uses the same merge helper **minus** guide and ledger.
+
+### Wire shape (not extra blocks)
+
+- **Codex:** structured `additionalContext` on `turn/start` (`chat-service.ts`).  
+- **Claude / Antigravity / Cursor:** same names as `<closedai_context name="…">` via `contextBlockText()` (`turn-context.ts`, e.g. `cursor-input.ts`, `claude-input.ts`).
+
+---
+
+## Cursor: ClosedAI injections explicitly disabled vs other lanes
+
+From implementation and tests (aligned with `docs/model-context.md`):
+
+| Injection | Other lanes | Cursor |
+| --- | --- | --- |
+| **`closedai.guide`** | First send per provider thread / after handoff | **Disabled** |
+| **`closedai.workspace.ledger`** | Gated coding turns | **Disabled** (even when settings/tools would allow it) |
+| **Automatic session rotation** (`SessionRotator` / idle item pressure) | Codex, Claude, Antigravity when `chatSeamlessRotation` | **No rotator on Cursor path**; session id unchanged under item pressure (`cursor-service.test.ts`) |
+
+Cursor **still gets**: **`closedai.clock`**, optional **`closedai.chat.handoff`**, optional **`closedai.browser.active-tab`**, plus ACP MCP servers (not a context block).
+
+Explicit **Compact** on Cursor queues a **handoff** (not guide/ledger), and only when `chatSeamlessRotation` is on (`compactConversation` throws otherwise) — `cursor-service.ts` / `cursor-service.test.ts`.
+
+---
+
+## Doc vs implementation mismatch
+
+**Found one:** `docs/model-context.md` says rotation and compaction seeds reuse **`closedai.chat.handoff`** (*“The handoff fragment is `closedai.chat.handoff`; rotation and compaction seeds reuse it”*).
+
+**Implementation:** Antigravity with **`chatSeamlessRotation` false** uses explicit CLI compaction and injects **`closedai.chat.compacted`** via `compactedAdditionalContext()` / `COMPACTED_CONTEXT` in `provider-compaction.ts`, merged in `antigravity-service.ts` from `takePendingSeed()`. That symbol appears in code only, not in the model-context doc.
+
+(Default settings keep seamless rotation **on**, so many users only see the handoff path — but the non-seamless Antigravity path is real.)
+
+---
+
+## If I needed to go deeper
+
+- Exact Codex `additionalContext` JSON shape: Codex adapter tests / app-server turn types.  
+- Whether any lane still emits legacy `closedai.instructions` on send (display/strip code references it; I did not find a current send-time producer in main `send()` paths).  
+- Full rotation → handoff vs Antigravity `pendingSeed` matrix across `chatSeamlessRotation` and manual compact.
