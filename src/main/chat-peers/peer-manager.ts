@@ -28,8 +28,10 @@ import { ChatMemory } from '../chat-context/chat-memory.js'
 import type { ChatStore } from '../chat-store/chat-store.js'
 import { ChatTranscriptCache } from '../chat-store/chat-transcript-cache.js'
 import { ChatMemoryIndex } from '../chat-store/chat-memory-index.js'
+import { ChatPaneLexicalIndex } from '../chat-store/chat-pane-lexical-index.js'
 import type { ChatIndexSearchRequest, ChatIndexSearchResult } from '../../shared/chat-index.js'
 import { DEFAULT_CHAT_MEMORY_INDEX_MAX_CHATS } from '../../shared/chat-index.js'
+import { mergedPaneTranscriptItems } from '../chat-context/pane-transcript-merge.js'
 import { traceLog } from '../trace/trace-log.js'
 import { PeerChatCatalog } from './peer-chat-catalog.js'
 import { PeerEmitThrottle, syncStoreCheckpoint } from './peer-events.js'
@@ -88,6 +90,8 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     selectedPaneId: null
   }
   private readonly archives: PeerArchives
+  /** Serialized per-pane backfill so provider reads cannot overlap. */
+  private readonly paneLexicalIndexTails = new Map<ChatPaneId, Promise<void>>()
 
   constructor(
     private readonly settings: AppSettingsAccess,
@@ -98,7 +102,8 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     private readonly transcripts: ChatTranscriptCache = ChatTranscriptCache.inMemory(),
     private readonly memoryIndex: ChatMemoryIndex | null = null,
     private readonly cancelPaneWork: (paneId: ChatPaneId) => void = () => {},
-    private readonly browserAssignmentIdle: BrowserAssignmentIdleRelease | null = null
+    private readonly browserAssignmentIdle: BrowserAssignmentIdleRelease | null = null,
+    private readonly paneLexicalIndex: ChatPaneLexicalIndex | null = null
   ) {
     super()
     this.memory = new ChatMemory(
@@ -174,6 +179,8 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       forgetTranscript: (chatId) => {
         this.transcripts.forget(chatId)
         this.memoryIndex?.drop(chatId)
+        this.paneLexicalIndex?.drop(chatId)
+        this.paneLexicalIndexTails.delete(chatId)
       },
       invalidateCatalog: () => this.catalog.invalidate(),
       emitChats: () => this.emitChats()
@@ -241,6 +248,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     // and the replay below replaces it.
     await this.transcripts.load(this.selectedPaneId)
     await this.memoryIndex?.load()
+    await this.paneLexicalIndex?.load()
     this.memoryIndex?.sync(this.store.ids().map((id) => this.store.get(id)!).filter(Boolean))
     this.emitWorkspace()
     void this.transcripts.prune(new Set(this.store.ids())).catch((error: unknown) => {
@@ -627,15 +635,42 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   }
 
   searchIndex(callerPaneId: string | null, request: ChatIndexSearchRequest): ChatIndexSearchResult {
-    if (!this.memoryIndex || !this.settings.get().chatMemoryIndexEnabled) {
-      return {
-        hits: [],
-        indexedChatCount: 0,
-        maxChats: this.settings.get().chatMemoryIndexMaxChats ?? DEFAULT_CHAT_MEMORY_INDEX_MAX_CHATS,
-        trust: 'historical-data'
-      }
+    const scope = request.scope ?? 'global'
+    const disabled = {
+      hits: [],
+      indexedChatCount: 0,
+      maxChats: scope === 'chat'
+        ? 1
+        : this.settings.get().chatMemoryIndexMaxChats ?? DEFAULT_CHAT_MEMORY_INDEX_MAX_CHATS,
+      scope,
+      trust: 'historical-data' as const
     }
+    if (!this.settings.get().chatMemoryIndexEnabled) return disabled
+    if (scope === 'chat') {
+      if (!callerPaneId || !this.paneLexicalIndex) return disabled
+      return this.paneLexicalIndex.searchPane(callerPaneId, request)
+    }
+    if (!this.memoryIndex) return disabled
     return this.memoryIndex.search(request, callerPaneId ?? undefined, (id) => this.store.get(id))
+  }
+
+  private schedulePaneLexicalIndex(entry: PeerEntry): void {
+    if (!this.paneLexicalIndex || !this.settings.get().chatMemoryIndexEnabled) return
+    const paneId = entry.chatId
+    const next = (this.paneLexicalIndexTails.get(paneId) ?? Promise.resolve()).then(async () => {
+      const record = this.store.get(paneId)
+      if (!record) return
+      const snapshot = entry.surface.snapshot()
+      const epoch = record.sessionRotations?.at(-1)?.epoch ?? 0
+      const { items, partial } = await mergedPaneTranscriptItems(
+        record,
+        snapshot.items,
+        (threadId, cwd) => entry.surface.readThread(threadId, cwd),
+        'chat'
+      )
+      this.paneLexicalIndex!.upsert(record, items, { rotationEpoch: epoch, partial })
+    }).catch(() => undefined)
+    this.paneLexicalIndexTails.set(paneId, next)
   }
 
   private supportHost(): PeerManagerSupportHost {
@@ -647,6 +682,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       projectChanges: this.projectChanges,
       transcripts: this.transcripts,
       memoryIndex: this.memoryIndex,
+      schedulePaneLexicalIndex: (paneEntry) => { this.schedulePaneLexicalIndex(paneEntry) },
       parking: this.parking,
       catalog: this.catalog,
       chatsEmit: this.chatsEmit,

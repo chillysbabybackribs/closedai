@@ -102,18 +102,20 @@ export function peerChatTools(getDirectory: () => PeerChatDirectory | null): Too
         deferLoading: true,
         description:
           'Hits include evidenceAvailability: not-checked means source availability has not been verified; unavailable means retained index text only. Read exact hits with recall(scope=history, chat_id, item_id), including evidence labels. ' +
-          'Cross-chat phrase search over the global hot memory index (default: the 10 most recently active chats). ' +
+          'Cross-chat phrase search over the global hot memory index (scope global, default: the 10 most recently active chats) ' +
+          'or lexical search over this pane’s merged transcript (scope chat), including prerotation turns when indexed. ' +
           'Matches conversation spine text (user/assistant/plan and compact tool/command labels), not raw tool output. ' +
-          'Results are historical; use spine or recall(scope=history, chat_id=..., item_id=...) for depth (chat_id works for open ' +
-          'panes and closed chats). query is a required ' +
-          'literal case-insensitive phrase. cwd optionally narrows hits to one project directory. limit defaults to 5, max 8. ' +
-          'The calling chat is excluded from hits. For turn-shaped reads of one chat, use spine after search.',
+          'scope chat accepts multiple whitespace-separated terms (all must match). Responses may include rotationEpoch and indexPartial. ' +
+          'Results are historical; use spine or recall(scope=history|chat, chat_id=..., item_id=...) for depth. query is required. ' +
+          'cwd narrows global hits to one project directory. limit defaults to 5, max 8. ' +
+          'Global search excludes the calling chat; scope chat searches only the calling pane. For turn-shaped reads, use spine after search.',
         inputSchema: {
           type: 'object',
           additionalProperties: false,
           required: ['query'],
           properties: {
             query: { type: 'string', minLength: 1, maxLength: 200 },
+            scope: { type: 'string', enum: ['global', 'chat'] },
             cwd: { type: 'string', minLength: 1, maxLength: 4096 },
             limit: { type: 'integer', minimum: 1, maximum: 8 }
           }
@@ -123,8 +125,11 @@ export function peerChatTools(getDirectory: () => PeerChatDirectory | null): Too
           if (!directory?.searchIndex) return failureResult('Chat memory index is unavailable')
           const query = stringArg(input, 'query')
           if (!query) return usageResult('query is required')
+          const scope = stringArg(input, 'scope') as 'global' | 'chat' | undefined
+          if (scope === 'chat' && !context.paneId) return usageResult('scope chat requires a calling chat pane')
           return textResult(JSON.stringify(directory.searchIndex(context.paneId ?? null, {
             query,
+            scope: scope ?? 'global',
             cwd: stringArg(input, 'cwd'),
             limit: numberArg(input, 'limit', 5)
           })))

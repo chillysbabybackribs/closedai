@@ -19,7 +19,7 @@ Behavior:
 
 Prefer **`scope: chat`** when the user or handoff references something “earlier in this chat” after rotation or Compact. Use **`scope: source`** when you need evidence intentionally dropped from the live thread. Use literal **`peer_chats.search`** across chats for cross-pane topics; within-pane fuzzy find is Tier C.
 
-## Tier C — lexical pane index (planned, no embeddings)
+## Tier C — lexical pane index (in progress, no embeddings)
 
 **Product choice:** improve find-within-pane and post-rotation discovery with **tokenized lexical search** (FTS-style ranking, multi-term match, path/checkpoint facets). **No** remote embedding APIs and **no** local transformer models in the Electron app—those paths are out of scope unless explicitly revisited as opt-in experiments.
 
@@ -50,8 +50,8 @@ Implementation can start with **stronger multi-token matching** on the existing 
 
 ### Rollout slices
 
-1. **Indexer hook** — queue jobs from rotation + turn end; index merged pane lines via the same `conversationSpineTurns` shaping as the hot index.
-2. **`peer_chats.search` scope chat** — caller-pane-only lexical hits with `itemId` + snippet + optional `indexEpoch` / `partial` flag.
+1. **Indexer hook** (shipped) — queue jobs after turn end / transcript remember; index merged **`scope: chat`** lines via the same turn shaping as the hot index; persist under `chat-pane-lexical-index`.
+2. **`peer_chats.search` scope chat** (shipped) — caller-pane multi-term lexical hits with `itemId` + snippet + `rotationEpoch` / `indexPartial` when applicable; drill down with `recall(scope=chat|current, item_id=...)`.
 3. **Checkpoint facets** — index structured checkpoint fields (`goal`, `constraints`, `decisions`, `files`) as first-class rows for rotation-heavy chats.
 4. **FTS5 (optional)** — swap scan loop for FTS when profiling says it matters; keep on-disk format versioned.
 

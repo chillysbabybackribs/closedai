@@ -30,6 +30,7 @@ import { AgentLibraryStore } from './agent-library/agent-library-store.js'
 import { ChatStore } from './chat-store/chat-store.js'
 import { ChatTranscriptCache } from './chat-store/chat-transcript-cache.js'
 import { ChatMemoryIndex } from './chat-store/chat-memory-index.js'
+import { ChatPaneLexicalIndex } from './chat-store/chat-pane-lexical-index.js'
 import { migrateChatPeersIntoStore } from './chat-store/chat-store-migration.js'
 import { ProviderCatalogCache } from './chat-context/provider-catalog-cache.js'
 import { stopAllProcessGroups } from './process-tree.js'
@@ -109,6 +110,7 @@ let settings: AppSettingsStore | null = null
 let chatStore: ChatStore | null = null
 let chatTranscripts: ChatTranscriptCache | null = null
 let chatMemoryIndex: ChatMemoryIndex | null = null
+let chatPaneLexicalIndex: ChatPaneLexicalIndex | null = null
 let providerCatalogs: ProviderCatalogCache | null = null
 let chatService: ChatPeerManager | null = null
 let agentRuns: AgentRunService | null = null
@@ -355,6 +357,7 @@ async function main(): Promise<void> {
   // What each chat last looked like, so opening one paints before its provider has replayed it.
   chatTranscripts = new ChatTranscriptCache(join(userData(), 'chat-transcripts'))
   chatMemoryIndex = new ChatMemoryIndex(join(userData(), 'chat-memory-index'), () => settings!.get())
+  chatPaneLexicalIndex = new ChatPaneLexicalIndex(join(userData(), 'chat-pane-lexical-index'), () => settings!.get())
   chatService = new ChatPeerManager(settings, chatStore, (peerSettings, record) => createPaneChatHub({
     app,
     settings: settings!,
@@ -374,7 +377,7 @@ async function main(): Promise<void> {
   }), undefined, workspaceSelector, chatTranscripts, chatMemoryIndex, (paneId) => {
     const snapshot = chatService?.paneSnapshot(paneId)
     researchService?.cancelPane(paneId, snapshot?.threadId, snapshot?.activeTurnId)
-  }, browserAssignmentIdle)
+  }, browserAssignmentIdle, chatPaneLexicalIndex)
   chatService.on('event', (event: ChatWorkspaceEvent) => {
     if (event.type === 'workspace' && event.snapshot.workspace) windows?.observeWorkspace(event.snapshot.workspace.cwd)
     if (event.type !== 'pane' || !['turn', 'replace'].includes(event.event.type)) return
@@ -550,6 +553,7 @@ app.on('before-quit', (event) => {
     chatStore?.flush(),
     chatTranscripts?.flush(),
     chatMemoryIndex?.flush(),
+    chatPaneLexicalIndex?.flush(),
     artifactStore?.close(),
     providerCatalogs?.flush(),
     flushSession,

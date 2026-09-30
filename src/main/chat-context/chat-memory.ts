@@ -1,5 +1,5 @@
-import type { ChatTranscriptItem } from '../../shared/chat.js'
 import type { ChatEvidenceAvailability, ChatHistoryRequest, ChatHistoryResult, ChatMemoryCheckpoint, ChatRecallRequest, ChatRecallResult, ChatSpineRequest, ChatSpineResult } from '../../shared/chat-memory.js'
+import { mergedPaneTranscriptItems } from './pane-transcript-merge.js'
 import type { ChatRecord } from '../../shared/chat-store.js'
 import type { ChatSurface } from '../chat-hub.js'
 import type { ChatMemoryIndex } from '../chat-store/chat-memory-index.js'
@@ -281,21 +281,13 @@ export class ChatMemory {
     pane: ChatRecord,
     surface: MemorySurface,
     scope: 'current' | 'chat'
-  ): Promise<ChatTranscriptItem[]> {
+  ) {
     const snapshot = surface.snapshot()
-    const rotations = pane.sessionRotations ?? []
-    if (scope === 'current' && rotations.length === 0) return snapshot.items
-    const boundary = rotations.at(-1)?.sourceThroughItemId
-    if (boundary && snapshot.items.some((item) => item.id === boundary)) return snapshot.items
-    const cont = pane.continuation
-    if (cont?.sourcePaneId !== pane.id || !cont.sourceThreadId) return snapshot.items
-    try {
-      const retired = await this.read(cont.sourcePaneId, cont.sourceThreadId, surface, cont.sourceCwd)
-      const seen = new Set(retired.items.map((item) => item.id))
-      return [...retired.items, ...snapshot.items.filter((item) => !seen.has(item.id))]
-    } catch {
-      return snapshot.items
-    }
+    const { items } = await mergedPaneTranscriptItems(pane, snapshot.items, async (threadId, cwd) => {
+      const content = await this.read(pane.id, threadId, surface, cwd)
+      return content
+    }, scope)
+    return items
   }
 }
 

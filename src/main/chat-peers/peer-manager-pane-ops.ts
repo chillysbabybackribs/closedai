@@ -19,6 +19,7 @@ export type PeerPaneOpsHost = {
   store: ChatStore
   transcripts: ChatTranscriptCache
   memoryIndex: ChatMemoryIndex | null
+  schedulePaneLexicalIndex?: (entry: PeerEntry) => void
   projectSwitch: DeferredProjectSwitch
   projectChanges: PeerProjectChanges
   catalog: PeerChatCatalog
@@ -78,6 +79,7 @@ export function handlePeerPaneEvent(host: PeerPaneOpsHost, entry: PeerEntry, eve
   if ((turnBoundary && !running) || (event.type === 'context' && !running) ||
     (event.type === 'replace' && event.snapshot.items.length > 0)) {
     rememberPeerTranscript(host.store, host.transcripts, host.memoryIndex, entry)
+    host.schedulePaneLexicalIndex?.(entry)
   }
   if (running) {
     host.parking.cancel(entry)

@@ -36,6 +36,7 @@ export type PeerManagerSupportHost = {
   projectChanges: PeerProjectChanges
   transcripts: ChatTranscriptCache
   memoryIndex: ChatMemoryIndex | null
+  schedulePaneLexicalIndex?: (entry: PeerEntry) => void
   parking: PeerIdleParking
   catalog: PeerChatCatalog
   chatsEmit: PeerEmitThrottle
@@ -135,6 +136,7 @@ export function peerManagerPaneOpsHost(host: PeerManagerSupportHost): PeerPaneOp
     store: host.store,
     transcripts: host.transcripts,
     memoryIndex: host.memoryIndex,
+    schedulePaneLexicalIndex: host.schedulePaneLexicalIndex,
     projectSwitch: host.projectSwitch,
     projectChanges: host.projectChanges,
     catalog: host.catalog,

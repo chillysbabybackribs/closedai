@@ -670,11 +670,17 @@ Note: `peer_chats.checkpoint` was retired after zero production calls. Session c
 and project state rely on bounded turn handoffs and provider context compaction rather than
 model-written checkpoint notes.
 
-`peer_chats.search` queries a derived global index maintained at turn boundaries from handoff-style
-conversation spine text (user requests, one assistant answer per turn, plan lines, and compact
-tool/command/file-change labels). It does not index reasoning, screenshots, or raw tool output.
-Retention is LRU by the same activity ordering as history (`messageSentAt`, then turn end, then
-creation), capped by `chatMemoryIndexMaxChats` (default 10, max 100 in settings). Ranking applies
+`peer_chats.search` accepts `scope: global` (default) or `scope: chat`. Global search queries a
+derived hot index maintained at turn boundaries from handoff-style conversation spine text (user
+requests, one assistant answer per turn, plan lines, and compact tool/command/file-change labels).
+Scope chat searches a separate per-pane lexical index over the merged pane transcript (including
+prerotation segments when backfill succeeded), with multi-term AND matching on whitespace-separated
+query tokens. Chat-scope responses may include `rotationEpoch` and `indexPartial`. It does not
+index reasoning, screenshots, or raw tool output. Global retention is LRU by the same activity
+ordering as history (`messageSentAt`, then turn end, then creation), capped by
+`chatMemoryIndexMaxChats` (default 10, max 100 in settings). Per-pane indexes are not subject to
+that cap; each keeps the newest spine lines up to the larger of 96,000 characters or
+`chatMemoryIndexMaxCharsPerChat`. Ranking applies
 an exponential recency decay (`chatMemoryIndexHalfLifeDays`, default 7) and a modest boost for
 pinned chats. Disabled when `chatMemoryIndexEnabled` is false. Results are historical; use
 `peer_chats.spine` for turn-shaped reads of one chat or

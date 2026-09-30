@@ -1,6 +1,10 @@
 import type { ChatEvidenceAvailability } from './chat-memory.js'
 
 export const CHAT_MEMORY_INDEX_VERSION = 1 as const
+export const CHAT_PANE_LEXICAL_INDEX_VERSION = 1 as const
+
+/** Per-pane merged transcript index; not subject to the global hot-index chat cap. */
+export const DEFAULT_CHAT_PANE_LEXICAL_MAX_CHARS = 96_000
 
 /** Default hot index size: recent cross-chat phrase search, not full history. */
 export const DEFAULT_CHAT_MEMORY_INDEX_MAX_CHATS = 10
@@ -34,11 +38,27 @@ export type ChatMemoryIndexManifest = {
   updatedAt: number
 }
 
+export type ChatIndexSearchScope = 'global' | 'chat'
+
 export type ChatIndexSearchRequest = {
   query?: string
+  /** global (default): cross-chat hot index. chat: caller pane merged transcript only. */
+  scope?: ChatIndexSearchScope
   /** Optional project directory filter; the index itself stays global. */
   cwd?: string
   limit?: number
+}
+
+export type ChatPaneLexicalIndexRecord = {
+  version: typeof CHAT_PANE_LEXICAL_INDEX_VERSION
+  chatId: string
+  cwd: string
+  title: string | null
+  lastActivityAt: number
+  rotationEpoch: number
+  partial: boolean
+  lines: ChatIndexLine[]
+  updatedAt: number
 }
 
 export type ChatIndexSearchHit = {
@@ -57,5 +77,10 @@ export type ChatIndexSearchResult = {
   hits: ChatIndexSearchHit[]
   indexedChatCount: number
   maxChats: number
+  scope: ChatIndexSearchScope
+  /** Latest session rotation epoch when scope is chat. */
+  rotationEpoch?: number
+  /** True when prerotation merge failed but rotations exist. */
+  indexPartial?: boolean
   trust: 'historical-data'
 }

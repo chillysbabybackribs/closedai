@@ -46,6 +46,11 @@ function sanitizeChatFileName(chatId: string): string {
   return chatId.replace(/[^a-zA-Z0-9._-]+/g, '_')
 }
 
+/** Turn-shaped index lines for hot or pane lexical indexes. */
+export function chatIndexLinesFromTranscript(items: ChatTranscriptItem[], maxChars: number): ChatMemoryIndexRecord['lines'] {
+  return trimLines(buildLines(items), maxChars)
+}
+
 function buildLines(items: ChatTranscriptItem[]): ChatMemoryIndexRecord['lines'] {
   const lines: ChatMemoryIndexRecord['lines'] = []
   for (const turn of conversationSpineTurns(items)) {
@@ -146,7 +151,7 @@ export class ChatMemoryIndex {
       lastActivityAt: indexActivity(record),
       pinnedAt: record.pinnedAt,
       changedFiles: conversationSpineChangedFiles(items),
-      lines: trimLines(buildLines(items), maxChars),
+      lines: chatIndexLinesFromTranscript(items, maxChars),
       updatedAt: Date.now()
     }
     this.records.set(record.id, entry)
@@ -186,6 +191,7 @@ export class ChatMemoryIndex {
       hits: [],
       indexedChatCount: this.manifest.chatIds.length,
       maxChats,
+      scope: 'global',
       trust: 'historical-data'
     }
     if (!settings.chatMemoryIndexEnabled) return empty
