@@ -34,7 +34,9 @@ or restart, and report pending restart separately from build success.
 Development and build commands run hygiene automatically. Dependency-layer violations block;
 file sizes produce a compact, non-blocking advisory (`npm run hygiene -- --details` lists files).
 Build also typechecks, so `npm run check` relies on the build for both checks rather than repeating
-them. Verification should reuse valid results for the same code state and match the change scope.
+them. Generated maintenance-index sizes are advisory too; `map:check` still blocks stale data.
+The injected session guide retains its separate context-size budget. Verification should reuse
+valid results for the same code state and match the change scope.
 
 ## Find a workflow
 

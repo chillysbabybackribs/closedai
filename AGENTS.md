@@ -67,7 +67,9 @@ produced each result so a browser capture is never presented as an image-generat
 Line and byte review thresholds live in `scripts/hygiene-gate.mjs`. Size alone never fails
 hygiene or blocks development, builds, or CI. Dependency-layer violations remain hard failures.
 The default report summarizes oversized files; `npm run hygiene -- --details` lists them when
-that detail is useful. There are no near-threshold warnings or per-file waivers.
+that detail is useful. There are no near-threshold warnings or per-file waivers. Generated maintenance-index sizes
+are also advisory; `map:check` still fails for stale data. The injected session guide retains its
+separate context-size budget.
 
 The implementing model may extend, extract, or simplify code based on cohesion, discoverability,
 testability, and maintenance cost, without requesting permission for crossing a size threshold.
