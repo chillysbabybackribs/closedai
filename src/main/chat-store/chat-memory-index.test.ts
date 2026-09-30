@@ -136,16 +136,29 @@ test('ChatMemoryIndex search matches chat titles, including chats outside the ho
   const cold = { ...record('cold', 100), title: 'Post-restart chat memory index verification' }
   const hot = { ...record('hot', 500), title: 'Spine v1 follow-up' }
   const renamed = { ...record('renamed', 50), title: 'Old name' }
-  index.sync([cold, hot, renamed])
   index.upsert(hot, [userItem('u1', 'unrelated text')])
   const live = new Map([cold, hot, { ...renamed, title: 'Vermont October trip' }].map((chat) => [chat.id, chat]))
   const resolve = (id: string) => live.get(id)
-  const spaced = index.search({ query: 'spinev1' }, null, resolve)
+  const listIds = () => [...live.keys()]
+  const spaced = index.search({ query: 'spinev1' }, null, resolve, listIds)
   assert.deepEqual(spaced.hits, [])
   assert.deepEqual(spaced.titleMatches?.map((chat) => [chat.chatId, chat.match]), [['hot', 'spacing']])
-  const typo = index.search({ query: 'memroy index verificaton' }, null, resolve)
+  const typo = index.search({ query: 'memroy index verificaton' }, null, resolve, listIds)
   assert.deepEqual(typo.titleMatches?.map((chat) => [chat.chatId, chat.match]), [['cold', 'fuzzy']])
-  assert.equal(index.search({ query: 'vermont october' }, null, resolve).titleMatches?.[0]?.chatId, 'renamed')
-  assert.equal(index.search({ query: 'old name' }, null, resolve).titleMatches, undefined)
-  assert.equal(index.search({ query: 'spine v1' }, 'hot', resolve).titleMatches, undefined)
+  assert.equal(index.search({ query: 'vermont october' }, null, resolve, listIds).titleMatches?.[0]?.chatId, 'renamed')
+  assert.equal(index.search({ query: 'old name' }, null, resolve, listIds).titleMatches, undefined)
+  assert.equal(index.search({ query: 'spine v1' }, 'hot', resolve, listIds).titleMatches, undefined)
+})
+
+test('reconcileStore drops hot shards without mirroring every store record', () => {
+  const index = ChatMemoryIndex.inMemory(settings)
+  index.upsert(record('gone', 100), [userItem('u', 'needle')])
+  index.upsert(record('stay', 200), [userItem('v', 'needle')])
+  const store = {
+    ids: () => ['stay'],
+    get: (id: string) => (id === 'stay' ? record('stay', 200) : undefined)
+  }
+  index.reconcileStore(store)
+  assert.equal(index.search({ query: 'needle' }).hits.length, 1)
+  assert.equal(index.search({ query: 'needle' }).hits[0]?.chatId, 'stay')
 })

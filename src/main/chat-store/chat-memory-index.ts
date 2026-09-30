@@ -96,8 +96,6 @@ export class ChatMemoryIndex {
     updatedAt: 0
   }
   private readonly records = new Map<string, ChatMemoryIndexRecord>()
-  /** Every live store chat seen by sync/upsert, for title search beyond the hot index. Not persisted. */
-  private readonly catalog = new Map<string, ChatRecord>()
   private writeTimer: NodeJS.Timeout | null = null
   private writing: Promise<void> = Promise.resolve()
   private loaded = false
@@ -142,8 +140,6 @@ export class ChatMemoryIndex {
   }
 
   upsert(record: ChatRecord, items: ChatTranscriptItem[]): void {
-    if (record.archived) this.catalog.delete(record.id)
-    else this.catalog.set(record.id, record)
     if (!this.settings().chatMemoryIndexEnabled || record.archived) {
       this.drop(record.id)
       return
@@ -176,14 +172,16 @@ export class ChatMemoryIndex {
     if (this.dir) void unlink(join(this.dir, `${sanitizeChatFileName(chatId)}.json`)).catch(() => {})
   }
 
-  /** Remove index rows for chats gone from the store or archived. */
-  sync(records: Iterable<ChatRecord>): void {
-    const live = new Map<string, ChatRecord>()
-    for (const record of records) {
-      if (!record.archived) live.set(record.id, record)
+  /**
+   * Drop hot-index shards for chats removed from the store or archived. Does not walk transcript
+   * data or mirror the whole store in memory — title search beyond the hot set uses listChatIds.
+   */
+  reconcileStore(store: { ids(): string[]; get(id: string): ChatRecord | undefined }): void {
+    const live = new Set<string>()
+    for (const id of store.ids()) {
+      const record = store.get(id)
+      if (record && !record.archived) live.add(id)
     }
-    this.catalog.clear()
-    for (const [id, record] of live) this.catalog.set(id, record)
     for (const chatId of [...this.manifest.chatIds]) {
       if (!live.has(chatId)) this.drop(chatId)
     }
@@ -193,7 +191,12 @@ export class ChatMemoryIndex {
     return this.records.get(chatId)
   }
 
-  search(request: ChatIndexSearchRequest, excludeChatId?: string | null, resolveChat?: (id: string) => ChatRecord | undefined): ChatIndexSearchResult {
+  search(
+    request: ChatIndexSearchRequest,
+    excludeChatId?: string | null,
+    resolveChat?: (id: string) => ChatRecord | undefined,
+    listChatIds?: () => string[]
+  ): ChatIndexSearchResult {
     const settings = this.settings()
     const maxChats = settings.chatMemoryIndexMaxChats
     const empty: ChatIndexSearchResult = {
@@ -248,11 +251,11 @@ export class ChatMemoryIndex {
     const exact = scan(false)
     const candidates = exact.length ? exact : scan(true)
     candidates.sort((a, b) => b.score - a.score || b.lastActivityAt - a.lastActivityAt || a.chatId.localeCompare(b.chatId))
-    const titles = this.searchTitles(query, limit, now, halfLife, excludeChatId, cwd, resolveChat)
+    const titles = this.searchTitles(query, limit, now, halfLife, excludeChatId, cwd, resolveChat, listChatIds)
     return { ...empty, hits: candidates.slice(0, limit), ...(titles.length ? { titleMatches: titles } : {}) }
   }
 
-  /** Chat-level title matches over hot records and the store catalog, using live titles when resolvable. */
+  /** Chat-level title matches over hot records and optional store ids, using live titles when resolvable. */
   private searchTitles(
     query: PreparedTextQuery,
     limit: number,
@@ -260,16 +263,19 @@ export class ChatMemoryIndex {
     halfLife: number,
     excludeChatId: string | null | undefined,
     cwd: string | undefined,
-    resolveChat: ((id: string) => ChatRecord | undefined) | undefined
+    resolveChat: ((id: string) => ChatRecord | undefined) | undefined,
+    listChatIds: (() => string[]) | undefined
   ): ChatIndexTitleMatch[] {
-    const chatIds = new Set([...this.manifest.chatIds, ...this.catalog.keys()])
+    const chatIds = new Set(this.manifest.chatIds)
+    if (listChatIds) for (const id of listChatIds()) chatIds.add(id)
     const scan = (fuzzy: boolean) => {
       const found: Array<ChatIndexTitleMatch & { score: number }> = []
       for (const chatId of chatIds) {
         if (excludeChatId && chatId === excludeChatId) continue
-        const live = resolveChat ? resolveChat(chatId) : this.catalog.get(chatId)
+        const live = resolveChat?.(chatId)
         if (resolveChat && (!live || live.archived)) continue
         const hot = this.records.get(chatId)
+        if (!live && !hot) continue
         const title = live?.title ?? hot?.title
         const chatCwd = live?.cwd ?? hot?.cwd
         if (!title || chatCwd === undefined || (cwd && chatCwd !== cwd)) continue

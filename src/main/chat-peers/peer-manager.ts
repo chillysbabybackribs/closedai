@@ -256,7 +256,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     await this.transcripts.load(this.selectedPaneId)
     await this.memoryIndex?.load()
     await this.paneLexicalIndex?.load()
-    this.memoryIndex?.sync(this.store.ids().map((id) => this.store.get(id)!).filter(Boolean))
+    this.memoryIndex?.reconcileStore(this.store)
     this.emitWorkspace()
     void this.transcripts.prune(new Set(this.store.ids())).catch((error: unknown) => {
       console.warn('[chat-peers] could not prune saved transcripts:', error instanceof Error ? error.message : String(error))
@@ -670,7 +670,12 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       return this.paneLexicalIndex.searchPane(callerPaneId, request)
     }
     if (!this.memoryIndex) return disabled
-    return this.memoryIndex.search(request, callerPaneId ?? undefined, (id) => this.store.get(id))
+    return this.memoryIndex.search(
+      request,
+      callerPaneId ?? undefined,
+      (id) => this.store.get(id),
+      () => this.store.ids()
+    )
   }
 
   private schedulePaneLexicalIndex(entry: PeerEntry): void {

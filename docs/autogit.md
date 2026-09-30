@@ -38,7 +38,8 @@ journalctl --user -u closedai-autogit -f   # live log
 ```
 
 Env: `AUTOGIT_QUIET_MS` (20000), `AUTOGIT_MAX_WAIT_MS` (180000), `AUTOGIT_VERIFY` (1),
-`AUTOGIT_PUSH` (0).
+`AUTOGIT_PUSH` (0). Set `AUTOGIT_VERIFY=0` on the user service when agents edit constantly —
+each snapshot otherwise runs `tsc --noEmit`, which adds noticeable CPU during heavy sessions.
 
 ## Working with it
 
