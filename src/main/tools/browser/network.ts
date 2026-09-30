@@ -41,9 +41,10 @@ export function networkTool(network: NetworkHostProvider): ToolDefinition {
     name: 'network',
     deferLoading: true,
     description:
-      'Session-wide passive request log; no setup is needed and records survive navigation. It does not retain response ' +
-      'bodies or share ids with CDP; use browser_cdp.protocol requests/body for captured bodies. network_replay sends a ' +
-      'new request and can repeat effects. Rules can block, redirect, or rewrite headers. Results are JSON.',
+      'Session-wide passive request log (webRequest); always on, survives navigation. Two stacks: this log\'s ' +
+      'requests[].id and cursor are not browser_cdp.protocol request ids — never mix them. No response bodies here; ' +
+      'use browser_cdp.protocol requests/body for captured bodies. network_replay resends a logged row (can mutate). ' +
+      'Rules block, redirect, or rewrite headers. Pair with tipCursor → wait after user actions.',
     actions: [requestsAction(network), waitAction(network), rulesAction(network), addRuleAction(network), removeRuleAction(network), clearAction(network)]
   })
 }
@@ -52,10 +53,11 @@ function requestsAction(network: NetworkHostProvider): ToolAction {
   return {
     action: 'requests',
     description:
-      'List recorded requests, most recent last. Filter by tab, URL substring, resource type (xhr, fetch, ' +
-      'document, script, image…), method, status, or state (pending, completed, failed, blocked). ' +
-      'Headers and post data are omitted unless include_headers is true; matched reports the total before max_requests. ' +
-      'tipCursor is the log high-water mark for network.wait after_cursor before you act; nextCursor pages matched rows.',
+      'List recorded requests, most recent last. Each row includes state, fromCache, and ruleId when set. ' +
+      'state blocked with ruleId means your add_rule cancelled the request (error may show ERR_BLOCKED_BY_CLIENT). ' +
+      'state completed with fromCache true is a normal cache hit — not a block. Filter by tab, URL substring, resource type ' +
+      '(xhr, fetch, document, script, image…), method, status, or state. Headers and post data omitted unless include_headers. ' +
+      'tipCursor is the log high-water for network.wait after_cursor before you act; nextCursor pages matched rows.',
     inputSchema: objectSchema({
       tab_id: tabIdField,
       url_contains: urlContainsField,
@@ -145,10 +147,10 @@ function addRuleAction(network: NetworkHostProvider): ToolAction {
   return {
     action: 'add_rule',
     description:
-      'Add an interception rule. block cancels matching requests; redirect sends them to redirect_url; ' +
-      'request_headers and response_headers set (or, with a null value, remove) headers. url_pattern is a ' +
-      'glob over the full URL (* matches anything) or a plain substring. Scope to one tab with tab_id; ' +
-      'rules persist until removed or the app restarts.',
+      'Add an interception rule. block cancels matching requests (logged as state blocked with ruleId; may still show ' +
+      'ERR_BLOCKED_BY_CLIENT — that is not a cache miss). redirect sends them to redirect_url; request_headers and ' +
+      'response_headers set (or, with a null value, remove) headers. url_pattern is a glob over the full URL (* matches ' +
+      'anything) or a plain substring. Scope to one tab with tab_id; rules persist until removed or the app restarts.',
     inputSchema: objectSchema({
       rule_action: { type: 'string', enum: ['block', 'redirect', 'request_headers', 'response_headers'], description: 'What the rule does.' },
       url_pattern: { type: 'string', minLength: 1, description: 'Glob or substring matched against the full URL, case-insensitively.' },

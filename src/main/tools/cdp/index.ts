@@ -21,15 +21,17 @@ import { jsonResult, objectSchema } from '../json-result.js'
 export function cdpTools(cdp: CdpHostProvider, artifacts?: ArtifactService): ToolNamespace {
   return {
     name: 'browser_cdp',
-    description: 'Low-level Chrome DevTools Protocol access to tabs owned by the embedded browser.',
+    description:
+      'Low-level Chrome DevTools Protocol for embedded tabs. Request ids from browser_cdp.protocol requests are not ' +
+      'embedded_browser.network log ids — use the matching stack end to end. Child session_id values expire on navigation.',
     tools: [
       defineActionTool({
         name: 'protocol',
         deferLoading: true,
         description:
-          'Advanced DevTools access when embedded_browser lacks a capability. Child-target session ids may expire on navigation; ' +
-          'supply the listed session_id when reading child-target data. Input.* commands are real input. ' +
-          'Results are JSON text; parse them in exec.',
+          'Advanced DevTools when embedded_browser lacks a capability. Response bodies: requests then body here; ' +
+          'passive metadata and replay: embedded_browser.network (different ids). Child-target session_id when listed. ' +
+          'Input.* commands are real input. Results are JSON text; parse them in exec.',
         actions: actions(cdp, artifacts)
       }),
       cdpPageTool(cdp),

@@ -2,6 +2,7 @@ import { defineActionTool, type ToolAction } from '../action-tool.js'
 import { jsonResult, objectSchema } from '../json-result.js'
 import { booleanArg, failureResult, numberArg, stringArg, type JsonObject, type ToolDefinition } from '../tool.js'
 import { truncateText } from '../truncate-json.js'
+import { SESSION_FETCH_TRUNCATION_ADVICE } from '../truncation-advice.js'
 import { bodyField, FETCH_TIMEOUT_MS, headersField, methodField, parseBody } from './fetch.js'
 import { requireSession, type SessionHostProvider } from './network-host.js'
 import { projectJson } from './project.js'
@@ -90,7 +91,7 @@ function fetchAction(sessions: SessionHostProvider): ToolAction {
         if (doc.title) pageTitle = doc.title
       }
       const advice = isJson
-        ? 'Raise max_chars, or name json_path, fields, and limit to project only what you need.'
+        ? SESSION_FETCH_TRUNCATION_ADVICE
         : format === 'text'
           ? 'Raise max_chars to see more of this document.'
           : 'Raise max_chars, or use format: "text" to extract readable prose without markup.'

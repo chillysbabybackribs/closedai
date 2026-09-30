@@ -58,6 +58,10 @@ Response bodies → `browser_cdp.protocol`. Replay → `embedded_browser.network
 URLs are hints, not evidence. Session-authenticated APIs → `embedded_browser.session` `fetch`;
 bound JSON with `json_path`, `fields`, and `limit` before `max_chars`.
 
+**Reading network rows:** `state: blocked` with `ruleId` means an `add_rule` block cancelled the
+request ( `error` may still show `ERR_BLOCKED_BY_CLIENT` ). `state: completed` with `fromCache:
+true` is a normal cache hit — not a block.
+
 **`tool_batch.run`:** Default sequential **inspect → act → verify**. `parallel: true` only for
 independent targets (different `tab_id` or non-conflicting read-only work). After navigate, click,
 or type, the same sequential batch needs `read_page`, `wait_for`, `network.wait`, or capture.

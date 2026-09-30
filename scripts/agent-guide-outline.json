@@ -42,7 +42,7 @@
       "heading": "Browser and tool_batch",
       "lines": [
         "Flow: state → site.discover bootstrap → expand on ranked URLs → instrument hook + navigate → site.discover apis for endpoint map → search off-origin → page navigate (not search-engine pages). Assign tab via navigate/new_tab; read_page/wait_for need no claim.",
-        "Network: embedded_browser.network logs requests (wait, tipCursor); no bodies; ids ≠ CDP. Bodies → browser_cdp.protocol; replay → network_replay. APIs with session cookies → session fetch + json_path/fields/limit.",
+        "Network: embedded_browser.network logs requests (wait, tipCursor); no bodies; ids ≠ CDP. blocked+ruleId = your rule; completed+fromCache = cache hit, not block. Bodies → browser_cdp.protocol; replay → network_replay. APIs with session cookies → session fetch + json_path/fields/limit.",
         "tool_batch: sequential inspect→act→verify; parallel only for independent tab_id/targets. After input, same batch needs read, wait, or capture. ClosedAI tools only; no nested batches.",
         "Prefer selector read_page, session fetch format:text, script extract; on truncation narrow scope, do not repeat wide calls. User actions: tipCursor → network.wait → fetch/CDP body, not shell HTML."
       ]

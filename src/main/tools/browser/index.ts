@@ -31,7 +31,7 @@ export function browserTools(
 ): ToolNamespace {
   return {
     name: 'embedded_browser',
-    description: 'The embedded web browser shown next to this chat, its network traffic, and its signed-in session.',
+    description: 'The embedded browser, its session-wide network log (embedded_browser.network), and session fetch/cookies. Log ids ≠ CDP ids.',
     tools: [
       defineActionTool({
         name: 'page',
@@ -47,7 +47,7 @@ export function browserTools(
         name: 'script',
         deferLoading: true,
         description:
-          'Page scripting. actions: fetch, extract, query, evaluate, console (never action script). JSON results. Cross-origin APIs: embedded_browser.session fetch.',
+          'Page scripting. actions: fetch, extract, query, evaluate, console (never action script). Prefer extract with path/fields/limit on JSON; evaluate only when extract cannot. Cross-origin APIs: embedded_browser.session fetch.',
         actions: [
           fetchAction(browser),
           extractAction(browser),

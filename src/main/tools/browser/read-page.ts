@@ -2,11 +2,11 @@ import { pageTextOf, readProblemOf, SELECTOR_ADVICE } from '../../browser-page-r
 import type { ToolAction } from '../action-tool.js'
 import { failureResult, numberArg, stringArg, textResult, usageResult } from '../tool.js'
 import { truncateText } from '../truncate-json.js'
+import { READ_PAGE_TRUNCATION_ADVICE } from '../truncation-advice.js'
 import { DEFAULT_MAX_CHARS, maxCharsField, selectorField, tabIdField } from './fields.js'
 import { missingTabResult, requireBrowser, type BrowserHostProvider } from './host.js'
 
-const TRUNCATION_ADVICE =
-  'Raise max_chars, pass a selector, or use extract with a path and fields to project only what you need.'
+const TRUNCATION_ADVICE = READ_PAGE_TRUNCATION_ADVICE
 
 export function readPageAction(browser: BrowserHostProvider): ToolAction {
   return {

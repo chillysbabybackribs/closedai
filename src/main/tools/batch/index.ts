@@ -63,9 +63,10 @@ export function batchTools(registry: ToolRegistryProvider, options: BatchToolOpt
           'Batch only ClosedAI registry tools as namespace.tool (for example embedded_browser.page, closedai_app.state). ' +
           'Provider-native file, shell, and search tools are not routable — call those directly, not inside calls[]. ' +
           'Action tools need arguments.action set to the verb (navigate, read_page, extract), never the tool name (page, script). ' +
+          'Misuse to avoid: nested tool_batch; parallel mutations on the same tab_id; hook/navigate without a later read, wait, or apis; ' +
+          'script.fetch for JSON that session.fetch or extract with projection should handle. ' +
           'closedai_app.state is plain: optional include array of sections, no action field; UI waits use closedai_app.ui wait_for. ' +
-          'No nested batches. Default sequential stop-on-error with browser unwind; parallel only for independent targets. ' +
-          'Real-input steps need a later read/wait/capture in the same sequential batch. include_result:false omits successful bodies. ' +
+          'Default sequential inspect→act→verify; parallel only for independent targets. include_result:false omits successful bodies. ' +
           'Codex exec: await each inner call.',
         inputSchema: {
           type: 'object',

@@ -1,6 +1,7 @@
 import type { ToolCallEvent } from '../../shared/tools.js'
 import { suggestMatch, validateInput } from './schema.js'
 import { truncateText } from './truncate-json.js'
+import { GLOBAL_TRUNCATION_ADVICE } from './truncation-advice.js'
 import {
   DEFAULT_TOOL_TIMEOUT_MS,
   failureResult,
@@ -39,7 +40,7 @@ export type ToolCallObserver = (trace: ToolCallTrace) => void
 // reads ClosedAI's advice instead of Codex's cut. JSON results shrink structurally so that a
 // script's JSON.parse never throws on a truncated string.
 export const MAX_RESULT_TEXT_CHARS = 24_000
-const TRUNCATION_ADVICE = 'Narrow the request (a selector, range, filter, or smaller limit) to see the rest.'
+const TRUNCATION_ADVICE = GLOBAL_TRUNCATION_ADVICE
 
 const NAME = /^[a-z][a-z0-9_]*$/
 
