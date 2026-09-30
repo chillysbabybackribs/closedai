@@ -28,6 +28,7 @@ export const TOOL_CATALOG: Readonly<Record<string, ToolCatalogEntry>> = {
   'search.query': { group: 'reads-web', label: 'Web search', summary: 'Look things up across several search providers.', offEffect: 'No public web lookups. Pages already open can still be read.' },
   'search.run': { group: 'reads-web', label: 'Research runs', summary: 'Read many sources in parallel and keep what was found.', offEffect: 'No parallel research; single searches and page reads still work.' },
   'search.read': { group: 'reads-web', label: 'Research results', summary: 'Read the sources and excerpts a research run collected.', offEffect: 'Research runs can start but their findings cannot be read back.' },
+  'site.discover': { group: 'reads-web', label: 'Site bootstrap', summary: 'Probe robots, sitemap, llms.txt, OpenAPI hints, and nav links for an origin before deep reading.', offEffect: 'No structured site card; the model must guess discovery paths itself.' },
 
   'embedded_browser.script': { group: 'acts-in-browser', label: 'Run page scripts', summary: 'Fetch, extract, or evaluate JavaScript inside the open page.', offEffect: 'The model can still read pages but cannot execute code or same-origin requests in them.' },
   'embedded_browser.session': { group: 'acts-in-browser', label: 'Signed-in requests', summary: 'Call a site’s API or read and write cookies using your existing login.', offEffect: 'No requests or cookie changes with your session outside a page.' },
