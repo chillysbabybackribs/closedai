@@ -952,9 +952,10 @@ Left: back and forward (`dock.back`, `dock.forward`) step through the zoom histo
 are disabled at either end and while a zoom is moving; their tooltips name where you are
 (workspace and selected chat, or "All workspaces"). Right: Layout and dock settings
 (`dock.settings`). The left side, after the navigation arrows, holds one ghost-button chip per provider
-(`dock.provider-usage`): the provider mark, the remaining percent as text, and a short `Progress` bar,
-on the existing rail without separate pill surfaces. Level ink colours the figure and bar only, never
-the mark. A provider with plan metadata but no numeric windows shows its plan name alone.
+(`dock.provider-usage`): the provider mark and remaining percent as text, separated by a clean
+vertical divider on the existing rail without separate pill surfaces. Level ink colours the figure
+only, never the mark. A provider with no numeric window shows its mark alone; its plan and usage
+details remain available in the popup.
 All four providers appear on startup, before any provider chat connects. They show the lowest reported remaining allowance, keeping known accounts separate and using the
 newest reading across account probes and attached chats; they never sum quotas across conversations. The popup
 names every provider window, including model-specific scopes, remaining allowance, reset time,

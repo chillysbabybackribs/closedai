@@ -29,6 +29,33 @@ test('ChatPaneLexicalIndex searchPane matches all query terms', () => {
   assert.equal(index.searchPane('pane-a', { scope: 'chat', query: 'purple green' }).hits.length, 0)
 })
 
+test('ChatPaneLexicalIndex searchPane hits checkpoint facets', () => {
+  const index = ChatPaneLexicalIndex.inMemory(settings)
+  const record = chatRecord('pane-c', null, {
+    codexThreadId: 't',
+    threadId: 't',
+    checkpoint: {
+      version: 1,
+      revision: 1,
+      threadId: 't',
+      throughItemId: 'u1',
+      createdAt: 1,
+      state: {
+        goal: 'Track layout tokens',
+        constraints: ['Use design system'],
+        decisions: [],
+        progress: [],
+        nextSteps: [],
+        files: []
+      }
+    }
+  })
+  index.upsert(record, [{ type: 'user', id: 'u1', turnId: 't', text: 'Unrelated chatter' }], { rotationEpoch: 0, partial: false })
+  const hit = index.searchPane('pane-c', { scope: 'chat', query: 'design system' }).hits[0]
+  assert.equal(hit?.role, 'checkpoint')
+  assert.match(hit?.snippet ?? '', /design system/)
+})
+
 test('ChatPaneLexicalIndex reports rotation epoch and partial flag', () => {
   const index = ChatPaneLexicalIndex.inMemory(settings)
   const record = chatRecord('pane-b', null, { codexThreadId: 't', threadId: 't' })

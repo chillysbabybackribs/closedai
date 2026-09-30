@@ -13,9 +13,11 @@ export const MAX_CHAT_MEMORY_INDEX_MAX_CHATS = 100
 export const DEFAULT_CHAT_MEMORY_INDEX_HALF_LIFE_DAYS = 7
 export const DEFAULT_CHAT_MEMORY_INDEX_MAX_CHARS_PER_CHAT = 48_000
 
+export type ChatIndexLineRole = 'user' | 'assistant' | 'plan' | 'evidence' | 'checkpoint'
+
 export type ChatIndexLine = {
   itemId: string
-  role: 'user' | 'assistant' | 'plan' | 'evidence'
+  role: ChatIndexLineRole
   text: string
 }
 
@@ -65,7 +67,7 @@ export type ChatIndexSearchHit = {
   evidenceAvailability?: ChatEvidenceAvailability
   chatId: string
   itemId: string
-  role: ChatIndexLine['role']
+  role: ChatIndexLineRole
   snippet: string
   score: number
   lastActivityAt: number

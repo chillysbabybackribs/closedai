@@ -52,7 +52,7 @@ Implementation can start with **stronger multi-token matching** on the existing 
 
 1. **Indexer hook** (shipped) — queue jobs after turn end / transcript remember; index merged **`scope: chat`** lines via the same turn shaping as the hot index; persist under `chat-pane-lexical-index`.
 2. **`peer_chats.search` scope chat** (shipped) — caller-pane multi-term lexical hits with `itemId` + snippet + `rotationEpoch` / `indexPartial` when applicable; drill down with `recall(scope=chat|current, item_id=...)`.
-3. **Checkpoint facets** — index structured checkpoint fields (`goal`, `constraints`, `decisions`, `files`) as first-class rows for rotation-heavy chats.
+3. **Checkpoint facets** (shipped) — index `goal`, list fields, and `files` from the pane checkpoint and frozen continuation checkpoint; synthetic `cp.*` item ids drill down via `recall(item_id=...)`.
 4. **FTS5 (optional)** — swap scan loop for FTS when profiling says it matters; keep on-disk format versioned.
 
 ## Tier D — materialized export (optional)

@@ -197,7 +197,13 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     store.on('change', (c?: { ids: string[]; checkpointIds?: string[] }) => {
       this.chatsEmit.schedule()
       if (c?.ids.some((id) => !this.lifecycle.get(id))) this.chatRowsCache.invalidateDetached()
-      if (c?.checkpointIds?.length) syncStoreCheckpoint(this.store, this.lifecycle, c.checkpointIds, (p, e) => this.onPaneEvent(p, e))
+      if (c?.checkpointIds?.length) {
+        syncStoreCheckpoint(this.store, this.lifecycle, c.checkpointIds, (p, e) => this.onPaneEvent(p, e))
+        for (const paneId of c.checkpointIds) {
+          const entry = this.lifecycle.get(paneId)
+          if (entry) this.schedulePaneLexicalIndex(entry)
+        }
+      }
     })
   }
 

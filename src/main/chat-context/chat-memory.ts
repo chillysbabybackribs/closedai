@@ -1,5 +1,16 @@
-import type { ChatEvidenceAvailability, ChatHistoryRequest, ChatHistoryResult, ChatMemoryCheckpoint, ChatRecallRequest, ChatRecallResult, ChatSpineRequest, ChatSpineResult } from '../../shared/chat-memory.js'
+import type {
+  ChatEvidenceAvailability,
+  ChatHistoryRequest,
+  ChatHistoryResult,
+  ChatMemoryCheckpoint,
+  ChatRecallRequest,
+  ChatRecallResult,
+  ChatSpineRequest,
+  ChatSpineResult
+} from '../../shared/chat-memory.js'
 import { mergedPaneTranscriptItems } from './pane-transcript-merge.js'
+import { isCheckpointIndexItemId } from '../../shared/chat-index-checkpoint.js'
+import { recallCheckpointFacet } from './memory-recall.js'
 import type { ChatRecord } from '../../shared/chat-store.js'
 import type { ChatSurface } from '../chat-hub.js'
 import type { ChatMemoryIndex } from '../chat-store/chat-memory-index.js'
@@ -85,6 +96,13 @@ export class ChatMemory {
     const { pane, surface } = this.resolve(caller)
     if (request.chatId && request.scope !== 'history') throw new Error('chat_id requires history scope')
     if (request.scope === 'current' || request.scope === 'chat') {
+      if (request.itemId && isCheckpointIndexItemId(request.itemId)) {
+        const checkpoints = [pane.checkpoint, pane.continuation?.checkpoint].filter(Boolean) as ChatMemoryCheckpoint[]
+        const facet = recallCheckpointFacet(checkpoints, caller.threadId!, request)
+        if (!facet) throw new Error('Checkpoint facet is unavailable for this chat')
+        const epochs = pane.sessionRotations?.map((rotation) => rotation.epoch)
+        return request.scope === 'chat' && epochs?.length ? { ...facet, rotationEpochs: epochs } : facet
+      }
       const items = await this.itemsForPaneRecall(pane, surface, request.scope)
       const checkpoint = pane.checkpoint?.threadId === caller.threadId ? pane.checkpoint : null
       const result = recallTranscript(items, caller.threadId!, checkpoint, request, null)

@@ -13,7 +13,7 @@ import {
 } from '../../shared/chat-index.js'
 import type { ChatRecord } from '../../shared/chat-store.js'
 import type { AppSettings } from '../../shared/types.js'
-import { chatIndexLinesFromTranscript } from './chat-memory-index.js'
+import { mergePaneIndexLines } from './chat-pane-index-lines.js'
 import { writeAtomic } from '../atomic-write.js'
 
 export type ChatPaneLexicalIndexSettings = Pick<AppSettings, 'chatMemoryIndexEnabled' | 'chatMemoryIndexMaxCharsPerChat'>
@@ -117,7 +117,7 @@ export class ChatPaneLexicalIndex {
       lastActivityAt: indexActivity(record),
       rotationEpoch: meta.rotationEpoch,
       partial: meta.partial,
-      lines: chatIndexLinesFromTranscript(items, maxChars),
+      lines: mergePaneIndexLines(items, record, maxChars),
       updatedAt: Date.now()
     }
     this.records.set(record.id, entry)

@@ -81,7 +81,7 @@ export function usageHeadline(usage: ChatPlanUsage | null, now: number): {
 }
 
 export type UsageChipDisplay = {
-  /** Remaining percent for the bar and figure; null when the provider reports no numeric quota. */
+  /** Remaining percent for the figure; null when the provider reports no numeric quota. */
   remaining: number | null
   /** The chip figure: a percent, or the plan name when no quota is reported. */
   text: string
@@ -89,7 +89,7 @@ export type UsageChipDisplay = {
   ariaLabel: string
 }
 
-/** Rail chip: mark, remaining percent and a short bar; the plan name alone when no numeric window exists. */
+/** Rail display data: mark and remaining percent; the plan name is retained for the accessible label. */
 export function usageChipDisplay(
   usage: ChatPlanUsage | null,
   plan: string | null,

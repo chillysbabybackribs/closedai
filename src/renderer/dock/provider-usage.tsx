@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type JSX } from 'react'
+import { Fragment, useCallback, useEffect, useRef, useState, type JSX } from 'react'
 import { CircleAlert, Clock3, Gauge, RefreshCw } from 'lucide-react'
 import { Badge } from '../../components/ui/badge.js'
 import { Button } from '../../components/ui/button.js'
@@ -10,7 +10,6 @@ import { CHAT_PROVIDERS, CHAT_PROVIDER_LABELS } from '../../shared/chat-provider
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import { ageNote, resetNote } from '../context-meter.js'
 import { errorMessage } from '../error-message.js'
-import { Progress } from '../../components/ui/progress.js'
 import { providerUsageEntries, usageChipDisplay, usageWindowState, type ProviderUsageEntry, type UsageChipDisplay } from './provider-usage-model.js'
 
 const WARNING_LEVELS = ['low', 'critical', 'exhausted']
@@ -56,10 +55,10 @@ export function ProviderUsage({ chats, open, onOpenChange }: {
   if (!hasEntries) return null
   const chip = (item: ProviderUsageEntry): UsageChipDisplay =>
     usageChipDisplay(item.usage, item.usage?.plan ?? item.account?.planType ?? null, now, CHAT_PROVIDER_LABELS[item.provider])
-  // Button xs padding + mark + gaps, then the figure, then the bar for numeric chips.
-  const chipWidth = (display: UsageChipDisplay): number => 30 + display.text.length * 6.5 + (display.remaining === null ? 0 : 24)
+  // Button padding, mark, gap and figure, plus room for the dividers between entries.
+  const chipWidth = (display: UsageChipDisplay): number => 34 + (display.remaining === null ? 0 : display.text.length * 6.5)
   const displays = entries.map(chip)
-  const compact = width < displays.reduce((total, display) => total + chipWidth(display), 0)
+  const compact = width < displays.reduce((total, display) => total + chipWidth(display), 0) + Math.max(0, displays.length - 1) * 9
   const entry = entries.find((item) => item.key === selected) ?? entries[0]
   // The collapsed trigger carries the worst numeric reading so the rail still says something at a glance.
   const worst = displays.filter((display) => display.remaining !== null)
@@ -70,8 +69,7 @@ export function ProviderUsage({ chats, open, onOpenChange }: {
       data-ui-item={item.key} data-level={display.level} aria-label={display.ariaLabel} aria-expanded={open && entry.key === item.key}
       onClick={(event) => { lastTrigger.current = event.currentTarget; setSelected(item.key); onOpenChange(!(open && entry.key === item.key)) }}>
       <ProviderMark provider={item.provider} />
-      <span className="provider-usage-chip-value">{display.text}</span>
-      {display.remaining !== null && <Progress value={display.remaining} className="provider-usage-chip-bar" aria-hidden="true" />}
+      {display.remaining !== null && <span className="provider-usage-chip-value">{display.text}</span>}
     </Button></TooltipTrigger>
     {!open && <TooltipContent side="top">{display.ariaLabel}</TooltipContent>}
   </Tooltip>
@@ -87,7 +85,10 @@ export function ProviderUsage({ chats, open, onOpenChange }: {
           </Badge>}
         </Button>
       </PopoverTrigger>
-      {!compact && entries.map((item, index) => trigger(item, displays[index]))}
+      {!compact && entries.map((item, index) => <Fragment key={item.key}>
+        {index > 0 && <span className="provider-usage-divider" aria-hidden="true" />}
+        {trigger(item, displays[index])}
+      </Fragment>)}
       <PopoverContent side="top" align="start" sideOffset={12} collisionPadding={12}
         className="dock-panel provider-usage-panel" aria-label="Provider subscription usage"
         onCloseAutoFocus={(event) => {

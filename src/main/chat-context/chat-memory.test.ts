@@ -190,6 +190,15 @@ test('source recall on a self-rotated pane uses the live transcript through the 
   assert.equal(result.sessionRotationEpoch, 1)
 })
 
+test('recall returns checkpoint facet text for synthetic search item ids', async () => {
+  const h = harness()
+  const checkpoint = await h.memory.save(caller, 0, state)
+  const itemId = `cp.${checkpoint.throughItemId}.goal`
+  const result = await h.memory.recall(caller, { scope: 'chat', itemId })
+  assert.equal(result.matches[0]?.role, 'checkpoint')
+  assert.match(result.matches[0]?.text ?? '', /Optimize long chats/)
+})
+
 test('scope chat merges prerotation transcript when the live snapshot dropped the rotation boundary', async () => {
   const h = harness()
   h.snapshot.items = [{ type: 'user', id: 'u2', turnId: 't2', text: 'After rotation only in live thread' }]

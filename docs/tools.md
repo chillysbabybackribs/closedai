@@ -675,7 +675,10 @@ derived hot index maintained at turn boundaries from handoff-style conversation 
 requests, one assistant answer per turn, plan lines, and compact tool/command/file-change labels).
 Scope chat searches a separate per-pane lexical index over the merged pane transcript (including
 prerotation segments when backfill succeeded), with multi-term AND matching on whitespace-separated
-query tokens. Chat-scope responses may include `rotationEpoch` and `indexPartial`. It does not
+query tokens. Indexed model checkpoints contribute `role: checkpoint` hits (goal, constraints,
+decisions, progress, next steps, files) with synthetic item ids under the `cp.` prefix; use
+`recall(scope=chat|current, item_id=...)` for the full facet text. Chat-scope responses may include
+`rotationEpoch` and `indexPartial`. It does not
 index reasoning, screenshots, or raw tool output. Global retention is LRU by the same activity
 ordering as history (`messageSentAt`, then turn end, then creation), capped by
 `chatMemoryIndexMaxChats` (default 10, max 100 in settings). Per-pane indexes are not subject to

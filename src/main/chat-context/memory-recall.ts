@@ -1,8 +1,42 @@
 import type { ChatTranscriptItem } from '../../shared/chat.js'
+import { checkpointTextForItemId, isCheckpointIndexItemId } from '../../shared/chat-index-checkpoint.js'
 import type { ChatEvidenceAvailability, ChatMemoryCheckpoint, ChatRecallRequest, ChatRecallResult } from '../../shared/chat-memory.js'
 
 const MAX_RECALL_CHARS = 16_000
 const EXCERPT_CHARS = 800
+
+/** Exact read of a checkpoint facet indexed under a synthetic item id. */
+export function recallCheckpointFacet(
+  checkpoints: readonly ChatMemoryCheckpoint[],
+  threadId: string,
+  request: ChatRecallRequest
+): ChatRecallResult | null {
+  const itemId = request.itemId
+  if (!itemId || !isCheckpointIndexItemId(itemId)) return null
+  for (const checkpoint of checkpoints) {
+    const text = checkpointTextForItemId(checkpoint, itemId)
+    if (text === null) continue
+    const offset = Math.max(0, Math.floor(request.offset ?? 0))
+    const excerpt = text.slice(offset, offset + EXCERPT_CHARS)
+    return {
+      threadId,
+      checkpoint,
+      matches: [{
+        itemId,
+        turnId: null,
+        role: 'checkpoint',
+        text: excerpt,
+        offset,
+        nextOffset: offset + excerpt.length < text.length ? offset + excerpt.length : null
+      }],
+      hasMore: false,
+      nextBeforeItemId: null,
+      throughItemId: checkpoint.throughItemId,
+      trust: 'historical-data'
+    }
+  }
+  return null
+}
 
 /** Search a stable transcript prefix, returning small excerpts and exact-message continuation. */
 export function recallTranscript(

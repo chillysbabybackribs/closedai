@@ -18,8 +18,8 @@
   min-width: 0;
   gap: 2px;
 }
-/* Chip: shadcn Button (ghost, xs) holding the provider mark, the remaining percent, and a short
-   shadcn Progress bar. Level ink goes on the figure and bar only; brand marks keep their colour. */
+/* Chip: provider mark and remaining percent. Level ink goes on the figure only; brand marks keep
+   their colour. */
 .provider-usage-chip {
   height: 24px;
   min-width: 0;
@@ -41,27 +41,19 @@
 }
 .provider-usage-chip > svg { width: 14px; height: 14px; }
 .provider-usage-chip-value { max-width: 168px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.provider-usage-chip-bar {
-  height: 3px;
-  width: 20px;
-  flex: none;
-  background: color-mix(in srgb, var(--foreground) 20%, transparent);
-}
-.provider-usage-chip-bar [data-slot='progress-indicator'] {
-  border-radius: 9999px;
-  background: var(--chrome-control-strong, var(--foreground));
-}
 .provider-usage-chip[data-level='stale'] .provider-usage-chip-value { color: var(--muted-foreground); }
-.provider-usage-chip[data-level='stale'] [data-slot='progress-indicator'] { background: var(--muted-foreground); opacity: 0.6; }
 .provider-usage-chip[data-level='low'] .provider-usage-chip-value,
 .provider-usage-worst[data-level='low'] { color: light-dark(#8b5d00, #dfbd79); }
-.provider-usage-chip[data-level='low'] [data-slot='progress-indicator'] { background: light-dark(#8b5d00, #dfbd79); }
 .provider-usage-chip[data-level='critical'] .provider-usage-chip-value,
 .provider-usage-chip[data-level='exhausted'] .provider-usage-chip-value,
 .provider-usage-worst[data-level='critical'],
 .provider-usage-worst[data-level='exhausted'] { color: light-dark(#b03528, #eaa08d); }
-.provider-usage-chip[data-level='critical'] [data-slot='progress-indicator'],
-.provider-usage-chip[data-level='exhausted'] [data-slot='progress-indicator'] { background: light-dark(#b03528, #eaa08d); }
+.provider-usage-divider {
+  width: 1px;
+  height: 13px;
+  flex: none;
+  background: var(--hairline);
+}
 /* Collapsed rail: the Usage trigger carries the worst reading in a shadcn Badge. */
 .provider-usage-worst {
   padding: 0 6px;

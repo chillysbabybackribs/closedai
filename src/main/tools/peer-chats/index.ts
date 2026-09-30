@@ -105,7 +105,8 @@ export function peerChatTools(getDirectory: () => PeerChatDirectory | null): Too
           'Cross-chat phrase search over the global hot memory index (scope global, default: the 10 most recently active chats) ' +
           'or lexical search over this pane’s merged transcript (scope chat), including prerotation turns when indexed. ' +
           'Matches conversation spine text (user/assistant/plan and compact tool/command labels), not raw tool output. ' +
-          'scope chat accepts multiple whitespace-separated terms (all must match). Responses may include rotationEpoch and indexPartial. ' +
+          'scope chat accepts multiple whitespace-separated terms (all must match) over transcript spine lines and checkpoint facets (role checkpoint, cp.* item ids). ' +
+          'Responses may include rotationEpoch and indexPartial. ' +
           'Results are historical; use spine or recall(scope=history|chat, chat_id=..., item_id=...) for depth. query is required. ' +
           'cwd narrows global hits to one project directory. limit defaults to 5, max 8. ' +
           'Global search excludes the calling chat; scope chat searches only the calling pane. For turn-shaped reads, use spine after search.',
