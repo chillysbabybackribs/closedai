@@ -490,7 +490,9 @@ and stacks them with `z-index`, so a window changing layer never moves its DOM n
 transcript's scroll.
 
 A window's header is its title bar. Pressing its grip (`layout.pane-drag`; the browser's is
-`layout.browser-drag`) or the header's empty space and dragging moves the window with the pointer;
+`layout.browser-drag`) or the header's empty space (for the browser, empty space in its tab strip;
+tabs, window buttons, and **+** do not start a move, `window-move-handle.ts`) and dragging moves
+the window with the pointer;
 the box is painted outside React while it moves and the tree changes once, on release. A tiled
 window tears off at a floating size under the pointer. Moving one window never resizes another: a
 window released free out of the tiled layer leaves every other tiled window floating exactly where
@@ -510,7 +512,8 @@ onto a tab strip or a tiled window's edge as before, and onto a floating window'
 its tabs. Released on free space, or on a floating window's body, a tab tears off into its own
 floating window there (`tearOffTab` in `window-arrange.ts`; the outline follows the pointer). It keeps
 the size of the floating window it left, or a share of a tiled one, and takes a slot beside that window
-so Tile windows can place it; the tiled layout does not change. A window's only tab moves the whole
+so Tile windows can place it; the tiled layout does not change. A tear-off is refused once the
+workspace holds 32 chat windows. A window's only tab moves the whole
 window, as its title bar would. A chat opened beside a floating window (a split) floats too, cascaded from it.
 
 The header's window buttons are **Minimize** (`layout.window-minimize`), **Maximize**
@@ -840,11 +843,20 @@ bring the main window forward with the browser shown. In a detached window **Mov
 window returns its chats to the main window's focused tile; hiding or closing is never stopping a
 chat. Closing the main window quits the app.
 
-Dragging a detached window by its header onto another app window uses the same drop zones as the
-main canvas: the **tab strip** previews joining tabs, **left/right bands** preview a side-by-side
-split, and **top/bottom bands** preview a stacked split. The target window shows the preview; on
-release the chats move into that window and the source closes when it is empty. The main window is
-a valid drop target and keeps the browser rules above.
+Dragging a chat or view window by its title bar (in the main window or a detached one) until the
+pointer is over another app window, with no window in front of it there, docks it into that window;
+an OS-level window move does not. Main routes the drag (`windows.routeCrossDock`,
+`src/main/windows/cross-window-dock.ts`) from each window's reported canvas rect
+(`windows.reportDockSurface`) and sends the hover to the target as a `windowsEvent` `dock` event,
+which previews it (`CrossWindowDockPreview`). The target first applies the canvas rules above,
+except the ones an incoming chat cannot take (maximize, the workspace's side columns, splitting
+beside the browser); otherwise over a tab strip the tabs join, over a window's body the chats stack
+above or below it by half, in a gap they split on the nearest chat window's facing side, and with
+no chat window to dock beside they float at 42% x 55% of the canvas (`resolveCrossDockTarget`). On
+release (`windows.completeCrossDock`, which requires the last hover) main moves the tab ids between
+window records and `app-windows.json`, the target absorbs them (floating them at the pointer if the
+aimed drop no longer applies, so they always land in a layout), and the source drops them, closing a
+detached source left empty. Tab drags stay inside their window, and the browser never crosses.
 
 A chat lives in one window. Opening a chat another window holds (header search, History, a
 split) raises that window and selects the tab there instead of adding a second tab. A chat no
@@ -960,7 +972,9 @@ without overlapping the measured central tray. Centre: the **app tray**, Magic U
 on either side (`dock.app`, item is the surface), 48 px and growing to 64 px under the pointer.
 **Start** (`dock.start`) opens a panel above the tray with search
 (`dock.start-search`), a **Pinned** grid of common commands (`dock.start-pin`, item is the menu
-row key), **Recent chats** when any listable history exists (`dock.start-chat`, item is the pane id), and **All apps**
+row key: New chat, Search chats, Manage chat history, Toggle browser, Agents, Tools &
+capabilities, Settings; `START_PIN_KEYS`), **Recent chats** (the six newest) when any listable
+history exists (`dock.start-chat`, item is the pane id), and **All apps**
 (`dock.start-all-apps`) listing every File, View, Agent, and Developer row with the same disabled
 rules as the menus. Rows with a screen (Search chats, Manage chat history, Agents, Tools &
 capabilities, Settings) open it inside Start, whether chosen from Pinned, All apps, or command
@@ -981,7 +995,7 @@ tile holds its icon from the shared list in
 `src/renderer/app-icons.tsx`, which the view tabs use too. The strip is 44 px tall and a step lighter than the workspace
 (`--surface-raised`); the tray sits in a tab that rises out of its centre, drawn with the strip as
 one shape and one outline (`dock-surface.tsx`). The dock's box reaches as high as a magnified tile, so a browser under any of it is covered. **Chats** opens chat history. **Browser** shows or hides the
-browser. **Agent runs** opens the Agents view; its tooltip carries the runs summary. **Saved
+browser. **Notes** opens the notepad (its open window, else the latest note, else a new one). **Agent runs** opens the Agents view; its tooltip carries the runs summary. **Saved
 sites** and **Downloads** open a list above the icon. In Saved sites, a row (`dock.saved-site`)
 shows the browser and opens the site, and **All saved sites** (`dock.all-saved-sites`) opens the
 view. In Downloads, a finished file's row (`dock.download`) shows it in its folder. A neutral dot
@@ -1564,8 +1578,9 @@ instrumentation.
 | Security settings, credential approval cards, page permission requests | `src/main/security-settings-store.ts`, `src/main/security-ipc.ts`, `src/main/security-approvals.ts`, `src/main/browser-permission-broker.ts`, `src/main/decision-broker.ts`, `src/shared/security.ts` |
 | Default-browser cookie import (launch and on demand) | `src/main/browser-cookie-import.ts`, `src/main/import-cookies.ts` |
 | Typed IPC contract and narrow preload | `src/shared/api.ts`, `src/preload/index.ts` |
-| App windows: registry, event routing per window, detached-window persistence | `src/main/windows/`, `src/shared/app-windows.ts`, `src/renderer/app-windows/`, `src/renderer/chat-layout/layout-windows.ts` |
-| Dock: bottom-edge reveal, zoom navigation, app tray and its lists; the shared feature icon list | `src/renderer/dock/`, `src/renderer/app-icons.tsx`, `src/components/ui/dock.tsx` |
+| App windows: registry, event routing per window, detached-window persistence, cross-window docking | `src/main/windows/`, `src/shared/app-windows.ts`, `src/shared/cross-window-dock.ts`, `src/renderer/app-windows/`, `src/renderer/chat-layout/layout-windows.ts`, `src/renderer/chat-layout/floating/cross-window-*` |
+| Dock: bottom-edge reveal, zoom navigation, app tray and its lists, Start (`dock-start-*`), provider usage chips; the shared feature icon list | `src/renderer/dock/`, `src/renderer/app-icons.tsx`, `src/components/ui/dock.tsx`; usage reads in `src/main/chat-context/provider-usage.ts` |
+| Workspace wallpaper: picker, presets, uploads | `src/renderer/backdrop/`, `src/shared/backdrop-presets.ts`, `src/main/wallpapers/upload-store.ts`, `src/main/desktop-wallpaper.ts` |
 | Chat/project/history orchestration | `src/renderer/chat-pane.tsx`, `src/renderer/project-menu.tsx`, `src/renderer/chat-history/` |
 | Transcript steps, background work, response actions | `src/renderer/transcript-rows.ts`, `src/renderer/activity-steps.ts`, `src/renderer/background-tasks.tsx`, `src/renderer/message-actions.tsx` |
 | Notes store, model edits, notepad chat bindings | `src/main/notes/`, `src/shared/notes.ts`, `src/main/tools/notes/`, `src/renderer/notepad/` |
@@ -1606,6 +1621,8 @@ directory holds its own copy of every store below; `profiles.json` exists once, 
 | `chats.json` | Every chat record: id, project directory, provider, model and effort, per-provider thread ids, title, preview, created/updated/last-turn times, `quickChatSurface` (`browser`/`notepad`), archived flag, pin timestamp, parent chat, continuation digest, checkpoint, and the agent run driving the chat (`agentRun`: prompt, status, cycle, limits, failure count, last thread, and `stats`: step, edit, error and rotation counts, summed turn time, last reply and error excerpts, latest context and plan readings). Debounced atomic writes; flushed on quit |
 | `app-settings.json` | Cookie-import latch; active workspace/project; the open chat ids (`chatOpenIds`) and `chatSelectedPaneId`; saved per-project open ids and selection in `chatWorkspaces`; tool switches and context/batch settings. Legacy `chatPeers` and `chatWorkspaces[].peers` are imported into `chats.json` once, keeping each pane id as the chat id, and removed |
 | `browser-tabs.json`, `browser-history.json` | Restored tabs and omnibox history |
+| `app-windows.json` | Detached windows: id, project, chat tab ids; rewritten on detach, return, and cross-window dock |
+| `wallpapers/` | Uploaded wallpapers (`<uuid>.<ext>`, `<uuid>.thumb.jpg`) and a newest-first manifest; 48 MB image cap, 2 MB thumbnail cap |
 | `agent-library.json` | Agents the user built and kept: id, name, standing instructions, cycle cap, created/updated times, last run and run count. Seeded with the built-in repair agent only when the file is missing; never pruned, debounced atomic writes, flushed on quit |
 | `notes/index.json`, `notes/<id>.txt` | Notepad notes: the index holds id, title, `named`, created/updated times, and revision; each note's text is its own file. Up to 5,000 notes of 2,000,000 characters each; empty untitled notes are removed when their last tab closes; debounced atomic writes, flushed on quit. An unreadable index is set aside as `index.json.corrupt-<time>` and the note files are adopted back |
 | `saved-sites.json` | Sites the user saved on purpose: id, url, title, favicon, note, tags, saved/updated times, and the `lastCheckedAt`/`lastSummary` slots a daily brief will write; never pruned, debounced atomic writes, flushed on quit |
@@ -1615,7 +1632,7 @@ directory holds its own copy of every store below; `profiles.json` exists once, 
 | `security-settings.json` | Settings ▸ Security: `credentialsRequireApproval`, `secretsRequireKeychain`, `webPermissions`, `importBrowserCookies`. A missing file is every default, which is the behavior before the tab existed; an unreadable one is set aside as `security-settings.json.corrupt-<time>` and never overwritten |
 | `credential-vault.json` | Saved credentials: service id, entry label, timestamps, per-entry `agentAccess` (absent on older records, read as on), and one record per field. Secret fields are `safeStorage` ciphertext (base64); hosts, usernames and URLs stay readable so the list renders without decrypting. Written atomically at 0600. Only a missing file is an empty vault; a file that cannot be read is set aside as `credential-vault.json.corrupt-<time>` before the vault continues empty, so the next save never overwrites it. Entries the earlier localStorage vault held are moved here on first open and the localStorage copy is cleared only after every entry lands |
 | `antigravity/profile/`, `antigravity/attachments/`, `antigravity/transcripts/` | Generated agent plugin, materialized image attachments, and app-recorded transcripts; the CLI retains its own conversation store |
-| Renderer localStorage | Appearance, model-picker usage, quick chat and notepad chat models (`closedai.quickChat.modelId`, `closedai.notepadChat.modelId`), completion review queue (including review time; legacy storage key retained), message timestamps, per-space and per-window layouts (`closedai.chat-layout.v1:*`), spaces, and unsent composer drafts |
+| Renderer localStorage | Appearance and wallpaper choice (`closedai.appearance.v1`), dock preferences (`closedai.dock.v1`), overview stills (`closedai.spaces.still:*`), model-picker usage, quick chat and notepad chat models (`closedai.quickChat.modelId`, `closedai.notepadChat.modelId`), completion review queue (including review time; legacy storage key retained), message timestamps, per-space and per-window layouts (`closedai.chat-layout.v1:*`), spaces, and unsent composer drafts |
 | In-memory trace | At most 4,000 entries and 24,000,000 detail characters, 48,000 characters per detail before its truncation marker; cleared on restart |
 
 Only a missing store file means a fresh start. When `chats.json`, `app-settings.json`, or
