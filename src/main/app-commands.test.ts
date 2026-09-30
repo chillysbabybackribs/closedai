@@ -79,6 +79,21 @@ class FakeWorkspace extends EventEmitter implements AppChatWorkspace {
   async listThreads(): Promise<ChatThreadSummary[]> { return this.threads }
 }
 
+test('state exposes appVersion and chat memory index facts for runtime cross-check', () => {
+  const chat = new FakeWorkspace()
+  const host = new AppCommandAccess({
+    chat: () => chat,
+    browser: () => null,
+    downloads: () => null,
+    window: () => null,
+    facts: () => ({ appVersion: '0.1.0-test', chatMemoryIndexEnabled: true })
+  })
+  const workspace = host.state(['workspace'], undefined, 'pane-1').workspace as Record<string, unknown>
+  assert.equal(workspace.appVersion, '0.1.0-test')
+  const chatState = host.state(['chat'], undefined, 'pane-1').chat as Record<string, unknown>
+  assert.deepEqual(chatState.memory, { chatMemoryIndexEnabled: true })
+})
+
 test('project switch commands forward identity and expose the latest status', async () => {
   const chat = new FakeWorkspace()
   const host = new AppCommandAccess({ chat: () => chat, browser: () => null, downloads: () => null, window: () => null })

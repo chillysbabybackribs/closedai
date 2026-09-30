@@ -24,11 +24,19 @@ import type {
 // the renderer's IPC handlers call. Nothing here touches the DOM: a command either changes
 // app state or fails with a reason, and `state` projects that state compactly.
 
+/** Probe-time facts that mirror selected closedai.runtime fields for cross-checking. */
+export type AppStateFacts = {
+  appVersion: string
+  chatMemoryIndexEnabled: boolean
+}
+
 export type AppCommandDeps = {
   chat: () => AppChatWorkspace | null
   browser: () => AppBrowserTabs | null
   downloads: () => AppDownloadList | null
   window: () => AppWindowInfo | null
+  /** Settings/version snapshot for state probes (optional in tests). */
+  facts?: () => AppStateFacts | null
   /** Every app window; detached ones hold chats moved out of the main window. */
   windows?: () => { describe(): AppWindowDescription[] } | null
   ui?: () => AppUiHost | null
@@ -64,15 +72,25 @@ export class AppCommandAccess implements AppCommandHost {
   state(sections: readonly AppStateSection[], paneId: string | undefined, callerPaneId: string | null): Record<string, unknown> {
     const result: Record<string, unknown> = {}
     const chat = this.deps.chat()
+    const facts = this.deps.facts?.() ?? null
     if (sections.includes('workspace')) {
-      result.workspace = chat ? { ...projectWorkspace(chat, callerPaneId), savedAgents: projectSavedAgents(this.deps.agentLibrary?.()?.list() ?? []) } : null
+      result.workspace = chat ? {
+        ...projectWorkspace(chat, callerPaneId),
+        savedAgents: projectSavedAgents(this.deps.agentLibrary?.()?.list() ?? []),
+        ...(facts ? { appVersion: facts.appVersion } : {})
+      } : null
     }
     if (sections.includes('chat')) {
       if (!chat) result.chat = null
       else {
         const targetPane = paneId ?? callerPaneId ?? chat.snapshot().selectedPaneId
         const snapshot = chat.paneSnapshot(targetPane)
-        result.chat = snapshot ? projectChat(targetPane, snapshot, this.deps.agentRuns?.()?.get(targetPane) ?? null) : { paneId: targetPane, error: 'Unknown pane' }
+        result.chat = snapshot
+          ? {
+            ...projectChat(targetPane, snapshot, this.deps.agentRuns?.()?.get(targetPane) ?? null),
+            ...(facts ? { memory: { chatMemoryIndexEnabled: facts.chatMemoryIndexEnabled } } : {})
+          }
+          : { paneId: targetPane, error: 'Unknown pane' }
       }
     }
     if (sections.includes('browser')) {

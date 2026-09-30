@@ -11,6 +11,7 @@ export function appStateTool(app: () => AppCommandHost | null, ui: () => AppUiHo
     name: 'state',
     description:
       'Plain tool (no action field). Compact app state without DOM: workspace, chat, browser, downloads, window, ui. ' +
+      'workspace.appVersion is the running Electron build; chat.memory.chatMemoryIndexEnabled mirrors closedai.runtime for probe-time cross-check. ' +
       'window.detached lists windows the user moved chats into, with their chat ids; ui, capture and controls see the main window only. ' +
       'ui.fullScreen reports the native window mode. ui.overviewOpen reports workspace overview visibility; ui.chatZoom is the rendered chat zoom percentage, or null without a visible chat. Optional include array lists section names to return (property is include, not sections). UI waits: closedai_app.ui wait_for.',
     inputSchema: objectSchema({

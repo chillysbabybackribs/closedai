@@ -38,6 +38,8 @@ Every user turn includes **`closedai.clock`** (`kind: application`) and **`close
 (`kind: application`): host facts (ClosedAI pane id, provider lane, project path, chat memory
 index toggle, whether `closedai.guide` ships on this send) plus a single verify line pointing
 models at `closedai_app.state` and tool results rather than trusting descriptions blindly.
+`closedai_app.state` exposes the same probe-time facts where they matter: `workspace.appVersion`
+and `chat.memory.chatMemoryIndexEnabled` align with the runtime envelope on the same turn.
 Cursor receives runtime on every turn but never the session guide or workspace ledger.
 
 `buildChatInput` validates user text and attachments, which provider adapters translate into

@@ -47,12 +47,12 @@
   {
     "id": "runtime_matches_state",
     "title": "Runtime block vs closedai_app.state",
-    "user": "Call closedai_app.state with workspace and chat sections. Compare callerPaneId, chat.provider, and project.projectPath to the closedai.runtime block on this turn. Report match or mismatch in one short table. Do not edit files.",
+    "user": "Call closedai_app.state with workspace and chat sections. Compare callerPaneId, chat.provider, project.projectPath, workspace.appVersion, and chat.memory.chatMemoryIndexEnabled to the closedai.runtime block on this turn. Report match or mismatch in one short table. Do not edit files.",
     "provider": "cursor",
     "modelId": "cursor:composer-2.5[fast=true]",
     "observe": [
       "Calls closedai_app.state before concluding",
-      "Values match closedai.runtime on the same turn (pane id, provider, projectPath)",
+      "Values match closedai.runtime on the same turn (pane id, provider, projectPath, chatMemoryIndexEnabled via chat.memory)",
       "Does not claim IDE-only or deny in-app MCP"
     ],
     "tags": ["app", "orientation", "read_only"]

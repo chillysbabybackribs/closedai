@@ -16,6 +16,10 @@ import { ChatPaneLexicalIndex } from '../chat-store/chat-pane-lexical-index.js'
 import { buildFtsMatchQuery, ChatPaneLexicalFts } from '../chat-store/chat-pane-lexical-fts.js'
 import { checkpointIndexItemId } from '../../shared/chat-index-checkpoint.js'
 import { CHAT_PANE_LEXICAL_INDEX_VERSION } from '../../shared/chat-index.js'
+import { AppCommandAccess } from '../app-commands.js'
+import type { AppChatWorkspace } from '../tools/app/host.js'
+import type { ChatWorkspaceSnapshot } from '../../shared/chat-peers.js'
+import type { ChatSnapshot } from '../../shared/chat.js'
 
 const SEED_PHRASE = 'C3_PROBE_MAGENTA_SIDEBAR_9137'
 const caller = { paneId: 'probe-pane', threadId: 'thread', turnId: 't' }
@@ -132,6 +136,69 @@ test('C3 probe: FTS search returns the seeded line when disk sqlite is used', as
   const hits = fts.search('probe-pane', match, 3)
   assert.equal(hits[0]?.itemId, 'u1')
 })
+
+test('C3 probe: app state memory flag aligns with runtime facts source', () => {
+  const snapshot = chatSnapshotForProbe()
+  const chat: AppChatWorkspace = {
+    projectSwitch: { request: async (r) => ({ ...r, status: 'pending' as const }), cancel: () => null, state: () => null },
+    snapshot: (): ChatWorkspaceSnapshot => ({
+      selectedPaneId: 'probe-pane',
+      selected: snapshot,
+      chats: [{
+        paneId: 'probe-pane', parentPaneId: null, kind: 'peer', provider: 'cursor', modelId: 'm',
+        pinnedAt: null, threadId: 'thread', title: 't', preview: '', running: false, activity: null,
+        updatedAt: 1, attached: true, cwd: '/project', createdAt: 1, lastTurnEndedAt: null
+      }]
+    }),
+    paneSnapshot: () => snapshot,
+    newPeer: async () => 'probe-pane',
+    send: async () => {},
+    interrupt: async () => {},
+    on: () => {},
+    off: () => {},
+    selectPane: async () => {},
+    openThread: async () => {},
+    closePeer: async () => {},
+    selectModel: async () => {},
+    selectReasoningEffort: async () => {},
+    listThreads: async () => []
+  }
+  const host = new AppCommandAccess({
+    chat: () => chat,
+    browser: () => null,
+    downloads: () => null,
+    window: () => null,
+    facts: () => ({ appVersion: '9.9.9', chatMemoryIndexEnabled: false })
+  })
+  const runtime = buildRuntimeAdditionalContext({
+    paneId: 'probe-pane',
+    provider: 'cursor',
+    cwd: '/project',
+    chatMemoryIndexEnabled: false,
+    sessionGuideOnTurn: false
+  })
+  const memory = (host.state(['chat'], undefined, 'probe-pane').chat as Record<string, unknown>).memory as Record<string, unknown>
+  assert.equal(memory.chatMemoryIndexEnabled, JSON.parse(runtime['closedai.runtime']!.value).chatMemoryIndexEnabled)
+})
+
+function chatSnapshotForProbe(): ChatSnapshot {
+  return {
+    provider: 'cursor',
+    connection: { state: 'ready', message: '' },
+    account: null,
+    models: [],
+    selectedModel: 'cursor:test',
+    selectedReasoningEffort: null,
+    cwd: '/project',
+    threadId: 'thread',
+    threadName: null,
+    activeTurnId: null,
+    pausedTurnId: null,
+    contextUsage: null,
+    planUsage: null,
+    items: []
+  }
+}
 
 test('C3 probe: checkpoint facet search id recalls facet text', async () => {
   const store = ChatStore.inMemory([chatRecord('probe-pane', null, {
