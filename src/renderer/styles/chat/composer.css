@@ -1,27 +1,21 @@
-/* The composer (composer.tsx): one glass capsule floating over the foot of the transcript.
+/* The composer (composer.tsx): one solid capsule floating over the foot of the transcript.
    Tools, the draft, the setup chip and Send share a single row until the draft wraps; then the
-   capsule expands, the draft spans its width and the controls drop to a row beneath. The
-   capsule is the chat's one see-through surface: a live blur of the transcript scrolling under
-   it. Setup panels (composer-setup-menu.tsx) open from the chip. */
+   capsule expands, the draft spans its width and the controls drop to a row beneath. Setup
+   panels (composer-setup-menu.tsx) open from the chip. */
 
 @import "./composer-setup.css";
 
 /* Capsule material, shared with the agent strip and the sent user message so the draft and its
-   bubble read as one object before and after sending. Theme tokens keep it right on warm paper. */
+   bubble read as one object before and after sending: an opaque theme grey (the raised card
+   surface) with a faint light from the top edge, so it stays the same neutral card over any
+   wallpaper. Theme tokens keep it right on warm paper. */
 .chat-pane {
   /* The one colour in the chat (Send, focus): the wallpaper's hue while a backdrop is on. */
   --composer-accent: var(--backdrop-accent, var(--tab-accent, #8ab4f8));
-  /* The fill carries a breath of the accent so the capsule belongs to the theme (or the
-     wallpaper) rather than reading as a grey card; glass.css thins it over a backdrop. */
-  --capsule-fill: color-mix(
-    in srgb,
-    color-mix(in srgb, var(--antigravity-card-bg, #262626) 93%, var(--composer-accent)) 72%,
-    transparent
-  );
-  --capsule-edge: color-mix(in srgb, color-mix(in srgb, var(--foreground) 75%, var(--composer-accent)) 13%, transparent);
-  --capsule-sheen: color-mix(in srgb, var(--foreground) 8%, transparent);
-  /* A soft light falling from the top edge, layered over the fill. */
-  --capsule-wash: linear-gradient(180deg, color-mix(in srgb, var(--foreground) 4%, transparent), transparent 70%);
+  --capsule-fill: var(--antigravity-card-bg, #262626);
+  --capsule-edge: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --capsule-sheen: color-mix(in srgb, var(--foreground) 7%, transparent);
+  --capsule-wash: linear-gradient(180deg, color-mix(in srgb, var(--foreground) 3.5%, transparent), transparent 60%);
   --capsule-shadow: 0 1px 2px rgb(0 0 0 / 28%), 0 14px 34px rgb(0 0 0 / 32%);
   --capsule-radius: 20px;
 }
@@ -70,7 +64,6 @@
   border-radius: var(--capsule-radius);
   background: var(--capsule-wash), var(--capsule-fill);
   box-shadow: inset 0 1px 0 var(--capsule-sheen), var(--capsule-shadow);
-  backdrop-filter: blur(22px) saturate(1.5);
   transition: border-color 140ms ease, box-shadow 140ms ease;
 }
 
