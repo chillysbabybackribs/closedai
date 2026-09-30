@@ -77,7 +77,7 @@ function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset
           <span className="chat-layout-drag-dots" aria-hidden="true" />
         </button>
         <ChatTabs ids={tabs} activeId={activeId} busy={busy} canClose={tabs.length > 1 || chatCount > 1}
-          title={title} activity={activity} reviewQueue={reviewQueue}
+          title={title} activity={activity} reviewQueue={reviewQueue} variant={noteTile ? 'note' : 'default'}
           onSelect={(tab) => { tabFocus.current = tab; onSelectTab(tab) }} onClose={onCloseTab}
           onDrag={(tab) => setDragging({ id: tab, singleTab: true })} trailing={noteTile ? newTabButton('chat-layout-tab-new') : undefined} />
         {toolsPreset === 'read-only' && <span className="chat-layout-preset" data-ui="layout.tools-preset"
