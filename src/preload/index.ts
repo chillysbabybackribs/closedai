@@ -44,7 +44,8 @@ const api: ClosedaiApi = {
   profiles: {
     bootstrap: () => ipcRenderer.sendSync(IPC.sync.profiles.bootstrap) as ProfileBootstrap,
     write: (onboarding) => ipcRenderer.sendSync(IPC.sync.profiles.write, onboarding) as ProfileWriteResult,
-    switchTo: (userId) => invoke(IPC.invoke.profiles.switchTo, userId)
+    switchTo: (userId) => invoke(IPC.invoke.profiles.switchTo, userId),
+    remove: (userId) => invoke(IPC.invoke.profiles.remove, userId)
   },
   windows: {
     context: () => invoke(IPC.invoke.windows.context),

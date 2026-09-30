@@ -29,7 +29,8 @@ export function createLocalUser(
     avatarHue: avatarHueForUserId(id),
     createdAt,
     passwordHash,
-    keepSignedIn: true,
+    // Staying signed in is something a person chooses, never the default.
+    keepSignedIn: false,
     connectedProviders: [],
     providerSetupComplete: false
   }
@@ -143,6 +144,8 @@ export const LEGACY_BYPASS_PROFILE_ID = 'closedai-legacy-bypass-profile'
 export function legacyBypassProfileUser(): LocalUser {
   return {
     ...createLocalUser('Local profile', LEGACY_BYPASS_PROFILE_ID, '', 0),
+    // An install from before the gate existed keeps opening straight into its workspace.
+    keepSignedIn: true,
     providerSetupComplete: true
   }
 }

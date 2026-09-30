@@ -25,6 +25,7 @@ test('IPC invoke constants cover the typed invoke registry', () => {
     'wallpapers:read',
     'wallpapers:remove',
     'profiles:switchTo',
+    'profiles:remove',
     'windows:context',
     'windows:list',
     'windows:detachTabs',

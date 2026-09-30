@@ -59,6 +59,8 @@ export type ClosedaiApi = {
     write: (onboarding: string) => import('./local-profiles.js').ProfileWriteResult
     /** Relaunch into the signed-in account's workspace; false when it is already the open one. */
     switchTo: (userId: string) => Promise<boolean>
+    /** Delete an account and move its workspace data to the trash. */
+    remove: (userId: string) => Promise<import('./local-profiles.js').ProfileRemoveResult>
   }
   /** The app's windows: which one this renderer is, and moving chat tabs between them. */
   windows: {

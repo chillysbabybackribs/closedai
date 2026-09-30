@@ -1,11 +1,12 @@
 import { ONBOARDING_STORAGE_KEY } from '../../shared/onboarding.js'
-import type { ProfileBootstrap, ProfileWriteResult } from '../../shared/local-profiles.js'
+import type { ProfileBootstrap, ProfileRemoveResult, ProfileWriteResult } from '../../shared/local-profiles.js'
 
 type StorageLike = Pick<Storage, 'getItem' | 'setItem'>
 
 export type ProfileBridge = {
   bootstrap: () => ProfileBootstrap
   write: (onboarding: string) => ProfileWriteResult
+  remove: (userId: string) => Promise<ProfileRemoveResult>
 }
 
 export type ProfileStorage = StorageLike & {
@@ -13,6 +14,8 @@ export type ProfileStorage = StorageLike & {
   currentUserId: () => string | null
   /** True when this launch continues a sign-in that began before the relaunch. */
   resumed: () => boolean
+  /** Delete an account and its workspace; the stored list is the one main answers with. */
+  remove: (userId: string) => Promise<ProfileRemoveResult>
 }
 
 /**
@@ -43,7 +46,13 @@ export function createProfileStorage(
     getItem: (key) => (key === ONBOARDING_STORAGE_KEY ? onboarding : null),
     setItem: (key, value) => { if (key === ONBOARDING_STORAGE_KEY) write(value) },
     currentUserId: () => currentUserId,
-    resumed: () => boot.resumed
+    resumed: () => boot.resumed,
+    remove: async (userId) => {
+      const result = await bridge.remove(userId)
+      onboarding = result.onboarding
+      currentUserId = result.currentUserId
+      return result
+    }
   }
 }
 

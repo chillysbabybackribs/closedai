@@ -19,6 +19,16 @@ export type ProfileWriteResult = {
   currentUserId: string | null
 }
 
+/** The answer to deleting an account. */
+export type ProfileRemoveResult = {
+  removed: boolean
+  /** The deleted account's data was the open profile, so the app is relaunching without it. */
+  relaunching: boolean
+  /** The account list after the deletion, as JSON text. */
+  onboarding: string | null
+  currentUserId: string | null
+}
+
 /** Profile ids name a directory, so only plain id characters are accepted. */
 export function isProfileId(value: unknown): value is string {
   return typeof value === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(value)

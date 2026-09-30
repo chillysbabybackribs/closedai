@@ -40,6 +40,7 @@ export type IpcInvokeChannels = {
   'wallpapers:read': { args: [string]; result: import('./desktop-wallpaper.js').DesktopWallpaper | null }
   'wallpapers:remove': { args: [string]; result: void }
   'profiles:switchTo': { args: [string]; result: boolean }
+  'profiles:remove': { args: [string]; result: import('./local-profiles.js').ProfileRemoveResult }
   'windows:context': { args: []; result: AppWindowContext }
   'windows:list': { args: []; result: AppWindowInfo[] }
   'windows:detachTabs': { args: [string, string[]]; result: AppWindowId }
@@ -210,7 +211,8 @@ export const IPC = {
       remove: 'wallpapers:remove'
     },
     profiles: {
-      switchTo: 'profiles:switchTo'
+      switchTo: 'profiles:switchTo',
+      remove: 'profiles:remove'
     },
     windows: {
       context: 'windows:context',

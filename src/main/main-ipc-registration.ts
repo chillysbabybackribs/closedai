@@ -1,6 +1,6 @@
 import type { IpcMain } from 'electron'
 import { join } from 'node:path'
-import { app, BrowserWindow, session } from 'electron'
+import { app, BrowserWindow, session, shell } from 'electron'
 import { CHAT_PROVIDERS } from '../shared/chat-providers.js'
 import type { ModelsEvent } from '../shared/model-settings.js'
 import type { ToolsEvent } from '../shared/tools.js'
@@ -12,6 +12,7 @@ import type { QuickChatOverlay } from './quick-chat-overlay/quick-chat-overlay.j
 import { registerWallpaperIpc } from './wallpapers/ipc.js'
 import { registerProfilesIpc } from './profiles/ipc.js'
 import type { ProfileSession } from './profiles/profile-session.js'
+import { purgeRemovedProfiles } from './profiles/profile-removal.js'
 import { WallpaperUploadStore } from './wallpapers/upload-store.js'
 import { registerBrowserCoreIpc } from './browser-core-ipc.js'
 import { registerBrowserDownloadsIpc } from './browser-downloads-ipc.js'
@@ -85,7 +86,10 @@ export function registerMainProcessIpc(reg: MainIpcRegistration): void {
   let wallpapers: WallpaperUploadStore | null = null
   registerWallpaperIpc(reg.ipcMain, () => wallpapers ??= new WallpaperUploadStore(join(app.getPath('userData'), 'wallpapers')))
   // The quit path flushes every store first, so the next process opens settled files.
-  registerProfilesIpc(reg.ipcMain, reg.profiles, () => { app.relaunch(); app.quit() })
+  const purgeProfiles = (): void => { void purgeRemovedProfiles(reg.profiles.rootDir(), (path) => shell.trashItem(path)) }
+  registerProfilesIpc(reg.ipcMain, reg.profiles, () => { app.relaunch(); app.quit() }, purgeProfiles)
+  // Whatever an earlier launch set aside, including data deleted while it was open.
+  purgeProfiles()
   registerAppWindowsIpc(reg.ipcMain, reg.windows)
   registerQuickChatIpc(reg.ipcMain, reg.quickChatOverlay, reg.windows)
   registerBrowserCoreIpc(reg.ipcMain, reg.browserService, reg.savedSites, (sender) => reg.windows()?.isMain(sender) ?? true)

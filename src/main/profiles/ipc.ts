@@ -9,7 +9,8 @@ import type { ProfileSession } from './profile-session.js'
 export function registerProfilesIpc(
   ipcMain: Pick<IpcMain, 'handle' | 'on'>,
   session: ProfileSession,
-  relaunch: () => void
+  relaunch: () => void,
+  purge: () => void
 ): void {
   ipcMain.on(IPC.sync.profiles.bootstrap, (event) => {
     event.returnValue = session.bootstrap()
@@ -23,5 +24,14 @@ export function registerProfilesIpc(
     if (!isProfileId(userId) || !session.prepareSwitch(userId)) return false
     relaunch()
     return true
+  })
+  registerInvoke(ipcMain, IPC.invoke.profiles.remove, (_event, userId) => {
+    if (!isProfileId(userId)) {
+      return { removed: false, relaunching: false, onboarding: session.bootstrap().onboarding, currentUserId: session.currentUserId() }
+    }
+    const result = session.remove(userId)
+    if (result.relaunching) relaunch()
+    else if (result.removed) purge()
+    return result
   })
 }

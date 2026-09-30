@@ -25,6 +25,10 @@ export type SessionGateCreateResult =
   | { ok: true }
   | { ok: false; reason: 'name-required' | 'password-required' | 'password-too-short' }
 
+export type SessionGateDeleteResult =
+  | { ok: true }
+  | { ok: false; reason: 'unknown-user' | 'wrong-password' | 'failed' }
+
 export type OnboardingController = {
   settings: OnboardingSettings
   activeUser: LocalUser | null
@@ -37,6 +41,8 @@ export type OnboardingController = {
   signIn: (userId: string, password: string) => Promise<SessionGateSignInResult>
   createAccount: (displayName: string, password: string) => Promise<SessionGateCreateResult>
   setProfilePassword: (userId: string, password: string) => Promise<SessionGateSignInResult>
+  /** Delete an account and its workspace; an account with a password needs it. */
+  deleteAccount: (userId: string, password: string) => Promise<SessionGateDeleteResult>
   setKeepSignedIn: (value: boolean) => void
   completeProviderSetup: () => void
   skipProviderSetup: () => void
@@ -101,7 +107,7 @@ function bootstrapOnboardingSettings(): OnboardingSettings {
 
 export function useOnboarding(chatSnapshot: ChatSnapshot, legacyBypass: boolean): OnboardingController {
   const [settings, setSettings] = useState(bootstrapOnboardingSettings)
-  const [pendingKeepSignedIn, setPendingKeepSignedIn] = useState(true)
+  const [pendingKeepSignedIn, setPendingKeepSignedIn] = useState(false)
 
   const activeUser = useMemo(
     () => findLocalUser(settings, settings.activeUserId),
@@ -111,7 +117,7 @@ export function useOnboarding(chatSnapshot: ChatSnapshot, legacyBypass: boolean)
   const connectedProviders = activeUser?.connectedProviders ?? []
 
   const keepSignedIn = settings.sessionUnlocked
-    ? (activeUser?.keepSignedIn ?? true)
+    ? (activeUser?.keepSignedIn ?? false)
     : pendingKeepSignedIn
 
   const persist = useCallback((next: OnboardingSettings) => {
@@ -188,6 +194,23 @@ export function useOnboarding(chatSnapshot: ChatSnapshot, legacyBypass: boolean)
     })
     return { ok: true }
   }, [pendingKeepSignedIn, settings])
+
+  const deleteAccount = useCallback(async (userId: string, password: string): Promise<SessionGateDeleteResult> => {
+    const current = readOnboardingSettings(profileStorage()) ?? settings
+    const user = current.users.find((entry) => entry.id === userId)
+    if (!user) return { ok: false, reason: 'unknown-user' }
+    if (user.passwordHash && !(password && await verifyLocalProfilePassword(password, user.passwordHash))) {
+      return { ok: false, reason: 'wrong-password' }
+    }
+    try {
+      const result = await profileStorage().remove(userId)
+      if (!result.removed) return { ok: false, reason: 'failed' }
+    } catch {
+      return { ok: false, reason: 'failed' }
+    }
+    setSettings(readOnboardingSettings(profileStorage()) ?? signOutSession({ ...current, users: [] }))
+    return { ok: true }
+  }, [settings])
 
   const setKeepSignedIn = useCallback((value: boolean) => {
     setPendingKeepSignedIn(value)
@@ -310,6 +333,7 @@ export function useOnboarding(chatSnapshot: ChatSnapshot, legacyBypass: boolean)
     switchingProfile,
     signIn,
     setProfilePassword,
+    deleteAccount,
     createAccount,
     setKeepSignedIn,
     completeProviderSetup,

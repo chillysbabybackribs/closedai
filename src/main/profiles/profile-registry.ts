@@ -12,12 +12,18 @@ export const PROFILE_DIRECTORY = 'profiles'
 
 export type ProfileRegistry = {
   version: 1
-  /** The account that owns the root data directory: the data that existed before profiles did. */
+  /**
+   * The account that owns the root data directory: the data that existed before profiles did.
+   * Assigned once. It keeps naming a deleted home account, so the root is never handed to
+   * another account, whose own data lives in its profile directory.
+   */
   homeUserId: string | null
   /** The account to open when nobody is signed in, so the usual person signs in without a relaunch. */
   lastActiveUserId: string | null
   /** Set for one launch by a profile switch, so a session without "keep me signed in" survives it. */
   resumeUserId: string | null
+  /** Deleted accounts whose data was open at the time; set aside by the next launch. */
+  pendingRemovals: string[]
   /** The renderer-owned onboarding settings, stored as the JSON text it wrote. */
   onboarding: string | null
 }
@@ -29,6 +35,7 @@ export const EMPTY_PROFILE_REGISTRY: ProfileRegistry = {
   homeUserId: null,
   lastActiveUserId: null,
   resumeUserId: null,
+  pendingRemovals: [],
   onboarding: null
 }
 
@@ -76,10 +83,31 @@ export function withOnboarding(registry: ProfileRegistry, onboarding: string): P
     (first, account) => (first === null || account.createdAt < first.createdAt ? account : first),
     null
   )
-  next.homeUserId = known(registry.homeUserId) ? registry.homeUserId : oldest?.id ?? null
+  next.homeUserId = registry.homeUserId ?? oldest?.id ?? null
   next.lastActiveUserId = registryActiveUserId(next) ?? (known(registry.lastActiveUserId) ? registry.lastActiveUserId : null)
   next.resumeUserId = known(registry.resumeUserId) ? registry.resumeUserId : null
   return next
+}
+
+/**
+ * Take an account out of the list. A deleted account that was signed in leaves the session at
+ * the gate. Null when the list has no such account.
+ */
+export function withoutAccount(registry: ProfileRegistry, userId: string): ProfileRegistry | null {
+  const settings = parseOnboarding(registry.onboarding)
+  if (!settings || !Array.isArray(settings.users)) return null
+  if (!registryAccounts(registry).some((account) => account.id === userId)) return null
+  const users = settings.users.filter((entry) => (entry as { id?: unknown } | null)?.id !== userId)
+  const signedOut = settings.activeUserId === userId
+    ? { phase: 'gate', activeUserId: null, sessionUnlocked: false }
+    : {}
+  const forget = (id: string | null): string | null => (id === userId ? null : id)
+  return {
+    ...registry,
+    lastActiveUserId: forget(registry.lastActiveUserId),
+    resumeUserId: forget(registry.resumeUserId),
+    onboarding: JSON.stringify({ ...settings, ...signedOut, users })
+  }
 }
 
 /** The account a launch opens: whoever is signed in, else whoever was last, else the home account. */
@@ -108,6 +136,7 @@ function normalizeRegistry(value: unknown): ProfileRegistry {
     homeUserId: id(record.homeUserId),
     lastActiveUserId: id(record.lastActiveUserId),
     resumeUserId: id(record.resumeUserId),
+    pendingRemovals: Array.isArray(record.pendingRemovals) ? record.pendingRemovals.filter(isProfileId) : [],
     onboarding: typeof record.onboarding === 'string' ? record.onboarding : null
   }
 }
