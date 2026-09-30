@@ -4,7 +4,7 @@ import { buildRuntimeAdditionalContext, type TurnRuntimeFacts } from './runtime-
 import { buildClockAdditionalContext, mergeTurnAdditionalContext, type AdditionalContext } from './turn-context.js'
 
 export const SESSION_GUIDE_CONTEXT = 'closedai.guide'
-export const SESSION_GUIDE_MAX_CHARS = 8_000
+export const SESSION_GUIDE_MAX_CHARS = 8_500
 
 /** Per-pane delivery memory; thread ids rotate on handoff and tool-catalog refresh. */
 export type SessionGuideDeliveryState = {

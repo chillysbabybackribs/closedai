@@ -15,7 +15,7 @@ function renderGuide(outline) {
     parts.push(`## ${section.heading}`, ...section.lines, '')
   }
   let text = parts.join('\n').trimEnd()
-  const maxChars = outline.maxChars ?? 8000
+  const maxChars = outline.maxChars ?? 8500
   if (text.length > maxChars) {
     throw new Error(`Agent guide exceeds ${maxChars} characters (${text.length})`)
   }

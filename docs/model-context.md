@@ -87,7 +87,8 @@ to the implementing model. Size-only growth requires no extra check or approval.
 On Codex, Claude, and Antigravity it is attached once per provider thread (including the first
 send after a handoff to a new thread), omitted on later turns in the same thread, and stripped
 from the user-visible transcript like other context blocks. Edit `scripts/agent-guide-outline.json` and run `npm run guide:generate`;
-`guide:check` guards drift. The generated guide and capture descriptions are main-process code:
+`guide:check` guards drift; generation and runtime delivery both enforce an 8,500-character cap.
+The generated guide and capture descriptions are main-process code:
 rebuild and restart to load changes, then use a new provider thread or handoff to receive the
 updated guide. Restarting alone does not guarantee an existing thread receives a new guide.
 
