@@ -92,7 +92,7 @@ export function useHistoryController(
     })
   }, [chat.chats, chat.selectedPaneId])
 
-  // Opening a completed chat clears its unread marker.
+  // Opening a completed chat clears its unread marker; closing its tab uses dismissReview instead.
   useEffect(() => {
     setReviewQueue((current) => markChatReviewViewed(current, chat.selectedPaneId))
   }, [chat.selectedPaneId])
@@ -125,12 +125,17 @@ export function useHistoryController(
     newThread().catch(reportError)
   }, [newThread, reportError])
 
-  const deleteRow = useCallback(async (chatId: string) => {
-    await archiveChat(chatId)
-  }, [archiveChat])
+  const dismissReview = useCallback((chatId: string) => {
+    setReviewQueue((current) => markChatReviewViewed(current, chatId))
+  }, [])
 
-  return useMemo(() => ({ reviewQueue, openRow, deleteRow, pauseRow, resumeRow, newChat, refreshChats, error, reportError }),
-    [reviewQueue, openRow, deleteRow, pauseRow, resumeRow, newChat, refreshChats, error, reportError])
+  const deleteRow = useCallback(async (chatId: string) => {
+    dismissReview(chatId)
+    await archiveChat(chatId)
+  }, [archiveChat, dismissReview])
+
+  return useMemo(() => ({ reviewQueue, openRow, deleteRow, dismissReview, pauseRow, resumeRow, newChat, refreshChats, error, reportError }),
+    [reviewQueue, openRow, deleteRow, dismissReview, pauseRow, resumeRow, newChat, refreshChats, error, reportError])
 }
 
 export type HistoryController = ReturnType<typeof useHistoryController>

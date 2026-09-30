@@ -4,7 +4,7 @@ export const CHAT_REVIEW_RETENTION_MS = 10 * 60 * 1000
 export type ChatReviewEntry = {
   /** When the pane's most recent turn finished. */
   queuedAt: number
-  /** When the user first opened the completed pane. Unreviewed entries do not expire. */
+  /** When the user opened the completed pane or closed its tab. Unreviewed entries do not expire. */
   viewedAt: number | null
 }
 

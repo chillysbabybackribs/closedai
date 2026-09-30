@@ -58,7 +58,7 @@ export type ChatLayoutHandle = {
   newChatWindow: () => Promise<void>
 }
 
-export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, onBackdropChange, onOpenWallpaper, toolsPreset = null, browserHeld = false, spaceId, onRenameChat, onSavedSitesError, onNotepadError, onBrowserVisibleChange, onMinimizedChange, onFloatingChange, archiveChat, ref }: {
+export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, onBackdropChange, onOpenWallpaper, toolsPreset = null, browserHeld = false, spaceId, onRenameChat, onSavedSitesError, onNotepadError, onBrowserVisibleChange, onMinimizedChange, onFloatingChange, archiveChat, onChatTabClosed, ref }: {
   chat: ReturnType<typeof useChatController>
   savedSites: BrowserSavedSitesController
   reviewQueue: ChatReviewQueue
@@ -81,12 +81,14 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, on
   /** Whether any window floats, so Tile windows outside this workspace knows it has work. */
   onFloatingChange?: (floating: boolean) => void
   archiveChat?: (chatId: string) => Promise<void>
+  /** Clears completion review when the user closes a chat tab or hides its window tile. */
+  onChatTabClosed?: (chatId: string) => void
   ref?: Ref<ChatLayoutHandle>
 }) {
   const workspaceSnapshotRef = useRef(chat.snapshot)
   workspaceSnapshotRef.current = chat.snapshot
   const layoutRevision = chatLayoutRevision(chat.snapshot)
-  const layout = useChatLayout(() => workspaceSnapshotRef.current, layoutRevision, spaceId)
+  const layout = useChatLayout(() => workspaceSnapshotRef.current, layoutRevision, spaceId, onChatTabClosed)
   const maximized = useMemo((): [string | null, typeof layout.setMaximized] => [layout.maximized, layout.setMaximized], [layout.maximized, layout.setMaximized])
   // The canvas moves the browser window from a press on this grip, as it does a chat's.
   const browserDragHandle = useMemo(() => <button type="button"

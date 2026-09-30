@@ -509,7 +509,7 @@ search result also carries an Open/Closed tag since no group implies it. The His
 recent chats use the same notepad icon on those rows. Empty groups are omitted and each chat appears once. The closed input shows no count
 badges; at rest it shows the Ctrl+H shortcut on the right, with the magnifying glass and placeholder
 aligned left. The icon and text retain that alignment when the input is focused or contains a query.
-Unread completions use the persisted review queue and move into History when opened.
+Unread completions use the persisted review queue and move into History when opened or when their tab is closed.
 Typing shows one list of up to forty ranked, case-insensitive matches across all groups, with
 matched title characters highlighted. The keyboard cursor is the highlighted chat's id, so a list
 that reorders underneath it (a turn finishing, a refresh adopting threads) never changes which chat
@@ -656,7 +656,7 @@ Hidden tabs can be parked or detached by normal runtime trimming and are reattac
 
 Chat tabs show a compact continuously rotating blue spinner while working, an amber pause icon when paused,
 and a red alert icon for reported errors. A background completion replaces the spinner with a solid
-green unread dot in the same position, using the persisted completion review queue; opening the chat clears that dot.
+green unread dot in the same position, using the persisted completion review queue; opening the chat or closing its tab clears that dot.
 The tab's accessible name carries the same status as text; there is no hover preview. Reduced-motion
 settings replace animation with a static spinner. Paused state is explicit; the UI does not
 infer a request for user input from message text.

@@ -384,6 +384,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
             onBackdropChange={onBackdropChange}
             onOpenWallpaper={openWallpaper}
             archiveChat={history.deleteRow}
+            onChatTabClosed={history.dismissReview}
           />}
         </SpacesStage>}
       </div>

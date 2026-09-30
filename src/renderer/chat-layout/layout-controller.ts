@@ -27,7 +27,9 @@ const CONFIRM_TIMEOUT_MS = 5000
 export function useChatLayout(
   getSnapshot: () => ChatWorkspaceSnapshot,
   layoutRevision: string,
-  spaceId?: string
+  spaceId?: string,
+  /** A chat tab the user closed or a pane they hid — not detach-to-new-window. */
+  onChatTabClosed?: (chatId: string) => void
 ) {
   const snapshot = getSnapshot()
   const cwd = snapshot.workspace?.cwd ?? snapshot.selected.cwd
@@ -398,6 +400,7 @@ export function useChatLayout(
     const tree = current.current.tree
     const remaining = removeTab(tree, id)
     if (!remaining || !paneIds(remaining).length || pending.current) return
+    if (!isViewTabId(id)) onChatTabClosed?.(id)
     pending.current = true
     setBusy(true)
     clearError()
@@ -429,12 +432,15 @@ export function useChatLayout(
       fail(reason)
       release()
     }
-  }, [clearError, fail, release, reportRemoval])
+  }, [clearError, fail, onChatTabClosed, release, reportRemoval])
 
   const hide = useCallback(async (id: string): Promise<void> => {
     const tree = current.current.tree
     const remaining = removePane(tree, id)
     if (!remaining || pending.current) return
+    for (const tab of tabIds(tree)) {
+      if (tabOwner(tree, tab) === id && !isViewTabId(tab)) onChatTabClosed?.(tab)
+    }
     // Closing the last window leaves the browser alone with the wallpaper; the chat stays in History.
     if (!paneIds(remaining).length) closedLast.current = id
     pending.current = true
@@ -452,7 +458,7 @@ export function useChatLayout(
       reportRemoval(tabIds(tree).filter((tab) => tabOwner(tree, tab) === id), 'Window closed')
     } catch (reason) { fail(reason) }
     finally { pending.current = false }
-  }, [clearError, fail, reportRemoval])
+  }, [clearError, fail, onChatTabClosed, reportRemoval])
 
   const resize = useCallback((id: string, ratio: number, phase: SplitResizePhase = 'commit') => {
     if (phase === 'cancel') return

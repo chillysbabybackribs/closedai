@@ -143,6 +143,15 @@ test('opening a completion moves it into history and empty sections disappear', 
   assert.deepEqual(chatSearchView([], '', {}).sections, [])
 })
 
+test('a tab close marks a completion reviewed the same way opening it does', () => {
+  const rows = [{ ...chat('finished', 'Finished task', 5), attached: false }]
+  const unread = chatSearchView(rows, '', { finished: { queuedAt: 1, viewedAt: null } })
+  assert.deepEqual(unread.sections.map(section => section.label), ['Recently completed'])
+  const reviewed = chatSearchView(rows, '', { finished: { queuedAt: 1, viewedAt: 50 } })
+  assert.deepEqual(reviewed.sections.map(section => section.label), ['Closed'])
+  assert.equal(reviewed.unreadCount, 0)
+})
+
 test('open tabs stay out of Closed and closed chats sort by last turn, not store touch', () => {
   const open = { ...chat('open', 'Still open', 500), attached: true, lastTurnEndedAt: 50 }
   const touched = { ...chat('touched', 'Touched later', 400), lastTurnEndedAt: 10 }
