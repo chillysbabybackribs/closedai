@@ -4,6 +4,12 @@ Design tasks here, then run them in a **fresh chat pane** inside ClosedAI while 
 calls, latency, and UX. This is separate from `harness/tasks/` replay and headless Codex runs
 (stub fixtures, automated oracles).
 
+**Prompt style:** The `user` field in `tasks.json` should read like a real person asking for
+help—goals and sources in plain language, no tool names, no repo paths, and no “use bootstrap
+then expand” recipes. Put expected tool choice and process in the human **`observe`** checklist
+only (for example: site discovery before blind navigation, embedded browser instead of OS open).
+Contract probes (orientation, peer recall) may still name tools when the test *is* the tool.
+
 ## Start: mission loop pilot (no UI changes)
 
 1. In your **home** chat (director), read or attach `harness/live-eval/director-charter.md`.

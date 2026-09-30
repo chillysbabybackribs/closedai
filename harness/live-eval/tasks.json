@@ -84,9 +84,35 @@
     "tags": ["peer_chats", "search", "read_only"]
   },
   {
+    "id": "research_stripe_webhooks",
+    "title": "First-time Stripe webhooks (human prompt)",
+    "user": "I'm wiring up Stripe webhooks for the first time. From Stripe's official docs, what should I do in order—endpoints, signing secret, testing on my laptop, and which event types are worth handling first?",
+    "provider": "cursor",
+    "modelId": "cursor:composer-2.5[fast=true]",
+    "observe": [
+      "Uses docs.stripe.com (embedded browser and/or search), not memory-only",
+      "Efficient path: site discovery or targeted doc reads before huge raw dumps",
+      "Ordered checklist with links; no unsolicited repo edits"
+    ],
+    "tags": ["browser", "research", "smoke"]
+  },
+  {
+    "id": "lookup_python_stable",
+    "title": "Python.org current stable (human prompt)",
+    "user": "What stable Python release should I download from python.org today? One paragraph with the version and where on the site you confirmed it.",
+    "provider": "codex",
+    "modelId": "gpt-6-astra",
+    "observe": [
+      "Confirms against python.org in the live session",
+      "Reasonable tool mix (discovery, navigate, or fetch)—not required to match a fixed recipe",
+      "No file edits in this workspace"
+    ],
+    "tags": ["browser", "research", "smoke"]
+  },
+  {
     "id": "search_electron_release",
     "title": "Quick web lookup",
-    "user": "Use the app's search tools (not the browser search box) to find what major Electron version shipped around August 2025 and give a one-sentence answer with a source link if the tool returns one.",
+    "user": "What major Electron version shipped around August 2025? One sentence and a source link if you have one.",
     "provider": "codex",
     "modelId": "gpt-5.6-luna",
     "observe": [
