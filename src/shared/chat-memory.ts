@@ -53,6 +53,8 @@ export type ChatHistoryResult = {
     preview: string
     cwd: string
     lastActivityAt: number
+    /** Present only when the query matched title/preview/path/notes up to spacing or typos, not literally. */
+    match?: 'spacing' | 'fuzzy'
   }>
   nextBeforeChatId: string | null
   trust: 'historical-data'

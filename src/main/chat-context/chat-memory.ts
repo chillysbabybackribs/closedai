@@ -19,6 +19,14 @@ import { conversationSpineTurnsFromIndexLines } from './conversation-spine.js'
 import { validateMemoryState } from './memory-checkpoint.js'
 import { spineFromTurns, spineTranscript } from './memory-spine.js'
 import { recallEntries, recallTranscript } from './memory-recall.js'
+import type { ChatTextMatchKind } from '../../shared/chat-index.js'
+import { matchText, prepareTextQuery } from '../chat-store/forgiving-text-match.js'
+
+const MATCH_RANK: Record<ChatTextMatchKind, number> = { fuzzy: 0, spacing: 1, exact: 2 }
+
+function matchKindField(kind: ChatTextMatchKind | undefined): { match?: Exclude<ChatTextMatchKind, 'exact'> } {
+  return kind && kind !== 'exact' ? { match: kind } : {}
+}
 
 export type MemoryCaller = { paneId?: string | null; threadId: string | null; turnId: string | null; signal?: AbortSignal }
 type MemorySurface = Pick<ChatSurface, 'snapshot' | 'readThread'>
@@ -45,22 +53,36 @@ export class ChatMemory {
     const { pane } = this.resolve(caller)
     let records = this.historyRecords(pane)
     if (request.cwd !== undefined) records = records.filter((record) => record.cwd === request.cwd)
+    const query = prepareTextQuery(request.query)
+    const matchKinds = new Map<string, ChatTextMatchKind>()
+    if (query) {
+      // Filter before the cursor so every page uses the same match set; typos only when nothing else matches.
+      const filter = (fuzzy: boolean) => records.filter((record) => {
+        const notes = record.checkpoint?.threadId === record.threadId ? record.checkpoint.state : null
+        let best: ChatTextMatchKind | null = null
+        for (const text of [record.title, record.preview, record.cwd, notes ? JSON.stringify(notes) : '']) {
+          const kind = text ? matchText(query, text, { fuzzy })?.kind : undefined
+          if (kind && (!best || MATCH_RANK[kind] > MATCH_RANK[best])) best = kind
+          if (best === 'exact') break
+        }
+        if (best) matchKinds.set(record.id, best)
+        return best !== null
+      })
+      const literal = filter(false)
+      records = literal.length ? literal : filter(true)
+    }
     if (request.beforeChatId) {
       const index = records.findIndex((record) => record.id === request.beforeChatId)
       if (index < 0) throw new Error('History cursor is unavailable')
       records = records.slice(index + 1)
     }
-    const query = request.query?.trim().toLowerCase()
-    if (query) records = records.filter((record) => {
-      const notes = record.checkpoint?.threadId === record.threadId ? record.checkpoint.state : null
-      return [record.title, record.preview, record.cwd, notes ? JSON.stringify(notes) : ''].some((text) => text?.toLowerCase().includes(query))
-    })
     const limit = Math.max(1, Math.min(8, Math.floor(request.limit ?? 5)))
     const result: ChatHistoryResult = { chats: [], nextBeforeChatId: null, trust: 'historical-data' }
     for (const record of records.slice(0, limit)) {
       const entry = {
         chatId: record.id, threadId: record.threadId!, title: (record.title ?? 'Untitled chat').slice(0, 120),
-        preview: record.preview.slice(0, 240), cwd: record.cwd, lastActivityAt: historyActivity(record)
+        preview: record.preview.slice(0, 240), cwd: record.cwd, lastActivityAt: historyActivity(record),
+        ...matchKindField(matchKinds.get(record.id))
       }
       if (JSON.stringify({ ...result, chats: [...result.chats, entry], nextBeforeChatId: record.id }).length > 16_000) {
         if (!result.chats.length) throw new Error('History entry metadata exceeds the output budget')

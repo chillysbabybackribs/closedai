@@ -116,3 +116,17 @@ test('search excludes deleted and archived records before limiting and flags unv
   assert.equal(result.hits[0]?.chatId, 'available')
   assert.deepEqual(result.hits[0]?.evidenceAvailability, { status: 'not-checked' })
 })
+
+test('ChatMemoryIndex search tolerates spacing, then typos only when nothing matches literally', () => {
+  const index = ChatMemoryIndex.inMemory(settings)
+  index.upsert(record('spine', 300), [userItem('u1', 'yes implement spine v1')])
+  index.upsert(record('spin', 200), [userItem('u2', 'spin the wheel v1')])
+  const spaced = index.search({ query: 'spinev1' }).hits
+  assert.deepEqual(spaced.map((hit) => [hit.chatId, hit.match, hit.matched]), [['spine', 'spacing', 'spine v1']])
+  const typo = index.search({ query: 'impelment spine' }).hits
+  assert.equal(typo[0]?.chatId, 'spine')
+  assert.equal(typo[0]?.match, 'fuzzy')
+  const literal = index.search({ query: 'spine v1' }).hits
+  assert.equal(literal.length, 1)
+  assert.equal(literal[0]?.match, undefined)
+})

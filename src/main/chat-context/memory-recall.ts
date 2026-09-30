@@ -1,6 +1,7 @@
 import type { ChatTranscriptItem } from '../../shared/chat.js'
 import { checkpointTextForItemId, isCheckpointIndexItemId } from '../../shared/chat-index-checkpoint.js'
 import type { ChatEvidenceAvailability, ChatMemoryCheckpoint, ChatRecallRequest, ChatRecallResult } from '../../shared/chat-memory.js'
+import { matchText, prepareTextQuery } from '../chat-store/forgiving-text-match.js'
 
 const MAX_RECALL_CHARS = 16_000
 const EXCERPT_CHARS = 800
@@ -79,7 +80,7 @@ export function recallEntries(
     end = index
   }
   const limit = Math.max(1, Math.min(8, Math.floor(request.limit ?? 5)))
-  const query = request.query?.trim().toLowerCase() ?? ''
+  const query = prepareTextQuery(request.query)
   // Conversation is the useful default; callers can request tool evidence when needed.
   const types = new Set<string>(request.types?.length ? request.types : ['user', 'assistant'])
   const result: ChatRecallResult = {
@@ -94,7 +95,8 @@ export function recallEntries(
     if (!request.itemId && !types.has(item.type)) continue
     const text = typeof item.text === 'function' ? item.text() : item.text
     if (text === null) continue
-    const match = query ? text.toLowerCase().indexOf(query) : 0
+    // Spacing- and punctuation-tolerant, never typo-tolerant: paging needs one stable match set.
+    const match = query ? matchText(query, text, { fuzzy: false })?.start ?? -1 : 0
     if (match < 0) continue
     const offset = request.itemId ? Math.max(0, Math.floor(request.offset ?? 0)) : Math.max(0, match - 160)
     const excerpt = text.slice(offset, offset + EXCERPT_CHARS)

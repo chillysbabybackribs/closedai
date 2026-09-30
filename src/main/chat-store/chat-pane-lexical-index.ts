@@ -16,6 +16,7 @@ import type { AppSettings } from '../../shared/types.js'
 import { mergePaneIndexLines } from './chat-pane-index-lines.js'
 import { buildFtsMatchQuery, ChatPaneLexicalFts } from './chat-pane-lexical-fts.js'
 import { writeAtomic } from '../atomic-write.js'
+import { matchLabel, matchText, prepareTextQuery } from './forgiving-text-match.js'
 
 export type ChatPaneLexicalIndexSettings = Pick<AppSettings, 'chatMemoryIndexEnabled' | 'chatMemoryIndexMaxCharsPerChat'>
 
@@ -159,7 +160,8 @@ export class ChatPaneLexicalIndex {
     const record = this.records.get(chatId)
     if (!record) return { ...empty, indexPartial: true }
     const limit = Math.max(1, Math.min(SEARCH_MAX_LIMIT, Math.floor(request.limit ?? SEARCH_DEFAULT_LIMIT)))
-    const hits = this.searchPaneFts(chatId, query, limit, record) ?? this.searchPaneScan(record, query, limit)
+    const literal = this.searchPaneFts(chatId, query, limit, record) ?? this.searchPaneScan(record, query, limit)
+    const hits = literal.length ? literal : this.searchPaneForgiving(record, query, limit)
     return {
       hits,
       indexedChatCount: 1,
@@ -275,6 +277,36 @@ export class ChatPaneLexicalIndex {
         evidenceAvailability: { status: 'not-checked' }
       })
     }
+    candidates.sort((a, b) => b.score - a.score || a.itemId.localeCompare(b.itemId))
+    return candidates.slice(0, limit)
+  }
+
+  /** Spacing, punctuation, then typo tolerance over the authoritative JSON lines when literal terms find nothing. */
+  private searchPaneForgiving(record: ChatPaneLexicalIndexRecord, query: string, limit: number): ChatIndexSearchHit[] {
+    const prepared = prepareTextQuery(query)
+    if (!prepared) return []
+    const scan = (fuzzy: boolean): ChatIndexSearchHit[] => {
+      const candidates: ChatIndexSearchHit[] = []
+      for (const line of record.lines) {
+        const match = matchText(prepared, line.text, { fuzzy })
+        if (!match) continue
+        candidates.push({
+          chatId: record.chatId,
+          itemId: line.itemId,
+          role: line.role,
+          snippet: clip(line.text.slice(Math.max(0, match.start - 80)), SEARCH_SNIPPET_CHARS),
+          ...matchLabel(match, line.text),
+          score: match.quality,
+          lastActivityAt: record.lastActivityAt,
+          cwd: record.cwd,
+          title: record.title,
+          evidenceAvailability: { status: 'not-checked' }
+        })
+      }
+      return candidates
+    }
+    const spaced = scan(false)
+    const candidates = spaced.length ? spaced : scan(true)
     candidates.sort((a, b) => b.score - a.score || a.itemId.localeCompare(b.itemId))
     return candidates.slice(0, limit)
   }
