@@ -398,7 +398,6 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
       )}
       <ProviderSetupModal
         open={onboarding.showProviderSetup}
-        chat={chat.state}
         connectedProviders={onboarding.connectedProviders}
         onSignInProvider={(provider) => window.closedai.chat.providerSignIn(provider)}
         onMarkConnected={onboarding.markProviderConnected}

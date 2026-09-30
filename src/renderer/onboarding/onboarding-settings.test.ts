@@ -4,7 +4,6 @@ import test from 'node:test'
 import {
   completedOnboardingSettings,
   createLocalUser,
-  ensureActiveSessionProfile,
   LEGACY_BYPASS_PROFILE_ID,
   normalizeOnboardingSettings,
   patchLocalUser,
@@ -44,12 +43,6 @@ test('per-user provider progress is independent after migration', () => {
   const bob = createLocalUser('Bob', 'bob', 'hash')
   bob.providerSetupComplete = true
   bob.connectedProviders = ['claude']
-  const settings = {
-    phase: 'done' as const,
-    users: [ada, bob],
-    activeUserId: 'ada',
-    sessionUnlocked: true
-  }
   assert.equal(phaseForUser(ada, true), 'providers')
   assert.equal(phaseForUser(bob, true), 'done')
 })

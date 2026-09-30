@@ -1,4 +1,5 @@
-import type { ChatAttachment, ChatHistoryPage, ChatHistoryWindow, ChatThreadSummary } from '../../shared/chat.js'
+import type { ChatAttachment, ChatHistoryPage, ChatHistoryWindow, ChatProvider, ChatThreadSummary } from '../../shared/chat.js'
+import type { ProviderOnboardingStatus } from '../../shared/provider-onboarding.js'
 import type { ChatContinuationSource, ChatNewPeerOptions, ChatPaneId, ChatRowSummary, ChatWorkspaceEvent, ChatWorkspaceSnapshot } from '../../shared/chat-peers.js'
 import type { DeferredProjectSwitch } from './deferred-project-switch.js'
 
@@ -53,5 +54,7 @@ export interface ChatWorkspaceSurface {
   selectProject(projectPath: string | null): Promise<void>
   selectChatProject(paneId: ChatPaneId, projectPath: string | null): Promise<void>
   beginLogin(): Promise<string | null>
+  probeProviderOnboarding(): Promise<ProviderOnboardingStatus[]>
+  beginProviderLogin(provider: ChatProvider): Promise<string | null>
   on(event: 'event', listener: (event: ChatWorkspaceEvent) => void): unknown
 }
