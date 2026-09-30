@@ -4,7 +4,8 @@ This repository is intentionally modular. These rules apply to every human and m
 
 ## Application context and documentation
 
-Consult the relevant sections of `docs/application.md` for current behavior and ownership,
+For repository development tasks, first read the opening guidance and relevant sections of
+`docs/application.md` before searching implementation code or making changes. Consult it for current behavior and ownership,
 `docs/model-context.md` for provider context delivery and trust boundaries, and `docs/tools.md`
 for tool contracts. Read only the sections needed for the task; these guides are reference
 material, not a required full read on every change.

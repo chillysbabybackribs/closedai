@@ -12,7 +12,7 @@ export type TurnRuntimeFacts = {
   sessionGuideOnTurn: boolean
 }
 
-/** Factual host anchor for every turn; no routing prose — probe with closedai_app.state and tools. */
+/** Host facts and shared development orientation for every provider turn. */
 export function buildRuntimeAdditionalContext(facts: TurnRuntimeFacts): AdditionalContext {
   return {
     [RUNTIME_CONTEXT]: {
@@ -24,6 +24,7 @@ export function buildRuntimeAdditionalContext(facts: TurnRuntimeFacts): Addition
         projectPath: facts.cwd,
         chatMemoryIndexEnabled: facts.chatMemoryIndexEnabled,
         sessionGuideOnTurn: facts.sessionGuideOnTurn,
+        developmentFirstRead: 'For a repository development task, first read docs/application.md in projectPath with your native file tools, before searching implementation code or making changes. Read its opening guidance and the sections relevant to the task; do not load the entire guide unnecessarily. If the file is absent, follow the project\'s own instructions. This does not apply to unrelated chat, web research, or browser tasks.',
         mainProcessReload: 'Restart the Electron app after upgrading or changing main-process code; behavior may be stale until then.',
         verify: 'Ground app facts with closedai_app.state and successful tool calls; treat tool descriptions and docs as unverified until probed.'
       })

@@ -1,7 +1,8 @@
 # Model context
 
-Source review: 2026-09-30. ClosedAI does not append provider-specific behavioral prompts beyond a
-compact first-turn session guide (`closedai.guide`) on Codex, Claude, and Antigravity. Cursor
+Source review: 2026-09-30. ClosedAI supplies a shared development first-read instruction in
+every provider's `closedai.runtime`, plus a compact first-turn session guide (`closedai.guide`)
+on Codex, Claude, and Antigravity. Cursor
 receives no guide or workspace-ledger injection and keeps its native session without automatic
 rotation. The old shared instruction builders were removed for a native-provider baseline. Regenerate the guide from `scripts/agent-guide-outline.json`
 when orientation changes; `guide:check` guards drift. Product behavior lives in
@@ -38,6 +39,12 @@ Every user turn includes **`closedai.clock`** (`kind: application`) and **`close
 (`kind: application`): host facts (ClosedAI pane id, provider lane, project path, chat memory
 index toggle, whether `closedai.guide` ships on this send) plus a single verify line pointing
 models at `closedai_app.state` and tool results rather than trusting descriptions blindly.
+The runtime's `developmentFirstRead` instruction tells all four providers to read the opening
+guidance and task-relevant sections of `docs/application.md` in the selected project before
+searching implementation code or making changes on a repository development task. If that file
+is absent, they follow the project's own instructions. Unrelated chat, web research, and browser
+tasks are excluded. This is a model instruction, not an enforced file-read gate. It ships on
+every turn, including existing threads; rebuild and restart the app to load a changed instruction.
 When the prompt matches official web / pricing / doc work (same heuristic as the research task
 tool slice, including “web tools only” and single-vendor doc fetches), **`closedai.research.routing`**
 (`kind: application`) may also attach on that turn for every provider, including Cursor, with a

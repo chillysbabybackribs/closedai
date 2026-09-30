@@ -161,7 +161,7 @@ export class CursorChatService extends EventEmitter {
       const sessionId = session.sessionId
       const pendingHandoff = this.settings.get().chatContinuation?.handoff ?? null
       // Keep Cursor's native session/context policy separate from the other provider lanes.
-      // No shared guide or workspace ledger: only turn facts and necessary continuation data.
+      // No shared guide or workspace ledger; runtime includes the shared development first-read rule.
       // ACP reports no usage; transcript size must not automatically discard its live session.
       const settings = this.settings.get()
       const context = mergeTurnAdditionalContext(
