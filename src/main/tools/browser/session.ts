@@ -7,12 +7,13 @@ import { bodyField, FETCH_TIMEOUT_MS, headersField, methodField, parseBody } fro
 import { requireSession, type SessionHostProvider } from './network-host.js'
 import { projectJson } from './project.js'
 import { documentText } from '../search/research/source-reader.js'
+import { textWindow } from './text-window.js'
 
 // The user's signed-in browser session as a data source: requests the main process makes on
 // that session carry its cookies but answer to no page's CORS policy, and cookies are readable
 // and writable for any domain without a page being open there.
 
-const DEFAULT_BODY_CHARS = 20_000
+const DEFAULT_BODY_CHARS = 6_000
 const MAX_BODY_CHARS = 100_000
 const DEFAULT_COOKIE_LIMIT = 50
 
@@ -35,34 +36,45 @@ function fetchAction(sessions: SessionHostProvider): ToolAction {
   return {
     action: 'fetch',
     description:
-      'Send a request with session cookies and no page CORS; redirects follow unless manual. Returns status, headers, ' +
-      'and body. Project large JSON with json_path, fields, or limit before returning it. Binary is base64.',
+      'Send a request with session cookies and no page CORS; redirects follow unless manual. HTML defaults to readable text; raw markup and response headers are opt-in. ' +
+      'Use text_contains for a passage, offset/nextOffset for more text (each call refetches; content may change). Project JSON with json_path/fields/limit. Binary is base64.',
     inputSchema: objectSchema({
       url: urlField,
       method: methodField,
       headers: headersField,
       body: bodyField,
       redirect: { type: 'string', enum: ['follow', 'manual'], description: 'Follow redirects (default) or stop at the first.' },
-      format: { type: 'string', enum: ['raw', 'text'], description: 'Response format for HTML web documents. "raw" (default) preserves the original response markup; "text" extracts clean visible prose and title, stripping scripts, styles, and navigation.' },
+      format: { type: 'string', enum: ['raw', 'text'], description: 'HTML response format: text (default) extracts prose and title; raw preserves markup. JSON is parsed in either mode.' },
+      include_headers: { type: 'boolean', description: 'Include response headers. Default false; request headers are always sent when supplied.' },
+      text_contains: { type: 'string', minLength: 1, description: 'Case-insensitive literal passage search in non-JSON text, starting at offset. Returns context from up to 400 characters before the first match; matchOffset null means absent in the fetched text. GET/HEAD only.' },
+      offset: { type: 'integer', minimum: 0, description: 'Character offset in non-JSON text (after HTML extraction). Use nextOffset to continue; refetches, so content may change. GET/HEAD only.' },
       json_path: { type: 'string', minLength: 1, description: 'Dot/bracket path into a JSON response, for example `data.items` or `results[0].rows`. Defaults to the whole document.' },
       fields: { type: 'array', maxItems: 40, items: { type: 'string', minLength: 1 }, description: 'Field paths kept from each item, for example ["name","owner.login"]. Every field when omitted.' },
       limit: { type: 'integer', minimum: 1, description: 'Maximum items returned when the selection is an array.' },
-      max_chars: { type: 'integer', minimum: 200, maximum: MAX_BODY_CHARS, description: `Body text limit; default ${DEFAULT_BODY_CHARS}.` }
+      max_chars: { type: 'integer', minimum: 200, maximum: MAX_BODY_CHARS, description: `Body text limit; default ${DEFAULT_BODY_CHARS}, also bounded by the serialized output budget. Use nextOffset or text_contains rather than raising this after truncation.` }
     }, ['url']),
     timeoutMs: FETCH_TIMEOUT_MS,
     run: async (input) => {
+      const method = stringArg(input, 'method', 'GET')!
+      if ((input.offset !== undefined || input.text_contains !== undefined) && !['GET', 'HEAD'].includes(method)) {
+        return failureResult('offset and text_contains require GET or HEAD; do not repeat a mutating request to page its response.')
+      }
       const response = await requireSession(sessions).fetch({
         url: stringArg(input, 'url')!,
-        method: stringArg(input, 'method', 'GET')!,
+        method,
         headers: headersFrom(input),
         body: stringArg(input, 'body'),
         redirect: stringArg(input, 'redirect') as 'follow' | 'manual' | undefined
       })
       const maxChars = numberArg(input, 'max_chars', DEFAULT_BODY_CHARS)
-      const format = stringArg(input, 'format') === 'text' ? 'text' : 'raw'
-      const { text, ...rest } = response
+      const format = stringArg(input, 'format', 'text')!
+      const { text, headers, ...responseMeta } = response
+      const rest = { ...responseMeta, ...(input.include_headers === true ? { headers } : {}) }
       if (text === null) return jsonResult({ ...rest, binary: true, base64: rest.base64 && rest.base64.length > maxChars ? rest.base64.slice(0, maxChars) : rest.base64 })
       const { json, isJson } = parseBody(text, response.contentType)
+      if (isJson && (input.offset !== undefined || input.text_contains !== undefined)) {
+        return failureResult('This response is JSON; use json_path, fields, and limit instead of text offsets or text_contains.')
+      }
       const path = stringArg(input, 'json_path')
       const fields = fieldsFrom(input)
       const limit = input.limit === undefined ? undefined : numberArg(input, 'limit', 0)
@@ -89,6 +101,15 @@ function fetchAction(sessions: SessionHostProvider): ToolAction {
         const doc = documentText(text, response.contentType ?? '')
         bodyText = doc.text
         if (doc.title) pageTitle = doc.title
+      }
+      if (!isJson) {
+        return textWindow(bodyText, {
+          ...rest, base64: null, isJson: false, format,
+          ...(pageTitle ? { title: pageTitle } : {})
+        }, {
+          maxChars, offset: numberArg(input, 'offset', 0), contains: stringArg(input, 'text_contains'),
+          sourceTruncated: response.truncated, canContinue: ['GET', 'HEAD'].includes(method)
+        })
       }
       const advice = isJson
         ? SESSION_FETCH_TRUNCATION_ADVICE
