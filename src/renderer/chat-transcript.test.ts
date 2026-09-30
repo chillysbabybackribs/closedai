@@ -181,15 +181,16 @@ test('missing turn ids still yield one action row per user turn and none on the 
   assert.equal((running.match(/data-ui="chat.message-copy"/g) ?? []).length, 1)
 })
 
-test('background group shows live task details and collapses once completed', () => {
+test('background group stays collapsed while running and once completed', () => {
   const task: ChatTranscriptItem = {
     type: 'tool', id: 'bg', turnId: 't', label: 'Review adapters', detail: 'Inspect events',
     status: 'inProgress', background: { taskId: 'bg', kind: 'agent', progress: 'Reading SDK events' }
   }
   const running = renderTranscript({ items: [task], activeTurnId: 't' })
   assert.match(running, /Background work/)
-  assert.match(running, /Reading SDK events/)
-  assert.match(running, /Review adapters/)
+  assert.match(running, /1 running/)
+  assert.match(running, /aria-expanded="false"/)
+  assert.doesNotMatch(running, /Reading SDK events/)
   const completed = renderTranscript({ items: [{ ...task, status: 'completed', output: 'All checked' }] })
   assert.match(completed, /1 background task finished/)
   assert.match(completed, /aria-expanded="false"/)

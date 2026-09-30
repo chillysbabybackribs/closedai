@@ -117,6 +117,13 @@ export function MessageScrollerProvider({
         followingRef.current, autoScroll, edges, followResumeBlockedRef.current
       )
     }
+    // Following means pinned: any layout that left the viewport above the bottom (late image
+    // decode, disclosure toggle, font swap) is corrected here instead of waiting for a resize.
+    if (edges.end && autoScroll && followingRef.current && !anchoredRef.current &&
+        !followResumeBlockedRef.current && scrollTargetRef.current !== 'start') {
+      viewport.scrollTop = viewport.scrollHeight
+      lastScrollTopRef.current = viewport.scrollTop
+    }
     if (!edges.end && scrollTargetRef.current === 'end') scrollTargetRef.current = null
     if (!edges.start && scrollTargetRef.current === 'start') scrollTargetRef.current = null
     const userScrolling = userScrollingRef.current
@@ -319,10 +326,17 @@ export function MessageScrollerProvider({
     observer.observe(content)
     const mutations = new MutationObserver(syncAfterMutations)
     mutations.observe(content, { childList: true, subtree: true, characterData: true })
+    // load/toggle do not bubble but do capture; images and disclosures resize without a mutation.
+    content.addEventListener('load', syncAfterMutations, true)
+    content.addEventListener('error', syncAfterMutations, true)
+    content.addEventListener('toggle', syncAfterMutations, true)
     return () => {
       if (mutationFrame !== null) window.cancelAnimationFrame(mutationFrame)
       observer.disconnect()
       mutations.disconnect()
+      content.removeEventListener('load', syncAfterMutations, true)
+      content.removeEventListener('error', syncAfterMutations, true)
+      content.removeEventListener('toggle', syncAfterMutations, true)
     }
   }, [anchorPrompts, anchorToElement, autoScroll, content, defaultScrollPosition, preservePositionOnNewPrompts,
     scheduleSync, setSpacerHeight, spacer, viewport])

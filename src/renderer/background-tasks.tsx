@@ -16,7 +16,8 @@ export function BackgroundTasks({ items }: { items: Task[] }) {
     return () => window.clearInterval(timer)
   }, [running])
   useEffect(() => { setExpanded(null) }, [running > 0])
-  const open = expanded ?? (running > 0 || failed > 0)
+  // Collapsed by default: a group opening itself mid-turn shifts the transcript under the reader.
+  const open = expanded ?? false
   return (
     <section className="background-tasks" aria-label="Background work">
       <button type="button" className="background-tasks-heading" data-state={running ? 'running' : failed ? 'failed' : 'done'} data-ui="chat.background-group"
