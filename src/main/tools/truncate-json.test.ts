@@ -58,6 +58,12 @@ test('deep nesting collapses to placeholders before giving up', () => {
   assert.doesNotThrow(() => JSON.parse(out.text))
 })
 
+test('a budget too small even for the minimal truncation note falls back to a bare object', () => {
+  const out = truncateText(JSON.stringify({ a: 'x'.repeat(50) }), 10, ADVICE)
+  assert.equal(out.text, '{}')
+  assert.equal(out.truncated, true)
+})
+
 test('text that merely starts with a brace but is not JSON falls back to a plain cut', () => {
   const out = truncateText(`{not json ${'y'.repeat(2_000)}`, 500, ADVICE)
   assert.ok(out.text.startsWith('{not json'))
