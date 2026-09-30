@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { ChatTranscriptItem } from '../../shared/chat.js'
+import { DEFAULT_APP_SETTINGS } from '../app-settings-store.ts'
+import { createSessionRotator } from './session-rotator-factory.ts'
 import { measureRotationPressure, pressureTrigger } from './rotation-pressure.ts'
 
 const user = (id: string): ChatTranscriptItem => ({ type: 'user', id, turnId: 't1', text: 'hi' })
@@ -43,4 +45,22 @@ test('rotated history cannot re-trigger pressure, including a boundary inside th
   }), null)
   assert.equal(measureRotationPressure(items, 'new').itemCount, 0)
   assert.equal(measureRotationPressure(items, 'missing').itemCount, items.length)
+})
+
+
+test('the provider rotator uses the saved boundary when evaluating a retained transcript', () => {
+  const items = [user('u'), ...Array.from({ length: 110 }, (_, i) => tool(`t${i}`))]
+  const saved = { ...DEFAULT_APP_SETTINGS, chatSessionRotations: [
+    { epoch: 1, sourceThroughItemId: 't109', providerThreadId: 'old', at: 1 }
+  ] }
+  const rotator = createSessionRotator({
+    settings: { get: () => saved, set: async () => saved }, transcriptItems: () => items,
+    threadId: () => 'new', turnActive: () => false, rotate: async () => {}
+  })
+  rotator.turnFinished()
+  assert.equal(rotator.scheduledForIdle, false)
+  items.push(user('next'), ...Array.from({ length: 100 }, (_, i) => tool(`new${i}`)))
+  rotator.turnFinished()
+  assert.equal(rotator.scheduledForIdle, true)
+  rotator.reset()
 })

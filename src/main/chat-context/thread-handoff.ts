@@ -21,7 +21,7 @@ export type ThreadHandoffOptions = {
   /** The source chat's working directory, named in a handoff so the new chat knows where the work lives. */
   cwd?: string | null
 }
-const MAX_ENTRY_CHARS = 1_500
+const MAX_PREVIEW_ENTRY_CHARS = 1_500
 
 type HandoffEntry = { id: string; speaker: 'User' | 'Assistant'; text: string }
 
@@ -83,7 +83,7 @@ export function buildThreadHandoff(
   }
   const files = changedFiles(items)
   if (files.length > 0) header.push(`Files changed there: ${files.join(', ')}`)
-  const plan = items.findLast((item) => item.type === 'plan' && item.text.trim())
+  const plan = [...items].reverse().find((item) => item.type === 'plan' && item.text.trim())
   if (plan?.type === 'plan') header.push(`Latest recorded plan (may be stale), item_id=${JSON.stringify(plan.id)}:\n${plan.text}`)
   const conversationLabel = 'Conversation so far (oldest first; complete retained messages):'
   const prefix = [...header, '', conversationLabel].join('\n')
@@ -178,7 +178,10 @@ function changedFiles(items: ChatTranscriptItem[]): string[] {
 /** Protect every user request and the latest answer; add whole older answers newest first. */
 function fitEntries(entries: HandoffEntry[], budget: number): string[] {
   const lines = entries.map((entry) => `${entry.speaker}: ${entry.text}`)
-  const latestAnswer = entries.findLastIndex((entry) => entry.speaker === 'Assistant')
+  let latestAnswer = -1
+  for (let index = entries.length - 1; index >= 0; index -= 1) {
+    if (entries[index]!.speaker === 'Assistant') { latestAnswer = index; break }
+  }
   const selected = new Set<number>()
   for (let index = 0; index < entries.length; index += 1) {
     if (entries[index]!.speaker === 'User' || index === latestAnswer) selected.add(index)
@@ -233,10 +236,10 @@ export function handoffPreviewExchange(items: ChatTranscriptItem[]): { user: str
   const last = entries.at(-1)!
   if (last.speaker === 'Assistant') {
     const userEntry = entries.at(-2)
-    const user = userEntry?.speaker === 'User' ? clip(userEntry.text, MAX_ENTRY_CHARS) : ''
-    const assistant = clip(last.text, MAX_ENTRY_CHARS)
+    const user = userEntry?.speaker === 'User' ? clip(userEntry.text, MAX_PREVIEW_ENTRY_CHARS) : ''
+    const assistant = clip(last.text, MAX_PREVIEW_ENTRY_CHARS)
     return user || assistant ? { user, assistant } : null
   }
-  const user = clip(last.text, MAX_ENTRY_CHARS)
+  const user = clip(last.text, MAX_PREVIEW_ENTRY_CHARS)
   return user ? { user, assistant: null } : null
 }

@@ -73,3 +73,16 @@ test('applyProviderRotation returns false when there is nothing to rotate', asyn
   assert.equal(rotated, false)
   assert.equal(settings.released, false)
 })
+
+
+test('rotation reads the configured handoff target rather than a fixed per-message cap', async () => {
+  const settings = new MemoryRotationSettings()
+  settings.saved.chatHandoffTargetChars = 0
+  const items: ChatTranscriptItem[] = [user('u1', 'Goal'), assistant('a1', 'preserve'.repeat(3_000)),
+    { type: 'user', id: 'u2', turnId: 't-2', text: 'Next' },
+    { type: 'assistant', id: 'a2', turnId: 't-2', text: 'Latest', streaming: false, phase: 'final_answer' }]
+  await applyProviderRotation(settings, {
+    paneId: 'p', provider: 'codex', threadId: 'thread', threadName: null, items
+  }, async () => {}, null)
+  assert.ok(settings.saved.chatContinuation?.handoff?.includes('preserve'.repeat(3_000)))
+})

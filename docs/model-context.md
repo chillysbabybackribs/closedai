@@ -45,7 +45,11 @@ tabs by title and length. Sending pins the turn to that note, so `notes` tools t
 edit it even after the user switches tabs.
 
 Explicit conversation continuation, branching, provider switching, project switching, and
-session rotation may carry a bounded handoff or compacted seed. Those fragments contain
+session rotation may carry a handoff or compacted seed with a configurable soft target.
+`chatHandoffTargetChars` defaults to 24,000 characters (0 includes all selected prose and
+evidence references); full user requests, latest answer/plan, checkpoint, and changed paths
+are protected even above the target. Older answers are selected whole, with recall ids for
+omissions; available space includes evidence status references, not raw tool output or reasoning. Those fragments contain
 historical user and assistant text; they are labeled untrusted and are not fresh user
 instructions. Codex receives typed `additionalContext`; Claude, Antigravity, and Cursor receive
 serialized `<closedai_context>` blocks. The serializer escapes embedded envelope markup so

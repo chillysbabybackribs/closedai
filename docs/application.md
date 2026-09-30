@@ -325,7 +325,14 @@ checkpoint tool anymore; new checkpoints are not written. When present, checkpoi
 read-only legacy data and are model-authored notes, not verified facts.
 
 A continuation or provider switch copies an applicable checkpoint into its existing
-≤12k-character handoff, alongside recent conversation. It freezes the source's last item id, and
+handoff. `chatHandoffTargetChars` is a soft character target (default 24,000; 0 retains all
+selected conversation and evidence references). Complete user requests, the latest assistant
+answer and plan, applicable checkpoint, and changed-file paths are protected even when they
+exceed that target. Older answers are retained whole, newest first; omitted answers name their
+recall item ids. Remaining space carries command/tool/file-change status references for recall,
+not raw output, screenshots, or reasoning. No per-message prose clipping is applied.
+This is deterministic selection, not a model-authored summary or a guarantee of semantic
+completeness; long protected content can still consume a large provider context. It freezes the source's last item id, and
 `peer_chats.recall` can search the current transcript or read that direct source—even after the
 source pane closes—without opening it in the UI. Source recall stops at the saved boundary. A
 checkpoint newer than a branch point is not carried. Missing boundaries (including legacy
@@ -335,9 +342,12 @@ on Codex, Claude, Cursor, and Antigravity can rotate the provider session invisi
 transcript stays put, a thin seed is queued for the next send, and each rotation appends metadata
 to the chat record for later recall-chain work. Triggers include the saved percentage and token
 budgets (`chatCompactAtPercent`, `chatCompactAtTokens`), plus task-aware defaults in app settings:
-transcript item count (`chatRotateAtItems`, default 100), tool calls since the latest user message
+transcript item count since the latest rotation boundary (`chatRotateAtItems`, default 100), tool calls since the latest user message
 (`chatRotateAtToolCallsSinceUser`, default 24), and tool-output characters in that span
-(`chatRotateAtToolOutputChars`, default 280000). Set any of those to `0` to disable that trigger.
+(`chatRotateAtToolOutputChars`, default 280000). Set any of those to `0` to disable that trigger. Token pressure defaults to off; the window
+percentage remains 80. Explicit saved values (including opt-outs and older token thresholds)
+survive loading and unrelated writes. Tool pressure stops at the rotation boundary as well as
+the latest user message.
 Queued rotations stay invisible in the transcript; Turn trace records `session.rotated` when one completes. Source recall
 on the same pane after rotation reads the in-memory transcript through the frozen boundary so tool
 output remains recoverable without reopening the dropped provider thread. With seamless rotation on,
@@ -1523,7 +1533,7 @@ Provider session history lives in each provider's own store; closing a pane, arc
 archiving a provider thread are distinct operations.
 
 Codex-specific settings are `chatCompactAtPercent` (default 80), `chatCompactAtTokens` (default
-28,000, between-turn token threshold; 0 disables), and `chatMidTurnCompactTokens` (default zero,
+0, opt-in between-turn token threshold; 0 disables), and `chatMidTurnCompactTokens` (default zero,
 leaves the CLI's limit). The percentage and between-turn token triggers are independent; setting
 both to zero disables app-triggered compaction. Window-percent triggers wait 15 seconds of idle
 time; the token trigger waits 8 seconds;

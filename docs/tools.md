@@ -576,7 +576,7 @@ turn, and only compacts by itself near the context limit. Several mechanisms kee
   adopting a smaller active-context target.
 - `ChatService` watches `thread/tokenUsage/updated` and asks for `thread/compact/start` after a
   turn ends with the context above `chatCompactAtPercent` (default 80; 0 disables this trigger).
-  The independent `chatCompactAtTokens` trigger defaults to 28,000 (0 disables), with nonzero values
+  The independent `chatCompactAtTokens` trigger defaults to 0 (disabled; opt-in), with nonzero values
   rounded and clamped to 20,000–2,000,000. Window-percent triggers schedule after 15 idle seconds;
   the token trigger schedules after 8 idle seconds. A new send
   or provider turn cancels a queued attempt; a compaction already in flight still blocks sends.
@@ -616,7 +616,7 @@ turn, and only compacts by itself near the context limit. Several mechanisms kee
 - Continuation/branch actions create a fresh pane, and a provider switch creates a fresh thread
   in the existing pane: the next message carries a digest of the old thread as
   `additionalContext` (`closedai.chat.handoff`, built from the app transcript without a model
-  call, ≤12k chars). An applicable checkpoint and frozen source boundary accompany the handoff
+  call, using the configurable `chatHandoffTargetChars` soft target). An applicable checkpoint and frozen source boundary accompany the handoff
   so bounded source recall remains available. Branching from a response includes conversation
   only through that completed message.
   Tool output, screenshots, and reasoning stay in the old thread. See
@@ -625,11 +625,18 @@ turn, and only compacts by itself near the context limit. Several mechanisms kee
 
 To tighten or relax rotation, quit ClosedAI, edit `"chatCompactAtTokens"` in
 `<userData>/app-settings.json`, and relaunch. There is not yet a settings UI for this field.
-The default is 28,000; set 0 to disable only the token trigger. Keep `chatCompactAtPercent` at
+The default is 0 (disabled); existing saved token thresholds are preserved. Set 0 to disable only the token trigger. Keep `chatCompactAtPercent` at
 80 as the window-pressure fallback. With `chatSeamlessRotation`
 enabled (the default), these thresholds trigger session rotation; set it to false to evaluate
-native compaction instead. Neither path automatically generates the model-written checkpoints
-described below.
+native compaction instead. Explicit rotation opt-outs survive settings reloads. Neither path automatically generates model-written checkpoints.
+
+`chatHandoffTargetChars` in the same settings file controls older-answer and evidence-reference
+retention (default 24,000; 0 includes all selected prose and references). Complete user messages,
+the latest answer and plan, checkpoint, and changed-file paths may exceed the target. Messages
+are retained whole, with recall item ids for omitted older answers. The evidence index reports
+command/tool/file-change status and ids; raw results remain available through recall. There is
+no settings UI for this field yet. This selection cannot guarantee that every important detail
+is included; retrieve the referenced evidence when needed.
 
 ## Working memory and recall
 
