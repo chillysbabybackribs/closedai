@@ -76,13 +76,14 @@ chat starts a provider; resolution follows each lane's spawn order (env override
 First-run onboarding (renderer). Before the workspace is used on a fresh install, the shell shows
 a full-screen **session gate** (local profiles: sign in, create account, keep signed in) persisted
 in `localStorage` under `closedai.onboarding.v1` (`src/shared/onboarding.ts`). Existing installs
-with chat history skip the flow automatically. After the gate, the normal title bar, workspace,
-and dock stay visible while a **provider setup** modal lists all four providers with install hints,
-Codex in-app connect, and CLI confirmation for the other lanes. Per-pane empty states still show
-connection guidance when a lane later drifts out of `ready`. **Sign out…** (title-bar account
-menu when a local profile is active, or **File → Sign out…** / Start → search when the menu bar
-is visible) clears the local session (`sessionUnlocked`, `activeUserId`, `keepSignedIn`) and
-returns to the gate without deleting saved profiles or provider-setup progress.
+with chat history skip the flow automatically and receive an implicit **Local profile** so the
+title-bar account menu and sign-out stay available. After the gate, the normal title bar,
+workspace, and dock stay visible while a **provider setup** modal lists all four providers with
+install hints, Codex in-app connect, and CLI confirmation for the other lanes. Per-pane empty
+states still show connection guidance when a lane later drifts out of `ready`. **Sign out…**
+(title-bar account menu to the left of the window controls, or **File → Sign out…** / Start →
+search when the menu bar is visible) clears the local session (`sessionUnlocked`, `activeUserId`,
+`keepSignedIn`) and returns to the gate without deleting saved profiles or provider-setup progress.
 
 Launch resilience. A bootstrap failure is shown in a native error box and ends the app; an
 uncaught exception or unhandled rejection after the window exists is logged with a `[main]`

@@ -2,7 +2,10 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import {
+  completedOnboardingSettings,
   createLocalUser,
+  ensureActiveSessionProfile,
+  LEGACY_BYPASS_PROFILE_ID,
   normalizeOnboardingSettings,
   readOnboardingSettings,
   signOutSession,
@@ -49,6 +52,42 @@ test('signOutSession returns to the gate without deleting profiles', () => {
   assert.equal(signedOut.keepSignedIn, false)
   assert.equal(signedOut.users.length, 1)
   assert.equal(signedOut.providerSetupComplete, true)
+})
+
+test('completedOnboardingSettings includes a legacy local profile for sign-out', () => {
+  const settings = completedOnboardingSettings()
+  assert.equal(settings.sessionUnlocked, true)
+  assert.equal(settings.activeUserId, LEGACY_BYPASS_PROFILE_ID)
+  assert.equal(settings.users.length, 1)
+  assert.equal(settings.users[0]?.displayName, 'Local profile')
+})
+
+test('ensureActiveSessionProfile backfills chat-history bypass storage missing a user', () => {
+  const migrated = ensureActiveSessionProfile({
+    phase: 'done',
+    users: [],
+    activeUserId: null,
+    keepSignedIn: true,
+    sessionUnlocked: true,
+    connectedProviders: [],
+    providerSetupComplete: true
+  })
+  assert.equal(migrated.activeUserId, LEGACY_BYPASS_PROFILE_ID)
+  assert.equal(migrated.users.length, 1)
+})
+
+test('ensureActiveSessionProfile leaves the gate locked when sessionUnlocked is false', () => {
+  const unchanged = ensureActiveSessionProfile({
+    phase: 'gate',
+    users: [],
+    activeUserId: null,
+    keepSignedIn: true,
+    sessionUnlocked: false,
+    connectedProviders: [],
+    providerSetupComplete: false
+  })
+  assert.equal(unchanged.activeUserId, null)
+  assert.equal(unchanged.users.length, 0)
 })
 
 test('read and write round-trip onboarding settings', () => {

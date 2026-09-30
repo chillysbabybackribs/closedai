@@ -6,6 +6,7 @@ import type { OnboardingSettings } from '../../shared/onboarding.js'
 import {
   completedOnboardingSettings,
   createLocalUser,
+  ensureActiveSessionProfile,
   readOnboardingSettings,
   signOutSession,
   writeOnboardingSettings
@@ -50,17 +51,29 @@ function initialSettings(): OnboardingSettings {
     return { ...stored, phase: 'gate', sessionUnlocked: false }
   }
   if (stored.keepSignedIn && stored.activeUserId && stored.phase === 'gate') {
-    return {
+    return ensureActiveSessionProfile({
       ...stored,
       sessionUnlocked: true,
       phase: stored.providerSetupComplete ? 'done' : 'providers'
-    }
+    })
   }
-  return stored
+  return ensureActiveSessionProfile(stored)
+}
+
+function bootstrapOnboardingSettings(): OnboardingSettings {
+  const next = initialSettings()
+  const before = readOnboardingSettings(window.localStorage)
+  if (
+    before !== null
+    && (next.activeUserId !== before.activeUserId || next.users.length !== before.users.length)
+  ) {
+    writeOnboardingSettings(window.localStorage, next)
+  }
+  return next
 }
 
 export function useOnboarding(chatSnapshot: ChatSnapshot, legacyBypass: boolean): OnboardingController {
-  const [settings, setSettings] = useState(initialSettings)
+  const [settings, setSettings] = useState(bootstrapOnboardingSettings)
 
   const persist = useCallback((next: OnboardingSettings) => {
     setSettings(next)
@@ -72,6 +85,15 @@ export function useOnboarding(chatSnapshot: ChatSnapshot, legacyBypass: boolean)
     if (!legacyBypass) return
     persist(completedOnboardingSettings())
   }, [legacyBypass, persist])
+
+  useEffect(() => {
+    setSettings((current) => {
+      const next = ensureActiveSessionProfile(current)
+      if (next.activeUserId === current.activeUserId && next.users.length === current.users.length) return current
+      writeOnboardingSettings(window.localStorage, next)
+      return next
+    })
+  }, [])
 
   const signIn = useCallback((userId: string) => {
     setSettings((current) => {

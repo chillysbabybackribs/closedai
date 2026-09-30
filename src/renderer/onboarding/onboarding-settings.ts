@@ -91,12 +91,39 @@ export function writeOnboardingSettings(storage: StorageLike, settings: Onboardi
   storage.setItem(ONBOARDING_STORAGE_KEY, JSON.stringify(settings))
 }
 
+/** Stable id for chat-history bypass installs that skip the session gate without creating a named account. */
+export const LEGACY_BYPASS_PROFILE_ID = 'closedai-legacy-bypass-profile'
+
+export function legacyBypassProfileUser(): LocalUser {
+  return createLocalUser('Local profile', LEGACY_BYPASS_PROFILE_ID, 0)
+}
+
+/** Unlocked sessions must expose a local profile for the title-bar account menu and sign-out. */
+export function ensureActiveSessionProfile(settings: OnboardingSettings): OnboardingSettings {
+  if (!settings.sessionUnlocked) return settings
+  const activeId = settings.activeUserId
+  if (activeId && settings.users.some((user) => user.id === activeId)) return settings
+  const existingLegacy = settings.users.find((user) => user.id === LEGACY_BYPASS_PROFILE_ID)
+  if (existingLegacy) {
+    return { ...settings, activeUserId: existingLegacy.id }
+  }
+  const legacy = legacyBypassProfileUser()
+  return {
+    ...settings,
+    users: [...settings.users, legacy],
+    activeUserId: legacy.id
+  }
+}
+
 export function completedOnboardingSettings(): OnboardingSettings {
+  const legacy = legacyBypassProfileUser()
   return {
     ...DEFAULT_ONBOARDING_SETTINGS,
     phase: 'done',
     sessionUnlocked: true,
-    providerSetupComplete: true
+    providerSetupComplete: true,
+    users: [legacy],
+    activeUserId: legacy.id
   }
 }
 
