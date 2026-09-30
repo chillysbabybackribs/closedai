@@ -1,6 +1,6 @@
 import { setGroupDocked } from '../layout-docking.js'
 import { BROWSER_PANE_ID, WORKSPACE_DOCK_ID, dockBrowser, dockPane, removePane, type ChatLayout, type DockEdge, type FloatRect, type Rect } from '../layout-tree.js'
-import { moveTab, tabOwner } from '../layout-tabs.js'
+import { addTab, moveTab, selectTab, tabOwner } from '../layout-tabs.js'
 
 // Tiles as windows. A tile is tiled (a slot in the split tree), floating (lifted out of the tiled
 // layer into its own rect, stacked by z above every tiled window) or minimized (kept in the tree
@@ -165,4 +165,13 @@ export function resizeRect(start: Rect, edge: ResizeEdge, dx: number, dy: number
     y = start.y + start.height - height
   }
   return { x, y, width, height }
+}
+
+const NEW_CHAT_WINDOW: Rect = { x: 96, y: 64, width: 760, height: 560 }
+
+/** A fresh chat as its own floating window with its own tabs; the host keeps the tab it had in front. */
+export function chatInNewWindow(tree: ChatLayout, added: string, host: string, splitId: string): ChatLayout {
+  const joined = addTab(tree, host, added)
+  const split = moveTab(joined, added, added, 'right', splitId)
+  return split === joined ? joined : floatWindow(selectTab(split, host, host), added, NEW_CHAT_WINDOW)
 }

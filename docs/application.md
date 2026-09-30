@@ -1030,7 +1030,7 @@ detached windows and startup retain the header menus because no dock is availabl
 tile holds its icon from the shared list in
 `src/renderer/app-icons.tsx`, which the view tabs use too. The strip is 44 px tall and a step lighter than the workspace
 (`--surface-raised`); the tray sits in a tab that rises out of its centre, drawn with the strip as
-one shape and one outline (`dock-surface.tsx`). The dock's box reaches as high as a magnified tile, so a browser under any of it is covered. **Chats** starts a new chat (history stays in header Search chats and File → Manage chat history). **Browser** shows or hides the
+one shape and one outline (`dock-surface.tsx`). The dock's box reaches as high as a magnified tile, so a browser under any of it is covered. **Chats** opens a new floating chat window with its own tabs (history stays in header Search chats and File → Manage chat history). **Browser** shows or hides the
 browser. **Notes** opens the notepad (its open window, else the latest note, else a new one). **Agent runs** opens the Agents view; its tooltip carries the runs summary. **Saved
 sites** and **Downloads** open a list above the icon. In Saved sites, a row (`dock.saved-site`)
 shows the browser and opens the site, and **All saved sites** (`dock.all-saved-sites`) opens the

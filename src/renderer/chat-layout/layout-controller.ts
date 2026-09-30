@@ -10,7 +10,7 @@ import { readQuickChatModel, rememberQuickChatModel } from './quick-chat-model.j
 import { notepadChats, pruneNotepadChats } from '../notepad/notepad-layout.js'
 import { adoptTabs, initialWindowTree } from './layout-windows.js'
 import { adoptsUnheldChats, appWindow, isFrontWindow, onAppWindowCommand, tabsHeldElsewhere, useAppWindows } from '../app-windows/app-window-store.js'
-import { floatBeside, groupWindow, minimizeWindow, raiseWindow, restoreWindow } from './floating/window-layout.js'
+import { chatInNewWindow, floatBeside, groupWindow, minimizeWindow, raiseWindow, restoreWindow } from './floating/window-layout.js'
 import { setWindowOnTop, tileWindows } from './floating/window-arrange.js'
 import { absorbCrossDockAtPointer } from './floating/cross-window-dock-target.js'
 import { crossWindowDockCanvasSize } from '../app-windows/cross-window-dock-store.js'
@@ -260,6 +260,25 @@ export function useChatLayout(
   }, [clearError, fail, release])
 
   const newChat = useCallback((target: string) => dock(null, target, null), [dock])
+
+  /** A blank chat in its own floating window (own tab strip), leaving every existing tile as it was. */
+  const newChatWindow = useCallback(async (): Promise<void> => {
+    if (pending.current) return
+    const host = paneIds(current.current.tree).find((id) => !isViewTabId(id))
+    if (!host) return
+    pending.current = true
+    setBusy(true)
+    clearError()
+    try {
+      const added = await window.closedai.chat.newPeer(host)
+      selected.current = added
+      setLayout((value) => ({ ...value, tree: chatInNewWindow(value.tree, added, host, crypto.randomUUID()) }))
+      setSelectionToConfirm(added)
+    } catch (reason) {
+      fail(reason)
+      release()
+    }
+  }, [clearError, fail, release])
 
   // "Continue in new chat": the digest-seeded chat opens as a tab in the source's own tile, so the
   // old conversation stays one click away while the new one starts. Main's refusal (for example a
@@ -591,7 +610,7 @@ export function useChatLayout(
   const showBrowser = useCallback(() => setLayout((value) => value.browserVisible ? value : { ...value, browserVisible: true }), [])
   return {
     ...layout, browserVisible: self.main && layout.browserVisible, detached: !self.main,
-    error: error?.text ?? '', notice: notice?.text ?? '', busy, dock, newChat, continueChat, focusPane,
+    error: error?.text ?? '', notice: notice?.text ?? '', busy, dock, newChat, newChatWindow, continueChat, focusPane,
     activateTab, openView, toggleView, pinView, moveTabToTile, closeTab, hide, closeFocused, focusedCloseTarget, resize, arrange,
     toggleBrowser, showBrowser, detachTab, returnTab, windows: windowActions,
     maximized: layout.maximized ?? null, setMaximized,

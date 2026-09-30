@@ -55,6 +55,7 @@ export type ChatLayoutHandle = {
   startAgent: (chatId: string, options: AgentRunStartOptions) => Promise<void>
   /** The notepad: its open window in front, else the latest note, else a new note (dock, menu). */
   openNotepad: () => Promise<void>
+  newChatWindow: () => Promise<void>
 }
 
 export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, onBackdropChange, onOpenWallpaper, toolsPreset = null, browserHeld = false, spaceId, onRenameChat, onSavedSitesError, onNotepadError, onBrowserVisibleChange, onMinimizedChange, onFloatingChange, archiveChat, ref }: {
@@ -211,8 +212,9 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, on
     },
     sendToChat,
     startAgent: (chatId, options) => startAgentRef.current(chatId, options),
-    openNotepad: notepad.openNotepad
-  }), [notepad.openNotepad, layout.windows, layout.dock, layout.activateTab, layout.openView, layout.toggleView, toggleBrowserHere, revealBrowser, savedSites, layout.closeFocused, layout.focusedCloseTarget, layout.arrange, chat.selectedPaneId, sendToChat])
+    openNotepad: notepad.openNotepad,
+    newChatWindow: layout.newChatWindow
+  }), [notepad.openNotepad, layout.newChatWindow, layout.windows, layout.dock, layout.activateTab, layout.openView, layout.toggleView, toggleBrowserHere, revealBrowser, savedSites, layout.closeFocused, layout.focusedCloseTarget, layout.arrange, chat.selectedPaneId, sendToChat])
   const select = useCallback((id: string): void => { void layout.focusPane(id) }, [layout.focusPane])
   const onDock = useCallback((id: string | null, target: string, edge: import('./layout-tree.js').DockEdge | null, singleTab?: boolean) => {
     return layout.dock(id, target, edge, singleTab)
