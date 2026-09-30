@@ -16,7 +16,7 @@ export const UI_CONTROLS = {
   'titlebar.chat-search-delete': 'Delete a chat from history immediately without confirmation; item is the chat id',
   'titlebar.menu': 'Application menu tab; item is file, view, agent, or developer',
   'titlebar.menu-item': 'Application menu row; item is its stable key, for example new-chat, sign-out, tools, compact-context, stop-turn, turn-trace, reload-renderer, toggle-devtools; closedai_app.menu runs the same row by key in one call without opening the menu',
-  'titlebar.session-account': 'Title bar account menu for the signed-in local onboarding profile; item is the profile id',
+  'titlebar.session-account': 'Title bar File dropdown with user information and Log out for the signed-in local onboarding profile; item is the profile id',
   'titlebar.session-connect-providers': 'Account menu: reopen first-run provider setup',
   'titlebar.session-sign-out': 'Account menu: end the local session and return to the sign-in gate',
   'window.minimize': 'Minimize the window',

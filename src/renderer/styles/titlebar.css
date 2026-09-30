@@ -22,7 +22,7 @@
   pointer-events: none;
 }
 
-/* Left edge of the bar: the account avatar, then the fallback application menus. Sized to its
+/* Left edge of the bar: the account File dropdown, then the fallback application menus. Sized to its
    content so the rest of the bar stays draggable. */
 .titlebar-start {
   position: absolute;

@@ -419,8 +419,36 @@
 }
 
 /* ---- Title bar local profile (signed-in onboarding session) ----------------
-   An avatar at the bar's left edge (.titlebar-start). It reuses the .shell-window-control slot, so
-   height and hover plate match the minimize / maximize / close buttons in both chrome modes. */
+   A compact File trigger at the bar's left edge; profile identity stays inside the dropdown. */
+
+.titlebar-session-account {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 28px;
+  margin-inline: 6px;
+  padding: 0 9px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--chrome-control-fg);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+
+.titlebar-session-account:hover,
+.titlebar-session-account[data-state='open'] {
+  background: var(--chrome-control-hover);
+  color: var(--chrome-control-strong);
+}
+
+.titlebar-session-account:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
 
 .titlebar-session-account-avatar {
   position: relative;
@@ -437,12 +465,9 @@
   line-height: 1;
 }
 
-.titlebar-session-account[data-state='open']::before {
-  background: var(--chrome-control-hover);
-}
-
 .titlebar-session-account-menu {
-  min-width: 220px;
+  width: 260px;
+  max-width: calc(100vw - 16px);
 }
 
 .titlebar-session-account-header {

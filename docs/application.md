@@ -99,9 +99,10 @@ available. After the gate, the normal title bar, workspace, and dock stay visibl
 **provider setup** modal lists all four providers as connected or not, probes installed CLIs for
 existing sign-in, and offers a **Sign in** action (Codex opens ChatGPT in the browser; Cursor runs
 `cursor-agent login`; Claude and Antigravity warm their lanes after CLI login elsewhere). Per-pane
-empty states still show connection guidance when a lane later drifts out of `ready`. **Sign out**
-(the profile avatar at the title bar's left edge, whose menu names the profile, or
-**File → Sign out…** / Start → search) clears the local session (`sessionUnlocked`,
+empty states still show connection guidance when a lane later drifts out of `ready`. The single
+**File** dropdown at the title bar's left edge uses the shared Radix/shadcn menu and shows the
+profile name, device-local sign-in status, **Connect providers…**, and **Log out**. Logging out
+(also available through the application **File → Sign out…** / Start → search) clears the local session (`sessionUnlocked`,
 `activeUserId`) and returns to the gate without deleting saved profiles or per-profile
 provider-setup progress.
 
