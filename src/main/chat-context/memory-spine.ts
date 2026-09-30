@@ -7,6 +7,7 @@ const MAX_SPINE_CHARS = 16_000
 const SPINE_DEFAULT_LIMIT = 5
 const SPINE_MAX_LIMIT = 8
 const MAX_EVIDENCE_PER_TURN = 3
+const OMITTED_ANSWER = '[Older answer omitted'
 
 export type SpineTranscriptMeta = {
   threadId: string
@@ -42,10 +43,11 @@ export function spineFromTurns(
     end = index
   }
   const slice = turns.slice(Math.max(0, end - limit), end)
-  const hasMore = end - limit > 0
-  const nextBeforeUserItemId = hasMore ? slice[0]?.userItemId ?? null : null
-  let page = slice.map((turn) => toPublicTurn(turn, includeEvidence))
-  page = fitSpineBudget(page, meta, changedFiles)
+  const page = fitSpineBudget(slice.map((turn) => toPublicTurn(turn, includeEvidence)), meta, changedFiles)
+  // Turns the budget dropped sit just before the first kept one, so the cursor names that turn and
+  // the next page starts with them instead of skipping past.
+  const hasMore = end - limit > 0 || page.length < slice.length
+  const nextBeforeUserItemId = hasMore ? page[0]?.userItemId ?? null : null
   return {
     ...(meta.chatId ? { chatId: meta.chatId } : {}),
     threadId: meta.threadId,
@@ -90,24 +92,16 @@ function fitSpineBudget(
     provenance: meta.provenance,
     trust: 'historical-data'
   }).length
-  while (shell(draft) > MAX_SPINE_CHARS && draft.length > 0) {
-    const oldest = draft[0]!
-    if (oldest.assistant) {
-      oldest.assistant = {
-        itemId: oldest.assistant.itemId,
-        text: `[Older answer omitted; recall item_id=${JSON.stringify(oldest.assistant.itemId)}]`
-      }
-      if (shell(draft) <= MAX_SPINE_CHARS) break
-    }
-    draft.shift()
-  }
-  while (shell(draft) > MAX_SPINE_CHARS && draft.length > 0) {
-    const target = draft.find((turn) => turn.assistant && !turn.assistant.text.startsWith('[Older answer omitted'))
-    if (!target?.assistant) break
-    target.assistant = {
-      itemId: target.assistant.itemId,
-      text: `[Older answer omitted; recall item_id=${JSON.stringify(target.assistant.itemId)}]`
+  // Older answers become recall pointers first, oldest first; only then do whole turns go, oldest
+  // first, never the newest one, so every page moves the cursor.
+  for (const turn of draft) {
+    if (shell(draft) <= MAX_SPINE_CHARS) break
+    if (!turn.assistant || turn.assistant.text.startsWith(OMITTED_ANSWER)) continue
+    turn.assistant = {
+      itemId: turn.assistant.itemId,
+      text: `${OMITTED_ANSWER}; recall item_id=${JSON.stringify(turn.assistant.itemId)}]`
     }
   }
+  while (shell(draft) > MAX_SPINE_CHARS && draft.length > 1) draft.shift()
   return draft
 }

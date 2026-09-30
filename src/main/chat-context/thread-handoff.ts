@@ -28,6 +28,7 @@ export type ThreadHandoffOptions = {
   cwd?: string | null
 }
 const MAX_PREVIEW_ENTRY_CHARS = 1_500
+const MAX_CHANGED_FILES = 30
 
 type HandoffEntry = import('./conversation-spine.js').ConversationSpineEntry
 
@@ -154,9 +155,14 @@ export function conversationSpineChangedFiles(items: ChatTranscriptItem[]): stri
   const paths = new Set<string>()
   for (const item of items) {
     if (item.type !== 'fileChange') continue
-    for (const change of item.changes) if (change.path) paths.add(change.path)
+    for (const change of item.changes) {
+      if (!change.path) continue
+      paths.delete(change.path)
+      paths.add(change.path)
+    }
   }
-  return [...paths]
+  // The most recently changed files; a long session's full list would crowd out the turns.
+  return [...paths].slice(-MAX_CHANGED_FILES)
 }
 
 /** Protect every user request and the latest answer; add whole older answers newest first. */

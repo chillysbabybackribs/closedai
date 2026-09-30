@@ -53,3 +53,20 @@ test('spineFromTurns rejects an unknown paging cursor', () => {
     threadId: 'thread', title: null, cwd: '/w', lastActivityAt: 1, provenance: 'transcript'
   }, { scope: 'current', beforeUserItemId: 'missing' }), /cursor/)
 })
+
+test('spineFromTurns pages to turns its budget dropped instead of skipping them', () => {
+  const long = 'x'.repeat(7_000)
+  const turns = conversationSpineTurns([
+    user('u1', `One ${long}`),
+    user('u2', `Two ${long}`),
+    user('u3', `Three ${long}`)
+  ])
+  const meta = { threadId: 'thread', title: null, cwd: '/w', lastActivityAt: 1, provenance: 'transcript' as const }
+  const first = spineFromTurns(turns, meta, { scope: 'history', limit: 3 })
+  assert.deepEqual(first.turns.map((turn) => turn.userItemId), ['u2', 'u3'])
+  assert.equal(first.hasMore, true)
+  assert.equal(first.nextBeforeUserItemId, 'u2')
+  const second = spineFromTurns(turns, meta, { scope: 'history', limit: 3, beforeUserItemId: 'u2' })
+  assert.deepEqual(second.turns.map((turn) => turn.userItemId), ['u1'])
+  assert.equal(second.hasMore, false)
+})
