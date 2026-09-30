@@ -247,3 +247,69 @@
 .onboarding-provider-footer-spacer {
   flex: 1;
 }
+
+/* ---- Title bar local profile (signed-in onboarding session) ---------------- */
+
+.titlebar-session-account {
+  position: absolute;
+  top: 0;
+  right: 132px;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding-right: 4px;
+  -webkit-app-region: no-drag;
+}
+
+.titlebar-session-account-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 160px;
+  height: 30px;
+  padding: 0 8px 0 4px;
+  border: 1px solid var(--chrome-control-divider);
+  border-radius: 999px;
+  background: var(--chrome-control-hover);
+  color: var(--chrome-control-strong);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: var(--tracking-ui);
+  cursor: pointer;
+  transition: background 110ms var(--ease-chrome), border-color 110ms var(--ease-chrome);
+}
+
+.titlebar-session-account-trigger:hover,
+.titlebar-session-account-trigger[data-state='open'] {
+  background: var(--chrome-control-active, var(--chrome-control-hover));
+  border-color: var(--hairline-strong);
+}
+
+.titlebar-session-account-avatar {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: hsl(var(--avatar-hue, 220) 55% 42%);
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.titlebar-session-account-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .titlebar-session-account-name {
+    display: none;
+  }
+
+  .titlebar-session-account-trigger {
+    max-width: none;
+    padding-right: 6px;
+  }
+}

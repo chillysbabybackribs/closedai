@@ -48,6 +48,7 @@ import {
 import { useWorkspaceBackdrop } from './backdrop/use-workspace-backdrop.js'
 import type { MinimizedWindow } from './chat-layout/floating/minimized-windows.js'
 import { ProviderSetupModal } from './onboarding/provider-setup-modal.js'
+import { SessionAccountMenu } from './onboarding/session-account-menu.js'
 import { SessionGate } from './onboarding/session-gate.js'
 import { useOnboarding } from './onboarding/use-onboarding.js'
 import './styles.css'
@@ -223,14 +224,20 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
   // the row stays visible but disabled so the menu reads the same in every chat.
   const compactEnabled = providerSupportsContextShrink(chat.state.provider, chat.preferences?.chatSeamlessRotation)
     && ready && !running && chat.state.items.some((item) => item.type === 'user')
+  const activeLocalUser = onboarding.settings.activeUserId
+    ? onboarding.settings.users.find((user) => user.id === onboarding.settings.activeUserId) ?? null
+    : null
+  const endLocalSession = useCallback((): void => {
+    setSettingsOpen(false)
+    setWallpaperOpen(false)
+    onboarding.signOut()
+  }, [onboarding.signOut])
   const menuAction = useCallback((action: Exclude<MenuAction, 'search-chats'>): void => {
     switch (action) {
       case 'new-chat': history.newChat(); break
       case 'settings': setSettingsTab('appearance'); setSettingsOpen(true); break
       case 'sign-out':
-        setSettingsOpen(false)
-        setWallpaperOpen(false)
-        onboarding.signOut()
+        endLocalSession()
         break
       // Trace, Agents, History, Tools and Saved sites are view tabs, not dialogs.
       case 'history': workspaceRef.current?.toggleView('history').catch(report('Could not open chat history')); break
@@ -248,7 +255,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
       case 'reload': window.location.reload(); break
       case 'devtools': window.closedai.window.toggleDevTools().catch(report('Could not open developer tools')); break
     }
-  }, [history.newChat, onboarding.signOut, report])
+  }, [endLocalSession, history.newChat, report])
 
   const applicationMenu: TitlebarMenuProps = {
     chatZoom: appearance.chatZoom,
@@ -284,6 +291,13 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
         <div ref={setSearchTools} className="titlebar-search-tools">
           <HeaderChatSearch chats={chat.chats} controller={history} inputRef={searchRef} />
         </div>
+        {activeLocalUser && onboarding.settings.sessionUnlocked && (
+          <SessionAccountMenu
+            user={activeLocalUser}
+            onSignOut={endLocalSession}
+            onConnectProviders={onboarding.reopenProviderSetup}
+          />
+        )}
         <AppWindowControls />
       </header>
       <div className="shell-titlebar-divider" aria-hidden="true" />
