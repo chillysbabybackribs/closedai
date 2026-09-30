@@ -24,6 +24,7 @@ import { DesktopWorkspace, type ChatLayoutHandle } from './chat-layout/desktop-w
 import { ChatRenameDialog } from './chat-rename-dialog.js'
 import { SpacesStage, type SpacesDockNav, type SpacesHandle } from './spaces/spaces-stage.js'
 import { AppDock } from './dock/app-dock.js'
+import { ProviderUsage } from './provider-usage/provider-usage.js'
 import { TitlebarRail } from './rail/titlebar-rail.js'
 import { DOCK_RESERVE, readDockPrefs, saveDockPrefs, type DockPrefs } from './dock/dock-model.js'
 import type { LayoutPreset } from './chat-layout/layout-presets.js'
@@ -330,15 +331,19 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
     <div className="shell" data-ui-surface="shell">
       <header className="shell-titlebar" aria-label="Window title bar">
         <TitlebarRail search={searchTools} />
-        <div className="titlebar-start">
-          {activeLocalUser && onboarding.settings.sessionUnlocked && (
-            <SessionAccountMenu
-              user={activeLocalUser}
-              onSignOut={endLocalSession}
-              onConnectProviders={onboarding.reopenProviderSetup}
-            />
-          )}
-          {(!appWindow().main || (!chat.selectedPaneId && startupStalled)) && <TitlebarMenu {...applicationMenu} />}
+        {/* File dropdown, then subscription usage centred in the gap before chat search. */}
+        <div className="titlebar-lead">
+          <div className="titlebar-start">
+            {activeLocalUser && onboarding.settings.sessionUnlocked && (
+              <SessionAccountMenu
+                user={activeLocalUser}
+                onSignOut={endLocalSession}
+                onConnectProviders={onboarding.reopenProviderSetup}
+              />
+            )}
+            {(!appWindow().main || (!chat.selectedPaneId && startupStalled)) && <TitlebarMenu {...applicationMenu} />}
+          </div>
+          {appWindow().main && <div className="titlebar-usage"><ProviderUsage chats={chat.chats} /></div>}
         </div>
         <div ref={setSearchTools} className="titlebar-search-tools">
           <HeaderChatSearch chats={chat.chats} controller={history} inputRef={searchRef} />

@@ -61,7 +61,7 @@ export const ProviderUsage = memo(function ProviderUsage({ chats }: { chats: rea
   const displays = entries.map(chip)
   const compact = width < displays.reduce((total, display) => total + chipWidth(display), 0) + Math.max(0, displays.length - 1) * 9
   const entry = entries.find((item) => item.key === selected) ?? entries[0]
-  // The collapsed trigger carries the worst numeric reading so the rail still says something at a glance.
+  // The collapsed trigger carries the worst numeric reading so the title bar still says something at a glance.
   const worst = displays.filter((display) => display.remaining !== null)
     .reduce<UsageChipDisplay | null>((lowest, next) => !lowest || (next.remaining ?? 100) < (lowest.remaining ?? 100) ? next : lowest, null)
   const warning = displays.some((display) => WARNING_LEVELS.includes(display.level))

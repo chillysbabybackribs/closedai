@@ -179,6 +179,36 @@ them only when startup stalled before a pane exists, or in a detached window. Lo
 `activeUserId`) and returns to the gate without deleting saved profiles or per-profile
 provider-setup progress.
 
+In the main window, provider subscription usage sits centred in the gap between the File dropdown and
+chat search (`src/renderer/provider-usage/`): one ghost-button chip per provider
+(`titlebar.provider-usage`): the provider mark and remaining percent as text, separated by a clean
+vertical divider on the bar without separate pill surfaces. Level ink colours the figure
+only, never the mark. A provider with no numeric window shows its mark alone; its plan and usage
+details remain available in the popup.
+All four providers appear on startup, before any provider chat connects. They show the lowest reported remaining allowance, keeping known accounts separate and using the
+newest reading across account probes and attached chats; they never sum quotas across conversations. The popup
+names every provider window, including model-specific scopes, remaining allowance, reset time,
+observation age, plan and provider notes. Session connection is shown separately from quota.
+At <=20% remaining the quota is low, <=10% critical, and 0% exhausted; a reading older than five
+minutes or past its reported reset is stale, never assumed replenished. Partial Claude events
+retain each untouched window's observation time. Missing data says unavailable. Codex reads `account/rateLimits/read` only: zero, one, or two
+rolling windows (primary/secondary) plus optional credit metadata; the title bar shows reported windows
+and plan, not inferred buckets. Credit balances appear in the composer usage card, not the title-bar
+chips. Cursor reports monthly included, Auto, and API percentages through the same read-only dashboard
+RPCs as the CLI’s `/usage` command. The chip uses the lowest remaining scope; the popup names
+each scope and the billing reset, with on-demand spending as a note rather than an allowance. Background chat summaries carry telemetry even
+when their transcript is not subscribed. The title bar also reads each signed-in CLI account through
+`chat:readProviderUsage`, independently of chat runtimes, on mount and every minute while the
+document is foregrounded. Reads are shared across windows for one minute, including failures;
+failed reads preserve the last dated observation. Codex and Claude use short-lived control-only
+processes, Antigravity uses `/quota`, and Cursor uses the CLI’s signed-in credential store and
+read-only usage RPCs (`about` lets the CLI refresh credentials). These reads send no model turns
+and do not wake or extend the idle lifetime of parked chats. Provider push events can supply
+newer readings between polls. The popup offers an explicit refresh
+(`titlebar.provider-usage-refresh`). When the gap is too narrow, a single **Usage** trigger
+(`titlebar.provider-usage-all`), carrying the lowest remaining reading in a `Badge`, opens the same
+provider/account tabs (`titlebar.provider-usage-tab`).
+
 Each local profile owns a whole workspace (`src/main/profiles/`). A profile's data directory is
 Electron's `userData` for the process that opens it, chosen before the instance lock and before
 any store or Chromium session exists, so chats, open panes, notes, layouts, wallpaper, browser
@@ -973,35 +1003,7 @@ the overview does: in the main window, once a chat is selected.
 Left: back and forward (`dock.back`, `dock.forward`) step through the zoom history as Alt+←/→ and
 are disabled at either end and while a zoom is moving; their tooltips name where you are
 (workspace and selected chat, or "All workspaces"). Right: Layout and dock settings
-(`dock.settings`). The left side, after the navigation arrows, holds one ghost-button chip per provider
-(`dock.provider-usage`): the provider mark and remaining percent as text, separated by a clean
-vertical divider on the existing rail without separate pill surfaces. Level ink colours the figure
-only, never the mark. A provider with no numeric window shows its mark alone; its plan and usage
-details remain available in the popup.
-All four providers appear on startup, before any provider chat connects. They show the lowest reported remaining allowance, keeping known accounts separate and using the
-newest reading across account probes and attached chats; they never sum quotas across conversations. The popup
-names every provider window, including model-specific scopes, remaining allowance, reset time,
-observation age, plan and provider notes. Session connection is shown separately from quota.
-At <=20% remaining the quota is low, <=10% critical, and 0% exhausted; a reading older than five
-minutes or past its reported reset is stale, never assumed replenished. Partial Claude events
-retain each untouched window's observation time. Missing data says unavailable. Codex reads `account/rateLimits/read` only: zero, one, or two
-rolling windows (primary/secondary) plus optional credit metadata; the footer shows reported windows
-and plan, not inferred buckets. Credit balances appear in the composer usage card, not the footer
-chips. Cursor reports monthly included, Auto, and API percentages through the same read-only dashboard
-RPCs as the CLI’s `/usage` command. The chip uses the lowest remaining scope; the popup names
-each scope and the billing reset, with on-demand spending as a note rather than an allowance. Background chat summaries carry telemetry even
-when their transcript is not subscribed. The footer also reads each signed-in CLI account through
-`chat:readProviderUsage`, independently of chat runtimes, on mount and every minute while the
-document is foregrounded. Reads are shared across windows for one minute, including failures;
-failed reads preserve the last dated observation. Codex and Claude use short-lived control-only
-processes, Antigravity uses `/quota`, and Cursor uses the CLI’s signed-in credential store and
-read-only usage RPCs (`about` lets the CLI refresh credentials). These reads send no model turns
-and do not wake or extend the idle lifetime of parked chats. Provider push events can supply
-newer readings between polls. The popup offers an explicit refresh
-(`dock.provider-usage-refresh`). On narrower rails, a single **Usage** trigger
-(`dock.provider-usage-all`), carrying the lowest remaining reading in a `Badge`, opens the same
-provider/account tabs (`dock.provider-usage-tab`)
-without overlapping the measured central tray. Centre: the **app tray**, Magic UI's `Dock` (`src/components/ui/dock.tsx`,
+(`dock.settings`). Centre: the **app tray**, Magic UI's `Dock` (`src/components/ui/dock.tsx`,
 `@magicui/dock`), with **Start** centred in the tray and one rounded-square tile per ClosedAI surface
 on either side (`dock.app`, item is the surface), 48 px and growing to 64 px under the pointer.
 **Start** (`dock.start`) opens a panel above the tray with search
@@ -1609,7 +1611,8 @@ instrumentation.
 | Default-browser cookie import (launch and on demand) | `src/main/browser-cookie-import.ts`, `src/main/import-cookies.ts` |
 | Typed IPC contract and narrow preload | `src/shared/api.ts`, `src/preload/index.ts` |
 | App windows: registry, event routing per window, detached-window persistence, cross-window docking | `src/main/windows/`, `src/shared/app-windows.ts`, `src/shared/cross-window-dock.ts`, `src/renderer/app-windows/`, `src/renderer/chat-layout/layout-windows.ts`, `src/renderer/chat-layout/floating/cross-window-*` |
-| Dock: bottom-edge reveal, zoom navigation, app tray and its lists, Start (`dock-start-*`), provider usage chips; the shared feature icon list | `src/renderer/dock/`, `src/renderer/app-icons.tsx`, `src/components/ui/dock.tsx`; usage reads in `src/main/chat-context/provider-usage.ts` |
+| Dock: bottom-edge reveal, zoom navigation, app tray and its lists, Start (`dock-start-*`); the shared feature icon list | `src/renderer/dock/`, `src/renderer/app-icons.tsx`, `src/components/ui/dock.tsx` |
+| Title-bar provider subscription usage chips and popover | `src/renderer/provider-usage/`; usage reads in `src/main/chat-context/provider-usage.ts` |
 | Workspace wallpaper: picker, presets, uploads | `src/renderer/backdrop/`, `src/shared/backdrop-presets.ts`, `src/main/wallpapers/upload-store.ts`, `src/main/desktop-wallpaper.ts` |
 | Chat/project/history orchestration | `src/renderer/chat-pane.tsx`, `src/renderer/project-menu.tsx`, `src/renderer/chat-history/` |
 | Transcript steps, background work, response actions | `src/renderer/transcript-rows.ts`, `src/renderer/activity-steps.ts`, `src/renderer/background-tasks.tsx`, `src/renderer/message-actions.tsx` |

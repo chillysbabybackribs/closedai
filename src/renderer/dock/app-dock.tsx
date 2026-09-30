@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react'
+import { memo, useEffect, useMemo, useRef, useState, type JSX } from 'react'
 import { ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-react'
 import { Button } from '../../components/ui/button.js'
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover.js'
@@ -21,7 +21,6 @@ import { DockLayoutSection } from './dock-layout-menu.js'
 import type { LayoutPreset } from '../chat-layout/layout-presets.js'
 import type { MinimizedWindow } from '../chat-layout/floating/minimized-windows.js'
 import { useDockReveal } from './use-dock-reveal.js'
-import { ProviderUsage } from './provider-usage.js'
 import { useNotes } from '../notepad/notes-client.js'
 
 const SLIDE_MS = 200
@@ -55,7 +54,7 @@ export type AppDockProps = {
  * reaches the bottom edge unless Keep visible is on.
  */
 export const AppDock = memo(function AppDock({ menu, nav, chats, chatTitle, browserVisible, prefs, onPrefsChange, onLaunch, onOpenSite, onAllSavedSites, minimized, onRestoreWindow, canTile, onTileWindows, onApplyPreset, onOpenLayouts, onOpenChat, startServices }: AppDockProps): JSX.Element {
-  const [openList, setOpenList] = useState<TrayAppId | 'settings' | 'start' | 'usage' | null>(null)
+  const [openList, setOpenList] = useState<TrayAppId | 'settings' | 'start' | null>(null)
   const [keyboard, setKeyboard] = useState(false)
   // Start opens on its home every time; a screen is where one visit went, not a preference.
   const [startView, setStartView] = useState<StartView>('home')
@@ -72,15 +71,7 @@ export const AppDock = memo(function AppDock({ menu, nav, chats, chatTitle, brow
   const root = useRef<HTMLDivElement>(null)
   // State, not a ref: the surface renders first and has to measure the tray once it exists.
   const [tray, setTray] = useState<HTMLDivElement | null>(null)
-  const [trayWidth, setTrayWidth] = useState(500)
-  useEffect(() => {
-    if (!tray) return
-    const observer = new ResizeObserver(() => setTrayWidth(tray.getBoundingClientRect().width))
-    observer.observe(tray)
-    return () => observer.disconnect()
-  }, [tray])
 
-  const onUsageOpenChange = useCallback((open: boolean) => setOpenList(open ? 'usage' : null), [])
   const runs = useAgentRuns()
   const downloads = useBrowserDownloadsController().downloads
   const savedSites = useSavedSitesList(true)
@@ -150,9 +141,6 @@ export const AppDock = memo(function AppDock({ menu, nav, chats, chatTitle, brow
               onClose={() => setOpenList(null)} view={startView} onViewChange={setStartView} services={startServices} />
           </PopoverContent>
         </Popover>
-        <div className="provider-usage-rail" style={{ right: `calc(50% + ${trayWidth / 2 + 14}px)` }}>
-          <ProviderUsage chats={chats} visible={shown} open={openList === 'usage'} onOpenChange={onUsageOpenChange} />
-        </div>
         <div>
           {/* Dock lists do not hand focus back on close: the button's tooltip would reopen over the page. */}
           <Popover open={openList === 'settings'} onOpenChange={(open) => setOpenList(open ? 'settings' : null)}>

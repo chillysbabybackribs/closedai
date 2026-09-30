@@ -1,23 +1,15 @@
-/* Marks, figures and bars sit on the existing rail; no second surface or chip border. */
-.provider-usage-rail {
-  position: absolute;
-  left: 84px;
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 4px;
-  min-width: 32px;
-}
-.provider-usage-rail > [data-slot='popover-trigger'] { flex-shrink: 0; }
+/* Marks and figures sit on the title bar; no second surface or chip border. The row fills the gap
+   between the File dropdown and chat search so the compact check can measure it, and centres its chips. */
 .provider-usage {
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   flex: 1;
   min-width: 0;
   gap: 2px;
 }
+.provider-usage button { -webkit-app-region: no-drag; }
 /* Chip: provider mark and remaining percent. Level ink goes on the figure only; brand marks keep
    their colour. */
 .provider-usage-chip {
@@ -65,7 +57,7 @@
 .provider-usage-worst > svg { width: 11px; height: 11px; }
 .provider-usage-anchor {
   position: absolute;
-  left: 0;
+  left: 50%;
   width: 1px;
   padding: 0;
   opacity: 0;

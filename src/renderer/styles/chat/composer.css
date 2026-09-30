@@ -98,6 +98,10 @@
 }
 
 .composer-input-wrap {
+  /* The draft's inset inside the wrap; the suggestion overlay reads the same values to sit on
+     the caret's line instead of the wrap's centre. */
+  --composer-draft-top: 0px;
+  --composer-draft-x: 0px;
   position: relative;
   /* A zero basis: the draft takes the room the controls leave and never pushes them aside. */
   flex: 1 1 0;
@@ -113,9 +117,11 @@
 }
 
 .composer-stack[data-expanded] .composer-input-wrap {
+  --composer-draft-top: 1px;
+  --composer-draft-x: 6px;
   order: -1;
   flex-basis: 100%;
-  padding: 1px 6px 0;
+  padding: var(--composer-draft-top) var(--composer-draft-x) 0;
 }
 
 .composer-stack[data-expanded] .composer-setup-chip {
@@ -127,7 +133,13 @@
    capsule keeps its expanded shape even while empty. */
 @container composer (max-width: 460px) {
   .composer-row { row-gap: 4px; }
-  .composer-input-wrap { order: -1; flex-basis: 100%; padding: 1px 6px 0; }
+  .composer-input-wrap {
+    --composer-draft-top: 1px;
+    --composer-draft-x: 6px;
+    order: -1;
+    flex-basis: 100%;
+    padding: var(--composer-draft-top) var(--composer-draft-x) 0;
+  }
   .composer-row .composer-setup-chip { max-width: 62%; margin-left: auto; }
 }
 
@@ -143,10 +155,15 @@
 }
 
 /* Like the placeholder, the suggestion stays one clipped line in the one-line draft slot, with Tab
-   pinned to the slot's right edge; accepting it fills the draft, which expands the capsule. */
+   pinned to the slot's right edge; accepting it fills the draft, which expands the capsule. The
+   overlay covers exactly the textarea's first line box (its 34px slot, 2px text inset, and the
+   wrap's own padding) so the ghost text shares a baseline and left edge with the caret. */
 .composer-suggestion {
   position: absolute;
-  inset: 0 0 0 2px;
+  top: var(--composer-draft-top);
+  right: var(--composer-draft-x);
+  left: calc(var(--composer-draft-x) + 2px);
+  height: 34px;
   display: flex;
   align-items: center;
   gap: 8px;

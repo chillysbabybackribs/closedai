@@ -8,6 +8,7 @@
    with no bar fill or seam. */
 
 .shell-titlebar {
+  --titlebar-search-width: min(clamp(240px, calc(36vw + 44px), 564px), calc(100% - 420px));
   position: relative;
   z-index: 5;
   height: 44px;
@@ -22,16 +23,33 @@
   pointer-events: none;
 }
 
-/* Left edge of the bar: the account File dropdown, then the fallback application menus. Sized to its
-   content so the rest of the bar stays draggable. */
-.titlebar-start {
+/* Left of chat search: the account File dropdown and fallback application menus, then provider
+   usage centred in the remaining gap. The lead itself stays draggable; only its controls opt out. */
+.titlebar-lead {
   position: absolute;
   top: 0;
   left: 0;
+  right: calc(50% + var(--titlebar-search-width) / 2 + 8px);
   display: flex;
+  align-items: flex-start;
+  height: 100%;
+  min-width: 0;
+}
+
+.titlebar-start {
+  display: flex;
+  flex: none;
   align-items: center;
   height: 100%;
   -webkit-app-region: no-drag;
+}
+
+.titlebar-usage {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  min-width: 0;
+  height: 100%;
 }
 
 .titlebar-search-tools {
@@ -42,8 +60,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  width: clamp(240px, calc(36vw + 44px), 564px);
-  max-width: calc(100% - 420px);
+  width: var(--titlebar-search-width);
   -webkit-app-region: no-drag;
 }
 
