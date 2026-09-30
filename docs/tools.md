@@ -593,11 +593,12 @@ turn, and only compacts by itself near the context limit. Several mechanisms kee
   One compaction per completed turn at most. This is a soft trigger: native compaction may retain
   more than the target, and turns can grow past it. See `src/main/chat-context/context-compaction.ts`.
   When `chatSeamlessRotation` is enabled (default on), the same idle thresholds rotate Codex,
-  Claude, Cursor, and Antigravity to a fresh provider thread with a thin seed instead of calling
+  Claude, and Antigravity to a fresh provider thread with a thin seed instead of calling
   native compact; mid-turn Codex overrides and Claude auto-compaction are skipped. Claude can
   still precompute compaction summaries in the background (`chatClaudePrecomputeCompaction`,
   default on). The Turn trace records `session.rotated` (including the saved reason and release elapsed ms) and the UI
-  stays unchanged. See `src/main/chat-context/session-rotation.ts`.
+  stays unchanged. Cursor does not automatically rotate; explicit Compact remains available.
+  See `src/main/chat-context/session-rotation.ts`.
 - Opt-in: `chatMidTurnCompactTokens` (default 0) launches the app-server with
   `-c model_auto_compact_token_limit=<n>` so Codex compacts mid-turn past `n` tokens. At 100k it
   fired every ~10 exec calls in a heavy turn, which is why it is off. See
@@ -771,7 +772,8 @@ slice, and on Codex a slice change rotates the thread. Codex advertises the prom
 (the slice is telemetry only; omitted ACP servers cannot be discovered); Claude sets MCP `alwaysLoad` on the promoted tools; Antigravity
 writes the promoted set as `eager` in the CLI MCP config. Discovery / ToolSearch / deferred stubs
 still reach the rest of the enabled registry. A **Workspace ledger** switch toggles
-`chatWorkspaceLedgerEnabled` (see [Model context](model-context.md#turn-data)).
+`chatWorkspaceLedgerEnabled` for Codex, Claude, and Antigravity; Cursor does not inject the ledger
+(see [Model context](model-context.md#turn-data)).
 Presets (Full, Read-only, Custom) sit under that switch; the footer resets telemetry
 counts. Full turns everything on; Read-only keeps `READ_ONLY_TOOL_IDS` (the reads-only
 group plus app state, screenshots, and chat reading) and turns the rest off; Custom is the

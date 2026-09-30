@@ -40,3 +40,10 @@ test('paid on-demand limits remain notes and preserve the CLI cents/dollars dist
     'On-demand: $12.34 of $50.00')
   assert.equal(cursorPlanUsage(current, plan, { hardLimit: 0 }).windows.length, 1)
 })
+
+test('team personal limits take precedence while personal accounts use their hard limit', () => {
+  const spendLimitUsage = { individualUsed: 100, individualLimit: 5000 }
+  assert.equal(cursorPlanUsage({ spendLimitUsage }, null, { hardLimit: 20 }).note, 'On-demand: $1.00 of $20.00')
+  assert.equal(cursorPlanUsage({ spendLimitUsage: { ...spendLimitUsage, limitType: 'team' } }, null,
+    { noUsageBasedAllowed: true }).note, 'On-demand: $1.00 of $50.00')
+})

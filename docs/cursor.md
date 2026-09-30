@@ -35,15 +35,32 @@ open protocol, so the wire format is not the fragile part — the subcommand's a
 | Reasoning effort | **None offered.** The advertised model config accepts only a verbatim listed id; every bracket override was rejected with "Invalid model value", including efforts that `cursor-agent models` advertises. Effort is part of the model, so the picker shows one entry per model. |
 | Model switching | `session/set_config_option` with the session-advertised `category: "model"` config id, so an open chat keeps its history — no respawn. The older experimental `session/set_model` can reject a loaded session with `Invalid params`. |
 | Chat history | `session/list` (agent-generated titles, `cwd`-scoped) and `session/load`, which replays the whole conversation as `session/update` notifications before resolving. Replay retains the returned session setup so continuing that session reuses the load. Startup restores saved history before checking for an uncached catalog, obtaining both from one load. The app records **no** transcript of its own, unlike the Antigravity lane. |
-| Thread title | `session_info_update` is ignored: cursor-agent titles from the start of the first prompt, which is always app context (clock, session guide). The pane titles itself from the first message and the app's generated title, like the other lanes (2026-09-29). |
+| Thread title | `session_info_update` is ignored: cursor-agent titles from the start of the first prompt, which starts with app context (clock). The pane titles itself from the first message and the app's generated title, like the other lanes (2026-09-29). |
 | Interrupt | `session/cancel`; the session stays usable afterwards. |
 | Approvals | `session/request_permission` is answered automatically with the broadest allow offered. This is narrower than the CLI's blanket `--force` and keeps ClosedAI's no-approval-dialog rule. |
 | Tools | The ClosedAI registry is served over MCP by the shared HTTP bridge (`src/main/tools/mcp-http-bridge.ts`), passed to `session/new` as `mcpServers`. Each pane's endpoints carry the bridge's per-launch token and its own key (`/mcp/<token>/<key>/<namespace>`), so a served call is attributed to that pane and turn exactly; a request without the token, with a Host that is not this loopback listener, or with an Origin header is refused. |
-| Product instructions | ClosedAI adds no first-turn instruction block; the ACP agent uses its native behavior. |
+| Product instructions | ClosedAI adds no first-turn guide or workspace ledger; the ACP agent uses its native behavior. Clock, relevant browser/notepad context, and necessary handoffs remain. |
+| Session continuity | ClosedAI does not automatically rotate Cursor on idle time or transcript size, regardless of the global rotation settings. Explicit Compact still creates a handoff when seamless rotation is enabled. |
 | Archiving | ACP has no delete verb, so `cursor-archive.ts` keeps a local set of session ids the drawer stops listing. Cursor's own store is untouched. |
 | Plan usage | Monthly included, Auto, and API percentages and billing reset from the read-only dashboard RPCs behind CLI `/usage`; on-demand spend is a note. Shared one-minute account probe serves the footer and composer. |
 | Context capacity | A model id's `context` parameter is parsed into tokens and shown in the model selector (for example, `context=1m` becomes `1M`). |
 | Context usage | Not reported by ACP, so the pane shows no live context gauge. |
+
+## Cursor integration baseline
+
+The 2026-09-30 recovery restores the native session policy and removes the shared guide and
+workspace-ledger injection from the Cursor adapter. The pre-guide path in `696d1356` (2026-09-23)
+provides the local reference for prompt assembly; it is not proof that current model behavior
+matches an earlier session. Clock facts remain, as do browser/notepad context and handoffs for
+explicit continuation, Compact, provider switching, or a lost session. Existing conversations
+may already contain earlier injected context; a fresh chat after restarting the built app is
+needed to evaluate the restored baseline.
+
+Every enabled MCP namespace remains attached on session open/load; task slices are telemetry
+only. ClosedAI does not force Cursor's server-side tool-loading strategy. Session resume,
+missing-session recovery, model selection, tool-bridge startup, and native file/search/edit
+capabilities retain their current fixes. Codex, Claude, and Antigravity keep their existing guide,
+ledger, and automatic rotation policies.
 
 ## Client capabilities
 

@@ -1,7 +1,8 @@
 # Model context
 
 Source review: 2026-09-30. ClosedAI does not append provider-specific behavioral prompts beyond a
-compact first-turn session guide (`closedai.guide`). The old shared instruction builders were
+compact first-turn session guide (`closedai.guide`) on Codex, Claude, and Antigravity. Cursor
+receives no guide or workspace-ledger injection and keeps its native session without automatic rotation. The old shared instruction builders were
 removed for a native-provider baseline. Regenerate the guide from `scripts/agent-guide-outline.json`
 when orientation changes; `guide:check` guards drift. Product behavior lives in
 [Application](application.md), and enabled tool contracts live in [Tools](tools.md).
@@ -13,7 +14,7 @@ when orientation changes; `guide:check` guards drift. Product behavior lives in
 | Codex | `thread/start` or `thread/resume` with cwd, model settings, and the enabled tool catalog; no `developerInstructions` field. The first send on a new thread (and the first send after a handoff) may include `additionalContext.closedai.guide` (`kind: application`). |
 | Claude Code | The SDK's native `claude_code` system preset with no ClosedAI append. Project `CLAUDE.md` can still load through the SDK's project settings source. The first send on a new session thread (and after a handoff) may include `closedai.guide` as a tagged user block ahead of the message. |
 | Antigravity | The app-private `closedai` agent profile supplies the native tool grant and MCP inheritance required by this CLI. Its `agent.md` has no instruction body. The first send on a new conversation thread (and after a handoff) may include `closedai.guide` as tagged text ahead of the message. |
-| Cursor | The ACP session receives enabled MCP server endpoints. Its adapter does not pass ClosedAI's `deferLoading` flag; Cursor controls discovery from the connected MCP servers. The first send on a new provider thread (and after a handoff) may include `closedai.guide` as a tagged block ahead of the message. |
+| Cursor | The ACP session receives enabled MCP server endpoints. Its adapter does not pass ClosedAI's `deferLoading` flag; Cursor controls discovery from the connected MCP servers. No session guide or workspace ledger is injected, including after a handoff. Automatic session rotation is disabled for this lane; explicit Compact remains available. |
 
 These provider runtimes have their own native behavior and may load project policy through their
 own mechanisms. Codex can load `AGENTS.md` natively. ClosedAI does not copy the selected
@@ -73,7 +74,7 @@ generated workspace maps from default searches. The guide also calls out checks 
 modules, map regeneration, and separate inspection and whitespace checks for untracked files.
 Hygiene blocks dependency-layer violations; file sizes are advisory and leave structural choices
 to the implementing model. Size-only growth requires no extra check or approval.
-It is attached once per provider thread (including the first send after a handoff to a new thread), omitted on later turns in the same thread, and stripped from the user-visible transcript
+On Codex, Claude, and Antigravity it is attached once per provider thread (including the first send after a handoff to a new thread), omitted on later turns in the same thread, and stripped from the user-visible transcript
 like other context blocks. Edit `scripts/agent-guide-outline.json` and run `npm run guide:generate`;
 `guide:check` guards drift.
 
@@ -93,8 +94,8 @@ The payload carries the short git HEAD, `fresh` entries (path, content hash, rol
 taken at send time), at most 20 entries and 2,000 JSON characters. The host records entries from
 live, successful `fileChange` rows and `test:one -- <file>.test.ts(x)` commands into an in-memory
 ledger per project directory: every chat in that directory shares it, replays do not feed it, and
-restart clears it. Models must still re-read before citing semantics. All four lanes attach it
-after the clock, guide, and handoff blocks and before browser or notepad context. Disable injection for A/B runs in **Tools &
+restart clears it. Models must still re-read before citing semantics. Codex, Claude, and Antigravity attach it
+after the clock, guide, and handoff blocks and before browser or notepad context. Cursor never injects it, regardless of this switch. Disable injection for A/B runs in **Tools &
 capabilities** (**Workspace ledger** switch), or set `chatWorkspaceLedgerEnabled: false` in
 `<userData>/app-settings.json` (default on). Takes effect on the next send; no restart required.
 
@@ -127,9 +128,10 @@ change retires the idle `agy` process and re-registers config before the next sp
 in the main process guards eager wire size in tests.
 
 **Provider parity target:** Cursor Composer in ClosedAI is the reference stack — full enabled
-MCP tool schemas on the session plus the provider's native repository loop. Other lanes should
+MCP endpoints on the session plus the provider's native repository loop and session continuity.
+Cursor controls whether connected tool schemas load dynamically. Other lanes should
 converge on the same *outcomes* (reliable routing to `closedai_app.*`, search, peer recall,
-browser session tools, seamless rotation) through adapter-specific policy, not by copying Cursor's
+browser session tools, continuity) through adapter-specific policy, not by copying Cursor's
 transport. Registry changes should preserve Codex eager-wire regression budgets unless the owner
 expands them deliberately.
 

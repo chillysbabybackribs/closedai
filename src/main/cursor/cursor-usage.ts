@@ -46,15 +46,17 @@ export function cursorPlanUsage(current: unknown, planResponse: unknown, hardLim
   const notes: string[] = []
   // Spend-limit amounts are cents; GetHardLimit.hardLimit is dollars. Paid overage is a
   // note, never another quota window that could incorrectly make the footer exhausted.
-  if (hard?.noUsageBasedAllowed === true || personalLimit === 0) notes.push(`On-demand usage off${used ? ` · ${dollars(used / 100)} spent` : ''}`)
-  else if (personalLimit !== null) notes.push(`On-demand: ${dollars(used / 100)} of ${dollars(personalLimit / 100)}`)
-  else if (spend?.limitType === 'team') notes.push(`On-demand: ${dollars(used / 100)} spent · personal limit not reported`)
-  else if (number(hard?.hardLimit) !== null) {
-    const limit = hard!.hardLimit as number
-    notes.push(limit === 0 ? 'On-demand usage off' : limit >= 2_147_483_647
-      ? `On-demand: ${dollars(used / 100)} · no monthly limit`
-      : `On-demand: ${dollars(used / 100)} of ${dollars(limit)}`)
-  }
+  const hardDollars = number(hard?.hardLimit)
+  const off = (): string => `On-demand usage off${used ? ` · ${dollars(used / 100)} spent` : ''}`
+  if (spend?.limitType === 'team' || !hard) {
+    if (personalLimit === 0) notes.push(off())
+    else if (personalLimit !== null) notes.push(`On-demand: ${dollars(used / 100)} of ${dollars(personalLimit / 100)}`)
+    else if (hard?.noUsageBasedAllowed === true || hardDollars === 0) notes.push(off())
+    else if (spend?.limitType === 'team') notes.push(`On-demand: ${dollars(used / 100)} spent · personal limit not reported`)
+  } else if (hard.noUsageBasedAllowed === true || hardDollars === 0) notes.push(off())
+  else if (hardDollars !== null) notes.push(hardDollars >= 2_147_483_647
+    ? `On-demand: ${dollars(used / 100)} · no monthly limit`
+    : `On-demand: ${dollars(used / 100)} of ${dollars(hardDollars)}`)
   return { plan, windows, note: notes.join(' · ') || null,
     unavailable: windows.length ? null : 'Cursor did not report percentage usage for this plan.', updatedAt: now }
 }
@@ -99,6 +101,7 @@ export async function readCursorUsage(): Promise<ProviderUsageSnapshot> {
   // Let the CLI own token refresh/migration. This starts no chat and uses its shared cache.
   await readCursorAbout()
   const team = await activeTeam()
+  let refresh: ReturnType<typeof readCursorAbout> | undefined
   const request = async (method: string, retry = true): Promise<unknown> => {
     const token = await accessToken()
     let response: Response
@@ -110,7 +113,7 @@ export async function readCursorUsage(): Promise<ProviderUsageSnapshot> {
         body: JSON.stringify(method === 'GetMe' && team ? { teamId: team } : {}), signal: AbortSignal.timeout(10_000) })
     } catch { throw new Error('Could not reach Cursor subscription usage.') }
     if (response.status === 401 && retry) {
-      await readCursorAbout(0)
+      await (refresh ??= readCursorAbout(0))
       return request(method, false)
     }
     if (!response.ok) throw new Error(`Cursor usage request failed (${response.status}).`)
