@@ -1647,7 +1647,10 @@ instrumentation.
 
 `src/shared/` remains dependency-free. Renderer backend calls go through preload; model calls go
 through the main-process registry. Interactive controls use manifest ids, not model-invented
-DOM selectors. The generated workspace index is a maintenance artifact; it is not injected into model context. See [Tools](tools.md) and [Model context](model-context.md).
+DOM selectors. The generated workspace index is a maintenance artifact; it is not injected into model context.
+The default-off `chatRepositoryRetrievalEnabled` startup flag adds read-only live lexical
+source retrieval for Codex, Claude and Antigravity; native editing/commands are preserved.
+Set it in `app-settings.json`, restart, and use a fresh thread; there is no UI toggle. See [Tools](tools.md) and [Model context](model-context.md).
 
 ## State and retention
 

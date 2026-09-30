@@ -5,7 +5,7 @@ import { selectToolSliceId, type ToolSliceTurnInput } from './tool-slice-select.
 
 export type CursorToolCatalogBundle = {
   sliceId: string | null
-  /** null = every enabled namespace; Cursor currently preserves the full catalog. */
+  /** null = every enabled namespace; Cursor preserves the catalog except experimental repository retrieval. */
   namespaces: readonly string[] | null
 }
 
@@ -22,7 +22,8 @@ export async function resolveCursorToolCatalog(
   const catalog = await loadToolSliceCatalog()
   const sliceId = selectToolSliceId(catalog, turn)
   // ACP exposes only attached MCP servers; omitted namespaces have no discovery path.
-  // Keep the selected slice for telemetry, but preserve every enabled capability until
+  // The repository experiment explicitly excludes Cursor as the reference lane.
+  // Keep the selected slice for telemetry, but preserve other enabled capabilities until
   // Cursor supports deferred attachment. Heuristics must not become access control.
   return { sliceId, namespaces }
 }

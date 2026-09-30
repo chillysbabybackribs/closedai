@@ -9,6 +9,7 @@ import { ToolRegistry } from '../registry.js'
 import { resolveCodexToolCatalog } from '../codex-tool-catalog.js'
 import { resolveCursorToolCatalog } from '../cursor-tool-catalog.js'
 import { claudeMcpServers } from '../../claude/claude-tools.js'
+import { AntigravityToolBridge } from '../../antigravity/antigravity-mcp.js'
 import { DEFAULT_APP_SETTINGS } from '../../app-settings-store.js'
 
 const signal = () => new AbortController().signal
@@ -79,3 +80,17 @@ test('flag defaults off; enabled registry reaches Codex and Claude but is exclud
   const cursor = await resolveCursorToolCatalog(registry, { chatToolSliceEnabled: false }, { prompt: 'repair launch', surface: null })
   assert.deepEqual(cursor.namespaces, [])
 })
+
+
+test('Antigravity HTTP registration exposes the same read-only tools and cleans up', () => fixture(async root => {
+  const configPath = join(root, 'mcp.json')
+  const registry = new ToolRegistry([repositoryTools({ root: () => root })])
+  const bridge = new AntigravityToolBridge(registry, { configPath, profileKey: 'test' })
+  try {
+    await bridge.start()
+    const config = JSON.parse(await readFile(configPath, 'utf8'))
+    assert.ok(config.mcpServers.repository_test.serverUrl.includes('/repository'))
+    assert.deepEqual(registry.names(), ['repository.locate', 'repository.search_many', 'repository.read_many'])
+  } finally { await bridge.stop() }
+  assert.deepEqual(JSON.parse(await readFile(configPath, 'utf8')).mcpServers, {})
+}))
