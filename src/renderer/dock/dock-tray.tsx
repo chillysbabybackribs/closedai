@@ -72,16 +72,14 @@ export function DockTray(props: DockTrayProps): JSX.Element {
 
 function TrayAppIcon(props: DockTrayProps & { app: TrayApp }): JSX.Element {
   const { app, openStack, onOpenStack, onLaunch } = props
-  return <>
-    {app.stack
-      ? <Popover open={openStack === app.id} onOpenChange={(open) => onOpenStack(open ? app.id : null)}>
-          <TrayButton app={app} stackOpen={openStack === app.id} />
-          <PopoverContent side="top" sideOffset={12} className="dock-panel w-72 p-1.5" onCloseAutoFocus={(event) => event.preventDefault()}>
-            {app.id === 'saved-sites' ? <SavedSitesStack {...props} /> : <DownloadsStack {...props} />}
-          </PopoverContent>
-        </Popover>
-      : <TrayButton app={app} onLaunch={onLaunch} />}
-  </>
+  return app.stack
+    ? <Popover open={openStack === app.id} onOpenChange={(open) => onOpenStack(open ? app.id : null)}>
+        <TrayButton app={app} stackOpen={openStack === app.id} />
+        <PopoverContent side="top" sideOffset={12} className="dock-panel w-72 p-1.5" onCloseAutoFocus={(event) => event.preventDefault()}>
+          {app.id === 'saved-sites' ? <SavedSitesStack {...props} /> : <DownloadsStack {...props} />}
+        </PopoverContent>
+      </Popover>
+    : <TrayButton app={app} onLaunch={onLaunch} />
 }
 
 export function StartTrayButton({ open, overviewActive }: { open: boolean; overviewActive: boolean }): JSX.Element {
