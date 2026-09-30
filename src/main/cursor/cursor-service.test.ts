@@ -7,6 +7,7 @@ import { JsonRpcPeerError } from '../stdio-json-rpc.js'
 import type { CursorSession } from './cursor-session.js'
 import type { CursorToolBridge } from './cursor-mcp.js'
 import { createToolRegistry } from '../tools/index.ts'
+import type { TurnSurfaceContext } from '../chat-context/turn-context.js'
 
 const emptyTools = createToolRegistry([])
 
@@ -209,14 +210,14 @@ function historyClient(session: CursorSession, fail: () => Error | null, prompts
   }
 }
 
-function serviceWith(chatCursorSessionId: string) {
+function serviceWith(chatCursorSessionId: string | null, surfaceContext?: () => TurnSurfaceContext | null) {
   const state: { saved: typeof DEFAULT_APP_SETTINGS } = { saved: { ...DEFAULT_APP_SETTINGS, chatCursorSessionId } }
   const service = new CursorChatService('/workspace', {
     get: () => state.saved,
     set: async (patch) => { state.saved = { ...state.saved, ...patch }; return state.saved },
     checkpoint: () => null,
-    sessionRotations: () => []
-  }, emptyTools, toolBridge(), '/unused')
+    sessionRotations: () => state.saved.chatSessionRotations ?? []
+  }, emptyTools, toolBridge(), '/unused', surfaceContext)
   const session = (service as unknown as { createSession(): CursorSession }).createSession()
   Object.assign(service, { session, readAccount: async () => {}, refreshPlanUsage: async () => {} })
   return { service, session, state }
@@ -266,4 +267,83 @@ test('a conversation whose session the agent lost reaches the replacement as a h
   assert.equal(state.saved.chatCursorSessionId, 'fresh')
   assert.equal(state.saved.chatContinuation?.handoff ?? null, null)
   assert.match(JSON.stringify(service.snapshot().items), /continues in a new session/)
+  assert.doesNotMatch(prompts[0]!, /closedai\.guide|closedai\.workspace\.ledger/)
+})
+
+test('fresh Cursor turns keep the clock and full tools without guide or ledger injection', async () => {
+  const { service, session, state } = serviceWith(null)
+  state.saved = { ...state.saved, chatToolSliceEnabled: true, chatWorkspaceLedgerEnabled: true }
+  const prompts: string[] = []
+  const attached: string[][] = []
+  const client = historyClient(session, () => null, prompts)
+  Object.assign(session, { client: {
+    ...client,
+    async newSession(_cwd: string, servers: readonly AcpMcpServer[]) {
+      attached.push(servers.map((server) => server.name))
+      return client.newSession()
+    }
+  } })
+  await service.start({ warm: true })
+  await service.send('Fix src/main/cursor/cursor-service.ts')
+  await new Promise((resolve) => setImmediate(resolve))
+  await service.send('Research the latest browser release')
+  await new Promise((resolve) => setImmediate(resolve))
+
+  assert.deepEqual(attached, [['embedded_browser']], 'a slice change keeps the full attached catalog and session')
+  assert.equal(prompts.length, 2)
+  for (const prompt of prompts) {
+    assert.match(prompt, /name="closedai.clock" kind="application"/)
+    assert.doesNotMatch(prompt, /closedai\.guide|closedai\.workspace\.ledger|closedai\.chat\.handoff/)
+  }
+  assert.equal(service.snapshot().threadId, 'cursor:fresh')
+})
+
+test('Cursor keeps its native session past idle item pressure while other-lane rotation settings stay enabled', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const { service, session, state } = serviceWith('saved')
+  state.saved = { ...state.saved, chatSeamlessRotation: true, chatRotateAtItems: 1 }
+  const prompts: string[] = []
+  Object.assign(session, { client: historyClient(session, () => null, prompts) })
+  await service.start({ warm: true })
+  await service.send('Find the implementation')
+  await new Promise((resolve) => setImmediate(resolve))
+  t.mock.timers.tick(60_000)
+  await new Promise((resolve) => setImmediate(resolve))
+
+  assert.equal(service.snapshot().threadId, 'cursor:saved')
+  assert.equal(state.saved.chatCursorSessionId, 'saved')
+  assert.equal(state.saved.chatContinuation, null)
+  assert.deepEqual(state.saved.chatSessionRotations ?? [], [])
+  assert.equal(state.saved.chatSeamlessRotation, true)
+  assert.equal(state.saved.chatRotateAtItems, 1)
+  await service.send('Continue editing in the same session')
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(service.snapshot().threadId, 'cursor:saved')
+  assert.equal(prompts.length, 2)
+})
+
+test('explicit Cursor compact still carries history once and preserves relevant surface context', async () => {
+  const { service, session, state } = serviceWith('saved', () => ({
+    tabId: 'tab-1', url: 'https://example.com/', title: 'Example', isLoading: false
+  }))
+  state.saved = { ...state.saved, chatSeamlessRotation: true }
+  const prompts: string[] = []
+  const client = historyClient(session, () => null, prompts)
+  Object.assign(session, { client })
+  await service.start({ warm: true })
+  await service.compactConversation()
+  assert.equal(state.saved.chatSessionRotations?.at(-1)?.reason, 'manual')
+  assert.ok(state.saved.chatContinuation?.handoff)
+  // Compact retired the process; use the same fake ACP transport for its replacement.
+  Object.assign(session, { client })
+  await service.send('Summarize this page')
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.match(prompts[0]!, /name="closedai.chat.handoff" kind="untrusted"/)
+  assert.match(prompts[0]!, /Earlier question/)
+  assert.match(prompts[0]!, /closedai.browser.active-tab/)
+  assert.doesNotMatch(prompts[0]!, /closedai\.guide|closedai\.workspace\.ledger/)
+  assert.equal(state.saved.chatContinuation?.handoff, null)
+  await service.send('Continue')
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.doesNotMatch(prompts[1]!, /closedai\.chat\.handoff|closedai\.browser\.active-tab/)
 })

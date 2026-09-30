@@ -952,7 +952,7 @@ are disabled at either end and while a zoom is moving; their tooltips name where
 (`dock.settings`). The left side, after the navigation arrows, holds one ghost-button chip per provider
 (`dock.provider-usage`): the provider mark, the remaining percent as text, and a short `Progress` bar,
 on the existing rail without separate pill surfaces. Level ink colours the figure and bar only, never
-the mark. A provider with plan metadata but no numeric windows (for example Cursor) shows its plan name alone.
+the mark. A provider with plan metadata but no numeric windows shows its plan name alone.
 All four providers appear on startup, before any provider chat connects. They show the lowest reported remaining allowance, keeping known accounts separate and using the
 newest reading across account probes and attached chats; they never sum quotas across conversations. The popup
 names every provider window, including model-specific scopes, remaining allowance, reset time,
@@ -962,13 +962,15 @@ minutes or past its reported reset is stale, never assumed replenished. Partial 
 retain each untouched window's observation time. Missing data says unavailable. Codex reads `account/rateLimits/read` only: zero, one, or two
 rolling windows (primary/secondary) plus optional credit metadata; the footer shows reported windows
 and plan, not inferred buckets. Credit balances appear in the composer usage card, not the footer
-chips. Cursor's CLI currently supplies no quota percentages; its chip shows the reported plan (for
-example “Pro”) and its tooltip adds “usage unavailable”. Background chat summaries carry telemetry even
+chips. Cursor reports monthly included, Auto, and API percentages through the same read-only dashboard
+RPCs as the CLI’s `/usage` command. The chip uses the lowest remaining scope; the popup names
+each scope and the billing reset, with on-demand spending as a note rather than an allowance. Background chat summaries carry telemetry even
 when their transcript is not subscribed. The footer also reads each signed-in CLI account through
 `chat:readProviderUsage`, independently of chat runtimes, on mount and every minute while the
 document is foregrounded. Reads are shared across windows for one minute, including failures;
 failed reads preserve the last dated observation. Codex and Claude use short-lived control-only
-processes, Antigravity uses `/quota`, and Cursor uses `about`. These reads send no model turns
+processes, Antigravity uses `/quota`, and Cursor uses the CLI’s signed-in credential store and
+read-only usage RPCs (`about` lets the CLI refresh credentials). These reads send no model turns
 and do not wake or extend the idle lifetime of parked chats. Provider push events can supply
 newer readings between polls. The popup offers an explicit refresh
 (`dock.provider-usage-refresh`). On narrower rails, a single **Usage** trigger

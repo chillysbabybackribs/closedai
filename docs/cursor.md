@@ -41,7 +41,7 @@ open protocol, so the wire format is not the fragile part — the subcommand's a
 | Tools | The ClosedAI registry is served over MCP by the shared HTTP bridge (`src/main/tools/mcp-http-bridge.ts`), passed to `session/new` as `mcpServers`. Each pane's endpoints carry the bridge's per-launch token and its own key (`/mcp/<token>/<key>/<namespace>`), so a served call is attributed to that pane and turn exactly; a request without the token, with a Host that is not this loopback listener, or with an Origin header is refused. |
 | Product instructions | ClosedAI adds no first-turn instruction block; the ACP agent uses its native behavior. |
 | Archiving | ACP has no delete verb, so `cursor-archive.ts` keeps a local set of session ids the drawer stops listing. Cursor's own store is untouched. |
-| Plan usage | Not reported. `cursor-agent about` names the tier only, so the hover card shows the plan with an explicit "unavailable" rather than an invented number. |
+| Plan usage | Monthly included, Auto, and API percentages and billing reset from the read-only dashboard RPCs behind CLI `/usage`; on-demand spend is a note. Shared one-minute account probe serves the footer and composer. |
 | Context capacity | A model id's `context` parameter is parsed into tokens and shown in the model selector (for example, `context=1m` becomes `1M`). |
 | Context usage | Not reported by ACP, so the pane shows no live context gauge. |
 
@@ -125,3 +125,21 @@ Verified live on 2026-09-03, and each point cost a real bug or would have:
   has no surface for them, so the update is ignored.
 - **`readThread` cost.** Reading another thread loads it on the same process. That is how ACP
   exposes history, but it means a cross-provider read starts a session on the agent's side.
+
+### Subscription usage (verified 2026-09-30)
+
+CLI `2026.09.28-64d2043` exposes subscription usage in its interactive `/usage` command;
+`about --format json` only includes the tier and account metadata. `cursor-usage.ts` calls
+`GetCurrentPeriodUsage`, `GetPlanInfo`, `GetHardLimit`, and `GetMe` on the same
+`aiserver.v1.DashboardService` at `https://api2.cursor.sh` without starting a chat or model turn.
+These are internal CLI endpoints, so schema drift falls back to unavailable rather than fabricated
+quota. Explicit percentages take precedence over spend ratios (bonus usage makes the ratio
+misleading). Missing Auto/API percentages are omitted. Billing timestamps are epoch milliseconds.
+Enterprise responses without percentage windows remain unavailable; spend charts are not quotas.
+
+Authentication stays in the main process: the CLI’s file store on Linux/Windows (and macOS with
+`AGENT_CLI_CREDENTIAL_STORE=file`), or its macOS keychain entry. `CURSOR_AUTH_TOKEN` is honored;
+memory-only credentials are unavailable. The CLI owns token refresh via `about`, including a retry
+on HTTP 401. No credentials are logged or returned through IPC. The active team from CLI config
+is sent with each RPC. Calls use the fixed production host, reject redirects, and time out after ten
+seconds. Failed account reads preserve the footer’s dated observation through its existing cache.
