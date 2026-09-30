@@ -30,7 +30,7 @@ export function peerChatTools(getDirectory: () => PeerChatDirectory | null): Too
           'scope open (default) lists live peer activity; paneId is chat_id for read. scope history discovers other chats ' +
           'in the store (open panes and closed) across projects, newest activity first, without transcripts. Returns up to ' +
           '8 entries (default limit 5). query matches titles, previews, project paths, and checkpoint notes, not transcript ' +
-          'bodies; cwd narrows history to one project. Page with nextBeforeChatId as before_chat_id. Use recall(scope=history, ' +
+          'bodies, ignoring spacing/punctuation, with typo tolerance when nothing matches literally (entry match: spacing|fuzzy); cwd narrows history to one project. Page with nextBeforeChatId as before_chat_id. Use recall(scope=history, ' +
           'chat_id=...) for transcript excerpts; read only for ids from scope open. Prefer explicit references over recency.',
         inputSchema: { type: 'object', additionalProperties: false, properties: {
           scope: {
@@ -102,6 +102,8 @@ export function peerChatTools(getDirectory: () => PeerChatDirectory | null): Too
         deferLoading: true,
         description:
           'Hits include evidenceAvailability: not-checked means source availability has not been verified; unavailable means retained index text only. Read exact hits with recall(scope=history, chat_id, item_id), including evidence labels. ' +
+          'Forgiving query: literal phrase first; then the same letters ignoring spaces/punctuation/case ("spinev1" finds "spine v1"); ' +
+          'only when neither matches, small typos and all-words-anywhere. Non-literal hits carry match (spacing|fuzzy) and matched text. ' +
           'Cross-chat phrase search over the global hot memory index (scope global, default: the 10 most recently active chats) ' +
           'or lexical search over this pane’s merged transcript (scope chat), including prerotation turns when indexed. ' +
           'Matches conversation spine text (user/assistant/plan and compact tool/command labels), not raw tool output. ' +

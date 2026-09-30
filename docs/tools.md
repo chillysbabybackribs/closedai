@@ -664,9 +664,11 @@ chats. Entries contain
 most recent user submission; older records fall back to turn completion or creation. Background
 completion and pinning do not outrank a recorded user submission. `limit` defaults to 5, max 8;
 the serialized result fits within 16k characters and may return fewer entries to fit. Page with
-`nextBeforeChatId` as `before_chat_id`. A missing cursor is an error. `query` is a literal
-case-insensitive metadata filter over title, preview, project directory, and applicable checkpoint
-notes, not transcript search. `cwd` optionally narrows discovery to a project directory. History
+`nextBeforeChatId` as `before_chat_id`. A missing cursor is an error. `query` is a case-insensitive
+metadata filter over title, preview, project directory, and applicable checkpoint notes, not
+transcript search. It uses the forgiving matcher described under `peer_chats.search`; entries matched
+only by spacing or typos carry `match: spacing|fuzzy`. The filter runs before the cursor, so every page
+uses the same match tier. `cwd` optionally narrows discovery to a project directory. History
 arguments require history scope. The session guide points models to `peer_chats.search`, then
 `spine` or `recall`, and to `list(scope=open)` + `read` for open panes; these tool descriptions own the retrieval
 parameters and boundaries.
@@ -692,6 +694,16 @@ ordering as history (`messageSentAt`, then turn end, then creation), capped by
 that cap; each keeps the newest spine lines up to the larger of 96,000 characters or
 `chatMemoryIndexMaxCharsPerChat`. On disk, pane search uses SQLite FTS5 (`search.sqlite`) with
 BM25 ranking; JSON pane files remain authoritative and repopulate FTS after schema changes.
+Queries are forgiving (`src/main/chat-store/forgiving-text-match.ts`). Global search and the
+scope-chat fallback try, in order: the literal phrase (whitespace runs collapsed); the same
+letters and digits ignoring spaces, punctuation, case, and accents (`spinev1` finds `spine v1`,
+`spine-v1`, `chatMemoryIndex`); and, only when neither finds anything, typo tolerance. Typo
+tolerance is bounded edits against the compact phrase, or every query word present anywhere in the
+line within a per-word edit budget. Budgets scale with length: 0 below 5 characters, 1 up to 8,
+2 up to 16, then 3. Scope chat runs this tier ladder over its JSON lines only when FTS/AND terms find
+nothing. Hits that are not literal carry `match: spacing|fuzzy` and `matched` (the original text
+span). Typo-tier hits never outrank literal ones because they are computed only when no literal or
+spacing hit exists.
 Ranking applies
 an exponential recency decay (`chatMemoryIndexHalfLifeDays`, default 7) and a modest boost for
 pinned chats. Disabled when `chatMemoryIndexEnabled` is false. Results are historical; use
@@ -730,8 +742,9 @@ Index-served reads (`provenance: index`) cover only the lines the index kept. Wh
 `provenance: index` without reloading provider history; stale or missing index rows load the
 transcript instead. Provider stores remain authoritative.
 
-`peer_chats.recall` is read-only and accepts `scope: current|chat|source|history`, optional literal
-case-insensitive `query`, `types` (defaults to user/assistant messages), `limit` (default 5, max 8),
+`peer_chats.recall` is read-only and accepts `scope: current|chat|source|history`, optional
+case-insensitive `query` (literal phrase or the same letters/digits ignoring spacing and punctuation;
+no typo tolerance, so paging keeps one stable match set), `types` (defaults to user/assistant messages), `limit` (default 5, max 8),
 or `item_id` with a character `offset`. History accepts `chat_id` from discovery, defaulting to
 the most recent other conversation when omitted, and returns its `chatId`. `chat_id` is rejected
 with other scopes (usage). `offset` without `item_id` is usage as well. Tool, plan, command, and
@@ -741,7 +754,7 @@ characters including checkpoint state. Use `nextOffset` to read more of a matche
 `nextBeforeItemId` as `before_item_id` to search older items. `hasMore` means older candidate
 items remain, not necessarily more query matches. Screenshot and reasoning items are excluded;
 user/assistant/plan text and textual tool/command/file-change evidence are eligible. File/image
-attachment contents are not fetched. Queries are literal phrases, not semantic/vector search.
+attachment contents are not fetched. Queries are lexical, not semantic/vector search.
 
 The current scope reads the caller's live provider snapshot. Chat scope searches the full pane
 transcript, merging prerotation segments when the pane has session rotations and the live snapshot

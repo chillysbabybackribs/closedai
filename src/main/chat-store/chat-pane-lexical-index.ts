@@ -14,7 +14,7 @@ import {
 import type { ChatRecord } from '../../shared/chat-store.js'
 import type { AppSettings } from '../../shared/types.js'
 import { mergePaneIndexLines } from './chat-pane-index-lines.js'
-import { buildFtsMatchQuery, ChatPaneLexicalFts } from './chat-pane-lexical-fts.js'
+import { PaneIndexWorker } from './pane-index-worker-client.js'
 import { writeAtomic } from '../atomic-write.js'
 import { matchLabel, matchText, prepareTextQuery } from './forgiving-text-match.js'
 
@@ -62,13 +62,16 @@ export class ChatPaneLexicalIndex {
   private writeTimer: NodeJS.Timeout | null = null
   private writing: Promise<void> = Promise.resolve()
   private loaded = false
-  private fts: ChatPaneLexicalFts | null = null
+  private readonly dirty = new Set<string>()
+  private manifestDirty = false
+  private readonly fts: PaneIndexWorker | null
 
   constructor(
     private readonly dir: string | null,
-    private readonly settings: () => ChatPaneLexicalIndexSettings
+    private readonly settings: () => ChatPaneLexicalIndexSettings,
+    workerUrl?: URL
   ) {
-    if (dir) this.fts = new ChatPaneLexicalFts(dir)
+    this.fts = dir && workerUrl ? new PaneIndexWorker(workerUrl, dir) : null
   }
 
   static inMemory(settings: ChatPaneLexicalIndexSettings, records: ChatPaneLexicalIndexRecord[] = []): ChatPaneLexicalIndex {
@@ -97,8 +100,6 @@ export class ChatPaneLexicalIndex {
       const record = await this.readRecord(chatId)
       if (record) this.records.set(chatId, record)
     }
-    this.openFts()
-    for (const record of this.records.values()) this.syncFts(record)
     this.loaded = true
   }
 
@@ -116,7 +117,10 @@ export class ChatPaneLexicalIndex {
       this.settings().chatMemoryIndexMaxCharsPerChat ?? 0
     )
     const lines = mergePaneIndexLines(items, record, maxChars)
-    if (!lines.length) return
+    if (!lines.length) {
+      this.drop(record.id)
+      return
+    }
     const entry: ChatPaneLexicalIndexRecord = {
       version: CHAT_PANE_LEXICAL_INDEX_VERSION,
       chatId: record.id,
@@ -128,25 +132,26 @@ export class ChatPaneLexicalIndex {
       lines,
       updatedAt: Date.now()
     }
+    const previous = this.records.get(record.id)
+    if (previous && JSON.stringify({ ...previous, updatedAt: 0 }) === JSON.stringify({ ...entry, updatedAt: 0 })) return
+    if (!previous) this.manifestDirty = true
     this.records.set(record.id, entry)
-    this.syncFts(entry)
+    this.dirty.add(record.id)
     this.scheduleWrite()
   }
 
   drop(chatId: string): void {
-    const had = this.records.delete(chatId)
-    this.openFts()
-    this.fts?.removeChat(chatId)
-    if (!had && !this.dir) return
+    if (!this.records.delete(chatId)) return
+    this.manifestDirty = true
+    this.dirty.add(chatId)
     this.scheduleWrite()
-    if (this.dir) void unlink(join(this.dir, `${sanitizeChatFileName(chatId)}.json`)).catch(() => {})
   }
 
   getRecord(chatId: string): ChatPaneLexicalIndexRecord | undefined {
     return this.records.get(chatId)
   }
 
-  searchPane(chatId: string, request: ChatIndexSearchRequest): ChatIndexSearchResult {
+  async searchPane(chatId: string, request: ChatIndexSearchRequest): Promise<ChatIndexSearchResult> {
     const empty: ChatIndexSearchResult = {
       hits: [],
       indexedChatCount: this.records.has(chatId) ? 1 : 0,
@@ -160,7 +165,7 @@ export class ChatPaneLexicalIndex {
     const record = this.records.get(chatId)
     if (!record) return { ...empty, indexPartial: true }
     const limit = Math.max(1, Math.min(SEARCH_MAX_LIMIT, Math.floor(request.limit ?? SEARCH_DEFAULT_LIMIT)))
-    const literal = this.searchPaneFts(chatId, query, limit, record) ?? this.searchPaneScan(record, query, limit)
+    const literal = await this.searchPaneFts(query, limit, record) ?? this.searchPaneScan(record, query, limit)
     const hits = literal.length ? literal : this.searchPaneForgiving(record, query, limit)
     return {
       hits,
@@ -178,8 +183,8 @@ export class ChatPaneLexicalIndex {
       clearTimeout(this.writeTimer)
       this.writeTimer = null
     }
+    this.writing = this.writing.catch(() => {}).then(() => this.persist())
     await this.writing
-    await this.persist()
   }
 
   private async readRecord(chatId: string): Promise<ChatPaneLexicalIndexRecord | null> {
@@ -199,50 +204,49 @@ export class ChatPaneLexicalIndex {
     if (this.writeTimer) return
     this.writeTimer = setTimeout(() => {
       this.writeTimer = null
-      this.writing = this.writing.then(() => this.persist())
+      this.writing = this.writing.catch(() => {}).then(() => this.persist())
+      void this.writing.catch((error: unknown) => console.warn('[pane-index] persistence failed:', error))
     }, WRITE_DELAY_MS)
   }
 
   private async persist(): Promise<void> {
-    if (!this.dir) return
-    await mkdir(this.dir, { recursive: true })
-    const chatIds = [...this.records.keys()].sort()
-    await writeAtomic(join(this.dir, 'manifest.json'), JSON.stringify({ chatIds, updatedAt: Date.now(), ftsSchema: 1 }))
-    for (const chatId of chatIds) {
-      const record = this.records.get(chatId)!
-      await writeAtomic(join(this.dir, `${sanitizeChatFileName(chatId)}.json`), JSON.stringify(record))
-    }
-  }
-
-  private openFts(): void {
+    if (!this.dir || (!this.dirty.size && !this.manifestDirty)) return
+    const dirty = [...this.dirty]
+    this.dirty.clear()
+    const manifestDirty = this.manifestDirty
+    this.manifestDirty = false
     try {
-      this.fts?.open()
-    } catch {
-      // JSON + scan fallback remains available when SQLite FTS is unavailable.
+      // Serialize writes and removals together so a queued write cannot resurrect a dropped chat.
+      for (const chatId of dirty) {
+        const record = this.records.get(chatId)
+        const path = join(this.dir, `${sanitizeChatFileName(chatId)}.json`)
+        if (record) await writeAtomic(path, JSON.stringify(record))
+        else await unlink(path).catch((error: NodeJS.ErrnoException) => { if (error.code !== 'ENOENT') throw error })
+      }
+      if (manifestDirty) {
+        const chatIds = [...this.records.keys()].sort()
+        await writeAtomic(join(this.dir, 'manifest.json'), JSON.stringify({ chatIds, updatedAt: Date.now(), ftsSchema: 1 }))
+      }
+    } catch (error) {
+      for (const chatId of dirty) this.dirty.add(chatId)
+      this.manifestDirty ||= manifestDirty
+      throw error
     }
   }
 
-  private syncFts(record: ChatPaneLexicalIndexRecord): void {
-    this.openFts()
-    try {
-      this.fts?.replaceChat(record)
-    } catch {
-      // Search falls back to in-memory scan for this pane until the next successful sync.
-    }
+  async close(): Promise<void> {
+    this.fts?.close()
+    await this.flush()
   }
 
-  private searchPaneFts(
-    chatId: string,
+  private async searchPaneFts(
     query: string,
     limit: number,
     record: ChatPaneLexicalIndexRecord
-  ): ChatIndexSearchHit[] | null {
+  ): Promise<ChatIndexSearchHit[] | null> {
     if (!this.fts) return null
-    const match = buildFtsMatchQuery(query)
-    if (!match) return []
-    this.openFts()
     try {
-      const rows = this.fts.search(chatId, match, limit)
+      const rows = await this.fts.search(record, query, limit)
       return rows.map((row) => ({
         chatId: record.chatId,
         itemId: row.itemId,
@@ -255,6 +259,7 @@ export class ChatPaneLexicalIndex {
         evidenceAvailability: { status: 'not-checked' as const }
       }))
     } catch {
+      // Never serve stale SQLite rows after an update failure.
       return null
     }
   }
