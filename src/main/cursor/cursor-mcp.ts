@@ -25,7 +25,9 @@ export class CursorToolBridge extends McpHttpBridge {
     const endpoints = allow?.length
       ? this.endpoints(key).filter((endpoint) => allow.includes(endpoint.namespace))
       : this.endpoints(key)
-    return endpoints.map((endpoint) => ({
+    // Exclude the three-provider retrieval experiment even during pre-warming,
+    // before the turn catalog has been selected. Cursor remains the reference lane.
+    return endpoints.filter(endpoint => endpoint.namespace !== 'repository').map((endpoint) => ({
       type: 'http',
       name: endpoint.namespace,
       url: endpoint.url,

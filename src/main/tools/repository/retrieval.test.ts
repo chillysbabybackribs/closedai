@@ -9,6 +9,7 @@ import { ToolRegistry } from '../registry.js'
 import { resolveCodexToolCatalog } from '../codex-tool-catalog.js'
 import { resolveCursorToolCatalog } from '../cursor-tool-catalog.js'
 import { claudeMcpServers } from '../../claude/claude-tools.js'
+import { CursorToolBridge } from '../../cursor/cursor-mcp.js'
 import { AntigravityToolBridge } from '../../antigravity/antigravity-mcp.js'
 import { DEFAULT_APP_SETTINGS } from '../../app-settings-store.js'
 
@@ -79,6 +80,11 @@ test('flag defaults off; enabled registry reaches Codex and Claude but is exclud
   assert.ok(claude.repository)
   const cursor = await resolveCursorToolCatalog(registry, { chatToolSliceEnabled: false }, { prompt: 'repair launch', surface: null })
   assert.deepEqual(cursor.namespaces, [])
+  const bridge = new CursorToolBridge(registry)
+  try {
+    await bridge.start()
+    assert.deepEqual(bridge.servers('warm-pane'), [])
+  } finally { await bridge.stop() }
 })
 
 
