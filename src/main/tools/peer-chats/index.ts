@@ -9,7 +9,7 @@ const READABLE_ITEM_TYPES = ['user', 'assistant', 'tool', 'command', 'fileChange
 
 export type PeerChatDirectory = {
   memory?: PeerMemoryAccess
-  searchIndex?(callerPaneId: string | null, request: ChatIndexSearchRequest): ChatIndexSearchResult
+  searchIndex?(callerPaneId: string | null, request: ChatIndexSearchRequest): ChatIndexSearchResult | Promise<ChatIndexSearchResult>
   listReadable(callerPaneId: string | null): ChatPeerSummary[]
   readReadable(
     chatId: string,
@@ -130,7 +130,7 @@ export function peerChatTools(getDirectory: () => PeerChatDirectory | null): Too
           if (!query) return usageResult('query is required')
           const scope = stringArg(input, 'scope') as 'global' | 'chat' | undefined
           if (scope === 'chat' && !context.paneId) return usageResult('scope chat requires a calling chat pane')
-          return textResult(JSON.stringify(directory.searchIndex(context.paneId ?? null, {
+          return textResult(JSON.stringify(await directory.searchIndex(context.paneId ?? null, {
             query,
             scope: scope ?? 'global',
             cwd: stringArg(input, 'cwd'),

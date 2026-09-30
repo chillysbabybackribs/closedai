@@ -91,6 +91,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   }
   private readonly archives: PeerArchives
   /** Serialized per-pane backfill so provider reads cannot overlap. */
+  private readonly dirtyPaneIndexes = new Set<ChatPaneId>()
   private readonly paneLexicalIndexTails = new Map<ChatPaneId, Promise<void>>()
 
   constructor(
@@ -180,7 +181,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
         this.transcripts.forget(chatId)
         this.memoryIndex?.drop(chatId)
         this.paneLexicalIndex?.drop(chatId)
-        this.paneLexicalIndexTails.delete(chatId)
+        this.dirtyPaneIndexes.delete(chatId)
       },
       invalidateCatalog: () => this.catalog.invalidate(),
       emitChats: () => this.emitChats()
@@ -268,6 +269,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
 
   stop(): void {
     this.stopped = true
+    this.dirtyPaneIndexes.clear()
     this.archives.stop()
     this.projectChanges.stop()
     this.projectSwitch.stop()
@@ -640,7 +642,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     return peerManagerReadReadable(this.supportHost(), chatId, callerPaneId, options)
   }
 
-  searchIndex(callerPaneId: string | null, request: ChatIndexSearchRequest): ChatIndexSearchResult {
+  async searchIndex(callerPaneId: string | null, request: ChatIndexSearchRequest): Promise<ChatIndexSearchResult> {
     const scope = request.scope ?? 'global'
     const disabled = {
       hits: [],
@@ -654,6 +656,15 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     if (!this.settings.get().chatMemoryIndexEnabled) return disabled
     if (scope === 'chat') {
       if (!callerPaneId || !this.paneLexicalIndex) return disabled
+      if (!request.query?.trim()) return disabled
+      const entry = this.lifecycle.get(callerPaneId)
+      if (entry && !this.paneLexicalIndex.getRecord(callerPaneId)) this.schedulePaneLexicalIndex(entry)
+      try {
+        await this.refreshPaneLexicalIndex(callerPaneId)
+      } catch {
+        const result = await this.paneLexicalIndex.searchPane(callerPaneId, request)
+        return { ...result, indexPartial: true }
+      }
       return this.paneLexicalIndex.searchPane(callerPaneId, request)
     }
     if (!this.memoryIndex) return disabled
@@ -661,22 +672,35 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   }
 
   private schedulePaneLexicalIndex(entry: PeerEntry): void {
-    if (!this.paneLexicalIndex || !this.settings.get().chatMemoryIndexEnabled) return
-    const paneId = entry.chatId
-    const next = (this.paneLexicalIndexTails.get(paneId) ?? Promise.resolve()).then(async () => {
-      const record = this.store.get(paneId)
-      if (!record) return
-      const snapshot = entry.surface.snapshot()
-      const epoch = record.sessionRotations?.at(-1)?.epoch ?? 0
-      const { items, partial } = await mergedPaneTranscriptItems(
-        record,
-        snapshot.items,
-        (threadId, cwd) => entry.surface.readThread(threadId, cwd),
-        'chat'
-      )
-      this.paneLexicalIndex!.upsert(record, items, { rotationEpoch: epoch, partial })
-    }).catch(() => undefined)
+    if (!this.stopped && this.paneLexicalIndex && this.settings.get().chatMemoryIndexEnabled) {
+      this.dirtyPaneIndexes.add(entry.chatId)
+    }
+  }
+
+  /** Events only invalidate derived data; the first search coalesces them into one refresh. */
+  private refreshPaneLexicalIndex(paneId: ChatPaneId): Promise<void> {
+    const running = this.paneLexicalIndexTails.get(paneId)
+    if (running) return running
+    const next = (async () => {
+      while (!this.stopped && this.dirtyPaneIndexes.delete(paneId)) {
+        const entry = this.lifecycle.get(paneId)
+        const record = this.store.get(paneId)
+        if (!entry || !record || record.archived) return
+        const snapshot = entry.surface.snapshot()
+        const epoch = record.sessionRotations?.at(-1)?.epoch ?? 0
+        const { items, partial } = await mergedPaneTranscriptItems(
+          record, snapshot.items,
+          (threadId, cwd) => entry.surface.readThread(threadId, cwd), 'chat'
+        )
+        if (this.stopped || !this.store.get(paneId) || this.store.get(paneId)?.archived) return
+        this.paneLexicalIndex!.upsert(record, items, { rotationEpoch: epoch, partial })
+      }
+    })().catch((error: unknown) => {
+      if (!this.stopped) this.dirtyPaneIndexes.add(paneId)
+      throw error
+    }).finally(() => { this.paneLexicalIndexTails.delete(paneId) })
     this.paneLexicalIndexTails.set(paneId, next)
+    return next
   }
 
   private supportHost(): PeerManagerSupportHost {

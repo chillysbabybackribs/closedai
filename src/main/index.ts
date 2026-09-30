@@ -361,7 +361,7 @@ async function main(): Promise<void> {
   // What each chat last looked like, so opening one paints before its provider has replayed it.
   chatTranscripts = new ChatTranscriptCache(join(userData(), 'chat-transcripts'))
   chatMemoryIndex = new ChatMemoryIndex(join(userData(), 'chat-memory-index'), () => settings!.get())
-  chatPaneLexicalIndex = new ChatPaneLexicalIndex(join(userData(), 'chat-pane-lexical-index'), () => settings!.get())
+  chatPaneLexicalIndex = new ChatPaneLexicalIndex(join(userData(), 'chat-pane-lexical-index'), () => settings!.get(), new URL('./pane-index-worker.js', import.meta.url))
   chatService = new ChatPeerManager(settings, chatStore, (peerSettings, record) => createPaneChatHub({
     app,
     settings: settings!,
@@ -557,7 +557,7 @@ app.on('before-quit', (event) => {
     chatStore?.flush(),
     chatTranscripts?.flush(),
     chatMemoryIndex?.flush(),
-    chatPaneLexicalIndex?.flush(),
+    chatPaneLexicalIndex?.close(),
     artifactStore?.close(),
     providerCatalogs?.flush(),
     flushSession,

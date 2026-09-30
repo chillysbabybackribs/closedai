@@ -10,6 +10,7 @@ export default defineConfig({
     build: { watch: {}, rollupOptions: { input: {
       index: resolve('src/main/index.ts'),
       'native-controller': resolve('src/main/native-instrument/worker.ts'),
+      'pane-index-worker': resolve('src/main/chat-store/pane-index-worker.ts'),
       'artifact-worker': resolve('src/main/investigations/artifact-worker.ts'),
       'pdf-worker': resolve('src/main/tools/search/research/pdf/pdf-worker.ts'),
       'pdf-page-worker': resolve('src/main/tools/search/research/pdf/page-worker.ts')
