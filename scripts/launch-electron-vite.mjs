@@ -25,7 +25,8 @@
 // The Chromium sandbox is on by default. CLOSEDAI_NO_SANDBOX=1 is the one machine-specific
 // opt-out (a kernel that forbids unprivileged user namespaces with a non-SUID chrome-sandbox
 // helper); only then is Electron's own ELECTRON_DISABLE_SANDBOX exported, and only to this child.
-import { spawn } from 'node:child_process'
+import { constants } from 'node:os'
+import { launchProcess } from './launch-process.mjs'
 import { readFileSync, statSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -104,22 +105,23 @@ if (isMain) {
   reportSanitizedGpuEnv(removed)
   const env = sandboxEnv(gpuEnv, sandboxBlockedReason(repoRoot, { statSync, readFileSync }))
   for (const name of HOST_ELECTRON_VARS) delete env[name]
-  const child = spawn(join(repoRoot, 'node_modules', '.bin', `electron-vite${binExtension}`), process.argv.slice(2), {
+  const launch = launchProcess(join(repoRoot, 'node_modules', '.bin', `electron-vite${binExtension}`), process.argv.slice(2), {
     cwd: repoRoot,
     env,
     stdio: 'inherit'
   })
-  child.on('error', (error) => {
-    process.stderr.write(`[launch] failed to start electron-vite: ${error.message}\n`)
-    process.exit(1)
-  })
-  child.on('exit', (code, signal) => {
-    if (signal) process.kill(process.pid, signal)
-    else process.exit(code ?? 0)
-  })
-  for (const signal of ['SIGINT', 'SIGTERM']) {
-    process.once(signal, () => {
-      if (child.exitCode === null && !child.killed) child.kill(signal)
-    })
+  const onInterrupt = () => { void launch.stop('SIGINT').catch(fail) }
+  const onTerminate = () => { void launch.stop('SIGTERM').catch(fail) }
+  function fail(error) {
+    process.stderr.write(`[launch] ${error.message}\n`)
+    process.exitCode = 1
   }
+  process.on('SIGINT', onInterrupt)
+  process.on('SIGTERM', onTerminate)
+  void launch.completed.then(({ code, signal }) => {
+    process.exitCode = signal ? 128 + (constants.signals[signal] ?? 1) : (code ?? 0)
+  }).catch(fail).finally(() => {
+    process.off('SIGINT', onInterrupt)
+    process.off('SIGTERM', onTerminate)
+  })
 }
