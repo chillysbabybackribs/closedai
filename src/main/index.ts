@@ -80,6 +80,7 @@ import { openMainWindow, type MainWindowHost } from './main-window-setup.js'
 import { AppWindowRegistry } from './windows/app-window-registry.js'
 import { AppWindowStore } from './windows/app-window-store.js'
 import { openDetachedWindow } from './windows/detached-window.js'
+import { ProfileSession } from './profiles/profile-session.js'
 
 // Chromium switches must land before `ready`. Owner decision: the Linux sandbox flags stay
 // exactly as appv1 has them (docs/electron-browser-platform-review.md §0).
@@ -151,6 +152,11 @@ const liveVerifyHandle: LiveVerifyHandle = {
 function sendToWindows<C extends IpcEventChannel>(channel: C, payload: IpcEventChannels[C]): void {
   windows?.send(channel, payload)
 }
+
+// Each local account owns a data directory. It is chosen here, before the instance lock and
+// before any store or Chromium session exists, so everything below opens that account's data.
+const profiles = ProfileSession.open(app.getPath('userData'))
+app.setPath('userData', profiles.dataDir)
 
 const userData = (): string => app.getPath('userData')
 
@@ -447,6 +453,7 @@ function mainIpcRegistration() {
     ipcMain,
     sendToWindows,
     windows: () => windows,
+    profiles,
     browserService: () => browserService,
     quickChatOverlay: () => quickChatOverlay,
     browserDownloads: () => browserDownloads,

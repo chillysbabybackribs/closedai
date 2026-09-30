@@ -61,6 +61,12 @@
   pointer-events: auto;
 }
 
+/* Set the floating chat one shade below the regular chat surface. */
+:root:not([data-theme='warm']) .notepad-chat-layer .quick-chat-card,
+:root:not([data-theme='warm']) .notepad-chat-layer .chat-pane {
+  --surface-card: #191919;
+}
+
 .notepad-chat-elsewhere {
   display: flex;
   gap: 8px;

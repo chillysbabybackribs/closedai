@@ -5,7 +5,7 @@ export type ToolSliceDefinition = {
   description: string
   /** When true, defer every tool then promote (task-scoped eager set). When false, keep registry defaults and only add promotions. */
   resetEager?: boolean
-  /** Cursor ACP: namespaces attached at `session/new` for this slice (omit on `full`). */
+  /** Reserved Cursor namespace proposal; currently ignored to preserve capability access. */
   cursorNamespaces?: readonly string[]
   /** Tool ids in descending priority; greedy promotion stops at `codexEagerWireCap`. */
   promotePriority: readonly string[]

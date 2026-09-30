@@ -39,6 +39,7 @@ export type IpcInvokeChannels = {
   'wallpapers:add': { args: [import('./wallpaper-uploads.js').WallpaperUploadDraft]; result: import('./wallpaper-uploads.js').WallpaperUpload }
   'wallpapers:read': { args: [string]; result: import('./desktop-wallpaper.js').DesktopWallpaper | null }
   'wallpapers:remove': { args: [string]; result: void }
+  'profiles:switchTo': { args: [string]; result: boolean }
   'windows:context': { args: []; result: AppWindowContext }
   'windows:list': { args: []; result: AppWindowInfo[] }
   'windows:detachTabs': { args: [string, string[]]; result: AppWindowId }
@@ -156,6 +157,14 @@ export type IpcInvokeChannels = {
 
 export type IpcInvokeChannel = keyof IpcInvokeChannels
 
+/** Channels answered synchronously, for state a renderer needs before its first paint. */
+export type IpcSyncChannels = {
+  'profiles:bootstrap': { args: []; result: import('./local-profiles.js').ProfileBootstrap }
+  'profiles:write': { args: [string]; result: import('./local-profiles.js').ProfileWriteResult }
+}
+
+export type IpcSyncChannel = keyof IpcSyncChannels
+
 /** Main-process push channels the preload subscribes to. */
 export type IpcEventChannels = {
   'browser:state': BrowserState
@@ -199,6 +208,9 @@ export const IPC = {
       add: 'wallpapers:add',
       read: 'wallpapers:read',
       remove: 'wallpapers:remove'
+    },
+    profiles: {
+      switchTo: 'profiles:switchTo'
     },
     windows: {
       context: 'windows:context',
@@ -342,6 +354,12 @@ export const IPC = {
       clear: 'trace:clear'
     }
   },
+  sync: {
+    profiles: {
+      bootstrap: 'profiles:bootstrap',
+      write: 'profiles:write'
+    }
+  },
   event: {
     browserState: 'browser:state',
     browserTabs: 'browser:tabs',
@@ -361,5 +379,6 @@ export const IPC = {
   }
 } as const satisfies {
   invoke: Record<string, Record<string, IpcInvokeChannel>>
+  sync: Record<string, Record<string, IpcSyncChannel>>
   event: Record<string, IpcEventChannel>
 }

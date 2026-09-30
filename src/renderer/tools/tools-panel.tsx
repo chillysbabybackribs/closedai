@@ -156,7 +156,7 @@ export function ToolsPanel({ active: open, onSendToChat }: ToolsPanelProps): JSX
               <div className="tools-rail-slice">
                 <div className="min-w-0">
                   <p className="tools-rail-slice-label" id="tools-task-slice-label">Task tool slices</p>
-                  <p className="tools-rail-slice-note">Task-scoped eager tools and Cursor namespaces per turn</p>
+                  <p className="tools-rail-slice-note">Task-scoped eager tools; Cursor keeps all enabled tools</p>
                 </div>
                 <Switch
                   checked={tools.chatToolSliceEnabled}

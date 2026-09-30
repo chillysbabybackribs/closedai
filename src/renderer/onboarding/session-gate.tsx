@@ -415,3 +415,23 @@ export function SessionGate({
     </div>
   )
 }
+
+/** Shown after sign-in while the app relaunches into the account's own workspace. */
+export function ProfileSwitchCover({ user, backdropStatus }: { user: LocalUser | null; backdropStatus: BackdropStatus }): JSX.Element {
+  const style = backdropStatus.state === 'ready'
+    ? { backgroundImage: `url(${backdropStatus.image})` }
+    : undefined
+  return (
+    <div className="onboarding-gate" data-ui-surface="onboarding-profile-switch" role="status" aria-live="polite">
+      <div className={backdropClass(backdropStatus)} style={style} aria-hidden="true" />
+      <div className="onboarding-gate-scrim" aria-hidden="true" />
+      <div className="onboarding-gate-shell">
+        <div className="onboarding-gate-auth-header">
+          {user ? <UserAvatar user={user} large /> : null}
+          <h1 className="onboarding-gate-auth-name">{user?.displayName ?? 'Signing in'}</h1>
+          <p className="onboarding-gate-auth-hint">Opening your workspace…</p>
+        </div>
+      </div>
+    </div>
+  )
+}

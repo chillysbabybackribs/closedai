@@ -51,6 +51,15 @@ export type ClosedaiApi = {
     read: (id: string) => Promise<import('./desktop-wallpaper.js').DesktopWallpaper | null>
     remove: (id: string) => Promise<void>
   }
+  /** Local accounts: main keeps the list, and each account has its own data directory. */
+  profiles: {
+    /** The account list and the profile this process has open, read before the first paint. */
+    bootstrap: () => import('./local-profiles.js').ProfileBootstrap
+    /** Store the onboarding settings; the answer names the profile that owns the open data. */
+    write: (onboarding: string) => import('./local-profiles.js').ProfileWriteResult
+    /** Relaunch into the signed-in account's workspace; false when it is already the open one. */
+    switchTo: (userId: string) => Promise<boolean>
+  }
   /** The app's windows: which one this renderer is, and moving chat tabs between them. */
   windows: {
     context: () => Promise<AppWindowContext>

@@ -54,8 +54,8 @@ historical digest.
 
 The session guide (`closedai.guide`, `kind: application`) is separate from handoffs: product
 routing, trust boundaries, recency expectations for external facts, and the default verification
-ladder. It is attached once per provider thread (including the first send after a handoff to a new
-thread), omitted on later turns in the same thread, and stripped from the user-visible transcript
+ladder, including build/reload/restart boundaries and verification of the actual target surface.
+It is attached once per provider thread (including the first send after a handoff to a new thread), omitted on later turns in the same thread, and stripped from the user-visible transcript
 like other context blocks. Edit `scripts/agent-guide-outline.json` and run `npm run guide:generate`;
 `guide:check` guards drift.
 
@@ -81,8 +81,9 @@ When it is on, `ensureCodexThread`
 promotes a task slice from `scripts/tool-slices.json` (core, browser, research, or full) before
 `thread/start`; a slice change rotates the thread like any other catalog drift. Trace label
 `codex.tool_slice` records the slice id and promoted tool ids. On Cursor, the same flag selects a
-slice and passes only that slice's `cursorNamespaces` at `session/new`; a slice change reopens the
-ACP session with the new list. Trace label `cursor.tool_slice` records the slice id and namespace
+slice for telemetry but always attaches every enabled MCP namespace at `session/new`.
+Omitted ACP servers have no deferred discovery path, so task heuristics must not remove capabilities
+or reopen a session solely because the selected slice changed. Trace label `cursor.tool_slice` records the slice id and namespace
 set. On Claude Code, the flag promotes the slice's eager set through MCP `alwaysLoad`; a slice
 change retires the idle CLI process so the next turn spawns with the new load set (ToolSearch
 still reaches deferred tools). Trace label `claude.tool_slice` records the slice id and promoted

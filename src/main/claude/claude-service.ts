@@ -60,7 +60,6 @@ import { applyTranscriptOp, handleProviderTurnEnd, type TranscriptOp, type TurnE
 import { claudeMcpServers } from './claude-tools.js'
 import { attachToolSliceForTurn, type ToolSliceTurnAttachState } from '../tools/provider-tool-slice-turn.js'
 import { slicedToolRegistryKey } from '../tools/slice-tool-registry.js'
-import type { ToolRegistry } from '../tools/registry.js'
 
 // The Claude Code provider, mirroring ChatService's surface so the hub can route to either.
 // Everything model-facing is the Claude Agent SDK: the process, the tools (as in-process MCP

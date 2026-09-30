@@ -10,6 +10,8 @@ import { registerAppWindowsIpc } from './windows/ipc.js'
 import { registerQuickChatIpc } from './quick-chat-overlay/ipc.js'
 import type { QuickChatOverlay } from './quick-chat-overlay/quick-chat-overlay.js'
 import { registerWallpaperIpc } from './wallpapers/ipc.js'
+import { registerProfilesIpc } from './profiles/ipc.js'
+import type { ProfileSession } from './profiles/profile-session.js'
 import { WallpaperUploadStore } from './wallpapers/upload-store.js'
 import { registerBrowserCoreIpc } from './browser-core-ipc.js'
 import { registerBrowserDownloadsIpc } from './browser-downloads-ipc.js'
@@ -50,6 +52,7 @@ export type MainIpcRegistration = {
   ipcMain: IpcMain
   sendToWindows: <C extends IpcEventChannel>(channel: C, payload: IpcEventChannels[C]) => void
   windows: () => AppWindowRegistry | null
+  profiles: ProfileSession
   browserService: () => BrowserService | null
   quickChatOverlay: () => QuickChatOverlay | null
   browserDownloads: () => BrowserDownloadService | null
@@ -81,6 +84,8 @@ export function registerMainProcessIpc(reg: MainIpcRegistration): void {
   registerWindowIpc(reg.ipcMain, (event) => BrowserWindow.fromWebContents(event.sender))
   let wallpapers: WallpaperUploadStore | null = null
   registerWallpaperIpc(reg.ipcMain, () => wallpapers ??= new WallpaperUploadStore(join(app.getPath('userData'), 'wallpapers')))
+  // The quit path flushes every store first, so the next process opens settled files.
+  registerProfilesIpc(reg.ipcMain, reg.profiles, () => { app.relaunch(); app.quit() })
   registerAppWindowsIpc(reg.ipcMain, reg.windows)
   registerQuickChatIpc(reg.ipcMain, reg.quickChatOverlay, reg.windows)
   registerBrowserCoreIpc(reg.ipcMain, reg.browserService, reg.savedSites, (sender) => reg.windows()?.isMain(sender) ?? true)

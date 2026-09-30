@@ -1,5 +1,9 @@
 # Task-scoped tool slices (design)
 
+Current correction (2026-09-29): Cursor namespace filtering is withdrawn because ACP cannot
+discover omitted servers. Cursor retains all enabled namespaces and records slice selection
+for telemetry only. The phase descriptions below document the earlier design.
+
 Status: **Phases 1–3 landed** — slice manifest + `applyToolSlice()`, shared `resolveSlicedToolRegistry()` when `chatToolSliceEnabled` is true: Codex `thread/start` via `resolveCodexToolCatalog()`, Cursor `session/new` namespace allowlists via `resolveCursorToolCatalog()`, Claude MCP `alwaysLoad` via slice advertisement + process retire on change, Antigravity MCP config `eager` map via the same advertisement + CLI retire on change. Trace labels: `codex.tool_slice`, `cursor.tool_slice`, `claude.tool_slice`, `antigravity.tool_slice`.
 
 ## Problem

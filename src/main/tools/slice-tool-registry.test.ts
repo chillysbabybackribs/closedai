@@ -41,7 +41,7 @@ test('resolveSlicedToolRegistry builds core advertisement with recall eager', as
 test('toolAdvertisedEager follows browser slice promotions', async () => {
   const bundle = await resolveSlicedToolRegistry(registry(), { chatToolSliceEnabled: true }, {
     prompt: 'summarize this page',
-    surface: { url: 'https://example.com/' }
+    surface: { tabId: 'tab-test', title: 'Example', url: 'https://example.com/', isLoading: false }
   })
   assert.equal(bundle.sliceId, 'browser')
   const page = registry().enabledNamespaces().find((ns) => ns.name === 'embedded_browser')!.tools.find((tool) => tool.name === 'page')!

@@ -708,8 +708,8 @@ effect, effect, cost, last use, runs, recent failure notes, the exact text the m
 the advertised schema. A **Task tool slices** switch under the rail toggles `chatToolSliceEnabled`
 when on, each send picks a slice from `scripts/tool-slices.json` (core, browser, research, or
 full): Codex advertises the promoted eager set on `thread/start` instead of the legacy pair
-(`closedai_app.state` + `embedded_browser.page`); Cursor passes only that slice's
-`cursorNamespaces` at `session/new`; Claude sets MCP `alwaysLoad` on the promoted tools; Antigravity
+(`closedai_app.state` + `embedded_browser.page`); Cursor retains every enabled MCP namespace at `session/new`
+(the slice is telemetry only; omitted ACP servers cannot be discovered); Claude sets MCP `alwaysLoad` on the promoted tools; Antigravity
 writes the promoted set as `eager` in the CLI MCP config. Discovery / ToolSearch / deferred stubs
 still reach the rest of the enabled registry.
 Presets (Full, Read-only, Custom) sit under that switch; the footer resets telemetry

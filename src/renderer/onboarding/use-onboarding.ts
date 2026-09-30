@@ -15,6 +15,7 @@ import {
   signOutSession,
   writeOnboardingSettings
 } from './onboarding-settings.js'
+import { profileStorage } from './profile-storage.js'
 
 export type SessionGateSignInResult =
   | { ok: true }
@@ -31,6 +32,8 @@ export type OnboardingController = {
   keepSignedIn: boolean
   showSessionGate: boolean
   showProviderSetup: boolean
+  /** The signed-in account's workspace is another profile's data; the app is relaunching into it. */
+  switchingProfile: boolean
   signIn: (userId: string, password: string) => Promise<SessionGateSignInResult>
   createAccount: (displayName: string, password: string) => Promise<SessionGateCreateResult>
   setProfilePassword: (userId: string, password: string) => Promise<SessionGateSignInResult>
@@ -59,14 +62,16 @@ function unlockSession(
 }
 
 function initialSettings(): OnboardingSettings {
-  const stored = readOnboardingSettings(window.localStorage) ?? {
+  const stored = readOnboardingSettings(profileStorage()) ?? {
     phase: 'gate' as const,
     users: [],
     activeUserId: null,
     sessionUnlocked: false
   }
   const activeUser = findLocalUser(stored, stored.activeUserId)
-  if (stored.sessionUnlocked && activeUser && !activeUser.keepSignedIn) {
+  // A relaunch into the account that just signed in is the same session, not a new launch.
+  const resumed = profileStorage().resumed() && stored.activeUserId === profileStorage().currentUserId()
+  if (stored.sessionUnlocked && activeUser && !activeUser.keepSignedIn && !resumed) {
     return { ...stored, phase: 'gate', sessionUnlocked: false, activeUserId: null }
   }
   if (activeUser?.keepSignedIn && stored.activeUserId && !stored.sessionUnlocked) {
@@ -84,12 +89,12 @@ function initialSettings(): OnboardingSettings {
 
 function bootstrapOnboardingSettings(): OnboardingSettings {
   const next = initialSettings()
-  const before = readOnboardingSettings(window.localStorage)
+  const before = readOnboardingSettings(profileStorage())
   if (
     before !== null
     && (next.activeUserId !== before.activeUserId || next.users.length !== before.users.length || next.phase !== before.phase)
   ) {
-    writeOnboardingSettings(window.localStorage, next)
+    writeOnboardingSettings(profileStorage(), next)
   }
   return next
 }
@@ -111,11 +116,11 @@ export function useOnboarding(chatSnapshot: ChatSnapshot, legacyBypass: boolean)
 
   const persist = useCallback((next: OnboardingSettings) => {
     setSettings(next)
-    writeOnboardingSettings(window.localStorage, next)
+    writeOnboardingSettings(profileStorage(), next)
   }, [])
 
   useEffect(() => {
-    if (readOnboardingSettings(window.localStorage) !== null) return
+    if (readOnboardingSettings(profileStorage()) !== null) return
     if (!legacyBypass) return
     persist(completedOnboardingSettings())
   }, [legacyBypass, persist])
@@ -124,13 +129,13 @@ export function useOnboarding(chatSnapshot: ChatSnapshot, legacyBypass: boolean)
     setSettings((current) => {
       const next = ensureActiveSessionProfile(current)
       if (next.activeUserId === current.activeUserId && next.users.length === current.users.length) return current
-      writeOnboardingSettings(window.localStorage, next)
+      writeOnboardingSettings(profileStorage(), next)
       return next
     })
   }, [])
 
   const signIn = useCallback(async (userId: string, password: string): Promise<SessionGateSignInResult> => {
-    const current = readOnboardingSettings(window.localStorage) ?? settings
+    const current = readOnboardingSettings(profileStorage()) ?? settings
     const user = current.users.find((entry) => entry.id === userId)
     if (!user) return { ok: false, reason: 'unknown-user' }
     if (!user.passwordHash) return { ok: false, reason: 'password-required' }
@@ -139,7 +144,7 @@ export function useOnboarding(chatSnapshot: ChatSnapshot, legacyBypass: boolean)
     if (!valid) return { ok: false, reason: 'wrong-password' }
     setSettings(() => {
       const next = unlockSession(current, userId, pendingKeepSignedIn)
-      writeOnboardingSettings(window.localStorage, next)
+      writeOnboardingSettings(profileStorage(), next)
       return next
     })
     return { ok: true }
@@ -147,7 +152,7 @@ export function useOnboarding(chatSnapshot: ChatSnapshot, legacyBypass: boolean)
 
   const setProfilePassword = useCallback(async (userId: string, password: string): Promise<SessionGateSignInResult> => {
     if (!password.trim()) return { ok: false, reason: 'wrong-password' }
-    const current = readOnboardingSettings(window.localStorage) ?? settings
+    const current = readOnboardingSettings(profileStorage()) ?? settings
     const user = current.users.find((entry) => entry.id === userId)
     if (!user) return { ok: false, reason: 'unknown-user' }
     if (user.passwordHash) return { ok: false, reason: 'wrong-password' }
@@ -157,7 +162,7 @@ export function useOnboarding(chatSnapshot: ChatSnapshot, legacyBypass: boolean)
     ))
     setSettings(() => {
       const next = unlockSession({ ...current, users }, userId, pendingKeepSignedIn)
-      writeOnboardingSettings(window.localStorage, next)
+      writeOnboardingSettings(profileStorage(), next)
       return next
     })
     return { ok: true }
@@ -168,7 +173,7 @@ export function useOnboarding(chatSnapshot: ChatSnapshot, legacyBypass: boolean)
     if (!trimmed) return { ok: false, reason: 'name-required' }
     if (!password) return { ok: false, reason: 'password-required' }
     if (password.length < 4) return { ok: false, reason: 'password-too-short' }
-    const current = readOnboardingSettings(window.localStorage) ?? settings
+    const current = readOnboardingSettings(profileStorage()) ?? settings
     const id = crypto.randomUUID()
     const passwordHash = await hashLocalProfilePassword(password)
     const user = createLocalUser(trimmed, id, passwordHash)
@@ -178,7 +183,7 @@ export function useOnboarding(chatSnapshot: ChatSnapshot, legacyBypass: boolean)
         id,
         pendingKeepSignedIn
       )
-      writeOnboardingSettings(window.localStorage, next)
+      writeOnboardingSettings(profileStorage(), next)
       return next
     })
     return { ok: true }
@@ -189,7 +194,7 @@ export function useOnboarding(chatSnapshot: ChatSnapshot, legacyBypass: boolean)
     if (!settings.sessionUnlocked || !settings.activeUserId) return
     setSettings((current) => {
       const next = patchLocalUser(current, current.activeUserId!, { keepSignedIn: value })
-      writeOnboardingSettings(window.localStorage, next)
+      writeOnboardingSettings(profileStorage(), next)
       return next
     })
   }, [settings.activeUserId, settings.sessionUnlocked])
@@ -204,7 +209,7 @@ export function useOnboarding(chatSnapshot: ChatSnapshot, legacyBypass: boolean)
         ...patched,
         phase: phaseForUser(user, current.sessionUnlocked)
       }
-      writeOnboardingSettings(window.localStorage, next)
+      writeOnboardingSettings(profileStorage(), next)
       return next
     })
   }, [])
@@ -221,7 +226,7 @@ export function useOnboarding(chatSnapshot: ChatSnapshot, legacyBypass: boolean)
       const next = patchLocalUser(current, userId, {
         connectedProviders: [...user.connectedProviders, provider]
       })
-      writeOnboardingSettings(window.localStorage, next)
+      writeOnboardingSettings(profileStorage(), next)
       return next
     })
   }, [])
@@ -235,7 +240,7 @@ export function useOnboarding(chatSnapshot: ChatSnapshot, legacyBypass: boolean)
       const next = patchLocalUser(current, userId, {
         connectedProviders: user.connectedProviders.filter((entry) => entry !== provider)
       })
-      writeOnboardingSettings(window.localStorage, next)
+      writeOnboardingSettings(profileStorage(), next)
       return next
     })
   }, [])
@@ -250,7 +255,7 @@ export function useOnboarding(chatSnapshot: ChatSnapshot, legacyBypass: boolean)
         phase: 'providers',
         sessionUnlocked: true
       }
-      writeOnboardingSettings(window.localStorage, next)
+      writeOnboardingSettings(profileStorage(), next)
       return next
     })
   }, [])
@@ -258,17 +263,36 @@ export function useOnboarding(chatSnapshot: ChatSnapshot, legacyBypass: boolean)
   const signOut = useCallback(() => {
     setSettings((current) => {
       const next = signOutSession(current)
-      writeOnboardingSettings(window.localStorage, next)
+      writeOnboardingSettings(profileStorage(), next)
       return next
     })
   }, [])
 
   const showSessionGate = useMemo(() => settings.phase === 'gate' && !settings.sessionUnlocked, [settings])
 
+  // Each account has its own workspace. Signing in to one whose data is not the open profile
+  // relaunches into it; until then the cover stays up so the open workspace is never shown.
+  const switchingProfile = settings.sessionUnlocked
+    && settings.activeUserId !== null
+    && settings.activeUserId !== profileStorage().currentUserId()
+
+  useEffect(() => {
+    if (!switchingProfile || !settings.activeUserId) return
+    void window.closedai.profiles.switchTo(settings.activeUserId).then((relaunching) => {
+      if (relaunching) return
+      // Main refused: the stored list no longer matches. Back to the gate rather than a stuck cover.
+      setSettings((current) => {
+        const next = signOutSession(current)
+        writeOnboardingSettings(profileStorage(), next)
+        return next
+      })
+    })
+  }, [settings.activeUserId, switchingProfile])
+
   const showProviderSetup = useMemo(() => {
-    if (settings.phase !== 'providers') return false
+    if (settings.phase !== 'providers' || switchingProfile) return false
     return settings.sessionUnlocked
-  }, [settings])
+  }, [settings, switchingProfile])
 
   useEffect(() => {
     if (chatSnapshot.provider === 'codex' && chatSnapshot.connection.state === 'ready') {
@@ -283,6 +307,7 @@ export function useOnboarding(chatSnapshot: ChatSnapshot, legacyBypass: boolean)
     keepSignedIn,
     showSessionGate,
     showProviderSetup,
+    switchingProfile,
     signIn,
     setProfilePassword,
     createAccount,

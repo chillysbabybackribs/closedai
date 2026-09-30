@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { IPC, type IpcEventChannel, type IpcInvokeChannel } from './ipc-channels.js'
+import { IPC, type IpcEventChannel, type IpcInvokeChannel, type IpcSyncChannel } from './ipc-channels.js'
 
 function leafValues(value: unknown): string[] {
   if (typeof value === 'string') return [value]
@@ -24,6 +24,7 @@ test('IPC invoke constants cover the typed invoke registry', () => {
     'wallpapers:add',
     'wallpapers:read',
     'wallpapers:remove',
+    'profiles:switchTo',
     'windows:context',
     'windows:list',
     'windows:detachTabs',
@@ -145,6 +146,13 @@ test('IPC invoke constants cover the typed invoke registry', () => {
     'models:setEnabled',
     'models:setEnabledMany'
   ]
+  assert.equal(channels.size, typed.length)
+  for (const channel of typed) assert.ok(channels.has(channel), channel)
+})
+
+test('IPC sync constants cover the typed sync registry', () => {
+  const channels = new Set(leafValues(IPC.sync))
+  const typed: IpcSyncChannel[] = ['profiles:bootstrap', 'profiles:write']
   assert.equal(channels.size, typed.length)
   for (const channel of typed) assert.ok(channels.has(channel), channel)
 })

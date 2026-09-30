@@ -49,7 +49,7 @@ import { useWorkspaceBackdrop } from './backdrop/use-workspace-backdrop.js'
 import type { MinimizedWindow } from './chat-layout/floating/minimized-windows.js'
 import { ProviderSetupModal } from './onboarding/provider-setup-modal.js'
 import { SessionAccountMenu } from './onboarding/session-account-menu.js'
-import { SessionGate } from './onboarding/session-gate.js'
+import { ProfileSwitchCover, SessionGate } from './onboarding/session-gate.js'
 import { useOnboarding } from './onboarding/use-onboarding.js'
 import './styles.css'
 
@@ -395,6 +395,9 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
           onSetProfilePassword={onboarding.setProfilePassword}
           onCreateAccount={onboarding.createAccount}
         />
+      )}
+      {onboarding.switchingProfile && (
+        <ProfileSwitchCover user={activeLocalUser} backdropStatus={backdropStatus} />
       )}
       <ProviderSetupModal
         open={onboarding.showProviderSetup}

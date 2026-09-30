@@ -5,12 +5,12 @@ import { selectToolSliceId, type ToolSliceTurnInput } from './tool-slice-select.
 
 export type CursorToolCatalogBundle = {
   sliceId: string | null
-  /** null = every enabled namespace (slicing off or `full` slice). */
+  /** null = every enabled namespace; Cursor currently preserves the full catalog. */
   namespaces: readonly string[] | null
 }
 
 export async function resolveCursorToolCatalog(
-  registry: ToolRegistry,
+  _registry: ToolRegistry,
   settings: Pick<AppSettings, 'chatToolSliceEnabled'>,
   turn: ToolSliceTurnInput
 ): Promise<CursorToolCatalogBundle> {
@@ -19,14 +19,8 @@ export async function resolveCursorToolCatalog(
   }
   const catalog = await loadToolSliceCatalog()
   const sliceId = selectToolSliceId(catalog, turn)
-  if (sliceId === 'full') {
-    return { sliceId, namespaces: null }
-  }
-  const allowlist = catalog.slices[sliceId]?.cursorNamespaces
-  if (!allowlist?.length) {
-    return { sliceId, namespaces: null }
-  }
-  const enabled = new Set(registry.enabledNamespaces().map((namespace) => namespace.name))
-  const namespaces = allowlist.filter((name) => enabled.has(name))
-  return { sliceId, namespaces }
+  // ACP exposes only attached MCP servers; omitted namespaces have no discovery path.
+  // Keep the selected slice for telemetry, but preserve every enabled capability until
+  // Cursor supports deferred attachment. Heuristics must not become access control.
+  return { sliceId, namespaces: null }
 }

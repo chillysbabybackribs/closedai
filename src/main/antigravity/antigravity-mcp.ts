@@ -96,8 +96,7 @@ export class AntigravityToolBridge extends McpHttpBridge {
     const namespaces = new Map(this.registry.enabledNamespaces().map((namespace) => [namespace.name, namespace]))
     const written = await this.rewriteConfig((servers) => {
       for (const endpoint of endpoints) {
-        const namespace = namespaces.get(endpoint.namespace)
-        const main = this.registry.enabledNamespaces().find((entry) => entry.name === endpoint.namespace)
+        const main = namespaces.get(endpoint.namespace)
         const tools = main?.tools.filter((tool) => toolAdvertisedEager(this.advertisement, endpoint.namespace, tool)) ?? []
         servers[this.serverName(endpoint.namespace)] = {
           serverUrl: endpoint.url,

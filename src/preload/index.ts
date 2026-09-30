@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type { ClosedaiApi } from '../shared/api.js'
 import { IPC, type IpcEventChannel, type IpcEventChannels, type IpcInvokeChannel, type IpcInvokeChannels } from '../shared/ipc-channels.js'
+import type { ProfileBootstrap, ProfileWriteResult } from '../shared/local-profiles.js'
 import type { BrowserBounds } from '../shared/types.js'
 
 function invoke<C extends IpcInvokeChannel>(
@@ -39,6 +40,11 @@ const api: ClosedaiApi = {
     add: (draft) => invoke(IPC.invoke.wallpapers.add, draft),
     read: (id) => invoke(IPC.invoke.wallpapers.read, id),
     remove: (id) => invoke(IPC.invoke.wallpapers.remove, id)
+  },
+  profiles: {
+    bootstrap: () => ipcRenderer.sendSync(IPC.sync.profiles.bootstrap) as ProfileBootstrap,
+    write: (onboarding) => ipcRenderer.sendSync(IPC.sync.profiles.write, onboarding) as ProfileWriteResult,
+    switchTo: (userId) => invoke(IPC.invoke.profiles.switchTo, userId)
   },
   windows: {
     context: () => invoke(IPC.invoke.windows.context),

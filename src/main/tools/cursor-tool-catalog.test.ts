@@ -62,19 +62,27 @@ test('resolveCursorToolCatalog attaches every namespace when slicing is off', as
   assert.equal(bundle.namespaces, null)
 })
 
-test('resolveCursorToolCatalog narrows core workspace turns to app, search, recall, and batch', async () => {
+test('resolveCursorToolCatalog preserves every enabled namespace for core workspace turns', async () => {
   const bundle = await resolveCursorToolCatalog(fullRegistry(), { chatToolSliceEnabled: true }, {
     prompt: 'Fix the failing test', surface: null
   })
   assert.equal(bundle.sliceId, 'core')
-  assert.deepEqual(bundle.namespaces, ['closedai_app', 'search', 'peer_chats', 'tool_batch'])
+  assert.equal(bundle.namespaces, null)
 })
 
-test('resolveCursorToolCatalog adds browser namespaces for page intent', async () => {
+test('resolveCursorToolCatalog preserves recall and other capabilities for browser intent', async () => {
   const bundle = await resolveCursorToolCatalog(fullRegistry(), { chatToolSliceEnabled: true }, {
     prompt: 'Summarize this page', surface: null
   })
   assert.equal(bundle.sliceId, 'browser')
-  assert.ok(bundle.namespaces?.includes('embedded_browser'))
-  assert.ok(!bundle.namespaces?.includes('browser_cdp'))
+  assert.equal(bundle.namespaces, null)
+})
+
+test('notepad structural UI work retains notes and UI inspection capabilities', async () => {
+  const bundle = await resolveCursorToolCatalog(fullRegistry(), { chatToolSliceEnabled: true }, {
+    prompt: 'Lighten the notes header and change the chat layout', surface: null
+  })
+  assert.equal(bundle.sliceId, 'core')
+  // null instructs the ACP bridge to attach all enabled endpoints, including future ones.
+  assert.equal(bundle.namespaces, null)
 })

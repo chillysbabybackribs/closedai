@@ -58,7 +58,7 @@
         "Provider threads replay tool results and images every send until rotation, compaction, or a handoff/branch.",
         "search.query depth quick (default) uses one provider; balanced and deep wait for several. Prefer search.run for parallel research.",
         "Prefer embedded_browser.script extract on structured JSON; use capture sparingly (image tokens add up). Codex code mode: pass capture data URLs to image(), not JSON text with base64.",
-        "Codex loads most ClosedAI tools on discovery (deferLoading), including search.query; only embedded_browser.page and closedai_app.state are eager (~1k advertised tokens). Cursor (Composer) is the reference experience: full enabled MCP schemas plus the provider native file loop — tune Codex, Claude, and Antigravity toward the same tool salience and continuity, not identical transport. Disable unused tool groups in Settings to shrink catalog size on any lane.",
+        "Codex defers most ClosedAI tools to discovery. Task tool slices change eager advertisements, not access. Cursor attaches all enabled MCP namespaces because omitted servers cannot be discovered within that session. Disable unused tool groups in Settings to reduce the catalog.",
         "Start a fresh chat, branch, or handoff when context usage is high instead of one endless thread.",
         "With seamless rotation (default), Codex, Claude, Cursor, and Antigravity idle-rotate to a thin seed when context crosses chatCompactAtTokens (default 28k), chatCompactAtPercent (default 80), or task-aware limits (transcript items, tool calls, tool-output volume); peer_chats.recall can recover omitted evidence."
       ]
@@ -70,7 +70,8 @@
         "Tier 1 — default for code: one co-located *.test.ts for the module you changed; run once per logical edit batch, not after every micro-edit.",
         "Tier 2 — npm run typecheck when shared types, exports, or cross-layer contracts change; once before handoff, not every save.",
         "Tier 3 — npm run hygiene when a file crosses a numeric cap or you split modules; 80% warnings mean review boundaries only. Keep cohesive task work in place rather than pre-splitting to stay under a cap; split on real boundaries or raise limits with owner approval when the product change warrants it.",
-        "Tier 4 — Electron preview/dev for renderer behavior; browser:live only for real Chromium paths.",
+        "Tier 4 — Verify renderer behavior in the real Electron app; see docs/application.md for build/reload ownership. A successful build or preview command alone is not visual verification.",
+        "Checkout preview runs built out/ files. After a successful build, preview -- --skipBuild avoids building twice. Renderer-only rebuilds auto-reload after settling only when the main bundle matches the running process. Changed main-process code requires an app restart; preload changes also require a restart for verification. Dev uses renderer hot reload. Starting another preview is not evidence that the existing app loaded new code; check the actual target surface and report a pending restart when needed.",
         "Tier 5 — npm test or npm run check only for release preparation or an explicit user request. Full gates are not the default success criterion.",
         "Command: npm run test:one -- src/path/to/module.test.ts",
         "Heavy build/verify: provider shells auto-wrap npm via scripts/closedai-bin when chatWorkLockEnabled (default on); manual: node scripts/work-lock.mjs --cwd <path> -- <command…> (.closedai/work.lock)."
