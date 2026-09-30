@@ -14,11 +14,14 @@ export type RotationPressureThresholds = {
 
 export type PressureTriggerReason = 'items' | 'toolCalls' | 'toolOutputChars'
 
-/** Count transcript pressure since the latest user message (inclusive of full item count). */
-export function measureRotationPressure(items: readonly ChatTranscriptItem[]): RotationPressure {
+/** Count only items after the last rotation; tool pressure also stops at the latest user. */
+export function measureRotationPressure(items: readonly ChatTranscriptItem[], throughItemId?: string | null): RotationPressure {
+  const boundary = throughItemId ? items.findIndex((item) => item.id === throughItemId) : -1
+  // A missing persisted boundary may mean only the new provider history was restored.
+  const start = boundary + 1
   let toolCallsSinceUser = 0
   let toolOutputCharsSinceUser = 0
-  for (let index = items.length - 1; index >= 0; index -= 1) {
+  for (let index = items.length - 1; index >= start; index -= 1) {
     const item = items[index]!
     if (item.type === 'user') break
     if (item.type === 'tool') {
@@ -27,7 +30,7 @@ export function measureRotationPressure(items: readonly ChatTranscriptItem[]): R
     }
   }
   return {
-    itemCount: items.length,
+    itemCount: items.length - start,
     toolCallsSinceUser,
     toolOutputCharsSinceUser
   }

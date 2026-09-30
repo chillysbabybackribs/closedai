@@ -36,7 +36,7 @@ export function createSessionRotator(input: CreateSessionRotatorInput): SessionR
     threadId: input.threadId,
     turnActive: input.turnActive,
     rotate: input.rotate,
-    pressureTrigger: () => pressureTrigger(measureRotationPressure(input.transcriptItems()), thresholds()),
+    pressureTrigger: () => pressureTrigger(measureRotationPressure(input.transcriptItems(), input.settings.get().chatSessionRotations?.at(-1)?.sourceThroughItemId), thresholds()),
     hasPressureThresholds: () => hasRotationPressureThreshold(thresholds())
   })
 }

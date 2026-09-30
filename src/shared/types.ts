@@ -194,7 +194,9 @@ export type AppSettings = {
    * native Codex compaction. Default on; set false to restore compaction paths.
    */
   chatSeamlessRotation: boolean
-  /** Rotate after this many transcript items. 0 disables. */
+  /** Soft handoff character target for older answers/evidence; protected context can exceed it. 0 includes all. */
+  chatHandoffTargetChars: number
+  /** Rotate after this many transcript items since the latest rotation boundary. 0 disables. */
   chatRotateAtItems: number
   /** Rotate after this many tool calls since the latest user message. 0 disables. */
   chatRotateAtToolCallsSinceUser: number

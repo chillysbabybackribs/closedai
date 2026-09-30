@@ -43,11 +43,12 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   ],
   disabledModels: [],
   toolBatchMaxCalls: DEFAULT_BATCH_MAX_CALLS,
-  // Default token rotation threshold drops accumulated tool dumps during idle time.
+  // Window pressure is the default; absolute token thresholds are opt-in.
   chatCompactAtPercent: 80,
-  chatCompactAtTokens: 28_000,
+  chatCompactAtTokens: 0,
   chatMidTurnCompactTokens: 0,
   chatSeamlessRotation: true,
+  chatHandoffTargetChars: 24_000,
   chatRotateAtItems: 100,
   chatRotateAtToolCallsSinceUser: 24,
   chatRotateAtToolOutputChars: 280_000,
@@ -116,6 +117,7 @@ function normalize(parsed: unknown): AppSettings {
     ...normalizeCompactionPolicy(record),
     chatMidTurnCompactTokens: normalizeAutoCompactTokens(record.chatMidTurnCompactTokens, DEFAULT_APP_SETTINGS.chatMidTurnCompactTokens),
     ...normalizeRotationPressure(record),
+    chatHandoffTargetChars: normalizeRotationThreshold(record.chatHandoffTargetChars, DEFAULT_APP_SETTINGS.chatHandoffTargetChars, Number.MAX_SAFE_INTEGER),
     chatWorkLockEnabled: record.chatWorkLockEnabled !== false,
     chatToolSliceEnabled: record.chatToolSliceEnabled === true
   }
@@ -148,19 +150,11 @@ function normalizeRotationThreshold(value: unknown, fallback: number, max: numbe
   return Math.min(max, rounded)
 }
 
-/** Token trigger off with seamless rotation off was a common eval preset; migrate to the Codex replay default. */
+/** Explicit opt-outs survive loading and unrelated settings writes. */
 function normalizeCompactionPolicy(record: Record<string, unknown>): Pick<AppSettings, 'chatCompactAtPercent' | 'chatCompactAtTokens' | 'chatSeamlessRotation'> {
   const chatCompactAtPercent = typeof record.chatCompactAtPercent === 'number' && Number.isFinite(record.chatCompactAtPercent)
     ? Math.min(MAX_COMPACT_AT_PERCENT, Math.max(0, Math.round(record.chatCompactAtPercent)))
     : DEFAULT_APP_SETTINGS.chatCompactAtPercent
-  const legacyDisabled = record.chatCompactAtTokens === 0 && record.chatSeamlessRotation === false
-  if (legacyDisabled) {
-    return {
-      chatCompactAtPercent,
-      chatCompactAtTokens: DEFAULT_APP_SETTINGS.chatCompactAtTokens,
-      chatSeamlessRotation: true
-    }
-  }
   return {
     chatCompactAtPercent,
     chatCompactAtTokens: normalizeAutoCompactTokens(record.chatCompactAtTokens, DEFAULT_APP_SETTINGS.chatCompactAtTokens),
