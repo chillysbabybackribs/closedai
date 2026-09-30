@@ -49,6 +49,14 @@ export class BrowserCoordination {
         return { ...input, new_tab: false, tab_id: id }
       }
     }
+    if (namespace === 'browser_cdp' && tool === 'capture_spa') {
+      if (input.new_tab === true && input.tab_id) throw new Error('capture_spa cannot combine tab_id with new_tab')
+      if (input.new_tab === true || (!input.tab_id && !this.defaults.has(pane))) {
+        const id = this.host.create()
+        this.claim(id, pane)
+        return { ...input, new_tab: false, tab_id: id }
+      }
+    }
     const ownedDefault = this.defaults.get(pane)
     const id = typeof input.tab_id === 'string' ? input.tab_id
       : ownedDefault ?? this.host.tabs().find(tab => tab.active)?.id

@@ -83,6 +83,10 @@ export function browserResourceLockKey(request: ToolCallRequest, input: JsonObje
       }
       return tabKey(input) ?? 'browser:strip'
     }
+    if (tool === 'capture_spa') {
+      if (input.new_tab === true) return 'browser:strip'
+      return tabKey(input) ?? 'browser:strip'
+    }
     if (['profile', 'instrument', 'emulate'].includes(tool)) return tabKey(input) ?? 'browser:strip'
   }
   return null

@@ -3,7 +3,7 @@ import { jsonResult, objectSchema } from '../json-result.js'
 import { projectionFieldsField, readinessFrom, readinessProperties, urlField } from '../browser/fields.js'
 import { projectJson } from '../browser/project.js'
 import { requireBrowser, type BrowserHostProvider } from '../browser/host.js'
-import { tabIdField, tabIdFrom } from './fields.js'
+import { normalizeCdpSessionId, tabIdField, tabIdFrom } from './fields.js'
 import { requireCdp, type CdpHostProvider } from './host.js'
 
 type CapturedRequest = {
@@ -21,13 +21,14 @@ export function captureSpaTool(cdp: CdpHostProvider, browser: BrowserHostProvide
     name: 'capture_spa',
     deferLoading: true,
     description:
-      'Load a page URL with CDP network capture, then return projected JSON from the best matching XHR/fetch. ' +
-      'Use for SPA APIs (search endpoints). Static docs → embedded_browser.session fetch or fetch_many. Opens a tab.',
+      'Arm CDP capture, navigate to url, return projected JSON from the best matching XHR/fetch (last match for url_contains). ' +
+      'Example: url https://hn.algolia.com/?q=electron, url_contains Item_dev/query, json_path hits, fields [title], max_items 3. ' +
+      'Cold start: omit tab_id or set new_tab true — a tab is created for this chat. Static docs → session fetch or fetch_many.',
     inputSchema: objectSchema({
       url: urlField,
       tab_id: tabIdField,
       new_tab: { type: 'boolean', description: 'Open another tab assigned to this chat and select it.' },
-      url_contains: { type: 'string', minLength: 1, description: 'Case-insensitive substring on the captured request URL.' },
+      url_contains: { type: 'string', minLength: 1, description: 'Case-insensitive substring on the captured request URL, for example Item_dev/query for HN Algolia search.' },
       resource_type: { type: 'string', minLength: 1, description: 'Optional filter on resource type, for example xhr or fetch.' },
       json_path: { type: 'string', minLength: 1, description: 'Dot/bracket path in the captured JSON body.' },
       fields: projectionFieldsField,
@@ -70,7 +71,11 @@ export function captureSpaTool(cdp: CdpHostProvider, browser: BrowserHostProvide
             : `No captured request matched url_contains ${JSON.stringify(stringArg(input, 'url_contains'))}. Check resource_type or the substring.`
         )
       }
-      const response = await cdpHost.responseBody(activeTabId, picked.requestId, picked.sessionId ?? undefined) as Record<string, unknown>
+      const response = await cdpHost.responseBody(
+        activeTabId,
+        picked.requestId,
+        normalizeCdpSessionId(picked.sessionId)
+      ) as Record<string, unknown>
       const text = typeof response.text === 'string' ? response.text : null
       if (!text) return failureResult('The matched request has no text body to project.')
       let json: unknown

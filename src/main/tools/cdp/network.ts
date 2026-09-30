@@ -4,7 +4,7 @@ import { failureResult, numberArg, stringArg } from '../tool.js'
 import { projectionFieldsField } from '../browser/fields.js'
 import { projectJson } from '../browser/project.js'
 import { textWindow } from '../browser/text-window.js'
-import { sessionIdField, tabIdField } from './fields.js'
+import { normalizeCdpSessionId, sessionIdField, tabIdField } from './fields.js'
 import { requireCdp, type CdpHostProvider } from './host.js'
 
 const DEFAULT_REQUEST_LIMIT = 60
@@ -50,7 +50,11 @@ export function bodyAction(cdp: CdpHostProvider): ToolAction {
       offset: { type: 'integer', minimum: 0, description: 'Character offset in captured text; use nextOffset to continue without reissuing the request.' }
     }, ['request_id']),
     run: async (input) => {
-      const response = await requireCdp(cdp).responseBody(stringArg(input, 'tab_id'), stringArg(input, 'request_id')!, stringArg(input, 'session_id')) as Record<string, unknown>
+      const response = await requireCdp(cdp).responseBody(
+        stringArg(input, 'tab_id'),
+        stringArg(input, 'request_id')!,
+        normalizeCdpSessionId(stringArg(input, 'session_id'))
+      ) as Record<string, unknown>
       const { text, ...metadata } = response
       const hasProjection = input.json_path !== undefined || input.fields !== undefined || input.max_items !== undefined
       if (hasProjection) {

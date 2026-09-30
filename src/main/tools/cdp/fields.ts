@@ -22,8 +22,14 @@ export function tabIdFrom(input: JsonObject): string | undefined {
   return stringArg(input, 'tab_id')
 }
 
+/** Root-frame captures use an empty session id in listings; Electron rejects that as a CDP route. */
+export function normalizeCdpSessionId(sessionId?: string | null): string | undefined {
+  if (sessionId == null || sessionId === '') return undefined
+  return sessionId
+}
+
 export function sessionIdFrom(input: JsonObject): string | undefined {
-  return stringArg(input, 'session_id')
+  return normalizeCdpSessionId(stringArg(input, 'session_id'))
 }
 
 export function paramsFrom(input: JsonObject): Record<string, unknown> {

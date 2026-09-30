@@ -102,7 +102,8 @@ export class CdpSession {
   async command(method: string, params: Record<string, unknown> = {}, sessionId?: string): Promise<unknown> {
     this.ensureAttached()
     await this.ensureTargetDiscovery()
-    const result = await this.contents.debugger.sendCommand(method, params, sessionId)
+    const routedSession = sessionId === '' ? undefined : sessionId
+    const result = await this.contents.debugger.sendCommand(method, params, routedSession)
     this.recordTargetCommand(method, params, result)
     return result
   }

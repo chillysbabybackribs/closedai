@@ -77,6 +77,23 @@ test('any chat reads or selects a tab another chat is working in, and takes noth
     /assigned to chat a/)
 })
 
+test('capture_spa creates and claims a tab when the chat has no assignment', () => {
+  const { prepare, policy } = harness()
+  const out = prepare('a', {
+    url: 'https://hn.algolia.com/?q=electron',
+    url_contains: 'Item_dev/query',
+    new_tab: true
+  }, 'browser_cdp', 'capture_spa')
+  assert.equal(out.new_tab, false)
+  assert.match(String(out.tab_id), /^new-/)
+  assert.equal(policy.snapshot('a').defaultTabId, out.tab_id)
+  const cold = prepare('b', {
+    url: 'https://hn.algolia.com/?q=test',
+    url_contains: 'query'
+  }, 'browser_cdp', 'capture_spa')
+  assert.match(String(cold.tab_id), /^new-/)
+})
+
 test('acting without an assigned tab refuses to use the visible page', () => {
   const { prepare } = harness()
   assert.throws(
