@@ -35,7 +35,7 @@
         "Use native provider tools to read and search the repository; use ClosedAI browser tools for signed-in pages and session fetch.",
         "Cross-chat: peer_chats.search (~10 hot chats), then spine or recall(scope=history, chat_id=...) for depth. Open peers: list(scope=open)+read. History list is metadata; recall searches bodies. Page before_chat_id or before_item_id; order follows last user send, not always UI activity.",
         "Prefer deterministic closedai_app.command, and closedai_app.menu for any application menu row, over closedai_app.ui; ui requires fallback_reason.",
-        "Browser mutations need an owned tab; read_page and wait_for observe without claiming. Discovery search uses search.query or search.run, not free-text navigation to a search engine page."
+        "Browser mutations need an owned tab; read_page and wait_for observe without claiming. site.discover bootstrap on new origins; discovery search uses search.query or search.run, not search-engine navigate."
       ]
     },
     {

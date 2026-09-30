@@ -46,6 +46,7 @@ import { AppCommandAccess } from './app-commands.js'
 import { UiCaptureAccess } from './ui-capture-access.js'
 import { createToolRegistry, type ToolRegistry } from './tools/index.js'
 import { browserTools } from './tools/browser/index.js'
+import { siteTools } from './tools/site/index.js'
 import { appTools } from './tools/app/index.js'
 import { cdpTools } from './tools/cdp/index.js'
 import { captureTools, ScreenshotStore } from './tools/capture/index.js'
@@ -325,6 +326,7 @@ async function main(): Promise<void> {
     appTools(() => appCommandAccess, () => appAutomationAccess, () => pageAccess),
     mediaTools({ app: () => appCommandAccess, ui: () => appAutomationAccess, page: () => pageAccess, record: recordPageVideo }, videoJobs),
     browserTools(() => pageAccess, () => networkAccess, () => networkAccess),
+    siteTools(() => networkAccess, () => pageAccess),
     cdpTools(() => cdpAccess, artifacts.service),
     captureTools(() => captureAccess, screenshots),
     research.namespace,
