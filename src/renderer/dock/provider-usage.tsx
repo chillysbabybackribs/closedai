@@ -54,7 +54,7 @@ export function ProviderUsage({ chats, open, onOpenChange }: {
   const chipWidth = (item: ProviderUsageEntry): number => {
     const plan = item.usage?.plan ?? item.account?.planType ?? null
     const display = usageChipDisplay(item.provider, item.usage, plan, now, CHAT_PROVIDER_LABELS[item.provider])
-    return display.kind === 'label' ? Math.max(120, display.text.length * 6.5) : 52
+    return display.kind === 'label' ? Math.max(120, display.text.length * 6.5) : 46
   }
   const compact = width < entries.reduce((total, item) => total + chipWidth(item), 0)
   const entry = entries.find((item) => item.key === selected) ?? entries[0]

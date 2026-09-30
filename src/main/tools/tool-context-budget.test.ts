@@ -9,6 +9,7 @@ import { captureTools } from './capture/index.ts'
 import { createToolRegistry } from './index.ts'
 import { nativeInstrumentTools } from './native-instrument/index.ts'
 import { mediaTools } from './media/index.ts'
+import { notesTools } from './notes/index.ts'
 import { credentialVaultTools } from './credential-vault/index.ts'
 import { peerChatTools } from './peer-chats/index.ts'
 import { searchTools } from './search/index.ts'
@@ -49,6 +50,7 @@ function fullRegistry() {
     captureTools(stubHost, stubHost as never),
     searchTools({ research: minimalResearch() }),
     peerChatTools(stubHost),
+    notesTools({ store: stubHost, bindings: stubHost as never }),
     batchTools(() => registry, { maxCalls: 16 })
   ])
   return registry
@@ -56,10 +58,10 @@ function fullRegistry() {
 
 test('eager Codex tool wire stays within the regression budget', () => {
   const budget = measureToolContextBudget(fullRegistry())
-  assert.equal(budget.toolCount, 29)
+  assert.equal(budget.toolCount, 35)
   assert.ok(budget.deferredWireChars > budget.eagerWireChars, 'most schema weight should stay deferred')
   assert.ok(budget.eagerWireChars <= 3_600, `eager wire grew to ${budget.eagerWireChars}`)
-  assert.ok(budget.deferredWireChars <= 65_500, `deferred full wire grew to ${budget.deferredWireChars}`)
+  assert.ok(budget.deferredWireChars <= 71_000, `deferred full wire grew to ${budget.deferredWireChars}`)
   assert.ok(budget.advertisedTokens <= 1_850, `advertised tokens grew to ${budget.advertisedTokens}`)
   assert.deepEqual(budget.eagerTools.map((row) => row.id), ['embedded_browser.page', 'closedai_app.state'])
   assert.ok(budget.deferredTools.some((row) => row.id === 'search.query'), 'search.query stays available via deferral')

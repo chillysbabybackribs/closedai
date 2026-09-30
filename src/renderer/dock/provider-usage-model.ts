@@ -81,7 +81,7 @@ export function usageHeadline(usage: ChatPlanUsage | null, now: number): {
 }
 
 export type UsageChipDisplay =
-  | { kind: 'meter'; remaining: number; level: UsageLevel; window: ChatPlanUsageWindow | null; ariaLabel: string }
+  | { kind: 'meter'; remaining: number | null; level: UsageLevel; window: ChatPlanUsageWindow | null; ariaLabel: string }
   | { kind: 'label'; text: string; level: UsageLevel; ariaLabel: string }
 
 /** Rail chip: ring meter when a numeric remaining window exists; short text otherwise. */
@@ -96,8 +96,14 @@ export function usageChipDisplay(
   const detail = headline.window ? ` · lowest: ${headline.window.label}` : ''
   if ((provider === 'cursor' || provider === 'codex') && headline.level === 'unknown') {
     const label = usage?.plan ?? plan
-    const text = label ? `${label} · usage unavailable` : headline.text
-    return { kind: 'label', text, level: 'unknown', ariaLabel: `${providerLabel}: ${text}` }
+    const detailText = label ? `${label} · usage unavailable` : headline.text
+    return {
+      kind: 'meter',
+      remaining: null,
+      level: 'unknown',
+      window: null,
+      ariaLabel: `${providerLabel}: ${detailText}`
+    }
   }
   if (headline.remaining !== null) {
     return {
@@ -113,5 +119,7 @@ export function usageChipDisplay(
 
 export function usageChipText(provider: ChatProvider, usage: ChatPlanUsage | null, plan: string | null, now: number): string {
   const display = usageChipDisplay(provider, usage, plan, now, '')
-  return display.kind === 'meter' ? String(display.remaining) : display.text
+  return display.kind === 'meter'
+    ? display.remaining === null ? '—' : String(display.remaining)
+    : display.text
 }

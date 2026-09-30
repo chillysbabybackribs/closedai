@@ -49,14 +49,18 @@
 .usage-meter-ring-track {
   fill: none;
   stroke: color-mix(in srgb, var(--foreground) 14%, transparent);
-  stroke-width: 2;
+  stroke-width: 1.5;
 }
 .usage-meter-ring-fill {
   fill: none;
   stroke: var(--usage-meter-ink, var(--muted-foreground));
-  stroke-width: 2;
+  stroke-width: 1.5;
   stroke-linecap: round;
   transition: stroke-dasharray 260ms var(--ease-chrome, ease);
+}
+.usage-meter-ring[data-indeterminate='true'] .usage-meter-ring-track {
+  stroke-dasharray: 2 2.5;
+  opacity: 0.55;
 }
 .usage-meter-ring[data-level='low'] { --usage-meter-ink: light-dark(#8b5d00, #dfbd79); }
 .usage-meter-ring[data-level='critical'],
@@ -64,7 +68,7 @@
 .usage-meter-ring[data-level='stale'] { --usage-meter-ink: var(--muted-foreground); opacity: 0.72; }
 .usage-meter-ring-value {
   position: absolute;
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   line-height: 1;
@@ -72,6 +76,11 @@
   pointer-events: none;
 }
 .usage-meter-ring[data-digits='3'] .usage-meter-ring-value { font-size: 7px; }
+.usage-meter-ring[data-indeterminate='true'] .usage-meter-ring-value {
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--muted-foreground);
+}
 @media (prefers-reduced-motion: reduce) {
   .usage-meter-ring-fill { transition: none; }
 }
