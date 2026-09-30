@@ -107,7 +107,7 @@ async function antigravity(run: ProviderRun) {
           try {
             const event = JSON.parse(line)
             const parsed = antigravityEvent(event)
-            if (parsed.model) run.modelObserved(parsed.model)
+            if (parsed.model) { run.modelObserved(parsed.model); console.log(`Antigravity initialized: ${parsed.model}`) }
             if (parsed.done) finish(parsed.error ? new Error(parsed.error) : undefined)
           } catch { /* CLI banner/non-JSON */ }
         }
