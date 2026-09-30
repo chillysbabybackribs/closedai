@@ -40,6 +40,7 @@ test('C3 probe: runtime block is factual and names closedai_app.state verificati
 
 test('C3 probe: clock precedes runtime in turn send context', () => {
   const { context } = buildTurnSendContext({
+    prompt: 'C3 orientation probe',
     threadKey: 'k',
     state: { lastDeliveredThreadKey: 'k' },
     transcriptWasEmpty: false,

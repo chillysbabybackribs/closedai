@@ -23,6 +23,7 @@ import {
   type ThreadHandoffSource
 } from '../chat-context/thread-handoff.js'
 import { buildRuntimeAdditionalContext } from '../chat-context/runtime-context.js'
+import { buildResearchRoutingAdditionalContext } from '../chat-context/research-routing.js'
 import {
   buildClockAdditionalContext,
   buildTurnAdditionalContext,
@@ -172,6 +173,7 @@ export class CursorChatService extends EventEmitter {
           chatMemoryIndexEnabled: settings.chatMemoryIndexEnabled !== false,
           sessionGuideOnTurn: false
         }),
+        buildResearchRoutingAdditionalContext(text),
         pendingHandoff ? handoffAdditionalContext(pendingHandoff) : undefined,
         this.turnAdditionalContext(text)
       )

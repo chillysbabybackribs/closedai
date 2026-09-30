@@ -76,6 +76,7 @@ test('unsaved thread key upgrades without a second guide', () => {
 test('buildTurnSendContext orders clock before guide and handoff', () => {
   const state: SessionGuideDeliveryState = { lastDeliveredThreadKey: null }
   const { context, attachGuide } = buildTurnSendContext({
+    prompt: 'Implement the handler',
     threadKey: 't1',
     state,
     transcriptWasEmpty: true,
@@ -101,6 +102,7 @@ test('buildTurnSendContext places workspace ledger after handoff and before brow
     'closedai.browser.active-tab': { kind: 'untrusted' as const, value: '{}' }
   }
   const { context } = buildTurnSendContext({
+    prompt: 'Continue',
     threadKey: 't1',
     state,
     transcriptWasEmpty: false,
@@ -121,6 +123,7 @@ test('buildTurnSendContext places workspace ledger after handoff and before brow
 test('buildTurnSendContext always attaches clock even without guide', () => {
   const state: SessionGuideDeliveryState = { lastDeliveredThreadKey: 't1' }
   const { context, attachGuide } = buildTurnSendContext({
+    prompt: 'Run tests',
     threadKey: 't1',
     state,
     transcriptWasEmpty: false,
@@ -132,4 +135,22 @@ test('buildTurnSendContext always attaches clock even without guide', () => {
   assert.deepEqual(Object.keys(context!), ['closedai.clock', 'closedai.runtime'])
   const runtime = JSON.parse(context!['closedai.runtime']!.value)
   assert.equal(runtime.sessionGuideOnTurn, false)
+})
+
+test('buildTurnSendContext attaches research routing on compare prompts', () => {
+  const state: SessionGuideDeliveryState = { lastDeliveredThreadKey: 't1' }
+  const { context } = buildTurnSendContext({
+    prompt: 'Compare Neon and Supabase on their own websites',
+    threadKey: 't1',
+    state,
+    transcriptWasEmpty: false,
+    pendingHandoff: null,
+    runtime: { paneId: 'p', provider: 'cursor', cwd: '/w', chatMemoryIndexEnabled: true, sessionGuideOnTurn: false },
+    browserContext: undefined
+  })
+  assert.deepEqual(Object.keys(context!), [
+    'closedai.clock',
+    'closedai.runtime',
+    'closedai.research.routing'
+  ])
 })

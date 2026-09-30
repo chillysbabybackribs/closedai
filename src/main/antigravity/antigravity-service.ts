@@ -190,6 +190,7 @@ export class AntigravityChatService extends EventEmitter {
       })
       const settings = this.settings.get()
       const { context: guided, attachGuide } = buildTurnSendContext({
+        prompt: text,
         threadKey: guideThreadKey,
         state: this.sessionGuideState,
         transcriptWasEmpty,

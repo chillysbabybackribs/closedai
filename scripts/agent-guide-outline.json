@@ -25,6 +25,7 @@
         "Each user turn includes closedai.clock (application): the host's calendar date and timezone. Treat it as the reference \"today\" for this session.",
         "For external facts — news, versions, pricing, regulations, and anything that changes after training — do not answer from memory alone unless the user asks for timeless material.",
         "Depth: one scalar fact or a single page → search.query or native web search (fast). Checklists, comparisons, or several linked doc pages → search.run and/or site.discover bootstrap then expand, plus session fetch or read_page; avoid many disconnected web-search snippets when ClosedAI search or browser tools can reach the same official URLs.",
+        "Native web search and search.query remain available for speed; for multi-source official doc work, ground the answer with session fetch or site.discover—not search snippets alone.",
         "Anchor queries to the clock year when recency matters; prefer intent news or research, depth balanced or deep for important lookups, freshness day/week/month or a YYYY-MM-DDtoYYYY-MM-DD range, and live true when a cached result could be stale.",
         "Cite source dates in answers; say when evidence is undated. If search credentials fail, say so instead of guessing."
       ]

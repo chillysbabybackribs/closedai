@@ -99,6 +99,14 @@ test('browser slice prioritizes page and state within the wire cap', async () =>
   assert.deepEqual(eager.slice(0, 2), ['embedded_browser.page', 'closedai_app.state'])
 })
 
+test('research slice promotes session fetch and site discover bootstrap within the wire cap', async () => {
+  const catalog = await loadToolSliceCatalog()
+  const research = applyToolSliceById(fullRegistry(), catalog, 'research')
+  assert.ok(research.promotedIds.includes('embedded_browser.session'))
+  assert.ok(research.promotedIds.includes('site.discover.bootstrap'))
+  assert.ok(research.eagerWireChars <= catalog.codexEagerWireCap)
+})
+
 test('full slice leaves registry default eager policy unchanged', async () => {
   const catalog = await loadToolSliceCatalog()
   const registry = fullRegistry()

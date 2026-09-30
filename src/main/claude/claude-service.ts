@@ -183,6 +183,7 @@ export class ClaudeChatService extends EventEmitter {
       })
       const settings = this.settings.get()
       const { context, attachGuide } = buildTurnSendContext({
+        prompt: text,
         threadKey: guideThreadKey,
         state: this.sessionGuideState,
         transcriptWasEmpty,

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "codexEagerWireCap": 3600,
+  "codexEagerWireCap": 7200,
   "slices": {
     "core": {
       "label": "Default workspace",
@@ -59,12 +59,8 @@
       ],
       "promotePriority": [
         "closedai_app.state",
-        "site.discover.bootstrap",
-        "search.query",
-        "search.run",
-        "search.read",
         "embedded_browser.session",
-        "tool_batch.run"
+        "site.discover.bootstrap"
       ]
     },
     "full": {

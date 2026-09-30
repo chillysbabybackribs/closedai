@@ -224,6 +224,7 @@ export class ChatService extends EventEmitter {
       })
       const settings = this.settings.get()
       const { context: additionalContext, attachGuide } = buildTurnSendContext({
+        prompt,
         threadKey: guideThreadKey,
         state: this.sessionGuideState,
         transcriptWasEmpty,
