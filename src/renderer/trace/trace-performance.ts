@@ -19,6 +19,8 @@ export type TracePerformance = {
   tokens: TraceTokenTotals | null
   lastContext: { used: number; window: number; percent: number } | null
   toolCalls: number
+  /** Distinct registry tools (`namespace.tool`), ignoring action verbs. */
+  distinctRegistryTools: number
   toolFailures: number
   toolDurationMs: number
   nonToolDurationMs: number | null
@@ -44,6 +46,7 @@ export function summarizeTracePerformance(
   let tokens: TraceTokenTotals | null = null
   let lastContext: TracePerformance['lastContext'] = null
   let toolCalls = 0
+  const registryToolIds = new Set<string>()
   let toolFailures = 0
   let toolDurationMs = 0
   let transcriptEvents = 0
@@ -56,7 +59,11 @@ export function summarizeTracePerformance(
     if (entry.label === 'chat.ipc') ipc = ipcTiming(entry.detail) ?? ipc
     if (entry.kind === 'event') transcriptEvents += 1
     if (entry.kind === 'raw') rawEvents += 1
-    if (entry.kind === 'tool' && entry.label === 'tool.call') toolCalls += 1
+    if (entry.kind === 'tool' && entry.label === 'tool.call') {
+      toolCalls += 1
+      const registryToolId = registryToolIdFromCall(entry)
+      if (registryToolId) registryToolIds.add(registryToolId)
+    }
     if (entry.kind === 'tool' && entry.label === 'tool.result') {
       toolDurationMs += entry.durationMs ?? 0
       if (entry.ok === false) toolFailures += 1
@@ -88,6 +95,7 @@ export function summarizeTracePerformance(
     tokens,
     lastContext,
     toolCalls,
+    distinctRegistryTools: registryToolIds.size,
     toolFailures,
     toolDurationMs,
     nonToolDurationMs: durationMs === null ? null : Math.max(0, durationMs - toolDurationMs),
@@ -95,6 +103,17 @@ export function summarizeTracePerformance(
     rawEvents,
     ipc
   }
+}
+
+/** Match `traceToolCalls` summary/detail: `namespace.tool[.action] · callId`. */
+function registryToolIdFromCall(entry: TraceEntry): string | null {
+  const head = entry.summary.split(' · ', 1)[0]?.trim()
+  if (!head) return null
+  const detail = parseRecord(entry.detail)
+  const args = record(detail?.arguments)
+  const action = typeof args?.action === 'string' && args.action.length > 0 ? args.action : null
+  if (action && head.endsWith(`.${action}`)) return head.slice(0, -(action.length + 1))
+  return head
 }
 
 function ipcTiming(detail: string): TracePerformance['ipc'] {

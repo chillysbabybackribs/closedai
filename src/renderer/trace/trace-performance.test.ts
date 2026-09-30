@@ -26,7 +26,10 @@ test('summarizes Codex model passes, cache efficiency, context, and tool time', 
   }
   const value = summarizeTracePerformance([
     entry('event', 'item.user'),
-    entry('tool', 'tool.call'),
+    entry('tool', 'tool.call', {
+      summary: 'workspace.search.search · c1',
+      detail: JSON.stringify({ arguments: { action: 'search', q: 'x' } })
+    }),
     entry('tool', 'tool.result', { durationMs: 220, ok: false }),
     entry('raw', 'codex.in', { summary: 'thread/tokenUsage/updated', detail: JSON.stringify(usage) }),
     entry('raw', 'codex.in', { summary: 'thread/tokenUsage/updated', detail: JSON.stringify(usage) }),
@@ -42,6 +45,7 @@ test('summarizes Codex model passes, cache efficiency, context, and tool time', 
   })
   assert.deepEqual(value.lastContext, { used: 62_870, window: 258_400, percent: 24 })
   assert.equal(value.toolCalls, 1)
+  assert.equal(value.distinctRegistryTools, 1)
   assert.equal(value.toolFailures, 1)
   assert.equal(value.toolDurationMs, 220)
   assert.equal(value.nonToolDurationMs, 71_780)
@@ -62,6 +66,22 @@ test('ignores malformed raw detail and does not invent provider metrics', () => 
   assert.equal(value.nonToolDurationMs, null)
   assert.equal(value.response, null)
   assert.equal(value.ipc, null)
+})
+
+test('counts distinct registry tools separately from repeated calls', () => {
+  const call = (summary: string, action?: string): TraceEntry => entry('tool', 'tool.call', {
+    summary,
+    detail: JSON.stringify({ arguments: action ? { action } : {} })
+  })
+  const value = summarizeTracePerformance([
+    call('workspace.search.search · a', 'search'),
+    call('workspace.search.search · b', 'search'),
+    call('notes.write.append · c', 'append'),
+    entry('tool', 'tool.result', { durationMs: 100, ok: true })
+  ], 500)
+
+  assert.equal(value.toolCalls, 3)
+  assert.equal(value.distinctRegistryTools, 2)
 })
 
 test('reads self-contained first-text timing even after the send entry is evicted', () => {

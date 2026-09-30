@@ -27,8 +27,8 @@ export function TracePerformanceSummary({ value }: { value: TracePerformance }):
   if (value.toolCalls > 0) {
     metrics.push({
       label: 'Tools',
-      value: `${value.toolCalls} / ${duration(value.toolDurationMs)}`,
-      title: `${value.toolCalls} calls taking ${duration(value.toolDurationMs)} total${value.toolFailures > 0 ? `; ${value.toolFailures} failed` : ''}`
+      value: `${value.toolCalls} / ${value.distinctRegistryTools} / ${duration(value.toolDurationMs)}`,
+      title: `${value.toolCalls} calls across ${value.distinctRegistryTools} registry tool${value.distinctRegistryTools === 1 ? '' : 's'} taking ${duration(value.toolDurationMs)} total${value.toolFailures > 0 ? `; ${value.toolFailures} failed` : ''}`
     })
   }
   if (value.nonToolDurationMs !== null) {

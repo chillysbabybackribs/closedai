@@ -854,7 +854,8 @@ base64 payload just to discard it. Serialization still runs synchronously, but t
 at 2,000 values and 12 levels before JSON encoding, in addition to the detail character cap.
 
 The performance summary (`renderer/trace/trace-performance.ts`) derives model passes, cache/token
-usage, context, tool time, and visible chat IPC efficiency from the available entries. The main
+usage, context, tool call counts and distinct registry tools (`namespace.tool`, action verbs
+excluded), tool time, and visible chat IPC efficiency from the available entries. The main
 process coalesces adjacent text/output deltas for up to 8 ms immediately before IPC, with all other
 events acting as ordering barriers, and records one compact `chat.ipc` note per fully observed turn.
 Codex and Claude raw messages supply
