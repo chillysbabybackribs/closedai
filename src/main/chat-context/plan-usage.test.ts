@@ -85,8 +85,8 @@ test('a mid-turn rate limit event updates only the window it names', () => {
   assert.deepEqual(signal, { label: '5-hour', percent: 55, resetsAt: 1_788_484_492_000 })
   const after = applyPlanUsageSignal(before, signal!, NOW + 1_000)
   assert.deepEqual(after.windows, [
-    { label: '5-hour', percent: 55, resetsAt: 1_788_484_492_000 },
-    { label: 'Weekly', percent: 20, resetsAt: null }
+    { label: '5-hour', percent: 55, resetsAt: 1_788_484_492_000, updatedAt: NOW + 1_000 },
+    { label: 'Weekly', percent: 20, resetsAt: null, updatedAt: NOW }
   ])
   assert.equal(after.plan, 'Pro')
   assert.equal(after.updatedAt, NOW + 1_000)

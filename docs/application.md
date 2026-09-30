@@ -871,7 +871,22 @@ the overview does: in the main window, once a chat is selected.
 Left: back and forward (`dock.back`, `dock.forward`) step through the zoom history as Alt+←/→ and
 are disabled at either end and while a zoom is moving; their tooltips name where you are
 (workspace and selected chat, or "All workspaces"). Right: Layout and dock settings
-(`dock.settings`). Centre: the **app tray**, Magic UI's `Dock` (`src/components/ui/dock.tsx`,
+(`dock.settings`). The right side also holds text-and-provider-mark subscription chips
+(`dock.provider-usage`), on the existing rail without meter tracks or separate pill surfaces.
+They show the lowest reported remaining allowance, keeping known accounts separate and using the
+newest reading across their attached chats; they never sum quotas across conversations. The popup
+names every provider window, including model-specific scopes, remaining allowance, reset time,
+observation age, plan and provider notes. Session connection is shown separately from quota.
+At <=20% remaining the quota is low, <=10% critical, and 0% exhausted; a reading older than five
+minutes or past its reported reset is stale, never assumed replenished. Partial Claude events
+retain each untouched window's observation time. Missing data says unavailable. Cursor's CLI
+currently supplies no quota percentages. Background chat summaries carry this telemetry even
+when their transcript is not subscribed. Ready provider sessions refresh at most once per minute
+while the rail is visible and the document foregrounded (Cursor is event/manual only); provider
+push events update the chips between reads. The popup offers an explicit refresh
+(`dock.provider-usage-refresh`). On narrower rails, a single **Usage** trigger
+(`dock.provider-usage-all`) opens the same provider/account tabs (`dock.provider-usage-tab`)
+without overlapping the measured central tray. Centre: the **app tray**, Magic UI's `Dock` (`src/components/ui/dock.tsx`,
 `@magicui/dock`), with **Start** centred in the tray and one rounded-square tile per ClosedAI surface
 on either side (`dock.app`, item is the surface), 48 px and growing to 64 px under the pointer.
 **Start** (`dock.start`) opens a panel above the tray with search

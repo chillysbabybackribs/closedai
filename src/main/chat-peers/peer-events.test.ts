@@ -132,6 +132,9 @@ test('IPC batching merges adjacent deltas and flushes them before ordering barri
 test('chatRowSummariesEqual compares drawer fields, not array identity', () => {
   const row = rowSummary(chatRecord('pane-a', 'gpt', { title: 'T' }), null)
   assert.ok(chatRowSummariesEqual([row], [{ ...row }]))
+  assert.equal(chatRowSummariesEqual([row], [{ ...row, providerUsage: {
+    usage: null, account: null, connection: { state: 'ready', message: 'Ready' }
+  } }]), false)
   assert.equal(chatRowSummariesEqual([row], [{ ...row, preview: 'other' }]), false)
   assert.equal(chatRowSummariesEqual([row], [{ ...row, quickChatSurface: 'notepad' }]), false)
 })

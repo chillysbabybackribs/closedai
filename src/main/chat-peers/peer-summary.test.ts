@@ -263,3 +263,19 @@ test('background tasks surface in running state and live activity disclosure', (
   cache.update({ type: 'item', item: { ...bgTask, status: 'completed' } }, 3)
   assert.equal(cache.current.running, false)
 })
+
+
+test('background quota events reach summaries and an account change clears old quota', () => {
+  const cache = new PeerSummaryCache('pane-a', () => record())
+  const before = snapshot({ account: { type: 'claude', email: 'first@example.test', planType: 'Max' } })
+  cache.update({ type: 'replace', snapshot: before }, 1)
+  const usage = { plan: 'Max', note: null, unavailable: null, updatedAt: 2,
+    windows: [{ label: 'Weekly', percent: 82, resetsAt: null }] }
+  cache.update({ type: 'planUsage', usage }, 2)
+  assert.equal(cache.current.providerUsage?.usage, usage)
+  cache.update({ type: 'connection', provider: 'claude', connection: before.connection,
+    account: { ...before.account!, email: 'second@example.test' }, models: [], selectedModel: null,
+    selectedReasoningEffort: null }, 3)
+  assert.equal(cache.current.providerUsage?.usage, null)
+  assert.equal(cache.current.providerUsage?.account?.email, 'second@example.test')
+})
