@@ -3,7 +3,9 @@
     {
       "id": "scroller-readonly-audit",
       "prompt": "Read-only: assess the message scroller helper in this repo. Which function decides resize scroll action when prepending?",
-      "attach": true
+      "attach": true,
+      "noPathHints": true,
+      "liveModel": true
     },
     {
       "id": "scroller-path-in-prompt",
@@ -13,12 +15,15 @@
     {
       "id": "continued-handoff",
       "prompt": "Continue from the handoff and pick up the scroller precedence task.",
-      "attach": true
+      "attach": true,
+      "noPathHints": true,
+      "liveModel": true
     },
     {
       "id": "implement-test-gap",
       "prompt": "Implement a unit test for prepending plus newAnchor without anchorMode in message-scroller-state.test.ts",
-      "attach": true
+      "attach": true,
+      "noPathHints": true
     },
     {
       "id": "weather-unrelated",
@@ -57,7 +62,21 @@
       "prompt": "Refactor the message scroller helper precedence",
       "paths": [],
       "expectFreshCount": 0,
-      "expectStaleCount": 0
+      "expectStaleCount": 0,
+      "noPathHints": true,
+      "liveModel": true
+    },
+    {
+      "id": "ledger-on-path-free-warmed",
+      "prompt": "Read-only: assess the message scroller helper in this repo. Which function decides resize scroll action when prepending?",
+      "paths": [
+        "src/components/ui/message-scroller-state.ts",
+        "src/components/ui/message-scroller-context.tsx"
+      ],
+      "expectFreshCount": 2,
+      "expectStaleCount": 0,
+      "noPathHints": true,
+      "liveModel": true
     },
     {
       "id": "ledger-off-unrelated",

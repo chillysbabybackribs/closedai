@@ -11,9 +11,12 @@ npm run test:pilot:workspace-ledger
 ```
 
 Deterministic A/B cases live in `prompt-fixtures.json` (scroller-style read-only prompts, ledger
-on/off, browser false-positive guard). Stress limits are covered in `ledger-stress.pilot.test.ts`
-(store cap, hint priority, stale storms, JSON cap). Pilot tests load those fixtures; no
-`harness:model` or live send required.
+on/off, browser false-positive guard). Fixtures tagged `noPathHints` must attach via the regex
+gate only — no `src/…` tokens in the user message; warmed-store cases still inject `fresh` paths
+from the ledger. For live model A/B, use `liveModel: true` rows in a **new** chat with ledger on
+vs `chatWorkspaceLedgerEnabled: false` after restart. Stress limits are covered in
+`ledger-stress.pilot.test.ts` (store cap, hint priority, stale storms, JSON cap). Pilot tests
+load those fixtures; no `harness:model` or live send required for CI.
 
 Implementation: `src/main/chat-context/workspace-ledger-pilot/`.
 

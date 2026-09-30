@@ -11,12 +11,13 @@ import test from 'node:test'
 import {
   buildWorkspaceLedgerAdditionalContext,
   createWorkspaceLedgerStore,
+  extractPathHints,
   needsWorkspaceContext,
   recordWorkspaceLedgerEntry,
   WORKSPACE_LEDGER_CONTEXT
 } from './index.ts'
 
-type GateFixture = { id: string; prompt: string; attach: boolean }
+type GateFixture = { id: string; prompt: string; attach: boolean; noPathHints?: boolean }
 type AbScenario = {
   id: string
   prompt: string
@@ -24,6 +25,7 @@ type AbScenario = {
   expectFreshCount?: number
   expectStaleCount?: number
   expectContext?: boolean
+  noPathHints?: boolean
 }
 
 type HarnessFixtures = {
@@ -62,6 +64,15 @@ test('A/B gate fixtures: attach only on repo-relevant prompts', async () => {
     if (attach !== fixture.attach) {
       failures.push(`${fixture.id}: expected attach=${fixture.attach}, got ${attach}`)
     }
+    if (fixture.noPathHints) {
+      const hints = extractPathHints(fixture.prompt)
+      if (hints.length > 0) {
+        failures.push(`${fixture.id}: expected no path hints in prompt, got ${hints.join(', ')}`)
+      }
+      if (!attach) {
+        failures.push(`${fixture.id}: noPathHints fixture must still attach via regex gate`)
+      }
+    }
   }
   assert.equal(failures.length, 0, failures.join('\n'))
 })
@@ -98,6 +109,9 @@ test('A/B injection fixtures: ledger on vs off and fresh path counts', async () 
     const payload = JSON.parse(context![WORKSPACE_LEDGER_CONTEXT]!.value)
     assert.equal(payload.fresh.length, scenario.expectFreshCount ?? 0, scenario.id)
     assert.equal(payload.stale.length, scenario.expectStaleCount ?? 0, scenario.id)
+    if (scenario.noPathHints) {
+      assert.deepEqual(payload.pathHints, [], scenario.id)
+    }
     assert.equal(payload.fresh.some((e: { path: string }) => e.path.includes('resizeScrollAction')), false)
     for (const entry of payload.fresh) {
       assert.match(entry.contentHash, /^[a-f0-9]{16}$/)
