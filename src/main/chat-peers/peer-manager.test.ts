@@ -453,3 +453,26 @@ test('stop delivers a pending chats update instead of dropping it', async () => 
   const last = updates.at(-1)!
   assert.equal(last.type === 'chats' && last.chats[0]?.running, false)
 })
+
+test('passive usage refresh preserves the idle deadline and never wakes a parked pane', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const { manager, surfaces } = harness(5)
+  t.after(() => manager.stop())
+  await manager.start()
+  await manager.send('pane-a', 'first', [])
+  const surface = surfaces[0]!
+  surface.state.activeTurnId = null
+  surface.emit('event', { type: 'turn', turnId: null } satisfies ChatEvent)
+  for (let i = 0; i < 3; i++) {
+    t.mock.timers.tick(5)
+    await manager.refreshPlanUsage('pane-a', true)
+  }
+  assert.equal(surface.calls.filter((call) => call === 'refreshPlanUsage').length, 3)
+  t.mock.timers.tick(6)
+  assert.equal(surface.calls.at(-1), 'stop', 'refresh did not extend the selected idle deadline')
+  const parked = [...surface.calls]
+  await manager.refreshPlanUsage('pane-a', true)
+  assert.deepEqual(surface.calls, parked, 'passive refresh leaves the parked runtime alone')
+  await manager.refreshPlanUsage('pane-a')
+  assert.deepEqual(surface.calls.slice(-2), ['start', 'refreshPlanUsage'], 'explicit refresh can still wake it')
+})
