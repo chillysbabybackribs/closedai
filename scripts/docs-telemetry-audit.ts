@@ -20,6 +20,7 @@ import { createToolRegistry, type ToolRegistry } from '../src/main/tools/index.t
 import { measureToolContextBudget } from '../src/main/tools/tool-context-budget.ts'
 import { nativeInstrumentTools } from '../src/main/tools/native-instrument/index.ts'
 import { mediaTools } from '../src/main/tools/media/index.ts'
+import { notesTools } from '../src/main/tools/notes/index.ts'
 import { peerChatTools } from '../src/main/tools/peer-chats/index.ts'
 import { searchTools } from '../src/main/tools/search/index.ts'
 import type { ResearchDependencies } from '../src/main/tools/search/research/service.ts'
@@ -106,6 +107,7 @@ function buildRegistry(): ToolRegistry {
     captureTools(stubHost, stubHost as never),
     searchTools({ research: minimalResearch() }),
     peerChatTools(stubHost),
+    notesTools({ store: stubHost, bindings: stubHost as never }),
     batchTools(() => registry, { maxCalls: 16 })
   ])
   return registry

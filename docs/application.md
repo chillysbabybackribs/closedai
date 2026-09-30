@@ -908,19 +908,22 @@ are disabled at either end and while a zoom is moving; their tooltips name where
 (workspace and selected chat, or "All workspaces"). Right: Layout and dock settings
 (`dock.settings`). The left side, after the navigation arrows, holds text-and-provider-mark subscription chips
 (`dock.provider-usage`), on the existing rail without meter tracks or separate pill surfaces.
-They show the lowest reported remaining allowance, keeping known accounts separate and using the
-newest reading across their attached chats; they never sum quotas across conversations. The popup
+All four providers appear on startup, before any provider chat connects. They show the lowest reported remaining allowance, keeping known accounts separate and using the
+newest reading across account probes and attached chats; they never sum quotas across conversations. The popup
 names every provider window, including model-specific scopes, remaining allowance, reset time,
 observation age, plan and provider notes. Session connection is shown separately from quota.
 At <=20% remaining the quota is low, <=10% critical, and 0% exhausted; a reading older than five
 minutes or past its reported reset is stale, never assumed replenished. Partial Claude events
 retain each untouched window's observation time. Missing data says unavailable. Cursor's CLI
 currently supplies no quota percentages; its chip shows the reported plan followed by “usage unavailable”
-(for example, “Pro · usage unavailable”). Background chat summaries carry this telemetry even
-when their transcript is not subscribed. Ready provider sessions refresh at most once per minute
-while the rail is visible and the document foregrounded, without waking parked chats or extending
-their idle lifetime (Cursor is event/manual only); provider
-push events update the chips between reads. The popup offers an explicit refresh
+(for example, “Pro · usage unavailable”). Background chat summaries carry telemetry even
+when their transcript is not subscribed. The footer also reads each signed-in CLI account through
+`chat:readProviderUsage`, independently of chat runtimes, on mount and every minute while the
+document is foregrounded. Reads are shared across windows for one minute, including failures;
+failed reads preserve the last dated observation. Codex and Claude use short-lived control-only
+processes, Antigravity uses `/quota`, and Cursor uses `about`. These reads send no model turns
+and do not wake or extend the idle lifetime of parked chats. Provider push events can supply
+newer readings between polls. The popup offers an explicit refresh
 (`dock.provider-usage-refresh`). On narrower rails, a single **Usage** trigger
 (`dock.provider-usage-all`) opens the same provider/account tabs (`dock.provider-usage-tab`)
 without overlapping the measured central tray. Centre: the **app tray**, Magic UI's `Dock` (`src/components/ui/dock.tsx`,

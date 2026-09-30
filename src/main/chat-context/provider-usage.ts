@@ -15,7 +15,7 @@ import { codexPlanUsage, planUsageUnavailable } from './plan-usage.js'
 async function probe(provider: ChatProvider): Promise<ProviderUsageSnapshot> {
   if (provider === 'antigravity') {
     const reading = await readAntigravityPlanUsage()
-    return { provider, account: null, usage: typeof reading === 'string' ? cachedAntigravityPlanUsage() : reading }
+    return { provider, account: { type: 'google', email: null, planType: null }, usage: typeof reading === 'string' ? cachedAntigravityPlanUsage() : reading }
   }
   if (provider === 'cursor') {
     const about = await readCursorAbout()
