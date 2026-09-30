@@ -30,7 +30,7 @@ const nameField: JsonObject = { type: 'string', minLength: 1, description: 'Cook
 const textContainsField: JsonObject = {
   type: 'string',
   minLength: 1,
-  description: `Case-insensitive literal passage search in non-JSON text, starting at offset. Returns a ${DEFAULT_PASSAGE_CHARS}-character window (unless max_chars is set) from up to 400 characters before the first match, plus matchCount and matchOffsets (first 12 occurrences); pass a listed offset to jump to another match. matchOffset null with a hint means no match at or after offset. GET/HEAD only.`
+  description: `Case-insensitive literal passage search in non-JSON text, starting at offset. Returns a ${DEFAULT_PASSAGE_CHARS}-character window (unless max_chars is set) from up to 400 characters before the first match, plus matchCount and matchOffsets (first 12 occurrences); to read another match, repeat with the same text_contains and offset set to its listed value (a bare offset returns the full-size window). matchOffset null with a hint means no match at or after offset. GET/HEAD only.`
 }
 const maxCharsField: JsonObject = {
   type: 'integer',

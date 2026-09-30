@@ -62,7 +62,7 @@ function harness(overrides: Partial<CdpToolHost> = {}) {
       tabId: 'tab-1',
       ready: { url, title: 'Loaded', loadState: 'complete' as const, timedOut: false }
     })
-  } as BrowserToolHost
+  } as unknown as BrowserToolHost
   const registry = new ToolRegistry([cdpTools(() => host, undefined, () => page)])
   const call = (arguments_: Record<string, unknown>) => registry.call(
     { namespace: 'browser_cdp', tool: 'protocol', arguments: arguments_ },
