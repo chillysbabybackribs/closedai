@@ -20,6 +20,12 @@ verification. Protocol measurements retain their dates in the provider guides. P
 delivery lives in [Model context](model-context.md); registry contracts live in
 [Tools](tools.md).
 
+For repository development tasks, all four provider lanes receive a per-turn instruction to
+read this guide's opening guidance and task-relevant sections before implementation searches
+or edits. The instruction lives in `closedai.runtime.developmentFirstRead`; it is guidance to
+the model, not an enforced file-read gate. Other projects without this guide use their own
+instructions, and unrelated chat, web research, and browser tasks are excluded.
+
 Renderer UI changes are verified in Electron (`npm run build &&
 npm run preview -- --skipBuild`, or `npm run dev` for hot reload). There is no separate browser-only renderer
 entry or fixture bridge. A running checkout launch (unpackaged, not the dev server) polls
