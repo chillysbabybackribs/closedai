@@ -80,7 +80,11 @@ with `include_result: false` only when no later decision needs them.
 **Token discipline:** Prefer selector scope for `read_page`. Session fetch defaults to extracted
 HTML text, a 6,000-character body window, and omitted response headers (`format: raw` and
 `include_headers: true` opt back in). `text_contains` finds a literal passage with preceding
-context; `matchOffset: null` means absent only in the fetched text. `offset`/`nextOffset` continue
+context in a 1,500-character window unless `max_chars` is set, small enough to stay inline in
+lanes that spill larger MCP results to files (Antigravity, past ~4 KB). It reports `matchCount`
+and `matchOffsets` (first 12); passing a listed offset jumps to that match with its lead-in.
+`matchOffset: null` plus a `hint` says whether earlier matches exist or the phrase is absent from
+the fetched text. `offset`/`nextOffset` continue
 a fresh GET/HEAD, so content may change; these controls reject mutating methods and JSON.
 `totalChars`, `returnedChars`, and `bodyTruncated` describe the returned text window;
 `sourceTruncated` separately marks a transport cutoff. The escaped JSON envelope fits the 16k

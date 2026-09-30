@@ -91,7 +91,31 @@ test('text reads fit escaped envelopes and can reach evidence beyond the old 400
   assert.equal(match.nextOffset, null)
   const absent = payload(await call({ action: 'fetch', url: 'https://a.test/', text_contains: 'missing' }))
   assert.equal(absent.matchOffset, null)
+  assert.equal(absent.matchCount, 0)
   assert.equal(absent.text, '')
+  assert.match(String(absent.hint), /does not occur/)
+})
+
+test('text_contains returns a small passage window and lists every match for direct jumps', async () => {
+  const filler = 'lorem ipsum '.repeat(400)
+  const document = `Plan card: Branching not included.\n${filler}\nTable row: Branching $0.01344 per branch.\n${filler}`
+  const { call } = harness(document, 'text/plain')
+  const first = await call({ action: 'fetch', url: 'https://a.test/', text_contains: 'branching' })
+  const firstText = first.content[0]?.type === 'text' ? first.content[0].text : ''
+  assert.ok(firstText.length < 4000, `passage result stays inline-sized (${firstText.length})`)
+  const data = payload(first)
+  const second = document.indexOf('Branching $0.01344')
+  assert.equal(data.matchCount, 2)
+  assert.deepEqual(data.matchOffsets, [document.indexOf('Branching'), second])
+  assert.doesNotMatch(String(data.text), /Table row/)
+  const jumped = payload(await call({ action: 'fetch', url: 'https://a.test/', text_contains: 'branching', offset: second }))
+  assert.equal(jumped.matchOffset, second)
+  assert.match(String(jumped.text), /Table row: Branching \$0\.01344/)
+  const past = payload(await call({ action: 'fetch', url: 'https://a.test/', text_contains: 'branching', offset: second + 1 }))
+  assert.equal(past.matchOffset, null)
+  assert.equal(past.text, '')
+  assert.equal(past.offset, second + 1)
+  assert.match(String(past.hint), /2 match\(es\) are earlier/)
 })
 
 test('text paging refuses mutation retries before fetching and directs JSON to projection', async () => {

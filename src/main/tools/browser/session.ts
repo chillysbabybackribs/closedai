@@ -15,6 +15,10 @@ import { textWindow } from './text-window.js'
 // and writable for any domain without a page being open there.
 
 const DEFAULT_BODY_CHARS = 6_000
+// A passage lookup answers one question; a small window keeps the result inline in lanes that
+// spill larger MCP results to disk (Antigravity writes anything past ~4 KB to a file the model
+// must reopen), and matchOffsets reach any other occurrence in one more call.
+const DEFAULT_PASSAGE_CHARS = 1_500
 const MAX_BODY_CHARS = 100_000
 const DEFAULT_COOKIE_LIMIT = 50
 const FETCH_MANY_MAX_URLS = 12
@@ -23,6 +27,17 @@ const FETCH_MANY_CONCURRENCY = 4
 const urlField: JsonObject = { type: 'string', minLength: 1, description: 'Absolute URL. For cookies, the URL whose cookies apply.' }
 const domainField: JsonObject = { type: 'string', minLength: 1, description: 'Cookie domain, for example example.com or .example.com.' }
 const nameField: JsonObject = { type: 'string', minLength: 1, description: 'Cookie name.' }
+const textContainsField: JsonObject = {
+  type: 'string',
+  minLength: 1,
+  description: `Case-insensitive literal passage search in non-JSON text, starting at offset. Returns a ${DEFAULT_PASSAGE_CHARS}-character window (unless max_chars is set) from up to 400 characters before the first match, plus matchCount and matchOffsets (first 12 occurrences); pass a listed offset to jump to another match. matchOffset null with a hint means no match at or after offset. GET/HEAD only.`
+}
+const maxCharsField: JsonObject = {
+  type: 'integer',
+  minimum: 200,
+  maximum: MAX_BODY_CHARS,
+  description: `Body text limit; default ${DEFAULT_BODY_CHARS} (${DEFAULT_PASSAGE_CHARS} with text_contains), also bounded by the serialized output budget. Use nextOffset or text_contains rather than raising this after truncation.`
+}
 
 export function sessionTool(sessions: SessionHostProvider): ToolDefinition {
   return defineActionTool({
@@ -51,12 +66,12 @@ function fetchAction(sessions: SessionHostProvider): ToolAction {
       redirect: { type: 'string', enum: ['follow', 'manual'], description: 'Follow redirects (default) or stop at the first.' },
       format: { type: 'string', enum: ['raw', 'text'], description: 'HTML response format: text (default) extracts prose and title; raw preserves markup. JSON is parsed in either mode.' },
       include_headers: { type: 'boolean', description: 'Include response headers. Default false; request headers are always sent when supplied.' },
-      text_contains: { type: 'string', minLength: 1, description: 'Case-insensitive literal passage search in non-JSON text, starting at offset. Returns context from up to 400 characters before the first match; matchOffset null means absent in the fetched text. GET/HEAD only.' },
+      text_contains: textContainsField,
       offset: { type: 'integer', minimum: 0, description: 'Character offset in non-JSON text (after HTML extraction). Use nextOffset to continue; refetches, so content may change. GET/HEAD only.' },
       json_path: { type: 'string', minLength: 1, description: 'Dot/bracket path into a JSON response, for example `data.items` or `results[0].rows`. Defaults to the whole document.' },
       fields: { type: 'array', maxItems: 40, items: { type: 'string', minLength: 1 }, description: 'Field paths kept from each item, for example ["name","owner.login"]. Every field when omitted.' },
       limit: { type: 'integer', minimum: 1, description: 'Maximum items returned when the selection is an array.' },
-      max_chars: { type: 'integer', minimum: 200, maximum: MAX_BODY_CHARS, description: `Body text limit; default ${DEFAULT_BODY_CHARS}, also bounded by the serialized output budget. Use nextOffset or text_contains rather than raising this after truncation.` }
+      max_chars: maxCharsField
     }, ['url']),
     timeoutMs: FETCH_TIMEOUT_MS,
     run: async (input) => runSessionFetch(sessions, input)
@@ -78,11 +93,11 @@ function fetchManyAction(sessions: SessionHostProvider): ToolAction {
         description: 'Absolute URLs to fetch in parallel with session cookies.'
       },
       format: { type: 'string', enum: ['raw', 'text'], description: 'HTML response format: text (default) extracts prose and title; raw preserves markup. JSON is parsed in either mode.' },
-      text_contains: { type: 'string', minLength: 1, description: 'Case-insensitive literal passage search in non-JSON text, starting at offset. Returns context from up to 400 characters before the first match; matchOffset null means absent in the fetched text. GET/HEAD only.' },
+      text_contains: textContainsField,
       json_path: { type: 'string', minLength: 1, description: 'Dot/bracket path into a JSON response, for example `data.items` or `results[0].rows`. Defaults to the whole document.' },
       fields: { type: 'array', maxItems: 40, items: { type: 'string', minLength: 1 }, description: 'Field paths kept from each item, for example ["name","owner.login"]. Every field when omitted.' },
       limit: { type: 'integer', minimum: 1, description: 'Maximum items returned when the selection is an array.' },
-      max_chars: { type: 'integer', minimum: 200, maximum: MAX_BODY_CHARS, description: `Body text limit; default ${DEFAULT_BODY_CHARS}, also bounded by the serialized output budget. Use nextOffset or text_contains rather than raising this after truncation.` }
+      max_chars: maxCharsField
     }, ['urls']),
     timeoutMs: FETCH_TIMEOUT_MS + 10_000,
     run: async (input) => {
@@ -120,7 +135,7 @@ async function runSessionFetch(sessions: SessionHostProvider, input: JsonObject)
     body: stringArg(input, 'body'),
     redirect: stringArg(input, 'redirect') as 'follow' | 'manual' | undefined
   })
-  const maxChars = numberArg(input, 'max_chars', DEFAULT_BODY_CHARS)
+  const maxChars = numberArg(input, 'max_chars', input.text_contains === undefined ? DEFAULT_BODY_CHARS : DEFAULT_PASSAGE_CHARS)
   const format = stringArg(input, 'format', 'text')!
   const { text, headers, ...responseMeta } = response
   const rest = { ...responseMeta, ...(input.include_headers === true ? { headers } : {}) }
