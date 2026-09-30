@@ -218,6 +218,8 @@ export type AppSettings = {
    * registry default pair. Slice changes rotate the thread like a catalog drift.
    */
   chatToolSliceEnabled: boolean
+  /** Experimental read-only repository retrieval. Default off; restart and use a fresh thread. */
+  chatRepositoryRetrievalEnabled: boolean
   /**
    * When true (default), coding turns may attach `closedai.workspace.ledger` with host-verified
    * paths from this project. Set false for A/B or baseline runs without ledger injection.

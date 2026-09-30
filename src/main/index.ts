@@ -13,6 +13,7 @@ import { BrowserHistoryStore } from './browser-history-store.js'
 import { SavedSitesStore } from './saved-sites-store.js'
 import { NotesStore } from './notes/notes-store.js'
 import { NotepadBindings } from './notes/notepad-bindings.js'
+import { repositoryTools } from './tools/repository/index.js'
 import { notesTools } from './tools/notes/index.js'
 import { BrowserTabSessionStore } from './browser-tab-session-store.js'
 import { AppSettingsStore } from './app-settings-store.js'
@@ -332,6 +333,11 @@ async function main(): Promise<void> {
     research.namespace,
     peerChatTools(() => chatService),
     notesTools({ store: () => notes, bindings: notepadBindings }),
+    ...(settings.get().chatRepositoryRetrievalEnabled ? [repositoryTools({ root: context => {
+      const snapshot = context.paneId ? chatService?.paneSnapshot(context.paneId) : null
+      if (!snapshot || snapshot.provider === 'cursor') throw new Error('Repository retrieval requires a Codex, Claude, or Antigravity chat')
+      return snapshot.cwd
+    } })] : []),
     // Lazy self-reference: the batch dispatches into the registry it is registered in.
     batchTools(() => toolRegistry!, { maxCalls: settings.get().toolBatchMaxCalls })
   ])

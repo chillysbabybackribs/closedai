@@ -24,6 +24,9 @@ export const TOOL_GROUPS: readonly ToolGroupInfo[] = [
 const DROPPED = 'Calls are refused at once and the tool is not offered to new chats.'
 
 export const TOOL_CATALOG: Readonly<Record<string, ToolCatalogEntry>> = {
+  'repository.locate': { group: 'controls-app', label: 'Locate source', summary: 'Rank live source matches for a behavior description.', offEffect: 'Native repository tools remain available.' },
+  'repository.search_many': { group: 'controls-app', label: 'Search source', summary: 'Search project text concurrently.', offEffect: 'Native repository tools remain available.' },
+  'repository.read_many': { group: 'controls-app', label: 'Read source', summary: 'Read project file ranges concurrently.', offEffect: 'Native repository tools remain available.' },
   'embedded_browser.page': { group: 'reads-web', label: 'Browse a page', summary: 'Open a URL in the browser pane and read what is on it.', offEffect: 'The model cannot open or read pages in the browser pane. Web search still works.' },
   'search.query': { group: 'reads-web', label: 'Web search', summary: 'Look things up across several search providers.', offEffect: 'No public web lookups. Pages already open can still be read.' },
   'search.run': { group: 'reads-web', label: 'Research runs', summary: 'Read many sources in parallel and keep what was found.', offEffect: 'No parallel research; single searches and page reads still work.' },
@@ -67,6 +70,7 @@ export const TOOL_CATALOG: Readonly<Record<string, ToolCatalogEntry>> = {
 
 /** Tool ids the Read-only preset leaves on: they observe the web and the app, never act for the user. */
 export const READ_ONLY_TOOL_IDS: readonly string[] = [
+  'repository.locate', 'repository.search_many', 'repository.read_many',
   ...Object.entries(TOOL_CATALOG).filter(([, entry]) => entry.group === 'reads-web').map(([id]) => id),
   'closedai_app.state',
   'closedai_ui.capture',
