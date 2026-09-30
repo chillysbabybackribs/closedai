@@ -49,7 +49,8 @@ import { useWorkspaceBackdrop } from './backdrop/use-workspace-backdrop.js'
 import type { MinimizedWindow } from './chat-layout/floating/minimized-windows.js'
 import { ProviderSetupModal } from './onboarding/provider-setup-modal.js'
 import { SessionAccountMenu } from './onboarding/session-account-menu.js'
-import { ProfileSwitchCover, SessionGate } from './onboarding/session-gate.js'
+import { SessionGate } from './onboarding/session-gate.js'
+import { ProfileSwitchCover } from './onboarding/session-gate-parts.js'
 import { useOnboarding } from './onboarding/use-onboarding.js'
 import './styles.css'
 
@@ -389,15 +390,15 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
         <SessionGate
           users={onboarding.settings.users}
           keepSignedIn={onboarding.keepSignedIn}
-          backdropStatus={backdropStatus}
           onKeepSignedInChange={onboarding.setKeepSignedIn}
           onSignIn={onboarding.signIn}
           onSetProfilePassword={onboarding.setProfilePassword}
           onCreateAccount={onboarding.createAccount}
+          onDeleteAccount={onboarding.deleteAccount}
         />
       )}
       {onboarding.switchingProfile && (
-        <ProfileSwitchCover user={activeLocalUser} backdropStatus={backdropStatus} />
+        <ProfileSwitchCover user={activeLocalUser} />
       )}
       <ProviderSetupModal
         open={onboarding.showProviderSetup}

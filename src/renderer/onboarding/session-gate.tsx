@@ -1,125 +1,32 @@
-import { useId, useState, type CSSProperties, type FormEvent, type JSX } from 'react'
-import { ArrowLeft, Eye, EyeOff, UserPlus } from 'lucide-react'
+import { useId, useState, type FormEvent, type JSX } from 'react'
+import { ArrowLeft, UserPlus } from 'lucide-react'
 
 import { Button } from '../../components/ui/button.js'
 import type { LocalUser } from '../../shared/onboarding.js'
-import type { BackdropStatus } from '../backdrop/use-workspace-backdrop.js'
-import type { SessionGateCreateResult, SessionGateSignInResult } from './use-onboarding.js'
+import { DeleteAccountPanel } from './session-gate-delete.js'
+import { PasswordField, UserAvatar } from './session-gate-parts.js'
+import type { SessionGateCreateResult, SessionGateDeleteResult, SessionGateSignInResult } from './use-onboarding.js'
 
 export type SessionGateProps = {
   users: LocalUser[]
   keepSignedIn: boolean
-  backdropStatus: BackdropStatus
   onKeepSignedInChange: (value: boolean) => void
   onSignIn: (userId: string, password: string) => Promise<SessionGateSignInResult>
   onSetProfilePassword: (userId: string, password: string) => Promise<SessionGateSignInResult>
   onCreateAccount: (displayName: string, password: string) => Promise<SessionGateCreateResult>
+  onDeleteAccount: (userId: string, password: string) => Promise<SessionGateDeleteResult>
 }
 
-type GateScreen = 'users' | 'password' | 'create'
-
-function backdropClass(status: BackdropStatus): string {
-  if (status.state === 'ready') return 'onboarding-gate-backdrop onboarding-gate-backdrop-image'
-  return 'onboarding-gate-backdrop'
-}
-
-type PasswordFieldKind = 'sign-in' | 'new' | 'confirm'
-
-type PasswordFieldProps = {
-  id: string
-  label: string
-  value: string
-  autoComplete: string
-  kind: PasswordFieldKind
-  autoFocus?: boolean
-  onChange: (value: string) => void
-}
-
-function PasswordField({
-  id,
-  label,
-  value,
-  autoComplete,
-  kind,
-  autoFocus,
-  onChange
-}: PasswordFieldProps): JSX.Element {
-  const [visible, setVisible] = useState(false)
-  const input = kind === 'sign-in' ? (
-    <input
-      id={id}
-      className="onboarding-gate-input onboarding-gate-password-input"
-      data-ui="onboarding.gate-password"
-      type={visible ? 'text' : 'password'}
-      value={value}
-      autoComplete={autoComplete}
-      autoFocus={autoFocus}
-      onChange={(event) => onChange(event.target.value)}
-    />
-  ) : kind === 'new' ? (
-    <input
-      id={id}
-      className="onboarding-gate-input onboarding-gate-password-input"
-      data-ui="onboarding.gate-new-password"
-      type={visible ? 'text' : 'password'}
-      value={value}
-      autoComplete={autoComplete}
-      autoFocus={autoFocus}
-      onChange={(event) => onChange(event.target.value)}
-    />
-  ) : (
-    <input
-      id={id}
-      className="onboarding-gate-input onboarding-gate-password-input"
-      data-ui="onboarding.gate-confirm-password"
-      type={visible ? 'text' : 'password'}
-      value={value}
-      autoComplete={autoComplete}
-      autoFocus={autoFocus}
-      onChange={(event) => onChange(event.target.value)}
-    />
-  )
-
-  return (
-    <div className="onboarding-gate-field">
-      <label className="onboarding-gate-field-label" htmlFor={id}>{label}</label>
-      <div className="onboarding-gate-password-wrap">
-        {input}
-        <button
-          type="button"
-          className="onboarding-gate-password-peek"
-          data-ui="onboarding.gate-password-peek"
-          data-ui-key={id}
-          aria-label={visible ? 'Hide password' : 'Show password'}
-          onClick={() => setVisible((current) => !current)}
-        >
-          {visible ? <EyeOff className="size-4" aria-hidden="true" /> : <Eye className="size-4" aria-hidden="true" />}
-        </button>
-      </div>
-    </div>
-  )
-}
-
-function UserAvatar({ user, large }: { user: LocalUser; large?: boolean }): JSX.Element {
-  return (
-    <span
-      className={large ? 'onboarding-gate-avatar onboarding-gate-avatar-large' : 'onboarding-gate-avatar'}
-      style={{ '--avatar-hue': user.avatarHue } as CSSProperties}
-      aria-hidden="true"
-    >
-      {user.displayName.slice(0, 1).toUpperCase()}
-    </span>
-  )
-}
+type GateScreen = 'users' | 'password' | 'create' | 'delete'
 
 export function SessionGate({
   users,
   keepSignedIn,
-  backdropStatus,
   onKeepSignedInChange,
   onSignIn,
   onSetProfilePassword,
-  onCreateAccount
+  onCreateAccount,
+  onDeleteAccount
 }: SessionGateProps): JSX.Element {
   const [screen, setScreen] = useState<GateScreen>(users.length === 0 ? 'create' : 'users')
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
@@ -132,10 +39,6 @@ export function SessionGate({
   const [busy, setBusy] = useState(false)
   const passwordFieldId = useId()
   const confirmFieldId = useId()
-
-  const style = backdropStatus.state === 'ready'
-    ? { backgroundImage: `url(${backdropStatus.image})` }
-    : undefined
 
   const selectedUser = selectedUserId
     ? users.find((user) => user.id === selectedUserId) ?? null
@@ -235,9 +138,6 @@ export function SessionGate({
 
   return (
     <div className="onboarding-gate" data-ui-surface="onboarding-gate" role="dialog" aria-modal="true" aria-labelledby="onboarding-gate-title">
-      <div className={backdropClass(backdropStatus)} style={style} aria-hidden="true" />
-      <div className="onboarding-gate-scrim" aria-hidden="true" />
-
       <div className="onboarding-gate-shell">
         {screen === 'users' && (
           <div className="onboarding-gate-panel">
@@ -335,7 +235,26 @@ export function SessionGate({
               />
               Keep me signed in
             </label>
+
+            <button
+              type="button"
+              className="onboarding-gate-delete"
+              data-ui="onboarding.gate-delete-start"
+              data-ui-key={selectedUser.id}
+              onClick={() => { setError(null); setScreen('delete') }}
+            >
+              Delete account
+            </button>
           </div>
+        )}
+
+        {screen === 'delete' && selectedUser && (
+          <DeleteAccountPanel
+            user={selectedUser}
+            onBack={() => openUser(selectedUser.id)}
+            onDelete={onDeleteAccount}
+            onDeleted={() => (users.length > 1 ? backToUsers() : openCreate())}
+          />
         )}
 
         {screen === 'create' && (
@@ -411,26 +330,6 @@ export function SessionGate({
         )}
 
         <p className="onboarding-gate-brand" aria-hidden="true">ClosedAI</p>
-      </div>
-    </div>
-  )
-}
-
-/** Shown after sign-in while the app relaunches into the account's own workspace. */
-export function ProfileSwitchCover({ user, backdropStatus }: { user: LocalUser | null; backdropStatus: BackdropStatus }): JSX.Element {
-  const style = backdropStatus.state === 'ready'
-    ? { backgroundImage: `url(${backdropStatus.image})` }
-    : undefined
-  return (
-    <div className="onboarding-gate" data-ui-surface="onboarding-profile-switch" role="status" aria-live="polite">
-      <div className={backdropClass(backdropStatus)} style={style} aria-hidden="true" />
-      <div className="onboarding-gate-scrim" aria-hidden="true" />
-      <div className="onboarding-gate-shell">
-        <div className="onboarding-gate-auth-header">
-          {user ? <UserAvatar user={user} large /> : null}
-          <h1 className="onboarding-gate-auth-name">{user?.displayName ?? 'Signing in'}</h1>
-          <p className="onboarding-gate-auth-hint">Opening your workspace…</p>
-        </div>
       </div>
     </div>
   )

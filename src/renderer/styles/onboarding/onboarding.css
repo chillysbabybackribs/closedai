@@ -5,27 +5,8 @@
   display: grid;
   place-items: center;
   padding: 24px;
-}
-
-.onboarding-gate-backdrop {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse at 30% 20%, color-mix(in srgb, var(--muted) 35%, transparent), transparent 55%),
-    linear-gradient(165deg, var(--background), color-mix(in srgb, var(--muted) 50%, transparent));
-  background-size: cover;
-  background-position: center;
-}
-
-.onboarding-gate-backdrop-image {
-  filter: blur(2px) saturate(1.05);
-  transform: scale(1.04);
-}
-
-.onboarding-gate-scrim {
-  position: absolute;
-  inset: 0;
-  background: color-mix(in srgb, var(--background) 55%, transparent);
-  backdrop-filter: blur(12px);
+  /* Opaque: nothing of the workspace behind the gate may show through it. */
+  background: var(--background);
 }
 
 .onboarding-gate-shell {
@@ -282,6 +263,24 @@
   color: color-mix(in srgb, var(--foreground) 65%, transparent);
   cursor: pointer;
   user-select: none;
+}
+
+.onboarding-gate-delete {
+  display: block;
+  margin: 18px auto 0;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  font-size: 13px;
+  color: color-mix(in srgb, var(--foreground) 55%, transparent);
+  cursor: pointer;
+}
+
+.onboarding-gate-delete:hover,
+.onboarding-gate-delete:focus-visible {
+  color: hsl(0 70% 58%);
+  outline: none;
 }
 
 .onboarding-gate-brand {

@@ -121,6 +121,8 @@ export const UI_CONTROLS = {
   'onboarding.gate-password-submit': 'Session gate: submit the password for the selected profile',
   'onboarding.gate-create': 'Session gate: create a new local profile and continue',
   'onboarding.gate-keep-signed-in': 'Session gate: keep this profile signed in on the next launch',
+  'onboarding.gate-delete-start': 'Session gate: open the delete-account step for the selected profile; item is the profile id',
+  'onboarding.gate-delete-confirm': 'Session gate: delete the profile and move its workspace data to the trash; item is the profile id',
   'dialog.onboarding-providers': 'First-run dialog: connect chat providers before using the workspace',
   'onboarding.provider-sign-in': 'Provider setup: open sign-in for a provider; item is codex, claude, antigravity, or cursor',
   'onboarding.provider-disconnect': 'Provider setup: clear a provider marked connected during onboarding; item is the provider id',

@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict'
-import { mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
 
 import { PROFILE_REGISTRY_FILE, readProfileRegistry } from './profile-registry.js'
+import { purgeRemovedProfiles } from './profile-removal.js'
 import { ProfileSession } from './profile-session.js'
 
 function root(): string {
@@ -88,4 +89,77 @@ test('the registry is private, and an unreadable one is set aside', () => {
   const session = ProfileSession.open(dir)
   assert.equal(session.bootstrap().onboarding, null)
   assert.throws(() => statSync(path))
+})
+
+function names(onboardingJson: string | null): string[] {
+  return (JSON.parse(onboardingJson ?? '{"users":[]}') as { users: Array<{ id: string }> }).users.map((user) => user.id)
+}
+
+test('deleting an account whose data is closed sets the data aside at once', async () => {
+  const dir = root()
+  const session = ProfileSession.open(dir)
+  session.write(onboarding(null, [ADA, BOB]))
+  mkdirSync(join(dir, 'profiles', 'bob'), { recursive: true })
+  writeFileSync(join(dir, 'profiles', 'bob', 'chats.json'), '{}')
+
+  const result = session.remove('bob')
+  assert.deepEqual({ removed: result.removed, relaunching: result.relaunching }, { removed: true, relaunching: false })
+  assert.deepEqual(names(result.onboarding), ['ada'])
+  assert.equal(existsSync(join(dir, 'profiles', 'bob')), false)
+  assert.equal(readdirSync(join(dir, 'profiles')).length, 1)
+
+  const trashed: string[] = []
+  await purgeRemovedProfiles(dir, async (path) => { trashed.push(path) })
+  assert.equal(trashed.length, 1)
+  assert.match(trashed[0]!, /\.deleted-\d+-bob$/)
+  assert.equal(session.remove('bob').removed, false)
+})
+
+test('deleting the open account waits for the relaunch, which opens without its data', () => {
+  const dir = root()
+  const first = ProfileSession.open(dir)
+  first.write(onboarding('bob', [ADA, BOB]))
+  first.prepareSwitch('bob')
+  const open = ProfileSession.open(dir)
+  mkdirSync(open.dataDir, { recursive: true })
+  writeFileSync(join(open.dataDir, 'chats.json'), '{}')
+  open.write(onboarding(null, [ADA, BOB]))
+
+  const result = open.remove('bob')
+  assert.equal(result.relaunching, true)
+  assert.equal(existsSync(join(open.dataDir, 'chats.json')), true)
+
+  const next = ProfileSession.open(dir)
+  assert.equal(next.dataDir, dir)
+  assert.equal(existsSync(join(dir, 'profiles', 'bob')), false)
+  assert.deepEqual(readProfileRegistry(dir).pendingRemovals, [])
+})
+
+test('a deleted home account takes its files and never hands the root to another account', () => {
+  const dir = root()
+  const session = ProfileSession.open(dir)
+  session.write(onboarding(null, [ADA, BOB]))
+  writeFileSync(join(dir, 'chats.json'), '{}')
+  mkdirSync(join(dir, 'profiles', 'bob'), { recursive: true })
+  writeFileSync(join(dir, 'profiles', 'bob', 'chats.json'), '{"bob":true}')
+
+  assert.equal(session.remove('ada').relaunching, true)
+  const next = ProfileSession.open(dir)
+  assert.equal(existsSync(join(dir, 'chats.json')), false)
+  assert.equal(existsSync(join(dir, 'profiles.json')), true)
+  assert.equal(readFileSync(join(dir, 'profiles', 'bob', 'chats.json'), 'utf8'), '{"bob":true}')
+
+  next.write(onboarding('bob', [BOB]))
+  assert.equal(next.prepareSwitch('bob'), true)
+  assert.equal(ProfileSession.open(dir).dataDir, join(dir, 'profiles', 'bob'))
+})
+
+test('data the trash refuses is deleted', async () => {
+  const dir = root()
+  const session = ProfileSession.open(dir)
+  session.write(onboarding(null, [ADA, BOB]))
+  mkdirSync(join(dir, 'profiles', 'bob'), { recursive: true })
+  session.remove('bob')
+  await purgeRemovedProfiles(dir, async () => { throw new Error('no trash') })
+  assert.deepEqual(readdirSync(join(dir, 'profiles')), [])
 })
