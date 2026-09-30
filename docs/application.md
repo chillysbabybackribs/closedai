@@ -693,17 +693,17 @@ focus ring are the chat's one colour: the theme accent, or the wallpaper's most 
 backdrop is on. Sent user messages are cards cut from the same capsule material. New chat and
 Browser are not in the composer: the tile header **+** and the dock own them. **Fresh context**
 continues the full thread in a new tab with a digest on the first send. There is no collapsed mode;
-pending attachment chips sit above the line inside the card. The setup trigger opens a fixed-height
-panel (520px, or less when the pane is shorter), top to bottom: a Context line (`composer.context`;
+pending attachment chips sit above the line inside the card. The setup trigger opens a panel
+(above the trigger, or below when there is no room) with a Context line (`composer.context`;
 used/window tokens, the first plan window, a meter) that expands to the full usage card with Compact
-conversation; every model in one scrolling list sectioned by provider under pinned headings
-(`composer.model-item`, context-size badges, no search or folding; sections of another provider say
-**new thread**), opening scrolled to the current model's section; Effort (segmented
-`composer.effort-item`, or a same-height "Set by <provider>" line for models without levels); and
-**Recent** (`composer.model-recent`), the last three models used in this window from any provider,
-most recent nearest the trigger. Recent is kept in the renderer's localStorage
-(`closedai.composer.recentModels`) and records every model a pane lands on, whether picked,
-restored, or set by a tool. The folder trigger opens a separate panel with the current folder,
+conversation, then only the providers, one row each (`composer.model-provider`), the pane's own
+naming the model in use. Choosing a provider (click, Enter, or an arrow key) opens its models in a
+flyout beside the panel (`composer.model-item`, context-size badges; another provider's flyout says
+**Starts a new thread**). The flyout takes the side of the panel that has room inside the chat pane,
+overlapping the panel in a pane too narrow for either side, and grows the way the panel opened:
+upward from the row above the trigger, downward below it. Effort (segmented `composer.effort-item`,
+or a "Set by <provider>" line for models without levels) sits under the models of the provider that
+owns the selection. Left arrow or Escape returns to the provider rows. The folder trigger opens a separate panel with the current folder,
 recent chips, and choose/clear actions (`composer.project-new`, `composer.project-recent`,
 `composer.project-clear`). Model and effort rows are disabled while a turn runs; folder changes
 queue until the chat is idle when a turn is in flight. The trigger does not change while a turn
@@ -1124,18 +1124,11 @@ either kind, so a new icon never changes the tray's size or spacing.
   paging, not model compaction. Restoring overlapping provider history reconciles replayed
   and optimistic prompt ids within the same turn, keeping prompts before their replies.
   Codex history replay emits one replacement instead of streaming old items again.
-- The model menu is two columns in one panel: providers on the left, one row each, naming the
-  model in use where that provider owns the selection, and the hovered provider's models on the
-  right. It opens on the selected model's provider; hovering, focusing, or selecting another
-  provider row switches the right column without closing anything. The selected model's
-  reasoning efforts sit under the provider list, since they belong to the selection rather than
-  to a provider. The models column opens on that provider's top few models, ranked by locally
-  recorded picker use and always including the selected one, with the rest one row away; a
-  single remaining model is shown rather than hidden. The panel is one fixed width, bounded by
-  the chat pane it is given as a collision boundary, so the picker never reaches over the
-  browser column and never triggers the freeze-and-still path that a DOM overlay across the
-  divider requires; that is also why the models are a column inside the panel rather than a
-  flyout beside it.
+- The model menu is two steps: a provider panel, then one provider's models in a flyout beside it
+  (see the composer section above). Both the panel and the flyout use the chat pane as their
+  collision boundary, and the flyout's side and width are computed from the pane's free room
+  (`modelFlyoutPlacement`), so the picker never reaches over the browser column and never
+  triggers the freeze-and-still path that a DOM overlay across the divider requires.
 - Tool activity is grouped into expandable step lists with arguments, output, status, and timing
   when available. Collapsed headlines use short phrases and file names, not full paths or line
   ranges; expanded steps keep the file name on the line and the full path on hover and in the

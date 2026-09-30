@@ -2,8 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { ChatModel } from '../shared/chat.js'
 import {
-  effortLabel, effortMenuDetail, loadRecentModelIds, modelContextLabel, modelMenuDetail, modelGroups, modelTriggerLabel, parseRecentModels, pushRecentModel,
-  RECENT_MODELS_KEPT, RECENT_MODELS_STORAGE_KEY, rememberRecentModel, recentModels
+  effortLabel, effortMenuDetail, modelBlurb, modelContextLabel, modelFlyoutPlacement, modelMenuDetail, modelGroups, modelTriggerLabel
 } from './model-menu-state.js'
 
 function model(provider: ChatModel['provider'], id: string, displayName: string, efforts: string[] = [], isDefault = false, contextWindow?: number): ChatModel {
@@ -13,17 +12,6 @@ function model(provider: ChatModel['provider'], id: string, displayName: string,
     ...(contextWindow ? { contextWindow } : {})
   }
 }
-
-const catalogue = [
-  model('codex', 'sol', 'Sol'),
-  model('codex', 'terra', 'Terra', [], true),
-  model('codex', 'luna', 'Luna'),
-  model('codex', 'gpt-5.5', 'GPT-5.5'),
-  model('codex', 'spark', 'Spark'),
-  model('claude', 'claude:opus', 'Opus 5'),
-  model('claude', 'claude:sonnet', 'Sonnet 5'),
-  model('claude', 'claude:haiku', 'Haiku 4.5')
-]
 
 const models = [
   model('claude', 'claude:opus[1m]', 'Opus 5 (1M)', ['low', 'high']),
@@ -83,34 +71,31 @@ test('context labels stay compact at common model-window sizes', () => {
   assert.equal(modelContextLabel(undefined), null)
 })
 
-test('recent models move to the end on reuse and keep a bounded history', () => {
-  assert.deepEqual(pushRecentModel(['sol', 'terra', 'luna'], 'sol'), ['terra', 'luna', 'sol'])
-  const long = Array.from({ length: RECENT_MODELS_KEPT }, (_, index) => `m${index}`)
-  assert.deepEqual(pushRecentModel(long, 'new'), [...long.slice(1), 'new'])
+test('row tooltips keep a model blurb and drop the shared subscription line', () => {
+  assert.equal(modelBlurb({ ...model('antigravity', 'a', 'GPT-OSS'), description: 'On your Antigravity subscription' }), null)
+  assert.equal(modelBlurb({ ...model('cursor', 'b', 'Grok'), description: 'Fast coding — on your Cursor subscription' }), 'Fast coding')
 })
 
-test('the Recent block skips the current model and ones the catalogue lost, most recent last', () => {
-  const recent = ['claude:sonnet', 'gone', 'sol', 'claude:haiku', 'spark', 'terra']
-  assert.deepEqual(recentModels(catalogue, recent, 'terra').map((entry) => entry.id), ['sol', 'claude:haiku', 'spark'])
-  assert.deepEqual(recentModels(catalogue, ['gone', 'sol'], null).map((entry) => entry.id), ['sol'])
+const pane = { left: 0, right: 1000, width: 1000 }
+
+test('the flyout opens on the side with room, growing the way the panel opened', () => {
+  // Panel near the pane's left edge: room on the right, just past the row's 5px inset.
+  assert.deepEqual(
+    modelFlyoutPlacement({ left: 40, right: 328, width: 288 }, { left: 45, right: 323, width: 278 }, pane, 'top'),
+    { side: 'right', align: 'end', sideOffset: 11, width: 260 }
+  )
+  // Panel against the right edge (the screenshot case): it flips left and drops down when the panel did.
+  assert.deepEqual(
+    modelFlyoutPlacement({ left: 700, right: 988, width: 288 }, { left: 705, right: 983, width: 278 }, pane, 'bottom'),
+    { side: 'left', align: 'start', sideOffset: 11, width: 260 }
+  )
 })
 
-test('stored recents survive a round trip and ignore junk', () => {
-  assert.deepEqual(parseRecentModels(null), [])
-  assert.deepEqual(parseRecentModels('not json'), [])
-  assert.deepEqual(parseRecentModels('{"sol":3}'), [])
-  assert.deepEqual(parseRecentModels('["sol", 4, "", "terra"]'), ['sol', 'terra'])
-})
-
-test('rememberRecentModel persists through storage and reloads in order', () => {
-  const data = new Map<string, string>()
-  const storage = {
-    getItem: (key: string) => data.get(key) ?? null,
-    setItem: (key: string, value: string) => { data.set(key, value) }
-  }
-  assert.deepEqual(rememberRecentModel('sol', storage, false), ['sol'])
-  assert.deepEqual(rememberRecentModel('terra', storage, false), ['sol', 'terra'])
-  assert.deepEqual(rememberRecentModel('sol', storage, false), ['terra', 'sol'])
-  assert.equal(data.get(RECENT_MODELS_STORAGE_KEY), '["terra","sol"]')
-  assert.deepEqual(loadRecentModelIds(storage), ['terra', 'sol'])
+test('in a pane too narrow for either side the flyout overlaps the panel and stays inside', () => {
+  const narrow = { left: 0, right: 420, width: 420 }
+  const placement = modelFlyoutPlacement({ left: 60, right: 348, width: 288 }, { left: 65, right: 343, width: 278 }, narrow, 'top')
+  assert.equal(placement.side, 'right')
+  // Row right edge 343 + offset + width 260 must end at the pane's padded edge, 408.
+  assert.equal(343 + placement.sideOffset + placement.width, 408)
+  assert.equal(modelFlyoutPlacement(pane, pane, { left: 0, right: 200, width: 200 }, 'top').width, 176)
 })

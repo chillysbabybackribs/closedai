@@ -140,7 +140,9 @@ export function ModelPicker({
             onCloseAutoFocus={(event) => {
               event.preventDefault()
               if (choosingRef.current) { choosingRef.current = false; return }
-              if (listRef.current?.isConnected) listRef.current.focus()
+              // Back or Escape leaves focus nowhere; a click elsewhere already put it somewhere.
+              const active = document.activeElement
+              if (listRef.current?.isConnected && (!active || active === document.body)) listRef.current.focus()
             }}
             // A press on a provider row is that row's own choice, not a dismissal of the flyout.
             onInteractOutside={(event) => {

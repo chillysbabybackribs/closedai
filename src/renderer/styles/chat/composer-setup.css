@@ -1,4 +1,4 @@
-/* Setup popover (context line, model list, effort, Recent) and the folder popover. */
+/* Setup popover (context line, provider rows), its model flyout, and the folder popover. */
 
 .composer-folder-popover {
   width: min(17rem, var(--radix-popover-content-available-width, 17rem));
@@ -18,9 +18,24 @@
   z-index: 60;
   display: flex;
   flex-direction: column;
-  /* One height whatever is selected, so Recent stays put above the trigger. */
-  width: min(20rem, var(--radix-popover-content-available-width, 20rem));
-  height: min(var(--radix-popover-content-available-height, 72vh), 520px);
+  width: min(18rem, var(--radix-popover-content-available-width, 18rem));
+  max-height: min(var(--radix-popover-content-available-height, 72vh), 520px);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: 0 10px 28px rgb(0 0 0 / 44%);
+  outline: none;
+}
+
+/* One provider's models beside the panel; width is set inline from the pane's free room. */
+.composer-model-flyout {
+  z-index: 61;
+  display: flex;
+  flex-direction: column;
+  max-width: var(--radix-popover-content-available-width, 16.25rem);
+  max-height: min(var(--radix-popover-content-available-height, 60vh), 440px);
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -32,7 +47,9 @@
 
 /* The highlighted row is the focus indicator; the list containers take focus only to route keys. */
 .composer-setup [cmdk-root]:focus-visible,
-.composer-setup [cmdk-list]:focus-visible {
+.composer-setup [cmdk-list]:focus-visible,
+.composer-model-flyout [cmdk-root]:focus-visible,
+.composer-model-flyout [cmdk-list]:focus-visible {
   outline: none;
 }
 

@@ -4,7 +4,8 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 
 import type { ChatModel } from '../shared/chat.js'
-import { ModelPicker } from './composer-model-picker.tsx'
+import { ModelFlyoutBody, ModelPicker } from './composer-model-picker.tsx'
+import { modelGroups } from './model-menu-state.js'
 
 function model(id: string, provider: ChatModel['provider'], displayName = id): ChatModel {
   return { id, provider, displayName, description: '', defaultReasoningEffort: 'medium', supportedReasoningEfforts: [], isDefault: false }
@@ -20,37 +21,46 @@ function render(props: Partial<Parameters<typeof ModelPicker>[0]> = {}): string 
     models,
     selectedModel: 'cursor-0',
     provider: 'cursor',
-    recent: [],
     disabled: false,
+    boundary: null,
     onChoose: () => {},
     ...props
   }))
 }
 
-test('every model is listed under its provider, with nothing folded away', () => {
+function renderFlyout(props: Partial<Parameters<typeof ModelFlyoutBody>[0]> = {}): string {
+  return renderToStaticMarkup(createElement(ModelFlyoutBody, {
+    group: modelGroups(models).find((group) => group.provider === 'cursor')!,
+    selectedModel: 'cursor-0',
+    newThread: false,
+    disabled: false,
+    onBack: () => {},
+    onChoose: () => {},
+    ...props
+  }))
+}
+
+test('the panel lists only providers, naming the model in use on its own provider', () => {
   const html = render()
-  assert.match(html, /data-provider="codex"[\s\S]*GPT-5[\s\S]*data-provider="cursor"/)
+  assert.match(html, /data-ui="composer\.model-provider" data-ui-key="codex"[\s\S]*data-ui-key="cursor"[\s\S]*Cursor 0/)
+  assert.doesNotMatch(html, /composer\.model-item|Recent/)
+})
+
+test("a provider's flyout lists every model with the current one checked", () => {
+  const html = renderFlyout()
   assert.match(html, /data-ui="composer\.model-item" data-ui-key="cursor-7"/)
-  assert.doesNotMatch(html, /composer\.model-more|Filter/)
   assert.match(html, /data-ui-key="cursor-0" data-checked="true"/)
-  assert.doesNotMatch(html, /data-ui-key="gpt-5" data-checked/)
+  assert.doesNotMatch(html, /new thread/)
+  assert.match(renderFlyout({ newThread: true }), /Starts a new thread/)
 })
 
-test("another provider's section says choosing from it starts a new thread", () => {
-  const html = render()
-  assert.match(html, /Codex[^]*?new thread[^]*?data-provider="cursor"/)
-  assert.equal(html.match(/new thread/g)?.length, 1)
-})
-
-test('Recent follows the effort footer and names each row’s provider', () => {
-  const html = render({ recent: [models[0]!], footer: createElement('p', null, 'EFFORT') })
-  assert.match(html, /EFFORT[\s\S]*Recent[\s\S]*data-ui="composer\.model-recent" data-ui-key="gpt-5"[\s\S]*Codex/)
-  assert.doesNotMatch(render(), />Recent</)
+test('effort sits under the models when this provider owns the selection', () => {
+  assert.match(renderFlyout({ effort: createElement('p', null, 'EFFORT') }), /cursor-7[\s\S]*EFFORT/)
 })
 
 test('while locked only the current model stays enabled', () => {
-  const html = render({ disabled: true })
-  assert.match(html, /data-ui-key="gpt-5"[^>]*data-disabled="true"/)
+  const html = renderFlyout({ disabled: true })
+  assert.match(html, /data-ui-key="cursor-1"[^>]*data-disabled="true"/)
   assert.match(html, /data-ui-key="cursor-0"[^>]*data-disabled="false"/)
 })
 
