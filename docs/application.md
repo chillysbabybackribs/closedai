@@ -78,7 +78,9 @@ chat starts a provider; resolution follows each lane's spawn order (env override
 
 First-run onboarding (renderer). Before the workspace is used on a fresh install, the shell shows
 a full-screen **session gate** (Ubuntu-style local profiles: pick a user, enter a password, create
-account with username/password confirmation, keep signed in). The account list
+account with username/password confirmation, keep signed in, delete account). The gate paints a
+solid background, so nothing of the workspace behind it shows through, and **Keep me signed in**
+starts unchecked for every sign-in and new account. The account list
 (`OnboardingSettings`, `src/shared/onboarding.ts`) is kept by main in `profiles.json`, outside
 every profile's data, and reaches the renderer through `window.closedai.profiles`; a list an
 earlier build kept in `localStorage` under `closedai.onboarding.v1` moves there once. Each **local
@@ -111,6 +113,16 @@ gate is painted over that profile. Provider CLIs are signed in per OS user, so t
 modal detects the same CLI sign-ins for every account; their thread stores are shared too, which
 is why only the home account adopts threads from provider catalogs and other accounts list the
 chats they made.
+
+Deleting an account (`onboarding.gate-delete-start` on the gate's password step, then
+`onboarding.gate-delete-confirm`) asks for the account's password when it has one, removes the
+account from the list, and moves its workspace data to the OS trash; data the trash refuses is
+deleted outright. Data that is not open is renamed to `profiles/.deleted-<time>-<id>` at once
+and trashed in the background. Data the running process has open is recorded in
+`pendingRemovals`, the app relaunches, and the next launch sets it aside before any store
+opens. The home account's files are moved out of the root one by one, leaving `profiles.json`
+and `profiles/`; the root is never handed to another account afterwards. Provider CLI sign-ins
+and the providers' own thread stores are not touched.
 
 Launch resilience. A bootstrap failure is shown in a native error box and ends the app; an
 uncaught exception or unhandled rejection after the window exists is logged with a `[main]`
@@ -1466,7 +1478,7 @@ directory holds its own copy of every store below; `profiles.json` exists once, 
 
 | Store | Contents |
 |---|---|
-| `profiles.json` (root only) | The local accounts: the renderer's onboarding settings as written (names, PBKDF2 password hashes, per-account provider progress, signed-in account), the home account, the last active account, and a one-launch resume marker set by a profile switch. Written synchronously and atomically at 0600; an unreadable file is set aside as `profiles.json.corrupt-<time>` |
+| `profiles.json` (root only) | The local accounts: the renderer's onboarding settings as written (names, PBKDF2 password hashes, per-account provider progress, signed-in account), the home account, the last active account, a one-launch resume marker set by a profile switch, and deletions waiting for the next launch. Written synchronously and atomically at 0600; an unreadable file is set aside as `profiles.json.corrupt-<time>` |
 | `provider-catalogs.json` | The last model catalog read per workspace and provider, so a relaunch starts only the active provider and the picker still offers every model; a provider refreshes its own entry when selected |
 | `chat-transcripts/<chat id>.json` | The bounded tail of each chat as the app last showed it, so opening one paints before its provider replays; display-only, pruned against the store's live chat ids on launch |
 | `chats.json` | Every chat record: id, project directory, provider, model and effort, per-provider thread ids, title, preview, created/updated/last-turn times, archived flag, pin timestamp, parent chat, continuation digest, checkpoint, and the agent run driving the chat (`agentRun`: prompt, status, cycle, limits, failure count, last thread, and `stats`: step, edit, error and rotation counts, summed turn time, last reply and error excerpts, latest context and plan readings). Debounced atomic writes; flushed on quit |
