@@ -16,6 +16,16 @@ const ILLEGAL_CHARS = new Set(['<', '>', ':', '"', '/', '\\', '|', '?', '*'])
 const MAX_STEM = 120
 const MAX_EXTENSION = 16
 
+/** Archive compound extensions that should be kept together. */
+const COMPOUND_EXTENSIONS = new Set([
+  '.tar.gz',
+  '.tar.bz2',
+  '.tar.xz',
+  '.tar.z',
+  '.tar.lz',
+  '.tar.lzma',
+])
+
 /**
  * Turn a server-supplied filename into one that is safe to write. Always returns a non-empty
  * name with no directory component.
@@ -68,11 +78,24 @@ function lastPathSegment(input: string): string {
  * Split a trailing extension off a filename. A dot-run in the middle of a long name (or an
  * "extension" longer than any real one) is treated as part of the stem, so "v1.2.3-notes"
  * keeps its shape instead of gaining a bogus ".3-notes" extension.
+ *
+ * Recognizes compound archive extensions like .tar.gz so they stay together during deduplication.
  */
 function splitExtension(filename: string): { stem: string; extension: string } {
   const dot = filename.lastIndexOf('.')
   if (dot <= 0 || dot === filename.length - 1) return { stem: filename, extension: '' }
-  const extension = filename.slice(dot)
-  if (extension.length > MAX_EXTENSION || /\s/.test(extension)) return { stem: filename, extension: '' }
-  return { stem: filename.slice(0, dot), extension }
+
+  const lastExt = filename.slice(dot)
+  if (lastExt.length > MAX_EXTENSION || /\s/.test(lastExt)) return { stem: filename, extension: '' }
+
+  // Check for compound extensions like .tar.gz
+  const secondDot = filename.lastIndexOf('.', dot - 1)
+  if (secondDot > 0) {
+    const compoundExt = filename.slice(secondDot, dot) + lastExt
+    if (COMPOUND_EXTENSIONS.has(compoundExt.toLowerCase())) {
+      return { stem: filename.slice(0, secondDot), extension: compoundExt }
+    }
+  }
+
+  return { stem: filename.slice(0, dot), extension: lastExt }
 }

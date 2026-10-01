@@ -55,13 +55,40 @@ test('windows reserved device names are prefixed rather than written verbatim', 
 
 test('an overlong stem is capped while its extension is preserved', () => {
   const name = safeDownloadFilename(`${'a'.repeat(400)}.tar.gz`)
-  assert.equal(name.endsWith('.gz'), true)
-  assert.equal(name.length, 123)
+  assert.equal(name.endsWith('.tar.gz'), true)
+  assert.equal(name.length, 127) // stem (120) + compound extension .tar.gz (7)
 })
 
 test('a dotted version string does not gain a bogus extension', () => {
   assert.equal(safeDownloadFilename('release-v1.2.3-notes'), 'release-v1.2.3-notes')
   assert.equal(safeDownloadFilename('archive.tar.gz'), 'archive.tar.gz')
+})
+
+test('compound archive extensions are kept together on collision', () => {
+  const taken = new Set(['/dl/backup.tar.gz'])
+  assert.equal(uniqueDownloadPath('/dl', 'backup.tar.gz', (path) => taken.has(path)), '/dl/backup (1).tar.gz')
+})
+
+test('all common archive compound extensions stay together', () => {
+  const extensions = ['.tar.gz', '.tar.bz2', '.tar.xz', '.tar.z', '.tar.lz', '.tar.lzma']
+  for (const ext of extensions) {
+    const filename = `archive${ext}`
+    const taken = new Set([`/dl/${filename}`])
+    const result = uniqueDownloadPath('/dl', filename, (path) => taken.has(path))
+    assert.equal(result.endsWith(ext), true, `${ext} should stay at the end`)
+    assert.equal(result, `/dl/archive (1)${ext}`)
+  }
+})
+
+test('case-insensitive compound extension matching', () => {
+  const taken = new Set(['/dl/backup.TAR.GZ'])
+  assert.equal(uniqueDownloadPath('/dl', 'backup.TAR.GZ', (path) => taken.has(path)), '/dl/backup (1).TAR.GZ')
+})
+
+test('compound extensions with overlong stem are truncated correctly', () => {
+  const name = safeDownloadFilename(`${'a'.repeat(400)}.tar.gz`)
+  assert.equal(name.endsWith('.tar.gz'), true)
+  assert.equal(name.length, 127) // stem (120) + extension (7)
 })
 
 test('a free path is returned unchanged', () => {
