@@ -5,8 +5,6 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { installAppContextMenu } from './app-context-menu.js'
 import { installRendererRecovery } from './main-window-recovery.js'
 import { APP_WINDOW_QUERY } from '../shared/app-windows.js'
-import { APP_SURFACE_QUERY } from '../shared/quick-chat-overlay.js'
-
 export type MainWindowActions = {
   openLinkInNewTab: (url: string) => void
 }
@@ -89,11 +87,6 @@ export function createAppWindow(actions: MainWindowActions, { activate = true, .
 /** Load the app shell; a detached window carries its id so its renderer knows which window it is. */
 export function loadAppRenderer(window: BrowserWindow, windowId: string | null = null): void {
   loadRenderer(window, windowId ? { [APP_WINDOW_QUERY]: windowId } : undefined)
-}
-
-/** Load the renderer as a layer that is not a window (the browser's quick chat), named by `surface`. */
-export function loadAppSurface(contents: Pick<WebContents, 'loadURL' | 'loadFile'>, surface: string): void {
-  loadRenderer(contents, { [APP_SURFACE_QUERY]: surface })
 }
 
 /** The built renderer a checkout or packaged launch loads; the dev server replaces it under `npm run dev`. */

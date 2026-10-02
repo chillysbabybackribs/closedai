@@ -12,13 +12,17 @@ export type ProviderUsageEntry = {
   usage: ChatPlanUsage | null
 }
 
+function accountKey(provider: ChatProvider, account: ProviderUsageSnapshot['account']): string {
+  return JSON.stringify([provider, account?.type ?? null, account?.email ?? null])
+}
+
 /** Never add quotas across chats. Keep known accounts separate; retain the newest observation. */
 export function providerUsageEntries(chats: readonly ChatRowSummary[], readings?: readonly ProviderUsageSnapshot[]): ProviderUsageEntry[] {
   const entries = new Map<string, ProviderUsageEntry>()
   for (const row of chats) {
     if (!row.attached || !row.providerUsage) continue
     const { account, usage } = row.providerUsage
-    const key = JSON.stringify([row.provider, account?.type ?? null, account?.email ?? null])
+    const key = accountKey(row.provider, account)
     const prior = entries.get(key)
     if (!prior || (usage?.updatedAt ?? -1) > (prior.usage?.updatedAt ?? -1)
       || ((usage?.updatedAt ?? -1) === (prior.usage?.updatedAt ?? -1) && row.updatedAt > (prior.source?.updatedAt ?? 0))) {
@@ -28,7 +32,7 @@ export function providerUsageEntries(chats: readonly ChatRowSummary[], readings?
   if (readings) for (const provider of CHAT_PROVIDERS) {
     const reading = readings.find((item) => item.provider === provider)
     const account = reading?.account ?? null
-    const key = JSON.stringify([provider, account?.type ?? null, account?.email ?? null])
+    const key = accountKey(provider, account)
     const prior = entries.get(key)
     const providerEntries = [...entries.values()].filter((item) => item.provider === provider)
     // A placeholder must not create an extra unknown-account tab beside live telemetry.
@@ -61,7 +65,7 @@ export function usageWindowState(window: ChatPlanUsageWindow, usage: ChatPlanUsa
   return { remaining, level, observedAt }
 }
 
-/** The chip shows the lowest remaining window; the detail names every scope rather than guessing model eligibility. */
+/** A plan's lowest remaining window; every scope keeps its own row rather than guessing model eligibility. */
 export function usageHeadline(usage: ChatPlanUsage | null, now: number): {
   text: string; level: UsageLevel; window: ChatPlanUsageWindow | null; remaining: number | null
 } {
@@ -80,41 +84,98 @@ export function usageHeadline(usage: ChatPlanUsage | null, now: number): {
   return { text, level, window, remaining }
 }
 
-export type UsageChipDisplay = {
-  /** Remaining percent for the figure; null when the provider reports no numeric quota. */
-  remaining: number | null
-  /** The chip figure: a percent, or the plan name when no quota is reported. */
-  text: string
+export type UsageTightest = {
+  entry: ProviderUsageEntry
+  window: ChatPlanUsageWindow
+  remaining: number
   level: UsageLevel
-  ariaLabel: string
 }
 
-/** Rail display data: mark and remaining percent; the plan name is retained for the accessible label. */
-export function usageChipDisplay(
-  usage: ChatPlanUsage | null,
-  plan: string | null,
-  now: number,
-  providerLabel: string
-): UsageChipDisplay {
-  const headline = usageHeadline(usage, now)
-  if (headline.remaining === null) {
-    const name = usage?.plan ?? plan
-    return {
-      remaining: null,
-      text: name ?? 'Unavailable',
-      level: headline.level,
-      ariaLabel: `${providerLabel}: ${name ? `${name} · usage unavailable` : headline.text}`
-    }
+/** The one window across every plan closest to empty: the dock figure and the flyout's summary line. */
+export function tightestUsage(entries: readonly ProviderUsageEntry[], now: number): UsageTightest | null {
+  let tightest: UsageTightest | null = null
+  for (const entry of entries) {
+    const { window, remaining, level } = usageHeadline(entry.usage, now)
+    if (!window || remaining === null) continue
+    if (!tightest || remaining < tightest.remaining) tightest = { entry, window, remaining, level }
   }
-  const detail = headline.window ? ` · lowest: ${headline.window.label}` : ''
-  return {
-    remaining: headline.remaining,
-    text: `${headline.remaining}%`,
-    level: headline.level,
-    ariaLabel: `${providerLabel}: ${headline.text}${detail}`
-  }
+  return tightest
 }
 
-export function usageChipText(usage: ChatPlanUsage | null, plan: string | null, now: number): string {
-  return usageChipDisplay(usage, plan, now, '').text
+const HOUR_MS = 3_600_000
+const DAY_MS = 24 * HOUR_MS
+
+/**
+ * How long a window runs, read from the label main gives it (plan-usage.ts names rolling windows
+ * by length). A month is measured back from its own reset. Null when the label names no length.
+ */
+export function usageWindowDuration(window: ChatPlanUsageWindow): number | null {
+  const label = window.label.trim().toLowerCase()
+  const counted = /^(\d+)-(minute|hour|day)\b/.exec(label)
+  if (counted) return Number(counted[1]) * (counted[2] === 'minute' ? 60_000 : counted[2] === 'hour' ? HOUR_MS : DAY_MS)
+  if (label.startsWith('daily')) return DAY_MS
+  if (label.startsWith('weekly')) return 7 * DAY_MS
+  if (label.startsWith('monthly') && window.resetsAt !== null) {
+    const start = new Date(window.resetsAt)
+    start.setMonth(start.getMonth() - 1)
+    return window.resetsAt - start.getTime()
+  }
+  return null
+}
+
+export type UsagePace = {
+  /** When the allowance reaches zero if spending continues at the window's average rate so far. */
+  runsOutAt: number
+  /** How long before the reset that is. */
+  shortBy: number
+}
+
+/**
+ * A straight-line projection of the window's average rate so far. It speaks only when that rate
+ * empties the window before it resets, and only once a tenth of both the window and the allowance
+ * has gone: before that the rate is one burst, not a pace.
+ */
+export function usagePace(window: ChatPlanUsageWindow, usage: ChatPlanUsage, now: number): UsagePace | null {
+  const { level, observedAt } = usageWindowState(window, usage, now)
+  if (level === 'stale' || level === 'unknown' || level === 'exhausted' || window.resetsAt === null) return null
+  const duration = usageWindowDuration(window)
+  if (!duration) return null
+  const elapsed = duration - (window.resetsAt - observedAt)
+  if (elapsed < duration / 10 || window.percent < 10) return null
+  const runsOutAt = observedAt + elapsed * (100 - window.percent) / window.percent
+  const shortBy = window.resetsAt - runsOutAt
+  // A margin under a twentieth of the window is inside the projection's own error.
+  if (shortBy < duration / 20) return null
+  return { runsOutAt, shortBy }
+}
+
+/** "45m", "2h 14m", "5d 8h": two units, so a reset days away does not read the same all day. */
+export function spanNote(ms: number): string {
+  const minutes = Math.round(ms / 60_000)
+  if (minutes < 1) return 'under a minute'
+  if (minutes < 60) return `${minutes}m`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return minutes % 60 ? `${hours}h ${minutes % 60}m` : `${hours}h`
+  const days = Math.floor(hours / 24)
+  return hours % 24 ? `${days}d ${hours % 24}h` : `${days}d`
+}
+
+/** One rounded unit ("5d", "3h"), for a span that sits beside an exact one. */
+export function roughSpan(ms: number): string {
+  const minutes = Math.round(ms / 60_000)
+  if (minutes < 60) return `${Math.max(1, minutes)}m`
+  const hours = Math.round(minutes / 60)
+  return hours < 24 ? `${hours}h` : `${Math.round(hours / 24)}d`
+}
+
+/** The flyout's one-line answer to "am I fine?", naming the window that decides it. */
+export function usageVerdict(tightest: UsageTightest | null, providerLabel: string, now: number): string {
+  if (!tightest) return 'No plan has reported a quota yet.'
+  const { window, remaining, level } = tightest
+  const name = `${providerLabel} ${window.label}`
+  const reset = window.resetsAt !== null && window.resetsAt > now ? `resets in ${spanNote(window.resetsAt - now)}` : null
+  if (level === 'stale') return `Lowest reading is ${name} at ${remaining}% left, but it is out of date.`
+  if (level === 'exhausted') return `${name} is used up${reset ? ` and ${reset}` : ''}.`
+  if (level === 'normal') return `Every plan has room. The tightest is ${name} at ${remaining}% left.`
+  return `${name} is down to ${remaining}% left${reset ? ` and ${reset}` : ''}.`
 }

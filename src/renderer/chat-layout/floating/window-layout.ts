@@ -167,7 +167,7 @@ export function resizeRect(start: Rect, edge: ResizeEdge, dx: number, dy: number
   return { x, y, width, height }
 }
 
-const NEW_CHAT_WINDOW: Rect = { x: 96, y: 64, width: 760, height: 560 }
+const NEW_CHAT_WINDOW: Rect = { x: 48, y: 40, width: 520, height: 420 }
 
 /** A fresh tab in its own window, without selecting or restoring an existing window.
  * A browser-only tree is the empty workspace: its first content window tiles beside the browser.

@@ -5,7 +5,7 @@ import { buildClockAdditionalContext, mergeTurnAdditionalContext, type Additiona
 import { buildResearchRoutingAdditionalContext } from './research-routing.js'
 
 export const SESSION_GUIDE_CONTEXT = 'closedai.guide'
-export const SESSION_GUIDE_MAX_CHARS = 8_500
+export const SESSION_GUIDE_MAX_CHARS = 9_000
 
 /** Per-pane delivery memory; thread ids rotate on handoff and tool-catalog refresh. */
 export type SessionGuideDeliveryState = {

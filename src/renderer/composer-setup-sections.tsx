@@ -11,7 +11,7 @@ import { errorMessage } from './error-message.js'
 import { effortLabel, modelContextLabel } from './model-menu-state.js'
 
 // The sections around the model list in the composer's setup panel (composer-setup-menu.tsx),
-// and the folder panel's one section (composer-folder-menu.tsx).
+// and the folder section inside the setup popover.
 
 export function folderName(path: string): string {
   const trimmed = path.replace(/[\\/]+$/, '')

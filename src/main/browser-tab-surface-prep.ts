@@ -6,7 +6,8 @@ import type { TabRenderingPolicy } from './browser-tab-rendering.js'
 
 export function prepareBrowserTabForTool(options: {
   tab: BrowserTab
-  active: BrowserTab | import('./local-files/image-tab.js').ImageTab | import('./local-files/file-tab.js').FileTab | null
+  active: BrowserTab | import('./local-files/image-tab.js').ImageTab | import('./local-files/file-tab.js').FileTab
+    | import('./local-files/video-tab.js').VideoTab | import('./local-files/video-hub-tab.js').VideoHubTab | null
   activeId: string | null
   bounds: BrowserBounds
   rendering: TabRenderingPolicy

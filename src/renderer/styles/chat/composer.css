@@ -10,8 +10,9 @@
    surface) with a faint light from the top edge, so it stays the same neutral card over any
    wallpaper. Theme tokens keep it right on warm paper. */
 .chat-pane {
-  /* The one colour in the chat (Send, focus): the wallpaper's hue while a backdrop is on. */
+  /* Secondary controls take the wallpaper's hue; the capsule focus edge is pure white. */
   --composer-accent: var(--backdrop-accent, var(--tab-accent, #8ab4f8));
+  --composer-focus: #fff;
   --capsule-fill: var(--antigravity-card-bg, #262626);
   --capsule-edge: color-mix(in srgb, var(--foreground) 10%, transparent);
   --capsule-sheen: color-mix(in srgb, var(--foreground) 7%, transparent);
@@ -68,10 +69,10 @@
 }
 
 .composer-stack:focus-within {
-  border-color: color-mix(in srgb, var(--composer-accent) 55%, transparent);
+  border-color: var(--composer-focus);
   box-shadow:
     inset 0 1px 0 var(--capsule-sheen),
-    0 0 0 3px color-mix(in srgb, var(--composer-accent) 16%, transparent),
+    0 0 0 3px color-mix(in srgb, var(--composer-focus) 12%, transparent),
     var(--capsule-shadow);
 }
 
@@ -293,19 +294,18 @@
   white-space: nowrap;
 }
 
-/* The setup chip: model and folder as one rounded chip with two halves, each opening its own
-   panel. It reads as the capsule's metadata, quieter than the draft. Its automatic minimum width
-   (its content, capped by max-width) keeps the model name from being squeezed away. */
+/* The setup chip: the model and folder triggers side by side, each opening its own panel. There is
+   no wrapper surface; each trigger shows its own pill on hover. It reads as the capsule's metadata,
+   quieter than the draft. Its automatic minimum width (its content, capped by max-width) keeps the
+   model name from being squeezed away. */
 .composer-setup-chip {
   display: flex;
   flex: 0 1 auto;
   margin-bottom: 1px;
   align-items: stretch;
+  gap: 2px;
   max-width: 48%;
   height: 32px;
-  border: 1px solid color-mix(in srgb, var(--foreground) 9%, transparent);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--foreground) 4%, transparent);
 }
 
 .composer-chip-model-trigger,
@@ -333,22 +333,10 @@
   padding-right: 8px;
 }
 
-/* A hairline between the halves, drawn on the folder so it sits inside the chip's border. */
 .composer-chip-folder-trigger {
-  position: relative;
   flex: 0 2 auto;
   padding-left: 9px;
   color: color-mix(in srgb, var(--foreground) 62%, transparent);
-}
-
-.composer-chip-folder-trigger::before {
-  content: '';
-  position: absolute;
-  top: 9px;
-  bottom: 9px;
-  left: 0;
-  width: 1px;
-  background: color-mix(in srgb, var(--foreground) 12%, transparent);
 }
 
 .composer-chip-model-trigger:not(:disabled):hover,
@@ -397,9 +385,7 @@
   .composer-chip-model-trigger { padding-inline: 9px 6px; }
 }
 
-/* The one coloured control. Send fills with the accent (the wallpaper's hue under a backdrop) as
-   soon as there is something to send; Pause is an outlined circle in the same slot while a turn
-   runs; Resume the same outline in the pause amber. */
+/* Send is pure white with a black arrow when enabled. Pause and Resume share its slot. */
 .composer-row .composer-action {
   flex: none;
   display: grid;
@@ -412,13 +398,13 @@
 }
 
 .composer-send {
-  background: var(--composer-accent);
-  color: #111;
-  box-shadow: 0 2px 10px color-mix(in srgb, var(--composer-accent) 35%, transparent);
+  background: #fff;
+  color: #000;
+  box-shadow: 0 2px 10px rgb(0 0 0 / 20%);
 }
 
 .composer-send:not(:disabled):hover {
-  background: color-mix(in srgb, var(--composer-accent) 86%, white);
+  background: #fff;
 }
 
 .composer-send:disabled {
@@ -545,4 +531,35 @@
   .composer-tool {
     transition: none;
   }
+}
+
+/* The action rail overlays the draft without shifting the capsule or its send control. */
+.composer-speed-dial { position: relative; }
+.composer-speed-trigger svg { transition: transform 150ms ease-out; }
+.composer-speed-dial[data-open] .composer-speed-trigger svg { transform: rotate(45deg); }
+.composer-speed-dial[data-open] { z-index: 2; }
+.composer-speed-actions {
+  position: absolute;
+  left: calc(100% - 3px);
+  top: -1px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px 1px 2px;
+  border-radius: 999px;
+  background: var(--capsule-fill);
+  box-shadow: 6px 0 10px var(--capsule-fill);
+}
+.composer-speed-item {
+  background: color-mix(in srgb, var(--foreground) 7%, var(--capsule-fill));
+  animation: composer-action-in 150ms cubic-bezier(0.2, 0, 0, 1) both;
+  animation-delay: calc(12ms + var(--action-index) * 22ms);
+}
+@keyframes composer-action-in {
+  from { opacity: 0; transform: translateX(-10px) scale(0.82); }
+  to { opacity: 1; transform: translateX(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .composer-speed-item { animation: none; }
+  .composer-speed-trigger svg { transition: none; }
 }

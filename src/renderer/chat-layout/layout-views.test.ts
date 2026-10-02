@@ -2,11 +2,10 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { chatPaneIds, dockPane, isViewTabId, paneIds, readLayout, saveLayout, type ChatLayout } from './layout-tree.ts'
 import { addTab, chatTabIds, moveTab, pruneTabs, removeTab, selectTab, tabIds } from './layout-tabs.ts'
-import { parseViewTab, pinOnMove, pruneViewScopes, tileView, viewScope, viewTabId, workspaceView } from './layout-views.ts'
+import { oneKindPerTile, openTabInTree, parseViewTab, pinOnMove, pruneViewScopes, sameTabKind, viewOfKind, viewScope, viewTabId } from './layout-views.ts'
 
 const trace = viewTabId('trace', 'v1')
 const tools = viewTabId('tools', 'v2')
-const agents = viewTabId('agents', 'v3')
 
 test('view ids carry their kind and stay out of the chat lists', () => {
   assert.ok(isViewTabId(trace))
@@ -21,23 +20,40 @@ test('view ids carry their kind and stay out of the chat lists', () => {
   assert.deepEqual(chatPaneIds(tree), ['b'])
   // Pruning against main's chats never drops a view, and a view can be the last tab in its tile.
   assert.deepEqual(tabIds(pruneTabs(tree, new Set(['b']))), [trace, 'b'])
-  assert.equal(tileView(tree, trace, 'trace'), trace)
-  assert.equal(tileView(tree, trace, 'tools'), null)
-  assert.equal(tileView(tree, 'b', 'trace'), null)
+  assert.equal(viewOfKind(tree, 'trace'), trace)
+  assert.equal(viewOfKind(tree, 'tools'), null)
 })
 
-test('the Agents view is one tab for the whole workspace', () => {
-  let tree: ChatLayout = addTab({ kind: 'pane', id: 'a' }, 'a', agents)
-  tree = dockPane(tree, 'b', agents, 'right', 'split')
-  assert.equal(workspaceView(tree, 'agents'), agents)
-  assert.equal(tileView(tree, 'b', 'trace'), null)
-  assert.equal(tileView(tree, 'b', 'agents'), null, 'Agents in the other tile is found by workspaceView, not tileView')
+test('a window only takes tabs of its own kind', () => {
+  assert.ok(!sameTabKind('a', 'b'), 'chat cards cannot join a tab strip')
+  assert.ok(sameTabKind(trace, viewTabId('trace', 'other')))
+  assert.ok(!sameTabKind(trace, 'a'), 'a view never joins a chat strip')
+  assert.ok(!sameTabKind('a', tools), 'a chat never joins a view strip')
+  assert.ok(!sameTabKind(trace, tools))
+  assert.ok(!sameTabKind('closedai:view:agents:x', 'closedai:view:agents:y'), 'a retired kind joins nothing')
 })
 
-test('the Saved sites view is one tab for the whole workspace', () => {
-  const savedSites = viewTabId('saved-sites', 'v4')
-  const tree: ChatLayout = addTab({ kind: 'pane', id: 'a' }, 'a', savedSites)
-  assert.equal(workspaceView(tree, 'saved-sites'), savedSites)
+test('a view opens in a window of its kind, else a new window, never beside chats', () => {
+  const chats: ChatLayout = { kind: 'pane', id: 'a', tabs: ['a', 'b'] }
+  const opened = openTabInTree(chats, tools, 'a', 'split-1')
+  assert.deepEqual(chatTabIds(opened), ['a', 'b'])
+  assert.deepEqual(paneIds(opened), ['a', tools], 'Tools fronts a window of its own')
+  const fileA = viewTabId('file', 'a.ts')
+  const fileB = viewTabId('file', 'b.ts')
+  let files = openTabInTree(chats, fileA, 'a', 'split-2')
+  files = openTabInTree(files, fileB, 'a', 'split-3')
+  assert.equal(paneIds(files).length, 2, 'the second file joins the first file window')
+  assert.ok(paneIds(files).includes(fileB))
+  // A chat not yet open skips a view window it is anchored to and joins the chat window.
+  const chat = openTabInTree(files, 'c', fileB, 'split-4')
+  assert.deepEqual(paneIds(chat).sort(), ['a', 'c', fileB].sort())
+})
+
+test('saved layouts that mixed kinds keep their chats and drop the strays', () => {
+  const mixed: ChatLayout = dockPane({ kind: 'pane', id: trace, tabs: ['a', trace, 'closedai:view:agents:x'] }, tools, trace, 'right', 'split')
+  const cleaned = oneKindPerTile(mixed)
+  assert.deepEqual(tabIds(cleaned), ['a', tools])
+  assert.deepEqual(paneIds(cleaned), ['a', tools])
 })
 
 test('a view follows its own tile, then the workspace selection, unless pinned', () => {

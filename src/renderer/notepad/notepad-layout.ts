@@ -1,8 +1,7 @@
-import { layoutGroups } from '../chat-layout/layout-docking.js'
 import { type ChatLayout } from '../chat-layout/layout-tree.js'
-import { addTab, selectTab, tabIds, tabOwner } from '../chat-layout/layout-tabs.js'
-import { tabInNewWindow, mapWindow } from '../chat-layout/floating/window-layout.js'
-import { viewKindOf, viewTabId } from '../chat-layout/layout-views.js'
+import { tabIds, tabOwner } from '../chat-layout/layout-tabs.js'
+import { mapWindow } from '../chat-layout/floating/window-layout.js'
+import { openTabInTree, viewKindOf, viewTabId } from '../chat-layout/layout-views.js'
 
 // A notepad window is an ordinary tile whose tabs are notes (`closedai:view:note:<noteId>`), so it
 // floats, snaps, minimizes and restores like any window. Its one chat lives on the tile itself
@@ -79,27 +78,8 @@ export function addNoteToChatWindow(tree: ChatLayout, chatId: string, noteId: st
   return mapWindow(tree, pane.id, (node) => ({ ...node, tabs: [...(node.tabs ?? [node.id]), tab] }))
 }
 
-/** A window whose front tab is a note, preferring the one `near` belongs to. */
-function notepadTile(tree: ChatLayout, near: string | null): string | null {
-  const owner = near ? tabOwner(tree, near) : null
-  if (owner && isNoteTab(owner)) return owner
-  return layoutGroups(tree).find((group) => !group.docked && isNoteTab(group.id))?.id
-    ?? layoutGroups(tree).find((group) => isNoteTab(group.id))?.id ?? null
-}
-
-/**
- * Show a note: its tab where it already is, else a new tab in a notepad window (the one `near`
- * is in, or any), else a new notepad window of its own: tiled by `place` (the layout's auto
- * placement) when it finds room, else floating.
- */
+/** Show a note: its tab, a notepad window's new tab, or a notepad window of its own ({@link openTabInTree}). */
 export function openNoteInTree(tree: ChatLayout, noteId: string, near: string | null, splitId: string, newWindow = false,
   place?: (tree: ChatLayout, id: string) => ChatLayout | null): ChatLayout {
-  const tab = noteTabId(noteId)
-  const holder = tabOwner(tree, tab)
-  if (holder) return selectTab(tree, holder, tab)
-  const tile = newWindow ? null : notepadTile(tree, near)
-  if (tile) return addTab(tree, tile, tab)
-  const placed = place?.(tree, tab)
-  if (placed) return placed
-  return tabInNewWindow(tree, tab, near ?? undefined, splitId)
+  return openTabInTree(tree, noteTabId(noteId), near, splitId, newWindow, place)
 }

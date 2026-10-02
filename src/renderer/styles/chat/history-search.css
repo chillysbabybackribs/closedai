@@ -7,9 +7,7 @@
    surface reads the same on the dark chassis and the warm paper theme without a
    second token set. */
 
-/* Start's Search chats screen shows the same palette list, so it takes the same ink. */
-.header-chat-search,
-.dock-start-chat-search {
+.header-chat-search {
   --search-fill: color-mix(in srgb, var(--popover-foreground) 4%, transparent);
   --search-fill-hover: color-mix(in srgb, var(--popover-foreground) 7%, transparent);
   --search-row-selected: color-mix(in srgb, var(--popover-foreground) 8%, transparent);
@@ -28,6 +26,30 @@
   min-width: 0;
   pointer-events: none;
   -webkit-app-region: no-drag;
+}
+
+.header-chat-search-card {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+}
+
+.header-chat-search-card .header-chat-search-field {
+  height: 28px;
+  padding: 0 8px 0 10px;
+  font-size: 13px;
+  background: rgb(255 255 255 / 4%);
+  border: 1px solid rgb(255 255 255 / 6%);
+}
+
+.header-chat-search-card .header-chat-search-field:focus-within {
+  background: rgb(255 255 255 / 7%);
+  border-color: rgb(255 255 255 / 12%);
+}
+
+.header-chat-search-sheet-dock {
+  z-index: 1100;
+  justify-content: flex-start;
 }
 
 .header-chat-search-field,
@@ -126,8 +148,7 @@
 .header-chat-search-clear:hover { background: var(--chrome-control-hover); color: var(--chrome-fg-strong); }
 
 /* One kbd treatment for the pill hint and the palette footer. */
-.header-chat-search kbd,
-.dock-start-chat-search kbd {
+.header-chat-search kbd {
   display: inline-grid;
   place-items: center;
   min-width: 17px;
@@ -456,3 +477,13 @@
   .header-chat-search-sheet[data-phase='closing'] .header-chat-search-popup { animation: none; opacity: 0; }
   .header-chat-search-spinner { animation: none; }
 }
+
+/* The card popup is portalled beyond transformed/clipped card ancestors. */
+.header-chat-search-sheet-dock .header-chat-search-popup {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: inherit;
+}
+.header-chat-search-sheet-dock .header-chat-search-list { min-height: 0; }
+.header-chat-search-sheet-dock .header-chat-search-footer { flex-shrink: 0; }

@@ -14,15 +14,15 @@ test('workspace edges snap a column, the top maximizes', () => {
   assert.deepEqual(windowTargetAt('m', 600, -30, canvas, tiled, floating), { kind: 'maximize' })
 })
 
-test('a tab strip groups, an outer band splits, the middle floats', () => {
-  assert.deepEqual(windowTargetAt('m', 300, 20, canvas, tiled, []), { kind: 'group', target: 'a' })
+test('chat cards split at an outer band and float in the middle', () => {
+  assert.deepEqual(windowTargetAt('m', 300, 20, canvas, tiled, []), { kind: 'split', target: 'a', edge: 'top' })
   assert.deepEqual(windowTargetAt('m', 300, 780, canvas, tiled, []), { kind: 'split', target: 'a', edge: 'bottom' })
   assert.deepEqual(windowTargetAt('m', 580, 400, canvas, tiled, []), { kind: 'split', target: 'a', edge: 'right' })
   assert.deepEqual(windowTargetAt('m', 300, 400, canvas, tiled, []), { kind: 'free' })
 })
 
 test('a floating window hides what lies under it; the browser never groups', () => {
-  assert.deepEqual(windowTargetAt('m', 300, 210, canvas, tiled, floating), { kind: 'group', target: 'f' })
+  assert.deepEqual(windowTargetAt('m', 300, 210, canvas, tiled, floating), { kind: 'free' })
   assert.deepEqual(windowTargetAt('m', 210, 480, canvas, tiled, floating), { kind: 'free' }, 'the tiled band under it is covered')
   assert.deepEqual(windowTargetAt('m', 900, 20, canvas, tiled, []), { kind: 'split', target: BROWSER_PANE_ID, edge: 'top' }, 'the browser strip stacks above it')
   assert.deepEqual(windowTargetAt(BROWSER_PANE_ID, 300, 20, canvas, tiled, []), { kind: 'split', target: 'a', edge: 'top' })

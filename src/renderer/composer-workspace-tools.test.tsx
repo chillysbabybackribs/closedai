@@ -8,6 +8,7 @@ import { ComposerWorkspaceTools, type ComposerWorkspaceToolsProps } from './comp
 
 const actions = {
   toggleBrowser: () => {},
+  openFile: async () => {},
   newChat: () => {},
   openAgentsView: () => {},
   focusChatTab: async () => {},

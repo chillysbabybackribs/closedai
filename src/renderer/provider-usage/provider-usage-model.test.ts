@@ -2,7 +2,10 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { ChatPlanUsage } from '../../shared/chat.js'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
-import { providerUsageEntries, usageChipDisplay, usageChipText, usageHeadline, usageWindowState, USAGE_STALE_MS } from './provider-usage-model.js'
+import {
+  providerUsageEntries, roughSpan, spanNote, tightestUsage, usageHeadline, usagePace, usageVerdict, usageWindowDuration,
+  usageWindowState, USAGE_STALE_MS
+} from './provider-usage-model.js'
 
 const NOW = 1_800_000_000_000
 function usage(percent = 38, updatedAt = NOW): ChatPlanUsage {
@@ -55,18 +58,6 @@ test('unknown, missing and invalid readings never become a healthy zero', () => 
   assert.equal(usageHeadline(usage(0, 0), NOW).level, 'stale')
 })
 
-test('chips name the plan when quota windows are missing and the percent when they exist', () => {
-  const missing = { plan: 'Pro Lite', note: null, unavailable: 'No windows', updatedAt: NOW, windows: [] }
-  assert.equal(usageChipText(missing, null, NOW), 'Pro Lite')
-  assert.equal(usageChipText({ ...missing, plan: 'Pro' }, null, NOW), 'Pro')
-  assert.equal(usageChipText({ ...missing, plan: null }, 'prolite', NOW), 'prolite')
-  assert.equal(usageChipText({ ...missing, plan: null }, null, NOW), 'Unavailable')
-  assert.equal(usageChipText(usage(28), 'prolite', NOW), '72%')
-  assert.equal(usageChipDisplay(usage(28), null, NOW, 'Codex').ariaLabel, 'Codex: 72% remaining · lowest: 5-hour')
-  assert.equal(usageChipDisplay(missing, null, NOW, 'Cursor').ariaLabel, 'Cursor: Pro Lite · usage unavailable')
-})
-
-
 test('startup includes every provider without any chat runtimes', () => {
   const entries = providerUsageEntries([], [])
   assert.deepEqual(entries.map((entry) => entry.provider), ['codex', 'claude', 'antigravity', 'cursor'])
@@ -80,4 +71,69 @@ test('account probes and chat push readings choose newest without duplicating ac
   const entries = providerUsageEntries([chat], [{ provider: 'codex', account: chat.providerUsage!.account, usage: usage(20, NOW - 1) }])
   assert.equal(entries.filter((entry) => entry.provider === 'codex').length, 1)
   assert.equal(entries[0].usage?.windows[0].percent, 40)
+})
+
+const HOUR = 3_600_000
+const DAY = 24 * HOUR
+
+test('window length comes from the label, and a month from its own reset', () => {
+  assert.equal(usageWindowDuration({ label: '5-hour', percent: 0, resetsAt: null }), 5 * HOUR)
+  assert.equal(usageWindowDuration({ label: 'Weekly (Opus)', percent: 0, resetsAt: null }), 7 * DAY)
+  assert.equal(usageWindowDuration({ label: 'Daily', percent: 0, resetsAt: null }), DAY)
+  assert.equal(usageWindowDuration({ label: '3-day', percent: 0, resetsAt: null }), 3 * DAY)
+  const reset = new Date(2026, 9, 15).getTime()
+  assert.equal(usageWindowDuration({ label: 'Monthly included', percent: 0, resetsAt: reset }), reset - new Date(2026, 8, 15).getTime())
+  assert.equal(usageWindowDuration({ label: 'Monthly included', percent: 0, resetsAt: null }), null)
+  assert.equal(usageWindowDuration({ label: 'Gemini Pro', percent: 0, resetsAt: NOW }), null)
+})
+
+test('pace warns only when the average rate empties the window before its reset', () => {
+  const window = (percent: number, hoursLeft: number) => ({ label: '5-hour', percent, resetsAt: NOW + hoursLeft * HOUR })
+  const pace = (percent: number, hoursLeft: number) => usagePace(window(percent, hoursLeft), usage(), NOW)
+  // 60% gone in the first two hours: the rest lasts 80 more minutes, 100 short of the reset.
+  const hot = pace(60, 3)
+  assert.equal(hot?.runsOutAt, NOW + 80 * 60_000)
+  assert.equal(hot?.shortBy, 100 * 60_000)
+  assert.equal(pace(40, 3), null, 'exactly on pace is not a warning')
+  assert.equal(pace(20, 1), null, 'under pace')
+  assert.equal(pace(9, 4.4), null, 'too little of the allowance spent to call it a rate')
+  assert.equal(pace(30, 4.8), null, 'too little of the window elapsed to call it a rate')
+  assert.equal(pace(100, 3), null, 'an empty window has no pace')
+  assert.equal(usagePace({ label: '5-hour', percent: 60, resetsAt: null }, usage(), NOW), null)
+  assert.equal(usagePace({ label: 'Gemini Pro', percent: 60, resetsAt: NOW + HOUR }, usage(), NOW), null)
+  assert.equal(usagePace(window(60, 3), usage(60, NOW - USAGE_STALE_MS - 1), NOW), null, 'a stale reading projects nothing')
+})
+
+test('the tightest window is the lowest remaining across every plan', () => {
+  const weekly: ChatPlanUsage = { plan: 'Max', note: null, unavailable: null, updatedAt: NOW, windows: [
+    { label: '5-hour', percent: 10, resetsAt: NOW + HOUR }, { label: 'Weekly', percent: 83, resetsAt: NOW + 5 * DAY + 8 * HOUR }
+  ] }
+  const entries = providerUsageEntries([], [
+    { provider: 'codex', account: null, usage: usage(38) },
+    { provider: 'claude', account: null, usage: weekly },
+    { provider: 'cursor', account: null, usage: { ...usage(), windows: [], unavailable: 'Signed out' } }
+  ])
+  const tightest = tightestUsage(entries, NOW)
+  assert.equal(tightest?.entry.provider, 'claude')
+  assert.equal(tightest?.window.label, 'Weekly')
+  assert.equal(tightest?.remaining, 17)
+  assert.equal(tightest?.level, 'low')
+  assert.equal(usageVerdict(tightest, 'Claude Code', NOW), 'Claude Code Weekly is down to 17% left and resets in 5d 8h.')
+  assert.equal(tightestUsage(providerUsageEntries([], []), NOW), null)
+  assert.equal(usageVerdict(null, '', NOW), 'No plan has reported a quota yet.')
+  const roomy = tightestUsage(providerUsageEntries([], [{ provider: 'codex', account: null, usage: usage(38) }]), NOW)
+  assert.equal(usageVerdict(roomy, 'Codex', NOW), 'Every plan has room. The tightest is Codex 5-hour at 62% left.')
+  const empty = tightestUsage(providerUsageEntries([], [{ provider: 'codex', account: null, usage: usage(100) }]), NOW)
+  assert.equal(usageVerdict(empty, 'Codex', NOW), 'Codex 5-hour is used up and resets in 1h.')
+})
+
+test('spans keep two units', () => {
+  assert.equal(spanNote(20_000), 'under a minute')
+  assert.equal(spanNote(45 * 60_000), '45m')
+  assert.equal(spanNote(2 * HOUR + 14 * 60_000), '2h 14m')
+  assert.equal(spanNote(3 * HOUR), '3h')
+  assert.equal(spanNote(5 * DAY + 8 * HOUR + 20 * 60_000), '5d 8h')
+  assert.equal(roughSpan(4 * DAY + 23 * HOUR), '5d')
+  assert.equal(roughSpan(100 * 60_000), '2h')
+  assert.equal(roughSpan(40 * 60_000), '40m')
 })

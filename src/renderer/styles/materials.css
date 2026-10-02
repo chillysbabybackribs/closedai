@@ -1,0 +1,331 @@
+/* Graphite, aligned to linear.app/build (measured 2026-10-01). Four rules carry the look:
+   three planes (page #08090a, panel #0f1011, raised #1c1c1f) with every further lift drawn as
+   white at 2-8% over the plane; edges as alpha white, never a new grey; two weights, 400 and
+   510; one accent, indigo, spent on send, toggles, focus and selection only. */
+:root:root {
+  --font-sans: "Inter Variable", Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, Consolas, monospace;
+  font-feature-settings: "cv01", "ss03";
+  --font-weight-medium: 510;
+  --font-weight-semibold: 510;
+  --font-weight-bold: 590;
+  --radius: 0.5rem;
+  --duration-chrome: 160ms;
+  --ease-chrome: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --surface-header: #0f1011;
+  --surface-footer: #0f1011;
+  --titlebar-surface: var(--surface-header);
+  --shell-texture: linear-gradient(transparent, transparent);
+  --panel-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 3%), inset 0 1px 0 rgb(255 255 255 / 4%),
+    0 0 0 1px rgb(0 0 0 / 60%), 0 4px 4px rgb(0 0 0 / 10%), 0 18px 48px rgb(0 0 0 / 45%);
+}
+:root :is(code, pre, kbd, samp) { font-feature-settings: normal; }
+
+:root .shell-titlebar {
+  background: var(--shell-texture), var(--surface-header);
+}
+/* A light local backing unifies the centered dock without a full-width footer rail. */
+:root [data-slot='dock-control-cluster'] {
+  background: color-mix(in srgb, var(--surface-card) 62%, transparent);
+  backdrop-filter: blur(12px);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 4%), 0 3px 12px rgb(0 0 0 / 14%);
+}
+
+/* One ramp for the root and for every scope that rebinds surfaces locally (tiles, panes, the
+   browser shell, the notepad's floating chat), so no area keeps an older charcoal.
+   `:root:root` here and below holds specificity (0,2,0) so these rules keep out-ranking the
+   single-:root rules they override. */
+:root:root,
+:root:root :is(.chat-layout-tile:is([data-pane-id], [data-view-id]), .chat-pane,
+  .browser-shell, .notepad-chat-layer .quick-chat-card) {
+  --chassis: #08090a;
+  --surface-chrome: #0f1011;
+  --surface-card: #0f1011;
+  --surface-raised: #1c1c1f;
+  --surface-control: #232326;
+  --surface-control-hover: #28282c;
+  --hairline: rgb(255 255 255 / 8%);
+  --hairline-strong: rgb(255 255 255 / 13%);
+  --tile-edge: rgb(255 255 255 / 8%);
+  --border: rgb(255 255 255 / 8%);
+  --input: rgb(255 255 255 / 10%);
+  --background: #0f1011;
+  --card: #0f1011;
+  --popover: #1c1c1f;
+  --secondary: #232326;
+  --muted: #232326;
+  --accent: #28282c;
+  --foreground: #f7f8f8;
+  --card-foreground: #f7f8f8;
+  --popover-foreground: #f7f8f8;
+  --muted-foreground: #8a8f98;
+  --chrome-fg: #8a8f98;
+  --chrome-fg-strong: #e3e5e8;
+  --chrome-control-fg: #8a8f98;
+  --chrome-control-muted: #8a8f98;
+  --chrome-control-quiet: #62666d;
+  --menu-surface: #1c1c1f;
+  --menu-edge: rgb(255 255 255 / 13%);
+  --menu-quiet: #8a8f98;
+  --menu-glyph: #8a8f98;
+  --transcript-heading: #f7f8f8;
+  --transcript-strong: #d0d6e0;
+  --transcript-copy: #b3b8c1;
+  --transcript-secondary: #8a8f98;
+  --transcript-activity: #696a6c;
+  --transcript-activity-hover: #a0a4ab;
+  /* Indigo: the fill for send, toggles and selection; a lighter ink where it is text on graphite. */
+  --accent-fill: #5e6ad2;
+  --accent-fill-hover: #6a76e3;
+  --antigravity-blue: #7a88ff;
+  --antigravity-blue-hover: #96a1ff;
+  --antigravity-blue-glow: rgb(94 106 210 / 24%);
+  --tab-accent: #7a88ff;
+  --link-ink: #7a88ff;
+  --ring: #5e6ad2;
+  --focus-ink: #5e6ad2;
+}
+:root:root ::selection { background: rgb(94 106 210 / 40%); }
+
+/* Graphite chat window, measured off Linear's agent chat card: one near-black plane under a
+   single hairline, lit by a soft glow that falls from the top-left corner through the header
+   and into the transcript. The header, tab strip and transcript are clear so the glow reads as
+   one continuous surface; the bubble and composer are the only raised steps. */
+:root .chat-pane { --capsule-radius: 14px; }
+:root:root .chat-layout-tile[data-pane-id],
+:root:root .chat-pane {
+  --chat-reading-surface: #0f1011;
+  --tab-active-surface: transparent;
+  --tab-fill-active: rgb(255 255 255 / 5%);
+  --tab-fill-hover: rgb(255 255 255 / 3%);
+}
+:root:root .chat-pane {
+  --capsule-fill: #191a1c;
+  --capsule-edge: #26272a;
+  --capsule-sheen: transparent;
+  --capsule-wash: var(--pane-grain, linear-gradient(transparent, transparent));
+  --capsule-shadow: 0 0 0 transparent;
+}
+:root:root .chat-pane .composer-tool-count { color: #fff; }
+/* Graphite material, two layers. The cloud is low-frequency noise kept soft across its whole
+   range (no thresholded strokes, no bristle), so the plane drifts between near-black and a
+   lighter graphite grey the way Linear's card does. The grain is a fine tiled noise at ~2% that
+   gives the surface tooth. Every tile takes both layers; rails, menus, dialogs and the composer
+   take the grain alone (--shell-texture), so the whole app reads as one sheet. */
+:root:root {
+  --shell-texture: var(--pane-grain);
+  --pane-sheen: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 800' preserveAspectRatio='none'><filter id='s' x='0' y='0' width='100%' height='100%' color-interpolation-filters='sRGB'><feTurbulence type='fractalNoise' baseFrequency='0.0013 0.0021' numOctaves='3' seed='11'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0.17 0 0 0 -0.066'/></filter><rect x='-500' y='-500' width='2000' height='1800' filter='url(%23s)' transform='rotate(-24 500 400)'/></svg>");
+  --pane-grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n' x='0' y='0' width='100%' height='100%' color-interpolation-filters='sRGB'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='7' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0.09 0 0 0 -0.038'/></filter><rect width='240' height='240' filter='url(%23n)'/></svg>");
+}
+:root:root .chat-layout-tile:not([data-drag-placeholder]) {
+  border-color: var(--hairline);
+  background:
+    var(--pane-grain) 0 0 / 240px 240px,
+    var(--pane-sheen) center / 100% 100% no-repeat,
+    radial-gradient(ellipse 82% 330px at 0 0,
+      rgb(255 255 255 / 4.9%) 0, rgb(255 255 255 / 4.5%) 30%, rgb(255 255 255 / 3.1%) 45%,
+      rgb(255 255 255 / 1.6%) 60%, rgb(255 255 255 / 0.4%) 76%, transparent 92%),
+    var(--surface-card);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 12px 32px rgb(0 0 0 / 34%), 0 28px 64px rgb(0 0 0 / 30%);
+}
+:root:root .chat-layout-tile[data-selected='true']:not([data-drag-placeholder]) {
+  border-color: var(--hairline-strong);
+}
+:root:root .chat-layout-tile :is(.chat-layout-header, .chat-layout-tab-strip, .chat-pane, .chat-turn-user) {
+  background: transparent;
+}
+/* View bodies are clear too, so the tile's material carries through the browser chrome, the
+   notepad and the workspace views instead of stopping at a flat inner panel. */
+:root:root .chat-layout-tile :is(.browser-pane, .browser-shell, .notepad-view, .workspace-view) {
+  background: transparent;
+  box-shadow: none;
+}
+/* Browser in a tile: the strip and toolbar read as quiet steps on the same graphite sheet, not a
+   second shell card with its own charcoal fills. */
+:root:root .chat-layout-tile .browser-tabstrip {
+  --tab-active-surface: transparent;
+  --tab-fill-active: rgb(255 255 255 / 5%);
+  --tab-fill-hover: rgb(255 255 255 / 3%);
+  background: transparent;
+}
+:root:root .chat-layout-tile .browser-toolbar {
+  background: transparent;
+  box-shadow: inset 0 -1px 0 var(--hairline);
+}
+/* Agent library cards lift lighter than the tile plane (Linear auto-close / cycle cards). */
+:root:root .agent-card[data-ui='agents.card'] {
+  border-color: var(--hairline);
+  background: rgb(255 255 255 / 5%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 4%);
+}
+:root:root .chat-pane .message-user .prompt-message-user-content {
+  border-color: transparent;
+  background: rgb(255 255 255 / 4%);
+  box-shadow: none;
+  color: var(--transcript-strong);
+}
+:root:root .chat-pane .composer-textarea::placeholder { color: #414448; opacity: 1; }
+:root .agent-run-strip { border-radius: 6px; }
+/* Warm paper keeps the quiet vertical sheen on its non-chat tiles. */
+:root .chat-layout-tile:not([data-drag-placeholder]) { border-radius: 12px; }
+:root .chat-layout-tile:not([data-pane-id], [data-drag-placeholder]) {
+  border-color: var(--hairline);
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 2.5%) 0, rgb(255 255 255 / 0%) 96px),
+    var(--surface-card);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 4.5%),
+    inset 0 0 0 1px rgb(255 255 255 / 1.5%),
+    0 1px 2px rgb(0 0 0 / 24%),
+    0 6px 16px rgb(0 0 0 / 26%),
+    0 20px 48px rgb(0 0 0 / 30%);
+}
+:root .chat-layout-tile[data-window='floating'] > .chat-layout-tile-body { border-radius: 6px; }
+:root .composer-stack { border-radius: var(--capsule-radius); }
+:root .composer::before { background-image: none; }
+
+/* Portaled surfaces share the same material regardless of wallpaper or owner. */
+:root :is([data-slot='dialog-content'], [data-slot='alert-dialog-content'],
+  [data-slot='popover-content'], [data-slot='dropdown-menu-content'],
+  [data-slot='dropdown-menu-sub-content'], [data-slot='select-content'],
+  [data-slot='tooltip-content'], .titlebar-menu-content, .dock-panel,
+  .browser-suggestions, .header-chat-search-popup) {
+  border-radius: 8px;
+  border-color: var(--hairline-strong);
+  background: var(--shell-texture), var(--surface-raised);
+  color: var(--foreground);
+  backdrop-filter: none;
+  box-shadow: var(--panel-shadow);
+  font-family: var(--font-sans);
+  font-synthesis: none;
+}
+:root :is([data-slot='dialog-content'], [data-slot='alert-dialog-content']) {
+  border-radius: 8px;
+}
+/* Segmented controls and outline buttons: a 3% tray whose chosen segment is an 8% lift, and a
+   hairline button over a 2% fill. No control draws a white or currentColor edge. */
+:root:root :is(.settings-tabs, .security-segmented) {
+  border-color: var(--hairline);
+  border-radius: 8px;
+  background: rgb(255 255 255 / 3%);
+}
+:root:root :is(.settings-tab[data-state='active'], .security-segment[data-state='checked']) {
+  background: rgb(255 255 255 / 8%);
+  box-shadow: none;
+}
+:root:root [data-slot='button'][data-variant='outline'] {
+  border-color: var(--hairline-strong);
+  background: rgb(255 255 255 / 2%);
+  box-shadow: none;
+}
+:root:root [data-slot='button'][data-variant='outline']:hover:not(:disabled) {
+  background: rgb(255 255 255 / 5%);
+}
+/* Lists and menus: section labels plus 5% hover / 8% selection; indigo only marks the current chat. */
+:root:root :is(
+  [data-slot='dropdown-menu-item'],
+  [data-slot='dropdown-menu-checkbox-item'],
+  [data-slot='dropdown-menu-radio-item'],
+  [data-slot='command-item'],
+  .titlebar-menu-item,
+  .header-chat-search-row,
+  .chat-history-row
+) {
+  border-radius: 6px;
+}
+:root:root :is(
+  [data-slot='dropdown-menu-item'],
+  [data-slot='dropdown-menu-checkbox-item'],
+  [data-slot='dropdown-menu-radio-item'],
+  [data-slot='command-item'],
+  .titlebar-menu-item
+)[data-highlighted],
+:root:root [data-slot='command-item'][data-selected='true'],
+:root:root [data-slot='command-item'][data-state='open'],
+:root:root .header-chat-search-row[aria-selected='true'],
+:root:root .chat-history-row:is(:hover, :focus-within) {
+  background: rgb(255 255 255 / 5%);
+  color: var(--foreground);
+}
+:root:root :is(
+  [data-slot='command-item'][data-selected='true'],
+  [data-slot='command-item'][data-state='open']
+) {
+  background: rgb(255 255 255 / 8%);
+}
+:root:root .chat-history-row[data-current] {
+  background: rgb(94 106 210 / 14%);
+}
+:root:root .chat-history-search {
+  border-color: var(--hairline);
+  background: rgb(255 255 255 / 3%);
+}
+:root:root .chat-history-group {
+  font-size: 11px;
+  font-weight: 510;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+:root:root .chat-history-title {
+  font-size: 13px;
+  line-height: 20px;
+}
+:root:root .composer-setup-label {
+  font-weight: 510;
+  letter-spacing: 0.06em;
+}
+:root :is([data-slot='dropdown-menu-item'], [data-slot='dropdown-menu-checkbox-item'],
+  [data-slot='dropdown-menu-radio-item'], .titlebar-menu-item, .settings-tab) {
+  transition: background-color var(--duration-chrome) var(--ease-chrome), color var(--duration-chrome) var(--ease-chrome);
+}
+:root:root .settings-tab { border-radius: 6px; }
+:root .settings-tab { border-radius: 4px; }
+:root :is(.agent-run-strip, .browser-suggestions) {
+  background-color: var(--surface-raised);
+  backdrop-filter: none;
+}
+/* Dock flyouts float above their controls, rounded all round, with a deep shadow and a fine top edge. */
+:root .dock-flyout {
+  border-radius: 14px;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 4%), 0 2px 4px rgb(0 0 0 / 30%), 0 24px 56px -8px rgb(0 0 0 / 60%);
+}
+:root .dock-flyout[data-state='open'] { animation: dock-flyout-rise var(--duration-chrome) var(--ease-chrome); }
+:root .dock-flyout[data-state='closed'] { animation: dock-flyout-sink var(--duration-chrome) var(--ease-chrome) forwards; }
+@keyframes dock-flyout-rise {
+  from { opacity: 0; transform: translateY(10px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes dock-flyout-sink {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: translateY(10px) scale(0.985); }
+}
+
+/* Bottom wall. The header is the permanent top wall; while the dock is showing, a shade rises
+   from the bottom edge so the windows read as sitting inside the room the dock closes. Paint
+   only (above the canvas, below the dock and menus, no pointer input): tiling and bounds are
+   untouched. A native browser page paints above the DOM, so only DOM chrome takes the shade. */
+:root .workspace { position: relative; }
+:root .workspace::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0;
+  z-index: 20;
+  height: 132px;
+  pointer-events: none;
+  background: linear-gradient(transparent, rgb(0 0 0 / 22%) 55%, rgb(0 0 0 / 46%));
+  opacity: 0;
+  transition: opacity 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+:root .workspace:has([data-slot='app-dock'][data-state='open'])::after { opacity: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  :root .workspace::after { transition: none; }
+  :root :is([data-slot='dialog-content'], [data-slot='popover-content'],
+    [data-slot='dropdown-menu-content'], .dock-panel, .titlebar-menu-content) {
+    animation: none;
+    transition: none;
+  }
+  :root :is([data-slot='dropdown-menu-item'], .titlebar-menu-item, .settings-tab) { transition: none; }
+  :root .dock-flyout:is([data-state='open'], [data-state='closed']) { animation: none; }
+}

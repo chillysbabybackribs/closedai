@@ -9,10 +9,10 @@ import { MENU_KEYS_ON_SELECTED_CHAT, type AppMenuKey, type AppMenuRunResult } fr
 
 /** Everything a menu row can do besides zoom. */
 export type MenuAction =
-  | 'new-chat' | 'history' | 'settings' | 'sign-out' | 'close-tab' | 'close-window' | 'search-chats'
+  | 'new-chat' | 'history' | 'settings' | 'connect-providers' | 'sign-out' | 'close-tab' | 'close-window' | 'search-chats'
   | 'toggle-browser' | 'saved-sites' | 'layout' | 'toggle-fullscreen'
   | 'agents' | 'tools' | 'compact' | 'stop-turn'
-  | 'trace' | 'reload' | 'devtools' | 'overview' | 'tile-windows' | 'notepad'
+  | 'trace' | 'reload' | 'devtools' | 'overview' | 'restore-floating-pair' | 'tile-windows' | 'notepad'
 
 type MenuControlUi = { control: 'layout.dock-preset' | 'layout.preset-menu-custom'; item?: string }
 
@@ -61,6 +61,7 @@ export const MENUS: Menu[] = [
       { key: 'manage-chat-history', label: 'Manage chat history', action: 'history' },
       SEP,
       { key: 'settings', label: 'Settings', shortcut: 'Ctrl+,', action: 'settings' },
+      { key: 'connect-providers', label: 'Connect providers…', action: 'connect-providers' },
       { key: 'sign-out', label: 'Sign out…', action: 'sign-out' },
       SEP,
       { key: 'close-tab', label: 'Close tab', shortcut: 'Ctrl+W', action: 'close-tab' },
@@ -74,7 +75,8 @@ export const MENUS: Menu[] = [
       { key: 'toggle-browser-pane', label: 'Toggle browser pane', action: 'toggle-browser' },
       { key: 'notepad', label: 'Notepad', shortcut: 'Ctrl+Shift+N', action: 'notepad' },
       { key: 'overview', label: 'Workspace overview', shortcut: 'Ctrl+Shift+O', action: 'overview' },
-      { key: 'tile-windows', label: 'Tile windows', shortcut: 'Ctrl+Shift+L', action: 'tile-windows' },
+      { key: 'restore-floating-pair', label: 'Restore chat & browser pair', shortcut: 'Ctrl+Shift+B', action: 'restore-floating-pair' },
+      { key: 'tile-windows', label: 'Tile windows (full workspace)', shortcut: 'Ctrl+Shift+L', action: 'tile-windows' },
       SEP,
       ...VIEW_LAYOUT_ROWS,
       SEP,
@@ -133,6 +135,7 @@ export function menuItemDisabled(row: MenuItem, state: Pick<TitlebarMenuProps,
   'chatZoom' | 'tileEnabled' | 'layoutEnabled' | 'compactEnabled' | 'stopEnabled'>): boolean {
   if (row.command) return zoomCommandIsDisabled(row.command, state.chatZoom)
   if (row.action === 'tile-windows') return !state.tileEnabled
+  if (row.action === 'restore-floating-pair') return !state.layoutEnabled
   if (row.layoutPreset || row.action === 'toggle-browser' || row.action === 'layout' || row.action === 'overview') return !state.layoutEnabled
   if (row.action === 'compact') return !state.compactEnabled
   if (row.action === 'stop-turn') return !state.stopEnabled

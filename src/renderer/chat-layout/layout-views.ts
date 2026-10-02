@@ -1,27 +1,28 @@
-import { VIEW_TAB_PREFIX, isViewTabId, type ChatLayout, type ViewScopes } from './layout-tree.js'
-import { tabIds, tabOwner } from './layout-tabs.js'
+import { layoutGroups } from './layout-docking.js'
+import { VIEW_TAB_PREFIX, isViewTabId, paneIds, type ChatLayout, type ViewScopes } from './layout-tree.js'
+import { addTab, removeTab, selectTab, tabIds, tabOwner } from './layout-tabs.js'
+import { tabInNewWindow } from './floating/window-layout.js'
 
-// A view is a tab with a kind, not a chat and not a dialog: it shares the strip, drag, close and
-// split with chats, and shows something about one chat (its scope) or about the workspace.
+// A view is a tab with a kind, not a chat and not a dialog. A window's tabs are all one kind: chats
+// only ever share a strip with chats, notes with notes, Trace with Trace. A view opens in a window
+// of its own kind, else in a new window, and shows something about one chat (its scope) or about
+// the workspace.
 
-export const VIEW_KINDS = ['trace', 'agents', 'history', 'tools', 'saved-sites', 'note'] as const
+export const VIEW_KINDS = ['trace', 'history', 'tools', 'saved-sites', 'note', 'file'] as const
 export type ViewKind = typeof VIEW_KINDS[number]
 
-/** Views that show workspace-wide content: one tab for the whole layout, opened or focused from anywhere. */
-export const WORKSPACE_VIEW_KINDS = ['agents', 'saved-sites'] as const satisfies readonly ViewKind[]
-export type WorkspaceViewKind = typeof WORKSPACE_VIEW_KINDS[number]
-
-export function isWorkspaceViewKind(kind: ViewKind): kind is WorkspaceViewKind {
-  return (WORKSPACE_VIEW_KINDS as readonly string[]).includes(kind)
+/** Notes and files are one tab per item; every other kind is one tab for the whole layout. */
+export function isSingletonViewKind(kind: ViewKind): boolean {
+  return kind !== 'note' && kind !== 'file'
 }
 
 export const VIEW_LABELS: Record<ViewKind, string> = {
   trace: 'Trace',
-  agents: 'Agents',
   history: 'History',
   tools: 'Tools',
   'saved-sites': 'Saved sites',
-  note: 'Note'
+  note: 'Note',
+  file: 'File'
 }
 
 export type ViewTab = { id: string; kind: ViewKind }
@@ -40,23 +41,60 @@ export function viewKindOf(id: string): ViewKind | null {
   return parseViewTab(id)?.kind ?? null
 }
 
+/** 'chat', a view kind, or null for a view tab of a retired kind (Agents is a dialog now). */
+export type TabKind = ViewKind | 'chat'
+export function tabKind(id: string): TabKind | null {
+  return isViewTabId(id) ? viewKindOf(id) : 'chat'
+}
+
+/** Whether `id` may join the strip of the window whose front tab is `tile`. */
+export function sameTabKind(id: string, tile: string): boolean {
+  return tabKind(id) !== null && tabKind(id) !== 'chat' && tabKind(id) === tabKind(tile)
+}
+
+/** The window `id` joins: `near`'s when it holds that kind, else any that does (shown before minimized). */
+export function tileForTab(tree: ChatLayout, id: string, near?: string | null): string | null {
+  const owner = near ? tabOwner(tree, near) : null
+  if (owner && sameTabKind(id, owner)) return owner
+  const groups = layoutGroups(tree).filter((group) => sameTabKind(id, group.id))
+  return groups.find((group) => !group.docked)?.id ?? groups[0]?.id ?? null
+}
+
+/**
+ * Show a tab: where it already is, else in a window of its kind (`near`'s, or any), else in a new
+ * window: tiled by `place` (the layout's auto placement) when it finds room, else floating.
+ */
+export function openTabInTree(tree: ChatLayout, id: string, near: string | null, splitId: string, newWindow = false,
+  place?: (tree: ChatLayout, id: string) => ChatLayout | null): ChatLayout {
+  const holder = tabOwner(tree, id)
+  if (holder) return selectTab(tree, holder, id)
+  const tile = newWindow ? null : tileForTab(tree, id, near)
+  if (tile) return addTab(tree, tile, id)
+  return place?.(tree, id) ?? tabInNewWindow(tree, id, near ?? undefined, splitId)
+}
+
+/**
+ * Layouts saved before windows held one kind: a window with a chat keeps only its chats, any other
+ * keeps the kind in front, and tabs of a retired kind go.
+ */
+export function oneKindPerTile(tree: ChatLayout | null): ChatLayout | null {
+  let next = tree
+  for (const tile of paneIds(tree)) {
+    const tabs = tabIds(tree).filter((id) => tabOwner(tree, id) === tile)
+    const kind = tabs.some((id) => tabKind(id) === 'chat') ? 'chat' : tabKind(tile) ?? tabs.map(tabKind).find(Boolean) ?? null
+    for (const id of tabs) if (tabKind(id) === null || tabKind(id) !== kind) next = removeTab(next, id)
+  }
+  return next
+}
+
 /** Chat tabs in the tile that owns `tileId`, in strip order. */
 export function tileChats(tree: ChatLayout | null, tileId: string): string[] {
   return tabIds(tree).filter((id) => !isViewTabId(id) && tabOwner(tree, id) === tileId)
 }
 
-/** The existing view of this kind in a tile, so opening it again selects instead of duplicating. */
-export function tileView(tree: ChatLayout | null, tileId: string, kind: ViewKind): string | null {
-  return tabIds(tree).find((id) => viewKindOf(id) === kind && tabOwner(tree, id) === tileId) ?? null
-}
-
-/** The workspace's single tab of this kind, if any (see {@link WORKSPACE_VIEW_KINDS}). */
-export function workspaceView(tree: ChatLayout | null, kind: WorkspaceViewKind): string | null {
+/** The layout's tab of this kind, if any: opening a singleton kind again focuses it. */
+export function viewOfKind(tree: ChatLayout | null, kind: ViewKind): string | null {
   return tabIds(tree).find((id) => viewKindOf(id) === kind) ?? null
-}
-
-export function hasWorkspaceView(tree: ChatLayout | null, kind: WorkspaceViewKind): boolean {
-  return workspaceView(tree, kind) !== null
 }
 
 export type ViewScope = { chatId: string; mode: 'pinned' | 'following' }

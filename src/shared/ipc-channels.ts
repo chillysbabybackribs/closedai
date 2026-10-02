@@ -15,20 +15,28 @@ import type { ToolManifest, ToolSwitch, ToolTelemetrySnapshot, ToolsEvent } from
 import type { TraceEvent, TraceSnapshot, TraceSnapshotOptions } from './trace.js'
 import type { ProviderAvailability } from './provider-availability.js'
 import type { AppWindowContext, AppWindowId, AppWindowInfo, AppWindowRegion, AppWindowsEvent } from './app-windows.js'
-import type { QuickChatOverlayRequest, QuickChatOverlaySize, QuickChatOverlayState, QuickChatOverlayView } from './quick-chat-overlay.js'
 import type {
   BrowserCookieImportResult, CredentialApprovalRequest, SecurityDecision, SecuritySettings, WebPermissionRequest
 } from './security.js'
 
 /** Invoke channels the preload bridge exposes on `window.closedai`. */
 export type IpcInvokeChannels = {
+  'localFiles:listDirectory': { args: [string, string]; result: import('./file-tree.js').FileTreeListing }
   'localFiles:open': { args: [string, import('./local-files.js').LocalFileOpenOptions?]; result: import('./local-files.js').LocalFileResult }
+  'localFiles:preview': { args: [string, import('./local-files.js').LocalFileOpenOptions?]; result: import('./local-files.js').LocalFilePreview }
+  'localFiles:readPreview': { args: [string]; result: import('./local-files.js').FileTabContent }
+  'localFiles:revealPath': { args: [string]; result: void }
   'localFiles:openImage': { args: [{ name: string; src: string }]; result: string }
   'localFiles:image': { args: [string]; result: import('./local-files.js').ImageTabContent }
   'localFiles:revealImage': { args: [string]; result: void }
+  'localFiles:video': { args: [string]; result: import('./local-files.js').VideoTabContent }
+  'localFiles:revealVideo': { args: [string]; result: void }
   'localFiles:file': { args: [string]; result: import('./local-files.js').FileTabContent }
   'localFiles:revealFile': { args: [string]; result: void }
   'localFiles:setView': { args: [string, import('./local-files.js').FileView]; result: void }
+  'localFiles:searchVideos': { args: [string]; result: import('./video-library.js').VideoLibraryEntry[] }
+  'localFiles:videoRecents': { args: []; result: import('./video-library.js').VideoLibraryEntry[] }
+  'localFiles:pickVideo': { args: []; result: string | null }
   'window:minimize': { args: []; result: void }
   'window:maximize': { args: []; result: void }
   'window:toggleFullscreen': { args: []; result: void }
@@ -51,10 +59,6 @@ export type IpcInvokeChannels = {
   'windows:reportDockSurface': { args: [AppWindowRegion | null]; result: void }
   'windows:routeCrossDock': { args: [import('./cross-window-dock.js').CrossWindowDockRouteRequest]; result: import('./cross-window-dock.js').CrossWindowDockRouteResult }
   'windows:completeCrossDock': { args: [import('./cross-window-dock.js').CrossWindowDockComplete]; result: void }
-  'quickChat:setState': { args: [QuickChatOverlayState]; result: void }
-  'quickChat:view': { args: []; result: QuickChatOverlayView | null }
-  'quickChat:setSize': { args: [QuickChatOverlaySize]; result: void }
-  'quickChat:request': { args: [QuickChatOverlayRequest]; result: void }
   'browser:setBounds': { args: [BrowserBounds]; result: void }
   'browser:navigate': { args: [string]; result: void }
   'browser:back': { args: []; result: void }
@@ -75,6 +79,8 @@ export type IpcInvokeChannels = {
   'browser:renameTab': { args: [string, string | null]; result: void }
   'browser:selectTab': { args: [string]; result: void }
   'browser:capture': { args: []; result: BrowserShot | null }
+  'browser:openVideoHub': { args: []; result: string }
+  'browser:videoCompare': { args: [import('./types.js').VideoCompareCommand]; result: void }
   'browser:resolvePermission': { args: [string, SecurityDecision]; result: void }
   'browserDownloads:list': { args: []; result: BrowserDownload[] }
   'browserDownloads:pause': { args: [string]; result: void }
@@ -184,7 +190,6 @@ export type IpcEventChannels = {
   'models:event': ModelsEvent
   'trace:event': TraceEvent
   'windows:event': AppWindowsEvent
-  'quickChat:view': QuickChatOverlayView
 }
 
 export type IpcEventChannel = keyof IpcEventChannels
@@ -193,10 +198,16 @@ export type IpcEventChannel = keyof IpcEventChannels
 export const IPC = {
   invoke: {
     localFiles: {
-      open: 'localFiles:open', openImage: 'localFiles:openImage',
+      listDirectory: 'localFiles:listDirectory',
+      open: 'localFiles:open', preview: 'localFiles:preview', readPreview: 'localFiles:readPreview', revealPath: 'localFiles:revealPath',
+      openImage: 'localFiles:openImage',
       image: 'localFiles:image', revealImage: 'localFiles:revealImage',
+      video: 'localFiles:video', revealVideo: 'localFiles:revealVideo',
       file: 'localFiles:file', revealFile: 'localFiles:revealFile',
-      setView: 'localFiles:setView'
+      setView: 'localFiles:setView',
+      searchVideos: 'localFiles:searchVideos',
+      videoRecents: 'localFiles:videoRecents',
+      pickVideo: 'localFiles:pickVideo'
     },
     window: {
       minimize: 'window:minimize',
@@ -228,12 +239,6 @@ export const IPC = {
       routeCrossDock: 'windows:routeCrossDock',
       completeCrossDock: 'windows:completeCrossDock'
     },
-    quickChat: {
-      setState: 'quickChat:setState',
-      view: 'quickChat:view',
-      setSize: 'quickChat:setSize',
-      request: 'quickChat:request'
-    },
     browser: {
       setBounds: 'browser:setBounds',
       navigate: 'browser:navigate',
@@ -255,6 +260,8 @@ export const IPC = {
       renameTab: 'browser:renameTab',
       selectTab: 'browser:selectTab',
       capture: 'browser:capture',
+      openVideoHub: 'browser:openVideoHub',
+      videoCompare: 'browser:videoCompare',
       resolvePermission: 'browser:resolvePermission'
     },
     browserDownloads: {
@@ -380,8 +387,7 @@ export const IPC = {
     toolsEvent: 'tools:event',
     modelsEvent: 'models:event',
     traceEvent: 'trace:event',
-    windowsEvent: 'windows:event',
-    quickChatView: 'quickChat:view'
+    windowsEvent: 'windows:event'
   }
 } as const satisfies {
   invoke: Record<string, Record<string, IpcInvokeChannel>>

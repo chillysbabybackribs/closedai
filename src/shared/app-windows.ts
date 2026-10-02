@@ -3,8 +3,6 @@
 // window at a time; closing a detached window hands its chats back to the main window.
 
 import type { AppWindowDockEvent, CrossWindowDockComplete, CrossWindowDockRouteRequest, CrossWindowDockRouteResult } from './cross-window-dock.js'
-import type { QuickChatOverlayRequest } from './quick-chat-overlay.js'
-
 export type AppWindowId = string
 
 export const MAIN_WINDOW_ID: AppWindowId = 'main'
@@ -36,8 +34,6 @@ export type AppWindowCommand =
   | { type: 'adoptTabs'; tabIds: string[] }
   /** Show the browser; sent to the main window from a detached window's Browser control. */
   | { type: 'showBrowser' }
-  /** Open, renew or close the browser's quick chat; sent to the main window from the quick chat layer. */
-  | { type: 'quickChat'; request: QuickChatOverlayRequest }
   /** Remove a pane another window absorbed; close this window when the layout empties. */
   | { type: 'removeCrossDockSource'; paneId: string; tabIds: string[] }
   /** Merge chats dropped from another window using the agreed target zones. */

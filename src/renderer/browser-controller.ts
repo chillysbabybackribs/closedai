@@ -16,9 +16,10 @@ export function useBrowserController(layoutKey?: string, visible = true, occlude
   const omnibox = useOmnibox(state.browser, state.location, state.setLocation, setIsEditingUrl)
   const omniboxCoversPage = isEditingUrl && omnibox.suggestionsOpen
   const titlebarOverlay = useTitlebarBrowserFreeze(omniboxCoversPage, occluded)
-  // Layout occlusion (floating windows, drags, spaces hold) must reach main immediately; waiting
-  // for a freeze still before setBounds(occluded) leaves the native page live or hidden wrong.
-  const pageOccluded = titlebarOverlay.open || occluded
+  // Every cover, floating windows and drags included, parks the native page only once its still
+  // is decoded and showing. Parking on the layout flag alone (before the capture lands) leaves the
+  // empty host on screen for the capture's round trip: the flash at the start of a window drag.
+  const pageOccluded = titlebarOverlay.open
   const browserHostRef = useBrowserBounds(
     layoutKey,
     visible && !state.browser.navigationError,

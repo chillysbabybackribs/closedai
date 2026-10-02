@@ -1,7 +1,7 @@
 import type { JSX, KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Copy, Edit3, PanelRightOpen, RefreshCw, Star, X } from 'lucide-react'
+import { Columns2, Copy, Edit3, PanelRightOpen, RefreshCw, Star, X } from 'lucide-react'
 import type { BrowserTabInfo } from '../shared/types.js'
 import { placeRowMenu, type MenuPlacement } from './menu-position.js'
 import { menuIndexForKey, tabPanelId } from './browser-tab-navigation.js'
@@ -24,7 +24,9 @@ export function BrowserTabMenu({
   onToggleSave,
   onRename,
   onError,
-  onClose
+  onClose,
+  videoPeers = [],
+  inVideoCompare = false
 }: {
   target: BrowserTabMenuTarget
   tabCount: number
@@ -33,6 +35,8 @@ export function BrowserTabMenu({
   onRename: (tab: BrowserTabInfo) => void
   onError: (reason: unknown) => void
   onClose: () => void
+  videoPeers?: BrowserTabInfo[]
+  inVideoCompare?: boolean
 }): JSX.Element {
   const ref = useRef<HTMLDivElement>(null)
   const [placement, setPlacement] = useState<MenuPlacement | null>(null)
@@ -127,6 +131,26 @@ export function BrowserTabMenu({
         item="reload"
         onClick={call(() => browser.reloadTab(target.tab.id))}
       />
+      {target.tab.video && videoPeers.length > 0 && !inVideoCompare ? videoPeers.map((peer) => (
+        <BrowserTabMenuItem
+          key={peer.id}
+          icon={<Columns2 size={13} />}
+          label={`Compare with ${peer.title || 'video'}`}
+          item={`compare-${peer.id}`}
+          onClick={call(async () => {
+            await browser.selectTab(target.tab.id)
+            await browser.videoCompare({ op: 'start', otherTabId: peer.id })
+          })}
+        />
+      )) : null}
+      {target.tab.video && inVideoCompare ? (
+        <BrowserTabMenuItem
+          icon={<Columns2 size={13} />}
+          label="Exit compare"
+          item="compare-exit"
+          onClick={call(() => browser.videoCompare({ op: 'clear' }))}
+        />
+      ) : null}
       <BrowserTabMenuItem
         icon={<Copy size={13} />}
         label="Duplicate"

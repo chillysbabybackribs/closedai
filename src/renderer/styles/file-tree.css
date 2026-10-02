@@ -1,0 +1,23 @@
+.workspace-files-row { display: flex; flex: 1; min-width: 0; min-height: 0; }
+.workspace-files-canvas { display: flex; flex: 1; min-width: 0; min-height: 0; }
+.file-tree-panel { display: flex; flex-direction: column; flex: 0 0 280px; width: 280px; min-height: 0; margin: 16px 0 28px 28px; color: var(--transcript-copy, var(--foreground)); background: var(--surface-card); border: 1px solid var(--hairline); border-radius: 9px; box-shadow: var(--panel-shadow); overflow: hidden; }
+.file-tree-bar { display: flex; align-items: center; justify-content: space-between; height: 34px; flex-shrink: 0; padding: 0 12px; border-bottom: 1px solid var(--hairline); font-size: 12px; }
+.file-tree-bar strong, .file-tree-root strong { font-weight: 500; }
+.file-tree-bar > div { display: flex; gap: 3px; }
+.file-tree-bar button { display: grid; place-items: center; width: 24px; height: 24px; border: 0; border-radius: 4px; background: transparent; color: var(--chrome-fg); cursor: pointer; }
+.file-tree-bar button:hover { background: var(--surface-control-hover); color: var(--foreground); }
+.file-tree-root { display: grid; grid-template-columns: 12px minmax(0, 1fr); align-items: center; gap: 7px; padding: 15px 14px 12px; font-size: 12px; }
+.file-tree-root small { grid-column: 2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; color: var(--muted-foreground); }
+.file-tree-rows { flex: 1; min-height: 0; overflow: auto; padding-bottom: 10px; scrollbar-width: thin; }
+.file-tree-row { display: flex; align-items: center; gap: 7px; width: 100%; height: 25px; padding-right: 10px; border: 0; background: transparent; color: inherit; font: inherit; font-size: 12px; text-align: left; cursor: pointer; }
+.file-tree-row:hover { background: color-mix(in srgb, var(--foreground) 4%, transparent); }
+.file-tree-row[aria-selected='true'] { background: color-mix(in srgb, var(--link-ink) 14%, transparent); box-shadow: inset 2px 0 var(--link-ink); color: var(--foreground); }
+.file-tree-row:focus-visible, .file-tree-bar button:focus-visible { outline: 1px solid var(--focus-ink); outline-offset: -1px; }
+.file-tree-row img { flex: none; }
+.file-tree-chevron { width: 10px; flex: none; color: var(--chrome-fg); }
+.file-tree-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-tree-message { padding: 6px 12px; font-size: 11px; color: var(--muted-foreground); overflow-wrap: anywhere; }
+.file-tree-error { padding: 8px 12px; font-size: 11px; color: var(--foreground); overflow-wrap: anywhere; }
+.file-tree-footer { border-top: 1px solid var(--hairline); padding: 8px 13px; font-size: 10px; color: var(--muted-foreground); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-tree-refreshing { opacity: 0.45; }
+@media (max-width: 850px) { .file-tree-panel { flex-basis: 240px; width: 240px; margin-left: 12px; } }

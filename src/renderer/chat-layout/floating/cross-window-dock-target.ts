@@ -4,6 +4,7 @@ import { absorbCrossWindowDock } from './cross-window-absorb.js'
 import { canvasTiles, floatingFront } from './window-tiles.js'
 import { WINDOW_HEADER } from './window-layout.js'
 import { windowTargetAt, type WindowTarget, type WindowTile } from './window-targets.js'
+import { sameTabKind } from '../layout-views.js'
 
 const inside = (rect: Rect, x: number, y: number): boolean =>
   x >= rect.x && x <= rect.x + rect.width && y >= rect.y && y <= rect.y + rect.height
@@ -18,10 +19,10 @@ const distanceToRect = (rect: Rect, x: number, y: number): number => {
 const dockableTiles = (sourcePaneId: string, tiled: readonly WindowTile[], floating: readonly WindowTile[]): WindowTile[] =>
   [...floating, ...tiled].filter((tile) => tile.id !== sourcePaneId && tile.id !== BROWSER_PANE_ID)
 
-/** Cross-window body over a chat tile: join on the strip, stack top/bottom in the body. */
-function crossDockBodyTarget(tile: WindowTile, pointer: { x: number; y: number }): WindowTarget {
+/** Cross-window body over a tile: join on the strip when it holds the source's kind, stack top/bottom in the body. */
+function crossDockBodyTarget(source: string, tile: WindowTile, pointer: { x: number; y: number }): WindowTarget {
   const { rect } = tile
-  if (pointer.y - rect.y < WINDOW_HEADER) return { kind: 'group', target: tile.id }
+  if (pointer.y - rect.y < WINDOW_HEADER && sameTabKind(source, tile.id)) return { kind: 'group', target: tile.id }
   const mid = rect.y + rect.height / 2
   return { kind: 'split', target: tile.id, edge: pointer.y < mid ? 'top' : 'bottom' }
 }
@@ -67,7 +68,7 @@ export function resolveCrossDockTarget(sourcePaneId: string, pointer: { x: numbe
   if (absorbable(target)) return target
   const dockable = dockableTiles(sourcePaneId, tiled, floating)
   const hit = dockable.find((candidate) => inside(candidate.rect, pointer.x, pointer.y))
-  if (hit) return crossDockBodyTarget(hit, pointer)
+  if (hit) return crossDockBodyTarget(sourcePaneId, hit, pointer)
   const nearest = nearestDockableTile(dockable, pointer)
   return nearest ? crossDockGapTarget(nearest, pointer) : { kind: 'free' }
 }

@@ -1,4 +1,5 @@
 import { BROWSER_PANE_ID, WORKSPACE_DOCK_ID, layoutGeometry, removePane, type ChatLayout, type DockEdge, type Rect } from '../layout-tree.js'
+import { sameTabKind } from '../layout-views.js'
 import { snapToSide } from './window-arrange.js'
 import { WINDOW_HEADER, findWindow, snapWindow } from './window-layout.js'
 
@@ -24,8 +25,9 @@ const SPLIT_BAND = 56
 const inside = (rect: Rect, x: number, y: number): boolean =>
   x >= rect.x && x <= rect.x + rect.width && y >= rect.y && y <= rect.y + rect.height
 
-/** Chats and views group with each other; the browser keeps its own tabs. */
-const groupable = (source: string, target: string): boolean => source !== BROWSER_PANE_ID && target !== BROWSER_PANE_ID
+/** Windows group only with their own kind (chats with chats, notes with notes); the browser keeps its own tabs. */
+const groupable = (source: string, target: string): boolean =>
+  source !== BROWSER_PANE_ID && target !== BROWSER_PANE_ID && sameTabKind(source, target)
 
 /**
  * Resolve the pointer at `x`, `y` (canvas pixels) while `source` moves. `floating` is front to

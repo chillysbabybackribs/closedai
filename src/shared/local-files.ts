@@ -16,7 +16,7 @@ export function localFilePath(value: string | undefined): string | null {
   return path.startsWith('/') && !path.startsWith('//') && !/[\u0000-\u001f]/.test(path) ? path : null
 }
 
-const WORKSPACE_FILE_EXT = /\.(md|markdown|tsx?|jsx?|mjs|cjs|json|ya?ml|css|scss|html?|py|rs|go|java|kt|swift|rb|php|sh|toml|xml|svg|txt|csv|tsv|vue|svelte|sql|graphql|proto|lock)$/i
+const WORKSPACE_FILE_EXT = /\.(md|markdown|tsx?|jsx?|mjs|cjs|json|ya?ml|css|scss|html?|py|rs|go|java|kt|swift|rb|php|sh|toml|xml|svg|txt|csv|tsv|vue|svelte|sql|graphql|proto|lock|pdf|mp4)$/i
 
 /** Path + optional line suffix before cwd resolution (absolute or workspace-relative). */
 export function splitLocalFileHref(value: string | undefined): { pathPart: string; line?: number; endLine?: number } | null {
@@ -71,6 +71,8 @@ export function parseLocalFileTarget(value: string | undefined): { path: string;
 }
 
 export type LocalFileOpenOptions = {
+  /** File tree selection: an absolute filesystem path, with no link or line-suffix parsing. */
+  literalPath?: boolean
   /** Chat cwd used to resolve workspace-relative links such as `src/foo.ts`. */
   cwd?: string
   /** When set, the browser file tab shows this unified diff instead of plain text. */
@@ -79,15 +81,19 @@ export type LocalFileOpenOptions = {
 
 export type LocalFilePreview =
   | { kind: 'image'; name: string; src: string; path: string }
+  | { kind: 'video'; name: string; src: string; path: string }
   | { kind: 'file'; path: string; line?: number; endLine?: number; cwd?: string; diff?: string }
   | { kind: 'revealed' }
 
 export type LocalFileResult =
   | { kind: 'image'; tabId: string }
+  | { kind: 'video'; tabId: string }
   | { kind: 'file'; tabId: string }
   | { kind: 'revealed' }
 export type ImageTabContent = { name: string; src: string; path?: string }
 export type ImageTabIdentity = { tabId: string; name: string; path?: string }
+export type VideoTabContent = { name: string; src: string; path: string; revision: number; bytes?: number }
+export type VideoTabIdentity = { tabId: string; name: string; path: string; revision: number }
 export type FileTabIdentity = {
   tabId: string
   name: string
@@ -104,10 +110,33 @@ export type FileTabContent = { name: string; path: string; content: string; line
 export type FileView = 'page' | 'code'
 
 const RENDERABLE_FILE_EXT = /\.(html?|svg)$/i
+const PDF_FILE_EXT = /\.pdf$/i
+const VIDEO_FILE_EXT = /\.mp4$/i
+const PLAYABLE_VIDEO_EXT = /\.(mp4|webm)$/i
+
+/** Local MP4 files open in the app video viewer (not the text file viewer). */
+export function isVideoFile(path: string): boolean {
+  return VIDEO_FILE_EXT.test(path)
+}
+
+/** Workspace video files the media tool may open in the viewer. */
+export function isPlayableVideoFile(path: string): boolean {
+  return PLAYABLE_VIDEO_EXT.test(path)
+}
 
 /** Files a browser tab can render as a page as well as show as code. */
 export function isRenderableFile(path: string): boolean {
   return RENDERABLE_FILE_EXT.test(path)
+}
+
+/** Local PDFs open in Chromium's built-in viewer (web tab only; no code view). */
+export function isPdfFile(path: string): boolean {
+  return PDF_FILE_EXT.test(path)
+}
+
+/** Local files that preview in a web tab instead of the text file viewer. */
+export function isBrowserDocumentFile(path: string): boolean {
+  return isRenderableFile(path) || isPdfFile(path)
 }
 
 /** The local path behind a `file:` page URL when that page can also be shown as code. */
@@ -119,4 +148,20 @@ export function renderableFilePath(url: string): string | null {
     const path = decodeURIComponent(parsed.pathname)
     return isRenderableFile(path) ? path : null
   } catch { return null }
+}
+
+/** The local path behind a `file:` URL when the tab shows Chromium's PDF viewer. */
+export function pdfFilePath(url: string): string | null {
+  if (!/^file:/i.test(url)) return null
+  try {
+    const parsed = new URL(url)
+    if (parsed.hostname) return null
+    const path = decodeURIComponent(parsed.pathname)
+    return isPdfFile(path) ? path : null
+  } catch { return null }
+}
+
+/** Local path for any file: web tab that previews document content (HTML, SVG, or PDF). */
+export function browserDocumentFilePath(url: string): string | null {
+  return renderableFilePath(url) ?? pdfFilePath(url)
 }

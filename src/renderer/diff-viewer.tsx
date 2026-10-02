@@ -1,6 +1,7 @@
 import type { JSX } from 'react'
 import { memo, useMemo, useState } from 'react'
 import { Check, ChevronDown, ChevronRight, Columns2, Copy, FileCode, Rows2 } from 'lucide-react'
+import { useWorkspacePaneActions } from './chat-layout/workspace-pane-actions.js'
 
 import {
   alignHunkLines,
@@ -42,6 +43,7 @@ export const DiffViewer = memo(function DiffViewer({
   cwd
 }: DiffViewerProps): JSX.Element {
   const [copied, setCopied] = useState(false)
+  const workspace = useWorkspacePaneActions()
   const [copiedHunk, setCopiedHunk] = useState<number | null>(null)
   const [viewMode, setViewMode] = useState<DiffViewMode>(defaultViewMode)
   const [collapsedHunks, setCollapsedHunks] = useState<Set<number>>(() => new Set())
@@ -84,8 +86,8 @@ export const DiffViewer = memo(function DiffViewer({
   }
 
   function openFile(): void {
-    const href = path.startsWith('file://') ? path : (path.startsWith('/') ? path : path)
-    void window.closedai.localFiles.open(href, { cwd, diff })
+    const options = { cwd, diff }
+    void (workspace ? workspace.openFile(path, options) : window.closedai.localFiles.open(path, options)).catch(() => {})
   }
 
   const totalChanges = parsed.additions + parsed.deletions

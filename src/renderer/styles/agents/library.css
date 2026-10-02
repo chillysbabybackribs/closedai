@@ -291,3 +291,18 @@
   flex: 1;
   font-size: 11px;
 }
+
+/* Agents opens as a modal (agent-library/agents-dialog.tsx): a large fixed frame, the header's
+   actions kept clear of the dialog's close button. */
+.agents-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(1040px, calc(100vw - 48px));
+  height: min(720px, calc(100vh - 48px));
+  max-width: none;
+  max-height: none;
+  padding: 0;
+  overflow: hidden;
+}
+
+.agents-dialog .agent-screen-header { padding-right: 48px; }

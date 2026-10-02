@@ -32,6 +32,8 @@
 }
 .workspace-view-body { display: flex; flex: 1; min-height: 0; min-width: 0; flex-direction: column; }
 .workspace-view-body > * { flex: 1; min-height: 0; }
+/* A file view's viewer fills its body the way it fills the browser frame. */
+.workspace-view[data-kind='file'] > .workspace-view-body { position: relative; }
 
 /* The scope chip is the only place scope is set or seen: dashed while following, solid when pinned. */
 .workspace-view-scope {
@@ -62,9 +64,7 @@
 .workspace-view .trace-panel,
 .workspace-view .tools-panel,
 .workspace-view .agent-library-view,
-.workspace-view .saved-sites-panel,
-.dock-start-screen .tools-panel,
-.dock-start-screen .agent-library-view {
+.workspace-view .saved-sites-panel {
   width: auto;
   height: auto;
   max-width: none;

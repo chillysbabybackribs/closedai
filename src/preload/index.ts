@@ -19,13 +19,22 @@ function subscribe<C extends IpcEventChannel>(channel: C, listener: (payload: Ip
 
 const api: ClosedaiApi = {
   localFiles: {
+    listDirectory: (root, directory) => invoke(IPC.invoke.localFiles.listDirectory, root, directory),
     open: (href, options) => invoke(IPC.invoke.localFiles.open, href, options),
+    preview: (href, options) => invoke(IPC.invoke.localFiles.preview, href, options),
+    readPreview: (path) => invoke(IPC.invoke.localFiles.readPreview, path),
+    revealPath: (path) => invoke(IPC.invoke.localFiles.revealPath, path),
     openImage: (image) => invoke(IPC.invoke.localFiles.openImage, image),
     image: (id) => invoke(IPC.invoke.localFiles.image, id),
     revealImage: (id) => invoke(IPC.invoke.localFiles.revealImage, id),
+    video: (id) => invoke(IPC.invoke.localFiles.video, id),
+    revealVideo: (id) => invoke(IPC.invoke.localFiles.revealVideo, id),
     file: (id) => invoke(IPC.invoke.localFiles.file, id),
     revealFile: (id) => invoke(IPC.invoke.localFiles.revealFile, id),
-    setView: (id, view) => invoke(IPC.invoke.localFiles.setView, id, view)
+    setView: (id, view) => invoke(IPC.invoke.localFiles.setView, id, view),
+    searchVideos: (query) => invoke(IPC.invoke.localFiles.searchVideos, query),
+    videoRecents: () => invoke(IPC.invoke.localFiles.videoRecents),
+    pickVideo: () => invoke(IPC.invoke.localFiles.pickVideo)
   },
   window: {
     minimize: () => invoke(IPC.invoke.window.minimize),
@@ -60,13 +69,6 @@ const api: ClosedaiApi = {
     completeCrossDock: (payload) => invoke(IPC.invoke.windows.completeCrossDock, payload),
     onEvent: (listener) => subscribe(IPC.event.windowsEvent, listener)
   },
-  quickChat: {
-    setState: (state) => invoke(IPC.invoke.quickChat.setState, state),
-    view: () => invoke(IPC.invoke.quickChat.view),
-    setSize: (size) => invoke(IPC.invoke.quickChat.setSize, size),
-    request: (request) => invoke(IPC.invoke.quickChat.request, request),
-    onView: (listener) => subscribe(IPC.event.quickChatView, listener)
-  },
   browser: {
     setBounds: (bounds: BrowserBounds) => invoke(IPC.invoke.browser.setBounds, bounds),
     navigate: (input: string) => invoke(IPC.invoke.browser.navigate, input),
@@ -88,6 +90,8 @@ const api: ClosedaiApi = {
     renameTab: (id: string, title: string | null) => invoke(IPC.invoke.browser.renameTab, id, title),
     selectTab: (id: string) => invoke(IPC.invoke.browser.selectTab, id),
     capture: () => invoke(IPC.invoke.browser.capture),
+    openVideoHub: () => invoke(IPC.invoke.browser.openVideoHub),
+    videoCompare: (command) => invoke(IPC.invoke.browser.videoCompare, command),
     resolvePermission: (id, decision) => invoke(IPC.invoke.browser.resolvePermission, id, decision),
     onState: (listener) => subscribe(IPC.event.browserState, listener),
     onTabs: (listener) => subscribe(IPC.event.browserTabs, listener),

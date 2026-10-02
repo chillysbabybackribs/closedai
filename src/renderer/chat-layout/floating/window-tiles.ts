@@ -79,6 +79,15 @@ export function floatingFront(tiles: readonly CanvasTile[]): WindowTile[] {
 }
 
 /**
+ * Whether the browser, as drawn, reaches down to `bandTop`. The dock opens over that band, and the
+ * native page would paint above it, so the browser shows its still while the dock is open.
+ */
+export function browserReaches(tiles: readonly CanvasTile[], bandTop: number): boolean {
+  const browser = tiles.find((tile) => tile.id === BROWSER_PANE_ID && tile.kind !== 'hidden')
+  return browser !== undefined && browser.rect.y + browser.rect.height > bandTop
+}
+
+/**
  * Whether a window stacked above the browser overlaps it. The native page paints over every DOM
  * window, so while one is above it the browser shows its still instead.
  */

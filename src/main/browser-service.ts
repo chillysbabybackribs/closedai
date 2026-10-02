@@ -2,12 +2,15 @@ import { app, BrowserWindow, desktopCapturer, session, type LoadURLOptions, type
 import { EventEmitter } from 'node:events'
 import { join } from 'node:path'
 import type { BrowserHistory } from './browser-history-store.js'
-import type { BrowserBounds, BrowserShot, BrowserState, BrowserTabInfo } from '../shared/types.js'
+import type { BrowserBounds, BrowserShot, BrowserState, BrowserTabInfo, VideoCompareState } from '../shared/types.js'
 import type { TabPersistRecord } from './browser-tab-session-store.js'
-import { BrowserTab, HOME_URL, PARTITION } from './browser-tab.js'
+import { allocateTabId, BrowserTab, HOME_URL, PARTITION } from './browser-tab.js'
 import { ImageTab } from './local-files/image-tab.js'
 import { FileTab } from './local-files/file-tab.js'
-import type { FileTabContent, FileView, ImageTabContent } from '../shared/local-files.js'
+import { VideoTab } from './local-files/video-tab.js'
+import { VideoHubTab, VIDEO_HUB_KEY } from './local-files/video-hub-tab.js'
+import { searchVideoLibrary, type VideoLibraryEntry } from './local-files/video-library.js'
+import { isRenderableFile, type FileTabContent, type FileView, type ImageTabContent, type VideoTabContent } from '../shared/local-files.js'
 import { PersistentSessionCookies } from './persistent-session-cookies.js'
 import { BrowserObservers } from './browser-network/observers.js'
 import { describeMissingTab } from '../shared/browser-tabs.js'
@@ -17,7 +20,7 @@ import { TabCadencePolicy, webContentsCadence } from './browser-tab-cadence.js'
 import type { RestoredTabSession } from './browser-tab-session-store.js'
 import { restoreBrowserTabs } from './browser-service-restore.js'
 import {
-  duplicateSpecialTab, openFilePageTab, openFileViewerTab, openImageTab, pageTabShowing, swapFileView, type FileViewHost
+  duplicateSpecialTab, openFilePageTab, openFileViewerTab, openImageTab, openVideoTab, pageTabShowing, swapFileView, type FileViewHost
 } from './browser-service-special-tabs.js'
 import { prepareBrowserTabForTool } from './browser-tab-surface-prep.js'
 import { browserPaneBounds, browserSurfaceVisibility } from './browser-surface-visibility.js'
@@ -46,8 +49,6 @@ type BrowserServiceOptions = {
    * UI, paints while this settles instead of waiting behind it.
    */
   readyToLoad?: Promise<unknown>
-  /** App shortcuts that work on a page (the quick chat's Ctrl+J); true when the key was used. */
-  pageKeys?: (input: Electron.Input) => boolean
 }
 
 // How long a reveal waits for the page's first frame before showing it anyway. A parked page
@@ -61,20 +62,22 @@ const CAPTURE_SETTLE_MS = 250
 // Owns the ordered list of tabs and the single human-visible one. All tabs share one session
 // (persist:browser), so a login in one tab applies to all.
 export class BrowserService extends EventEmitter {
-  private tabs: (BrowserTab | ImageTab | FileTab)[] = []
+  private tabs: (BrowserTab | ImageTab | FileTab | VideoTab | VideoHubTab)[] = []
+  private videoRecents: VideoLibraryEntry[] = []
   private activeId: string | null = null
   private disposed = false
   private bounds: BrowserBounds = { x: 0, y: 0, width: 1, height: 1 }
   // Whether the active page's pixels were on screen at the last bounds report, so a return
   // from behind app chrome can be distinguished from an ordinary resize.
   private pageVisible = true
+  private boundsRevision = 0
+  private videoCompare: VideoCompareState | null = null
   private overlayCapture: Promise<BrowserShot | null> | null = null
   // One colour memory for the whole window: what a site paints is a property of the site.
   // See browser-page-background.ts for what it buys.
   private readonly pageBackgrounds = new PageBackgroundMemory()
   private readonly partitionSession: Electron.Session
   private readonly permissions: Pick<PermissionPolicyDeps, 'policy' | 'ask'>
-  private readonly pageKeys: (input: Electron.Input) => boolean
   private readonly persistentSessionCookies: PersistentSessionCookies
   // What the app records about every tab without a debugger: network traffic and rules on
   // the session, console output per tab. Exposed to the model tools through the access classes.
@@ -106,7 +109,6 @@ export class BrowserService extends EventEmitter {
     super()
     this.on('error', () => {})
     this.permissions = options.permissions ?? { policy: () => 'allow', ask: async () => true }
-    this.pageKeys = options.pageKeys ?? (() => false)
     this.partitionSession = session.fromPartition(PARTITION)
     this.configureSession(this.partitionSession)
     this.persistentSessionCookies = new PersistentSessionCookies(this.partitionSession)
@@ -126,7 +128,7 @@ export class BrowserService extends EventEmitter {
 
   // ---- Tab management -------------------------------------------------------
 
-  private get active(): BrowserTab | ImageTab | FileTab | null {
+  private get active(): BrowserTab | ImageTab | FileTab | VideoTab | VideoHubTab | null {
     return this.tabs.find((tab) => tab.id === this.activeId) ?? null
   }
 
@@ -163,7 +165,6 @@ export class BrowserService extends EventEmitter {
       popupOptions
     )
     tab.permissionPolicy = this.permissions.policy
-    tab.pageKeys = this.pageKeys
     if (!activate) tab.applyBounds({ ...this.bounds, occluded: true }, false)
     this.observers.watchTab(tab.id, tab.view.webContents)
     this.registerTab(tab, index)
@@ -187,11 +188,11 @@ export class BrowserService extends EventEmitter {
     }, restored)
   }
 
-  private registerTab(tab: BrowserTab | ImageTab | FileTab, index?: number): void {
+  private registerTab(tab: BrowserTab | ImageTab | FileTab | VideoTab | VideoHubTab, index?: number): void {
     tab.on('state', () => {
       // Only the active tab drives the address bar / nav buttons; every tab's state change can
       // still alter its label/spinner in the strip.
-      if (tab.id === this.activeId) this.emit('state', tab.getState())
+      if (tab.id === this.activeId) this.emit('state', this.enrichState(tab.getState()))
       this.emitTabs()
     })
     tab.on('error', (error: unknown) => this.emit('error', error))
@@ -203,9 +204,8 @@ export class BrowserService extends EventEmitter {
     })
     const insertAt = typeof index === 'number' ? Math.min(Math.max(index, 0), this.tabs.length) : this.tabs.length
     this.tabs.splice(insertAt, 0, tab)
-    // Electron can permanently blank a previously loaded WebContentsView after it is removed
-    // and re-added repeatedly. User tabs therefore stay attached until closed; hiding the
-    // browser moves the active surface off screen while preserving its loaded viewport.
+    // Electron can blank a WebContentsView after remove/re-add. User tabs stay resident across
+    // tab switches AND pane hiding; setVisible controls display without tearing down attachment.
     if (tab instanceof BrowserTab) this.rendering.register(tab.id, { resident: true })
   }
 
@@ -213,7 +213,6 @@ export class BrowserService extends EventEmitter {
     const tab = this.tabs.find((candidate) => candidate.id === tabId)
     if (!(tab instanceof BrowserTab)) return
     this.window.contentView.addChildView(tab.view)
-    this.emit('pageViewAttached')
   }
 
   private detachTabView(tabId: string): void {
@@ -245,10 +244,47 @@ export class BrowserService extends EventEmitter {
       (id) => { this.setActive(id) }, (state) => { this.emit('state', state) })
   }
 
+  openVideo(content: VideoTabContent): string {
+    const id = openVideoTab(this.tabs, this.activeId, content, (tab, index) => { this.registerTab(tab, index) },
+      (id) => { this.setActive(id) }, (state) => { this.emit('state', state) })
+    void import('node:fs/promises').then(({ stat }) => stat(content.path)).then((info) => {
+      if (info.isFile()) this.rememberVideo(content.path, content.name, info.size, info.mtimeMs)
+    }).catch(() => { this.rememberVideo(content.path, content.name, 0, Date.now()) })
+    return id
+  }
+
+  openVideoHub(): string {
+    const existing = this.tabs.find((tab): tab is VideoHubTab => tab instanceof VideoHubTab)
+    if (existing) {
+      this.setActive(existing.id)
+      return existing.id
+    }
+    const tab = new VideoHubTab(allocateTabId(), VIDEO_HUB_KEY, this.activeId)
+    this.registerTab(tab)
+    this.setActive(tab.id)
+    return tab.id
+  }
+
+  videoRecentList(): VideoLibraryEntry[] {
+    return [...this.videoRecents]
+  }
+
+  searchVideos(query: string): Promise<VideoLibraryEntry[]> {
+    const roots: string[] = []
+    try { roots.push(app.getPath('downloads')) } catch { /* ignore */ }
+    try { roots.push(app.getPath('videos')) } catch { /* ignore */ }
+    return searchVideoLibrary(roots, query)
+  }
+
+  private rememberVideo(path: string, name: string, bytes: number, modifiedMs: number): void {
+    const entry: VideoLibraryEntry = { path, name, bytes, modifiedMs }
+    this.videoRecents = [entry, ...this.videoRecents.filter((item) => item.path !== path)].slice(0, 20)
+  }
+
   openFileTab(content: { path: string; name: string; line?: number; endLine?: number; cwd?: string; diff?: string }): string {
-    // A line or diff link into a file shown as its page turns that tab to code rather than adding one.
+    // A line or diff link into HTML/SVG shown as its page turns that tab to code rather than adding one.
     const page = pageTabShowing(this.tabs, content.path)
-    if (page) this.setFileView(page.id, 'code')
+    if (page && isRenderableFile(content.path)) this.setFileView(page.id, 'code')
     return openFileViewerTab(this.tabs, this.activeId, content, (tab, index) => { this.registerTab(tab, index) },
       (id) => { this.setActive(id) }, (state) => { this.emit('state', state) })
   }
@@ -288,6 +324,84 @@ export class BrowserService extends EventEmitter {
     const tab = this.tabs.find((item) => item.id === id)
     if (!(tab instanceof ImageTab)) throw new Error('This image tab is no longer open.')
     return tab.content
+  }
+
+  async videoContent(id: string): Promise<VideoTabContent> {
+    const tab = this.tabs.find((item) => item.id === id)
+    if (!(tab instanceof VideoTab)) throw new Error('This video tab is no longer open.')
+    const identity = tab.getState().video!
+    const { stat } = await import('node:fs/promises')
+    const info = await stat(identity.path).catch(() => null)
+    return {
+      name: identity.name,
+      path: identity.path,
+      src: tab.content.src,
+      revision: identity.revision,
+      ...(info?.isFile() ? { bytes: info.size } : {})
+    }
+  }
+
+  startVideoCompare(otherTabId: string): void {
+    const active = this.active
+    if (!(active instanceof VideoTab)) throw new Error('Select a video tab to compare.')
+    const other = this.tabs.find((candidate) => candidate.id === otherTabId)
+    if (!(other instanceof VideoTab)) throw new Error('Compare only works with another open video tab.')
+    if (other.id === active.id) throw new Error('Pick a different video tab.')
+    this.videoCompare = { tabIds: [active.id, other.id], syncPlay: false, audioTabId: active.id }
+    this.emitBrowserState()
+  }
+
+  clearVideoCompare(): void {
+    if (!this.videoCompare) return
+    this.videoCompare = null
+    this.emitBrowserState()
+  }
+
+  setVideoCompareSync(enabled: boolean): void {
+    if (!this.videoCompare) return
+    this.videoCompare = { ...this.videoCompare, syncPlay: enabled }
+    this.emitBrowserState()
+  }
+
+  setVideoCompareAudio(tabId: string): void {
+    if (!this.videoCompare?.tabIds.includes(tabId)) throw new Error('That video is not in the compare view.')
+    this.videoCompare = { ...this.videoCompare, audioTabId: tabId }
+    this.emitBrowserState()
+  }
+
+  private enrichState(state: BrowserState): BrowserState {
+    const compare = this.validVideoCompare()
+    return { ...state, videoCompare: compare }
+  }
+
+  private validVideoCompare(): VideoCompareState | null {
+    if (!this.videoCompare) return null
+    const [left, right] = this.videoCompare.tabIds
+    const open = (id: string): boolean => {
+      const tab = this.tabs.find((candidate) => candidate.id === id)
+      return tab instanceof VideoTab
+    }
+    if (!open(left) || !open(right)) {
+      this.videoCompare = null
+      return null
+    }
+    const audioTabId = this.videoCompare.tabIds.includes(this.videoCompare.audioTabId)
+      ? this.videoCompare.audioTabId
+      : left
+    return { ...this.videoCompare, audioTabId }
+  }
+
+  private emitBrowserState(): void {
+    const active = this.active
+    if (active) this.emit('state', this.enrichState(active.getState()))
+    else this.emitTabs()
+  }
+
+  /** Drop compare state when a compared tab closes. */
+  sanitizeVideoCompare(closedId: string): void {
+    if (!this.videoCompare?.tabIds.includes(closedId)) return
+    this.videoCompare = null
+    this.emitBrowserState()
   }
 
   selectTab(id: string): void {
@@ -350,6 +464,8 @@ export class BrowserService extends EventEmitter {
         isLoading: state.isLoading,
         active: tab.id === this.activeId,
         ...(state.image ? { image: state.image } : {}),
+        ...(state.video ? { video: state.video } : {}),
+        ...(state.videoHub ? { videoHub: state.videoHub } : {}),
         ...(state.file ? { file: state.file } : {}),
         stack: tab.exportNavigationStack()
       }
@@ -363,20 +479,43 @@ export class BrowserService extends EventEmitter {
   // ---- Delegated per-tab operations (act on the active tab) -----------------
 
   async setBounds(bounds: BrowserBounds): Promise<void> {
-    this.bounds = browserPaneBounds(this.bounds, bounds)
-    const { paneVisible, pageVisible } = browserSurfaceVisibility(this.bounds)
+    const revision = ++this.boundsRevision
+    const next = browserPaneBounds(this.bounds, bounds)
+    const { paneVisible, pageVisible } = browserSurfaceVisibility(next)
+    if (paneVisible && !pageVisible && this.pageVisible) {
+      // Renderer rAFs are paint opportunities, not acknowledgement from the compositor.
+      // Copy its submitted frame before uncovering it: this flushes the still's actual pixels
+      // even when the app renderer is busy. A DOM/decode check alone can miss a one-frame gap.
+      await this.window.webContents.capturePage()
+      // Closing/reopening or resizing can overtake the asynchronous frame copy. An obsolete
+      // occlusion must never park the page after a newer restore has already completed.
+      if (revision !== this.boundsRevision || this.disposed) return
+    }
+    this.bounds = next
     const revealing = pageVisible && !this.pageVisible
     this.pageVisible = pageVisible
     const active = this.active
     this.rendering.setPaneVisible(paneVisible)
-    this.emit('page', this.bounds, pageVisible)
-    if (active instanceof ImageTab || active instanceof FileTab) {
+    if (active instanceof ImageTab || active instanceof FileTab || active instanceof VideoTab || active instanceof VideoHubTab) {
       parkWebBrowserTabs(this.tabOpsHost())
       return
     }
-    // Keep the loaded surface attached and full-sized, using the same parking path as an
-    // overlay: the page stays mapped at the pane's size and keeps laying out there.
-    active?.applyBounds(paneVisible ? this.bounds : { ...this.bounds, occluded: true }, pageVisible)
+    if (!paneVisible) {
+      // Hide display and restore background throttling without removing resident views. The
+      // same attachment is needed when the pane returns; reattachment can leave a blank page.
+      for (const tab of this.tabs) {
+        if (!(tab instanceof BrowserTab)) continue
+        tab.hide()
+        const contents = tab.view.webContents
+        if (!contents.isDestroyed()) contents.setBackgroundThrottling(true)
+      }
+      return
+    }
+    if (active instanceof BrowserTab) {
+      const contents = active.view.webContents
+      if (!contents.isDestroyed() && pageVisible) contents.setBackgroundThrottling(false)
+    }
+    active?.applyBounds(this.bounds, pageVisible)
     // The renderer holds its freeze still until this call resolves. Returning the moment the
     // view is made visible drops the still onto a surface that has not painted yet, which is
     // the blank the still existed to cover; wait for the frame instead.
@@ -397,7 +536,7 @@ export class BrowserService extends EventEmitter {
 
   /** Every page-requested window is a regular tab and uses the same tool access. */
   cdpTargetList(): CdpBrowserTarget[] {
-    const tabs = this.tabInfos().filter((tab) => !tab.image && !tab.file).map((tab) => ({ ...tab, kind: 'tab' as const }))
+    const tabs = this.tabInfos().filter((tab) => !tab.image && !tab.file && !tab.video).map((tab) => ({ ...tab, kind: 'tab' as const }))
     return tabs
   }
 
@@ -431,6 +570,8 @@ export class BrowserService extends EventEmitter {
     const tab = tabId ? this.tabs.find((candidate) => candidate.id === tabId) ?? null : this.active
     if (tab instanceof ImageTab) throw new Error('This is an image viewer tab. Use a web tab for browser page tools.')
     if (tab instanceof FileTab) throw new Error('This is a file viewer tab. Use a web tab for browser page tools.')
+    if (tab instanceof VideoTab) throw new Error('This is a video viewer tab. Use a web tab for browser page tools.')
+    if (tab instanceof VideoHubTab) throw new Error('This is the video library tab. Use a web tab for browser page tools.')
     if (tab) this.prepareTabForTool(tab)
     // Every page tool reaches its page through here; the beat afterwards makes a burst one exemption.
     if (tab instanceof BrowserTab) this.cadence.touch(tab.id)
@@ -490,10 +631,15 @@ export class BrowserService extends EventEmitter {
       if (!targeted) throw new Error(describeMissingTab(tabId, this.tabList()))
       if (targeted instanceof ImageTab) throw new Error('Open a new web tab to navigate from an image viewer.')
       if (targeted instanceof FileTab) throw new Error('Open a new web tab to navigate from a file viewer.')
+      if (targeted instanceof VideoTab) throw new Error('Open a new web tab to navigate from a video viewer.')
+      if (targeted instanceof VideoHubTab) throw new Error('Open a new web tab to navigate from the video library.')
       tab = targeted
     } else {
       tab = this.requireActive()
     }
+    // Navigating a tab brings it to the front, like opening one does: the user sees the page the
+    // model is driving, and a selected tab is the one Chromium runs at full speed.
+    if (tab.id !== this.activeId) this.setActive(tab.id)
     // Hold full cadence across the load: a throttled page reaches dom-ready and then stalls on
     // its own deferred work, which is exactly what the caller is waiting for.
     const release = this.cadence.hold(tab.id)
@@ -516,8 +662,9 @@ export class BrowserService extends EventEmitter {
   }
 
   snapshot(): BrowserState {
-    return this.active?.getState() ??
+    const base = this.active?.getState() ??
       { url: 'about:blank', title: 'New Tab', isLoading: false, canGoBack: false, canGoForward: false }
+    return this.enrichState(base)
   }
 
   // Full state for renderer mount: constructor emits precede IPC and reloads have no history,
@@ -604,11 +751,12 @@ export class BrowserService extends EventEmitter {
       cadence: this.cadence,
       openHomeTab: () => { this.openTab(HOME_URL, true) },
       attachTabView: (tabId) => { this.attachTabView(tabId) },
-      emitTabState: (state) => { this.emit('state', state) },
+      emitTabState: (state) => { this.emit('state', this.enrichState(state)) },
       emitTabs: () => { this.emitTabs() },
       unregisterRendering: (id) => { this.rendering.unregister(id) },
       forgetCadence: (id) => { this.cadence.forget(id) },
-      detachBrowserView: (tab) => { this.detachTabView(tab.id) }
+      detachBrowserView: (tab) => { this.detachTabView(tab.id) },
+      sanitizeVideoCompare: (closedId) => { this.sanitizeVideoCompare(closedId) }
     }
   }
 

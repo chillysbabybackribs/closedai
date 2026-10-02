@@ -48,26 +48,24 @@ test('stabilizePaneSnapshot adopts a new thread without carrying the old transcr
   assert.equal(stabilizePaneSnapshot(next, previous).items.length, 0)
 })
 
-test('composer stays bottom for a history chat before items replay', () => {
+test('composer stays bottom when the pane is paging or replaying a transcript', () => {
   resetComposerLayoutForTests()
-  assert.equal(paneHasTranscript(empty, {
-    paneId: 'pane-a', parentPaneId: null, kind: 'peer', provider: 'codex', modelId: null,
-    threadId: 'codex:t1', title: 'Earlier chat', preview: 'last answer', running: false, activity: null, updatedAt: 0
-  }), true)
-  assert.equal(composerAnchoredBottom('pane-a', empty, {
-    paneId: 'pane-a', parentPaneId: null, kind: 'peer', provider: 'codex', modelId: null,
-    threadId: 'codex:t1', title: 'Earlier chat', preview: 'last answer', running: false, activity: null, updatedAt: 0
-  }), true)
+  const replaying = { ...empty, threadId: 'codex:t1', history: { hasEarlier: false, backgroundTasks: [] } }
+  assert.equal(paneHasTranscript(replaying), false)
+  assert.equal(composerAnchoredBottom('pane-a', replaying), false)
+  const paged = { ...empty, threadId: 'codex:t1', history: { hasEarlier: true, backgroundTasks: [] } }
+  assert.equal(paneHasTranscript(paged), true)
+  assert.equal(composerAnchoredBottom('pane-a', paged), true)
 })
 
 test('composer recenters for a blank chat', () => {
   resetComposerLayoutForTests()
-  composerAnchoredBottom('pane-b', { ...empty, threadId: 'codex:t1' }, {
-    paneId: 'pane-b', parentPaneId: null, kind: 'peer', provider: 'codex', modelId: null,
-    threadId: 'codex:t1', title: 'New chat', preview: '', running: false, activity: null, updatedAt: 0
-  })
-  assert.equal(composerAnchoredBottom('pane-b', empty, {
-    paneId: 'pane-b', parentPaneId: null, kind: 'peer', provider: 'codex', modelId: null,
-    threadId: null, title: 'New chat', preview: '', running: false, activity: null, updatedAt: 0
-  }), false)
+  composerAnchoredBottom('pane-b', { ...empty, threadId: 'codex:t1' })
+  assert.equal(composerAnchoredBottom('pane-b', empty), false)
+})
+
+test('drawer title and preview alone do not count as a transcript', () => {
+  resetComposerLayoutForTests()
+  assert.equal(paneHasTranscript(empty), false)
+  assert.equal(composerAnchoredBottom('pane-c', empty), false)
 })

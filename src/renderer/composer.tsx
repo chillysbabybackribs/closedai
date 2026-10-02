@@ -1,16 +1,16 @@
 import type { ClipboardEvent, DragEvent, FormEvent, JSX, KeyboardEvent, Ref } from 'react'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { ArrowUp, Play, Square } from 'lucide-react'
+import { ArrowUp, Play, Octagon, Paperclip, MessageSquareShare, Plus } from 'lucide-react'
 
 import { Button } from '../components/ui/button.js'
 import { PromptInput, PromptInputAction, PromptInputTextarea } from '../components/ui/prompt-input.js'
 import type { ChatAttachment, ChatContextUsage, ChatModel, ChatPlanUsage, ChatProvider } from '../shared/chat.js'
 import { CHAT_PROVIDER_LABELS } from '../shared/chat-providers.js'
-import { AttachmentChips, AttachmentPicker, attachmentsFromFiles } from './composer-attachments.js'
-import { ComposerFolderMenu } from './composer-folder-menu.js'
+import { AttachmentChips, attachmentsFromFiles } from './composer-attachments.js'
+import { createPortal } from 'react-dom'
 import { ComposerSetupMenu, type ComposerSetupHandle } from './composer-setup-menu.js'
 import { useComposerDraft } from './composer-drafts.js'
-import { ComposerWorkspaceTools } from './composer-workspace-tools.js'
+import { ComposerSpeedDial } from './composer-speed-dial.js'
 import { errorMessage } from './error-message.js'
 
 export type ComposerProps = {
@@ -50,18 +50,13 @@ export type ComposerProps = {
   /** Latest response that can hand off to a new tab; shown as a composer pill when set. */
   continueMessageId?: string | null
   onContinueInNewChat?: () => Promise<void>
+  /** New chat tab in this tile (composer + menu); same as the header + control. */
+  onNewChat?: () => void
   /** Lets the pane's connection guidance open the setup panel on its model list. */
   setupMenuRef?: Ref<ComposerSetupHandle>
 }
 
-/**
- * One glass capsule floating over the foot of the transcript: attach and workspace tools on the
- * left, the draft in the middle, and the setup chip — model and folder, each opening its own
- * panel — beside Send on the right. Once the draft wraps, holds a line break, or carries an
- * attachment, the capsule expands: the draft spans the full width and the controls drop to a row
- * beneath it. It stays expanded until the draft is sent or cleared, so a draft that fits one line
- * only at the wider width does not flip back and forth as you type.
- */
+/** Composer with an attachment/handoff menu and a model picker portaled into its card header. */
 export function Composer({
   enabled,
   running,
@@ -80,9 +75,8 @@ export function Composer({
   onStop,
   paused,
   onResume,
-  cwd, projectPath, projectPending, recentProjects,
-  onChooseProject, onSelectProject, onClearProject,
-  onCompactConversation, compactConversationEnabled = false, paneId, continueMessageId, onContinueInNewChat, setupMenuRef
+  onCompactConversation, compactConversationEnabled = false, paneId, setupMenuRef,
+  continueMessageId, onContinueInNewChat, onNewChat
 }: ComposerProps): JSX.Element {
   const { input, setInput, attachments, setAttachments, clearDraft } = useComposerDraft(paneId)
   // One alert row for whatever the composer's own controls could not do: attach, pause, pick.
@@ -90,6 +84,7 @@ export function Composer({
   const [dismissedSuggestion, setDismissedSuggestion] = useState<string | null>(null)
   const providerLabel = CHAT_PROVIDER_LABELS[provider]
   const [sending, setSending] = useState(false)
+  const [continuing, setContinuing] = useState(false)
   const visibleSuggestion = !input && !running && !sending && promptSuggestion && dismissedSuggestion !== promptSuggestion
     ? promptSuggestion
     : null
@@ -100,6 +95,10 @@ export function Composer({
       ? (paused ? 'Resume, or send something new' : `Message ${providerLabel}`)
       : `${providerLabel} is unavailable`)
   const formRef = useRef<HTMLFormElement>(null)
+  const [modelHost, setModelHost] = useState<HTMLElement | null>(null)
+  useLayoutEffect(() => {
+    setModelHost(paneId ? document.getElementById(`chat-model-${paneId}`) : null)
+  }, [paneId])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const focusAfterSendRef = useRef(false)
   const canSend = (input.trim().length > 0 || attachments.length > 0) && !sending && enabled && !running
@@ -211,7 +210,7 @@ export function Composer({
         data-ui="composer.stop"
         onClick={() => void stop()}
       >
-        <Square size={12} fill="currentColor" aria-hidden="true" />
+        <Octagon size={24} strokeWidth={1.25} aria-hidden="true" />
       </Button>
     </PromptInputAction>
   ) : paused ? (
@@ -270,25 +269,35 @@ export function Composer({
         )}
         <div className="composer-row">
           <div className="composer-tools">
-            <AttachmentPicker
-              disabled={!enabled || running || sending}
-              inputRef={fileInputRef}
-              onChange={(event) => {
-                if (event.target.files) void addFiles(event.target.files)
-                event.target.value = ''
-              }}
-            />
-            {paneId && (
-              <ComposerWorkspaceTools
-                paneId={paneId}
-                startEnabled={enabled}
-                runningTurn={running || sending}
-                continueMessageId={continueMessageId}
-                contextPercent={contextUsage?.percent ?? null}
-                onContinueInNewChat={onContinueInNewChat}
-                onComposerError={setComposerError}
-              />
-            )}
+            <input ref={fileInputRef} className="prompt-attachment-input" type="file" multiple
+              onChange={(event) => { if (event.target.files) void addFiles(event.target.files); event.target.value = '' }} />
+            <ComposerSpeedDial actions={[
+              {
+                id: 'composer.new-chat', label: 'New chat tab',
+                icon: <Plus size={19} strokeWidth={1.9} aria-hidden="true" />,
+                disabled: !onNewChat || running || sending,
+                run: () => onNewChat?.()
+              },
+              {
+                id: 'composer.continue', item: continueMessageId ?? undefined,
+                label: 'Continue in new chat with fresh context',
+                icon: <MessageSquareShare size={17} strokeWidth={1.9} aria-hidden="true" />,
+                disabled: !continueMessageId || !onContinueInNewChat || running || sending || continuing,
+                run: () => {
+                  if (!onContinueInNewChat) return
+                  setContinuing(true)
+                  void onContinueInNewChat()
+                    .catch((cause) => setComposerError(errorMessage(cause, 'Could not continue in a new chat.')))
+                    .finally(() => setContinuing(false))
+                }
+              },
+              {
+                id: 'composer.upload', label: 'Attach file',
+                icon: <Paperclip size={17} strokeWidth={1.9} aria-hidden="true" />,
+                disabled: !enabled || running || sending,
+                run: () => fileInputRef.current?.click()
+              }
+            ]} />
           </div>
           <div className="composer-input-wrap">
             {visibleSuggestion && <div className="composer-suggestion" aria-hidden="true">
@@ -307,7 +316,7 @@ export function Composer({
               onKeyDown={suggestionKeyDown}
             />
           </div>
-          <div className="composer-setup-chip">
+          {modelHost ? createPortal(<>
             <ComposerSetupMenu
               ref={setupMenuRef}
               modelsEnabled={enabled && !running}
@@ -325,18 +334,25 @@ export function Composer({
               onCompact={onCompactConversation}
               compactEnabled={compactConversationEnabled}
             />
-            <ComposerFolderMenu
-              busy={sending}
-              cwd={cwd}
-              projectPath={projectPath}
-              projectPending={projectPending}
-              recentProjects={recentProjects}
-              onChooseProject={onChooseProject}
-              onSelectProject={onSelectProject}
-              onClearProject={onClearProject}
+          </>, modelHost) : <div className="composer-setup-chip">
+            <ComposerSetupMenu
+              ref={setupMenuRef}
+              modelsEnabled={enabled && !running}
+              running={running}
+              models={models}
+              selectedModel={selectedModel}
+              selectedReasoningEffort={selectedReasoningEffort}
+              onModelChange={onModelChange}
+              onReasoningEffortChange={onReasoningEffortChange}
               onError={setComposerError}
+              contextUsage={contextUsage}
+              provider={provider}
+              planUsage={planUsage}
+              onRefreshPlanUsage={onRefreshPlanUsage}
+              onCompact={onCompactConversation}
+              compactEnabled={compactConversationEnabled}
             />
-          </div>
+          </div>}
           {action}
         </div>
       </PromptInput>

@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" fill="none">
+  <defs>
+    <linearGradient id="tile" x1="64" y1="4" x2="64" y2="123" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#494c4e"/>
+      <stop offset=".16" stop-color="#292c2f"/>
+      <stop offset=".72" stop-color="#1c1f21"/>
+      <stop offset="1" stop-color="#090b0c"/>
+    </linearGradient>
+    <radialGradient id="tile-light" cx="0" cy="0" r="1" gradientTransform="translate(52 38) rotate(77) scale(86 70)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#484c4e" stop-opacity=".28"/>
+      <stop offset=".72" stop-color="#111314" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000" stop-opacity=".4"/>
+    </radialGradient>
+    <linearGradient id="tile-edge" x1="64" y1="4" x2="64" y2="123" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff" stop-opacity=".2"/>
+      <stop offset=".3" stop-color="#fff" stop-opacity=".025"/>
+      <stop offset="1" stop-color="#000" stop-opacity=".6"/>
+    </linearGradient>
+    <linearGradient id="cobalt" x1="51" y1="23" x2="63" y2="74" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#76a9df"/>
+      <stop offset=".38" stop-color="#487fb8"/>
+      <stop offset="1" stop-color="#224c79"/>
+    </linearGradient>
+    <linearGradient id="steel" x1="32" y1="43" x2="60" y2="104" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8ec8e6"/>
+      <stop offset=".48" stop-color="#639dc6"/>
+      <stop offset="1" stop-color="#37658e"/>
+    </linearGradient>
+    <linearGradient id="ice" x1="83" y1="43" x2="87" y2="105" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#d2e9f7"/>
+      <stop offset=".4" stop-color="#a5c9e3"/>
+      <stop offset="1" stop-color="#739bbd"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="52" y1="43" x2="75" y2="83" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f0f7fc"/>
+      <stop offset=".45" stop-color="#d5e6f1"/>
+      <stop offset="1" stop-color="#7e9bb6"/>
+    </linearGradient>
+    <radialGradient id="core" cx="0" cy="0" r="1" gradientTransform="translate(59 55) rotate(71) scale(29 27)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#86d3f4"/>
+      <stop offset=".25" stop-color="#4dace0"/>
+      <stop offset=".63" stop-color="#2b71ad"/>
+      <stop offset="1" stop-color="#183b63"/>
+    </radialGradient>
+    <linearGradient id="edge" x1="57" y1="23" x2="71" y2="103" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#d9edff" stop-opacity=".55"/>
+      <stop offset=".4" stop-color="#b4d4f1" stop-opacity=".1"/>
+      <stop offset="1" stop-color="#0d2b45" stop-opacity=".6"/>
+    </linearGradient>
+    <filter id="depth" x="13" y="15" width="103" height="103" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="3" stdDeviation="2.5" flood-color="#000" flood-opacity=".8"/>
+      <feDropShadow dx="0" dy=".8" stdDeviation=".45" flood-color="#071522" flood-opacity=".7"/>
+    </filter>
+  </defs>
+  <!-- Hand-built Chromium mark on the same charcoal tile as Chats. -->
+  <rect x="4" y="6" width="120" height="119" rx="29" fill="#080a0b" fill-opacity=".6"/>
+  <rect x="4" y="4" width="120" height="119" rx="29" fill="url(#tile)"/>
+  <rect x="4" y="4" width="120" height="119" rx="29" fill="url(#tile-light)"/>
+  <rect x="4.5" y="4.5" width="119" height="118" rx="28.5" stroke="url(#tile-edge)"/>
+  <g filter="url(#depth)">
+    <circle cx="64" cy="63" r="40" fill="url(#steel)"/>
+    <path d="M29.359 43A40 40 0 0 1 98.641 43H64a20 20 0 0 0-17.32 30Z" fill="url(#cobalt)"/>
+    <path d="M64 43h34.641A40 40 0 0 1 64 103l17.32-30A20 20 0 0 0 64 43Z" fill="url(#ice)"/>
+    <path d="M64 43h34.641M29.359 43l17.32 30M64 103l17.32-30" stroke="#d8eeff" stroke-opacity=".16" stroke-width=".65"/>
+    <circle cx="64" cy="63" r="40" stroke="url(#edge)" stroke-width=".7"/>
+    <circle cx="64" cy="63.6" r="20.4" fill="#102e4b" fill-opacity=".35"/>
+    <circle cx="64" cy="63" r="20" fill="url(#rim)"/>
+    <circle cx="64" cy="63" r="16.5" fill="url(#core)" stroke="#16456c" stroke-opacity=".65" stroke-width=".7"/>
+    <path d="M47.2 52.15A20 20 0 0 1 78.14 48.86" stroke="#f3fbff" stroke-opacity=".55" stroke-width=".7" stroke-linecap="round"/>
+  </g>
+</svg>

@@ -52,7 +52,7 @@ export type ChatRecord = {
   sessionRotations: ChatSessionRotation[]
   /** The agent run driving this chat, running or paused; null for an ordinary chat. */
   agentRun: AgentRun | null
-  /** Set when the chat was started from the browser quick chat or a notepad window chat. */
+  /** Set when the chat was started from a notepad window chat (legacy records may still say `browser`). */
   quickChatSurface?: QuickChatSurface | null
 }
 

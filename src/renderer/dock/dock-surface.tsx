@@ -1,11 +1,8 @@
-import type { JSX } from 'react'
+import type { JSX, ReactNode } from 'react'
 
-/**
- * The dock's surface: a flat strip a step above the workspace it covers, with one hairline along
- * its top edge. The tray's tiles stand out of it.
- */
-export function DockSurface(): JSX.Element {
-  return <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 border-t border-[var(--hairline-strong)]">
-    <div data-slot="dock-surface-fill" className="absolute inset-0 bg-popover/85 backdrop-blur-md" />
+/** Shared local backing for workspace navigation, app icons and status controls. */
+export function DockSurface({ children }: { children: ReactNode }): JSX.Element {
+  return <div data-slot="dock-control-cluster" className="dock-bar-controls" role="group" aria-label="Workspace controls">
+    {children}
   </div>
 }

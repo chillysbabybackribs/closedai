@@ -14,6 +14,7 @@ const entries = [
   'src/main/index.ts',
   'src/main/investigations/artifact-worker.ts',
   'src/main/native-instrument/worker.ts',
+  'src/main/chat-store/pane-index-worker.ts',
   'src/main/tools/search/research/pdf/pdf-worker.ts',
   'src/main/tools/search/research/pdf/page-worker.ts',
   'src/preload/index.ts',

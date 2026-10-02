@@ -12,13 +12,13 @@ export type NodeLike = { contains(node: NodeLike | null): boolean }
  * leaving the document for a native view). Clicks inside the popup swallow their mousedown so
  * they never move focus, which keeps this the only focus-driven close.
  */
-export function closesOnFocusOut(root: NodeLike, relatedTarget: NodeLike | null): boolean {
-  return relatedTarget === null || !root.contains(relatedTarget)
+export function closesOnFocusOut(root: NodeLike, relatedTarget: NodeLike | null, popup?: NodeLike | null): boolean {
+  return relatedTarget === null || (!root.contains(relatedTarget) && !popup?.contains(relatedTarget))
 }
 
 /** A press outside the component closes it even when the press does not move focus. */
-export function closesOnPointerDown(root: NodeLike, target: NodeLike | null): boolean {
-  return target === null || !root.contains(target)
+export function closesOnPointerDown(root: NodeLike, target: NodeLike | null, popup?: NodeLike | null): boolean {
+  return target === null || (!root.contains(target) && !popup?.contains(target))
 }
 
 /**

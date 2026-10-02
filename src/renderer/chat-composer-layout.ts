@@ -1,6 +1,4 @@
 import type { ChatSnapshot } from '../shared/chat.js'
-import type { ChatPeerSummary } from '../shared/chat-peers.js'
-
 /** Per-pane composer anchor: bottom for conversations, center only for genuinely blank chats. */
 const composerBottomByPane = new Map<string, boolean>()
 
@@ -8,22 +6,19 @@ export function resetComposerLayoutForTests(): void {
   composerBottomByPane.clear()
 }
 
-/** Whether this pane should use the transcript layout (composer pinned to the bottom). */
-export function paneHasTranscript(state: ChatSnapshot, peer?: ChatPeerSummary | null): boolean {
+/** Whether the pane is showing (or paging) a real transcript, not drawer metadata alone. */
+export function paneHasTranscript(state: ChatSnapshot): boolean {
   if (state.items.length > 0 || state.activeTurnId) return true
   if (state.history?.hasEarlier) return true
-  if (peer?.preview.trim()) return true
-  if (peer?.threadId && peer.title.trim() && peer.title !== 'New chat') return true
   return false
 }
 
-export function composerAnchoredBottom(paneId: string, state: ChatSnapshot, peer?: ChatPeerSummary | null): boolean {
-  if (paneHasTranscript(state, peer)) {
+export function composerAnchoredBottom(paneId: string, state: ChatSnapshot): boolean {
+  if (paneHasTranscript(state)) {
     composerBottomByPane.set(paneId, true)
     return true
   }
-  const blank = !state.threadId && !state.history?.hasEarlier && !peer?.preview.trim()
-  if (blank) {
+  if (!state.threadId && !state.history?.hasEarlier) {
     composerBottomByPane.set(paneId, false)
     return false
   }

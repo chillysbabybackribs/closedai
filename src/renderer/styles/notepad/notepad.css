@@ -1,6 +1,7 @@
+@import "../browser/quick-chat.css";
+
 /* Notepad windows (renderer notepad/): a tile whose tabs are notes. The editor fills the body,
-   a status line sits under it, and the window's chat floats over the notes' bottom-right corner
-   with the browser quick chat's button and card (styles/browser/quick-chat.css). */
+   a status line sits under it, and the window's chat floats over the notes' bottom-right corner. */
 
 .notepad-view {
   display: flex;

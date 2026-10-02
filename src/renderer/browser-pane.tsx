@@ -1,7 +1,10 @@
 import type { JSX, ReactNode } from 'react'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowLeft, ArrowRight, Download, FileCode, FileImage, Globe2, Loader2, Lock, Plus, RefreshCw, Search, Star, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Download, FileCode, FileImage, FileVideo, Globe2, Loader2, Lock, Plus, RefreshCw, Search, Star, X } from 'lucide-react'
 import { ImageViewer } from './image-viewer/image-viewer.js'
+import { VideoViewer } from './video-viewer/video-viewer.js'
+import { VideoHome } from './video-viewer/video-home.js'
+import { VideoCompareView } from './video-viewer/video-compare-view.js'
 import { FileViewer } from './file-viewer/file-viewer.js'
 import { BrowserSiteIcon } from './browser-site-icon.js'
 import type { BrowserController } from './browser-controller.js'
@@ -49,12 +52,22 @@ export const BrowserPane = memo(function BrowserPane({
   const decidePermission = useCallback((id: string, decision: 'allow' | 'deny') => {
     securityRequests().permissions.resolve(id, decision).catch(report)
   }, [report])
+  const appViewer = Boolean(controller.browser.image || controller.browser.video || controller.browser.videoHub || controller.browser.file)
+  const activeTab = controller.tabs.find((tab) => tab.active) ?? null
+  const compare = controller.browser.videoCompare
+  const showVideoCompare = Boolean(
+    compare
+    && activeTab?.video
+    && compare.tabIds.includes(activeTab.id)
+    && compare.tabIds.every((id) => controller.tabs.some((tab) => tab.id === id && tab.video))
+  )
   return (
     <section className="browser-pane" aria-label="Browser" data-ui-surface="browser">
-      <div className={`browser-shell ${downloads.isOpen && !controller.browser.image && !controller.browser.file ? 'has-downloads' : ''} ${controller.browser.image ? 'has-image-viewer' : ''} ${controller.browser.file ? 'has-file-viewer' : ''}`}>
+      <div className={`browser-shell ${downloads.isOpen && !appViewer ? 'has-downloads' : ''} ${controller.browser.image ? 'has-image-viewer' : ''} ${controller.browser.video ? 'has-video-viewer' : ''} ${controller.browser.videoHub ? 'has-video-home' : ''} ${showVideoCompare ? 'has-video-compare' : ''} ${controller.browser.file ? 'has-file-viewer' : ''}`}>
         <div className="browser-tabstrip-host">
           <div className="browser-tabstrip-row">
-            <BrowserTabs controller={controller} savedSites={savedSites} dragHandle={dragHandle} onError={report} />
+            <BrowserTabs controller={controller} savedSites={savedSites} dragHandle={dragHandle} onError={report}
+              videoCompare={compare} />
             {windowControls}
           </div>
           {notice ? (
@@ -67,27 +80,33 @@ export const BrowserPane = memo(function BrowserPane({
           ) : null}
           <WebPermissionBar requests={permissions} onDecide={decidePermission} />
         </div>
-        {!controller.browser.image && !controller.browser.file && <BrowserToolbar controller={controller} downloads={downloads} savedSites={savedSites} onError={report} />}
-        {downloads.isOpen && !controller.browser.image && !controller.browser.file ? <BrowserDownloadsShelf controller={downloads} /> : null}
-        <div className={`browser-frame ${controller.browser.navigationError ? 'has-navigation-error' : ''}`}>
+        {!appViewer && <BrowserToolbar controller={controller} downloads={downloads} savedSites={savedSites} onError={report} />}
+        {downloads.isOpen && !appViewer ? <BrowserDownloadsShelf controller={downloads} /> : null}
+        <div className={`browser-frame ${controller.browser.navigationError && !appViewer ? 'has-navigation-error' : ''}`}>
           <div
-            className={`browser-view-host ${controller.browser.image ? 'is-image-viewer' : controller.browser.file ? 'is-file-viewer' : controller.browser.navigationError ? 'is-navigation-error' : ''}`}
+            className={`browser-view-host ${controller.browser.image ? 'is-image-viewer' : controller.browser.video ? 'is-video-viewer' : controller.browser.videoHub ? 'is-video-home' : controller.browser.file ? 'is-file-viewer' : controller.browser.navigationError ? 'is-navigation-error' : ''}`}
             id="browser-page"
             role="tabpanel"
             aria-label="Browser page"
-            aria-hidden={controller.browser.image || controller.browser.file || controller.browser.navigationError ? 'true' : undefined}
+            aria-hidden={appViewer || controller.browser.navigationError ? 'true' : undefined}
             ref={controller.browserHostRef}
           />
-          {controller.titlebarFreeze && !controller.browser.image && !controller.browser.file ? (
+          {controller.titlebarFreeze && !appViewer ? (
             <img className="browser-view-freeze" src={controller.titlebarFreeze.imageUrl} alt="" aria-hidden="true" />
           ) : null}
           {controller.tabs.filter((tab) => tab.image).map((tab) =>
             <ImageViewer key={tab.id} id={tab.id} active={controller.browser.image?.tabId === tab.id} />)}
+          {showVideoCompare && compare ? (
+            <VideoCompareView compare={compare} tabs={controller.tabs} active={showVideoCompare} />
+          ) : controller.tabs.filter((tab) => tab.videoHub).map((tab) =>
+            <VideoHome key={tab.id} id={tab.id} active={controller.browser.videoHub?.tabId === tab.id} />)}
+          {!showVideoCompare && controller.tabs.filter((tab) => tab.video).map((tab) =>
+            <VideoViewer key={tab.id} id={tab.id} video={tab.video} active={controller.browser.video?.tabId === tab.id} />)}
           {controller.tabs.filter((tab) => tab.file).map((tab) =>
             <FileViewer key={tab.id} id={tab.id} revision={tab.file!.revision} line={tab.file!.line} endLine={tab.file!.endLine}
               diff={tab.file!.diff} cwd={tab.file!.cwd} fileName={tab.file!.name} path={tab.file!.path}
               active={controller.browser.file?.tabId === tab.id} />)}
-          {controller.browser.navigationError ? (
+          {controller.browser.navigationError && !appViewer ? (
             <BrowserNavigationError
               error={controller.browser.navigationError}
               onRetry={() => { void window.closedai.browser.navigate(controller.browser.navigationError?.url ?? controller.browser.url).catch(report) }}
@@ -100,11 +119,12 @@ export const BrowserPane = memo(function BrowserPane({
   )
 })
 
-function BrowserTabs({ controller, savedSites, dragHandle, onError }: {
+function BrowserTabs({ controller, savedSites, dragHandle, onError, videoCompare }: {
   controller: BrowserController
   savedSites: BrowserSavedSitesController
   dragHandle?: ReactNode
   onError: (reason: unknown) => void
+  videoCompare?: import('../shared/types.js').VideoCompareState | null
 }): JSX.Element {
   const tabRefs = useRef(new Map<string, HTMLButtonElement>())
   const [menuTarget, setMenuTarget] = useState<BrowserTabMenuTarget | null>(null)
@@ -208,6 +228,8 @@ function BrowserTabs({ controller, savedSites, dragHandle, onError }: {
           onRename={beginRename}
           onError={onError}
           onClose={() => setMenuTarget(null)}
+          videoPeers={controller.tabs.filter((tab) => tab.video && tab.id !== menuTarget.tab.id)}
+          inVideoCompare={Boolean(videoCompare?.tabIds.includes(menuTarget.tab.id))}
         />
       ) : null}
     </div>
@@ -218,6 +240,7 @@ function TabIcon({ tab }: { tab: BrowserTabInfo }): JSX.Element {
   const [failed, setFailed] = useState(false)
   useEffect(() => setFailed(false), [tab.favicon])
   if (tab.image) return <FileImage className="browser-tab-icon" size={16} aria-hidden="true" />
+  if (tab.videoHub || tab.video) return <FileVideo className="browser-tab-icon" size={16} aria-hidden="true" />
   if (tab.isLoading) return <Loader2 className="spin browser-tab-icon" size={14} aria-hidden="true" />
   if (tab.favicon && !failed) {
     return <img className="browser-tab-favicon" src={tab.favicon} alt="" aria-hidden="true" onError={() => setFailed(true)} />

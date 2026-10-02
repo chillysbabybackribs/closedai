@@ -25,6 +25,6 @@ export function opensContextMenu(event: { key: string; shiftKey: boolean }): boo
 }
 
 /** The panel a tab controls: app-owned viewers have their own; web tabs share the native page host. */
-export function tabPanelId(tab: Pick<BrowserTabInfo, 'id' | 'image' | 'file'>): string {
-  return tab.image ? `image-page-${tab.id}` : tab.file ? `file-page-${tab.id}` : 'browser-page'
+export function tabPanelId(tab: Pick<BrowserTabInfo, 'id' | 'image' | 'video' | 'videoHub' | 'file'>): string {
+  return tab.image ? `image-page-${tab.id}` : tab.videoHub ? `video-home-${tab.id}` : tab.video ? `video-page-${tab.id}` : tab.file ? `file-page-${tab.id}` : 'browser-page'
 }

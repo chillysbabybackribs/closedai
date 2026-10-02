@@ -96,8 +96,18 @@ target surface loaded the update, and a screenshot stop rule when it has not. On
 capture the changed area once and need a concrete reason for another capture; screenshots must
 not be used to poll for reload completion. The capture tool description carries the same rule
 for all providers, including Cursor, which receives no session guide.
-Verification is proportional to the change and reuses valid results from the current work.
-Repository navigation starts with filenames and scoped content searches; `.rgignore` excludes
+Verification is proportional to the change and reuses observed successful checks for unchanged
+code. Once required checks pass, finish; repeat only after relevant edits, failures, or new
+evidence, and avoid demo scripts that duplicate passing tests. Unsupported historical claims
+require file reads and source evidence, or fresh checks when that evidence is unavailable.
+Heavy commands use one work-lock boundary when `chatWorkLockEnabled`, without wrapping commands
+already locked by the runtime. Routing rules appear once in the guide; detailed tool recipes
+remain in `docs/tools.md`.
+Repository navigation starts with filenames and scoped content searches. The guide directs
+models to batch independent native-tool searches and reads, read candidate implementations,
+existing tests, and relevant callers together, and inspect results before dependent edits.
+Required checks may run concurrently only when they do not share locks or build outputs.
+`.rgignore` excludes
 generated workspace maps and the generated guide (search its outline) from default searches. The guide also calls out checks for new test
 modules, map regeneration, and separate inspection and whitespace checks for untracked files.
 Hygiene blocks dependency-layer violations; file sizes are advisory and leave structural choices
@@ -105,7 +115,7 @@ to the implementing model. Size-only growth requires no extra check or approval.
 On Codex, Claude, and Antigravity it is attached once per provider thread (including the first
 send after a handoff to a new thread), omitted on later turns in the same thread, and stripped
 from the user-visible transcript like other context blocks. Edit `scripts/agent-guide-outline.json` and run `npm run guide:generate`;
-`guide:check` guards drift; generation and runtime delivery both enforce an 8,500-character cap.
+`guide:check` guards drift; generation and runtime delivery both enforce a 9,000-character cap.
 The generated guide and capture descriptions are main-process code:
 rebuild and restart to load changes, then use a new provider thread or handoff to receive the
 updated guide. Restarting alone does not guarantee an existing thread receives a new guide.

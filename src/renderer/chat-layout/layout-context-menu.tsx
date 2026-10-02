@@ -1,6 +1,7 @@
 import { createContext, useContext, type ReactNode } from 'react'
 import { ContextMenu } from 'radix-ui'
 import { ArrowLeftToLine, ArrowRightToLine, Check, Layers, LayoutGrid, PanelLeftClose, Pause, Pencil, Pin, PinOff, Play, SquareArrowDownLeft, SquareArrowOutUpRight, X } from 'lucide-react'
+import { isViewTabId } from './layout-tree.js'
 import type { TabActivity } from './tab-activity.js'
 import type { TileDirection } from './layout-tabs.js'
 
@@ -53,7 +54,7 @@ export function ChatLayoutContextMenuContent(props: Parameters<typeof ChatLayout
   const { moveTab, detachTab, returnTab } = useContext(ChatLayoutActions)
   const canCloseTab = tabs.length > 1
   // The keyboard path for a tab drag between tiles; the chat stays selected, so no IPC is involved.
-  const canMoveTab = Boolean(moveTab) && chatCount >= 2
+  const canMoveTab = isViewTabId(activeId) && Boolean(moveTab) && chatCount >= 2
   // A window keeps at least one tab, so the only tab of the only tile stays.
   const canDetachTab = Boolean(detachTab) && (tabs.length > 1 || chatCount >= 2)
   const turnControl = tabActivity?.state === 'working' ? 'pause'
@@ -65,7 +66,7 @@ export function ChatLayoutContextMenuContent(props: Parameters<typeof ChatLayout
       <LayoutMenuRow data-ui="layout.tab-close" data-ui-key={activeId} label="Close tab" hint={closeHint}
         shortcut="Ctrl+W" icon={<X size={ICON} aria-hidden="true" />} disabled={busy} onSelect={onCloseTab} />
     )}
-    <LayoutMenuRow data-ui="layout.pane-hide" data-ui-key={activeId} label="Close window" hint={hideHint}
+    <LayoutMenuRow data-ui="layout.pane-hide" data-ui-key={activeId} label={isViewTabId(activeId) ? "Close window" : "Dismiss this chat"} hint={hideHint}
       icon={<PanelLeftClose size={ICON} aria-hidden="true" />} disabled={busy} onSelect={onHide} />
     {canMoveTab && <>
       <LayoutMenuRow data-ui="layout.tab-move" data-ui-key="next" label="Move tab to next pane"

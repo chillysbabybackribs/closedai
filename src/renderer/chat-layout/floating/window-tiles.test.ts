@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { BROWSER_PANE_ID, layoutGeometry, removePane, type ChatLayout } from '../layout-tree.ts'
 import { floatWindow, minimizeWindow } from './window-layout.ts'
-import { ON_TOP, browserCovered, canvasTiles, floatingFront, uncoveredRect } from './window-tiles.ts'
+import { ON_TOP, browserCovered, browserReaches, canvasTiles, floatingFront, uncoveredRect } from './window-tiles.ts'
 import { setWindowOnTop } from './window-arrange.ts'
 
 const size = { width: 1200, height: 800 }
@@ -18,6 +18,12 @@ test('windows keep tree order whatever layer they are in', () => {
   assert.deepEqual(tiles(floated, false).map((tile) => tile.kind), ['floating', 'tiled', 'hidden'])
   const minimized = minimizeWindow(floated, 'a')
   assert.deepEqual(tiles(minimized).map((tile) => tile.kind), ['hidden', 'tiled', 'tiled'])
+})
+
+test('the browser reaches the dock band only when it is shown and extends into it', () => {
+  assert.equal(browserReaches(tiles(tree), size.height - 86), true, 'a tiled browser runs to the bottom edge')
+  assert.equal(browserReaches(tiles(tree), size.height + 1), false)
+  assert.equal(browserReaches(tiles(tree, false), size.height - 86), false, 'a hidden browser never does')
 })
 
 test('a floating window over the browser covers it until the browser is in front', () => {

@@ -20,7 +20,7 @@ test('each existing action is reachable in its category and through command sear
 test('launcher preserves context eligibility and zoom limits', () => {
   const disabled = (key: string, patch = {}) => menuItemDisabled(items.find(row => row.key === key)!, { ...state, ...patch })
   assert.equal(disabled('new-chat'), false)
-  for (const key of ['tile-windows', 'workspace-layout', 'toggle-browser-pane', 'compact-context', 'stop-turn']) {
+  for (const key of ['restore-floating-pair', 'tile-windows', 'workspace-layout', 'toggle-browser-pane', 'compact-context', 'stop-turn']) {
     assert.equal(disabled(key), true, key)
   }
   assert.equal(disabled('stop-turn', { stopEnabled: true }), false)
@@ -48,7 +48,7 @@ test('a model run fires the row handler only when the menu would allow the click
   assert.deepEqual(runMenuKey('tools', menu, chat), { key: 'tools', label: 'Tools & capabilities…', menu: 'Agent', ran: true })
   assert.equal(runMenuKey('reset-zoom', menu, chat).ran, true)
   assert.equal(runMenuKey('search-chats', menu, chat).ran, true)
-  assert.deepEqual(runMenuKey('tile-windows', menu, chat), { key: 'tile-windows', label: 'Tile windows', menu: 'View', ran: false, disabled: true })
+  assert.deepEqual(runMenuKey('tile-windows', menu, chat), { key: 'tile-windows', label: 'Tile windows (full workspace)', menu: 'View', ran: false, disabled: true })
   assert.match(runMenuKey('missing', menu, chat).refused ?? '', /No menu row/)
   assert.equal(runMenuKey('stop-turn', menu, chat).ran, true)
   const self = runMenuKey('stop-turn', menu, { selectedPaneId: 'pane-b', callerPaneId: 'pane-b' })

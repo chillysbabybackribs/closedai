@@ -26,11 +26,17 @@ or edits. The instruction lives in `closedai.runtime.developmentFirstRead`; it i
 the model, not an enforced file-read gate. Other projects without this guide use their own
 instructions, and unrelated chat, web research, and browser tasks are excluded.
 
+For code navigation, find candidate filenames first, then search content in the relevant
+directory. Batch independent searches and reads using native provider tools; once candidates
+are known, read the implementation, existing tests, and relevant callers together. Inspect
+results before dependent edits. Independent required checks can run concurrently when they
+do not share locks or build outputs; verification remains proportional to the change.
+
 Renderer UI changes are verified in Electron (`npm run build &&
 npm run preview -- --skipBuild`, or `npm run dev` for hot reload). There is no separate browser-only renderer
 entry or fixture bridge. A running checkout launch (unpackaged, not the dev server) polls
 `out/renderer/index.html`; about 1.5 s after a rebuild settles it reloads every app surface
-showing the built renderer (windows, detached windows, the quick chat layer), whoever ran the
+showing the built renderer (windows and detached windows), whoever ran the
 build. It skips the reload and logs `[renderer-build] … restart the app` once when `out/main`
 differs from the bundle the process launched with, because main-process changes still need a
 restart (`src/main/renderer-build-reload.ts`). Only `out/main` is compared, so a preload-only
@@ -94,7 +100,10 @@ file sizes produce a compact, non-blocking advisory (`npm run hygiene -- --detai
 Build also typechecks, so `npm run check` relies on the build for both checks rather than repeating
 them. Generated maintenance-index sizes are advisory too; `map:check` still blocks stale data.
 The injected session guide retains its separate context-size budget. Verification should reuse
-valid results for the same code state and match the change scope.
+observed successful checks for unchanged code and match the change scope. Once required checks
+pass, finish; repeat only after relevant edits, failures, or new evidence. Avoid demo scripts
+that duplicate passing tests. Use one work-lock boundary when `chatWorkLockEnabled`; do not wrap
+a command already locked by the runtime (see `scripts/work-lock.mjs`).
 
 ## Find a workflow
 
@@ -104,7 +113,6 @@ valid results for the same code state and match the change scope.
 | Arrange chats and the browser, or use multiple windows | [Windows on the canvas](#windows-on-the-canvas) and [Windows](#windows) |
 | Switch workspaces or return to a saved arrangement | [Workspace overview](#workspace-overview-spaces) |
 | Change a chat's folder or continue work in another project | [Projects, chats, panes, and conversations](#projects-chats-panes-and-conversations) |
-| Open the browser quick chat or understand its controls | [Browser quick chat](#browser-quick-chat) |
 | Write notes or chat with a model about a note | [Notepad](#notepad) |
 | Understand what context models receive | [Model context](model-context.md) |
 | Find a tool's arguments, limits, or trust boundary | [Tools](tools.md) |
@@ -176,44 +184,35 @@ PBKDF2-SHA256, 210,000 iterations, 16-byte salt, compared in constant time
 (`src/shared/local-profile-password.ts`); this is a machine-local deterrent, not cloud
 authentication.
 
-The title bar's left edge holds the account menu (`titlebar.session-account`, labelled **File**,
-`session-account-menu.tsx`): the profile name, "Signed in on this device", **Connect providers…**
-(`titlebar.session-connect-providers`), and **Log out** (`titlebar.session-sign-out`). The
-application File/View/Agent/Developer menus live in the dock's Start panel; the title bar shows
-them only when startup stalled before a pane exists, or in a detached window. Logging out
-(also available through the application **File → Sign out…** / Start → search) clears the local session (`sessionUnlocked`,
+The title bar's left edge holds the application menu bar (**File**, **View**, **Agent**,
+**Developer**; `titlebar.menu` / `titlebar-menu.tsx`). **File → Connect providers…** reopens the provider setup modal;
+**File → Sign out…** clears the local session (`sessionUnlocked`,
 `activeUserId`) and returns to the gate without deleting saved profiles or per-profile
 provider-setup progress.
 
-In the main window, provider subscription usage sits centred in the gap between the File dropdown and
-chat search (`src/renderer/provider-usage/`): one ghost-button chip per provider
-(`titlebar.provider-usage`): the provider mark and remaining percent as text, separated by a clean
-vertical divider on the bar without separate pill surfaces. Level ink colours the figure
-only, never the mark. A provider with no numeric window shows its mark alone; its plan and usage
-details remain available in the popup.
-All four providers appear on startup, before any provider chat connects. They show the lowest reported remaining allowance, keeping known accounts separate and using the
-newest reading across account probes and attached chats; they never sum quotas across conversations. The popup
-names every provider window, including model-specific scopes, remaining allowance, reset time,
-observation age, plan and provider notes. Session connection is shown separately from quota.
+In the main window, provider subscription usage lives in the dock footer (`src/renderer/provider-usage/usage-flyout.tsx`,
+`dock.usage`): one button shows the lowest remaining percent across every connected plan, and the
+flyout lists each provider window with bars, reset times, and pace warnings. Level ink colours the
+figure only, never the mark. All four providers appear on startup, before any provider chat connects,
+keeping known accounts separate and using the newest reading across account probes and attached
+chats; they never sum quotas across conversations. Session connection is shown separately from quota.
 At <=20% remaining the quota is low, <=10% critical, and 0% exhausted; a reading older than five
 minutes or past its reported reset is stale, never assumed replenished. Partial Claude events
 retain each untouched window's observation time. Missing data says unavailable. Codex reads `account/rateLimits/read` only: zero, one, or two
-rolling windows (primary/secondary) plus optional credit metadata; the title bar shows reported windows
-and plan, not inferred buckets. Credit balances appear in the composer usage card, not the title-bar
-chips. Cursor reports monthly included, Auto, and API percentages through the same read-only dashboard
-RPCs as the CLI’s `/usage` command. The chip uses the lowest remaining scope; the popup names
+rolling windows (primary/secondary) plus optional credit metadata; the flyout shows reported windows
+and plan, not inferred buckets. Credit balances appear in the composer usage card, not the dock
+usage button. Cursor reports monthly included, Auto, and API percentages through the same read-only dashboard
+RPCs as the CLI’s `/usage` command. The dock button uses the lowest remaining scope; the flyout names
 each scope and the billing reset, with on-demand spending as a note rather than an allowance. Background chat summaries carry telemetry even
-when their transcript is not subscribed. The title bar also reads each signed-in CLI account through
+when their transcript is not subscribed. The renderer reads each signed-in CLI account through
 `chat:readProviderUsage`, independently of chat runtimes, on mount and every minute while the
 document is foregrounded. Reads are shared across windows for one minute, including failures;
 failed reads preserve the last dated observation. Codex and Claude use short-lived control-only
 processes, Antigravity uses `/quota`, and Cursor uses the CLI’s signed-in credential store and
 read-only usage RPCs (`about` lets the CLI refresh credentials). These reads send no model turns
 and do not wake or extend the idle lifetime of parked chats. Provider push events can supply
-newer readings between polls. The popup offers an explicit refresh
-(`titlebar.provider-usage-refresh`). When the gap is too narrow, a single **Usage** trigger
-(`titlebar.provider-usage-all`), carrying the lowest remaining reading in a `Badge`, opens the same
-provider/account tabs (`titlebar.provider-usage-tab`).
+newer readings between polls. The flyout offers an explicit refresh (`dock.usage-refresh`) and
+per-plan retry when a reading is missing (`dock.usage-retry`).
 
 Each local profile owns a whole workspace (`src/main/profiles/`). A profile's data directory is
 Electron's `userData` for the process that opens it, chosen before the instance lock and before
@@ -421,8 +420,7 @@ minting a new id. Main retains existing attached chats unless a departed chat is
 longer visible. The renderer decides which tile displays a selected chat, as described below.
 
 Continuation creates a new chat tab in the source tile with a local transcript digest, delivered once on its
-next message. **Fresh context** (`composer.continue`) sits in the composer capsule beside Agents
-when the latest response can hand off (an icon, labelled once the context window is half full); it is disabled while that chat's turn is actively running (`activeTurnId` set).
+next message. **Fresh context** (`composer.continue`) is the first action in the composer + speed dial; it is disabled until a response can hand off and while that chat is running.
 **Branch** (`chat.message-branch`) starts a new chat whose digest and `peer_chats.recall` boundary end at
 that specific assistant message; **Continue** carries the full conversation through its current end.
 Pausing a turn clears the active run (`activeTurnId`) and sets `pausedTurnId`, so Continue and Branch become
@@ -490,24 +488,33 @@ limits and [Model context](model-context.md) for prompt delivery.
 
 ## Workspace layout
 
-The workspace has no sidebar. A centered title-bar input searches saved chats across projects.
-Header search and the History view tab read the same live workspace rows (`chats` events from the
-main process, every directory, attached or detached) and share one model in
-`src/renderer/chat-history/history-search.ts`: one visibility rule (`listableChat`: a blank pane
-is hidden unless it is running or continues another chat), one order and time (`activityAt`: last
-turn end, else store update), and one matcher (fuzzy title subsequence, then preview substring,
-title hits first). Both show the project folder. Neither paints the whole store: a workspace holds
-hundreds of closed chats and rendering them all made both surfaces slow to open. The header groups
-and windows Closed to the 20 newest (`REST_CLOSED_LIMIT`; live groups are complete) and keeps 40
-ranked matches for a query, with captions and footer saying "n of total"; the History view flattens
-and pages 50 rows at a time behind a "Show more" control (`chat.history-more`).
-Clicking or focusing the input opens a dropdown. The palette has one state and closes only on
+An optional **Files** sidebar lists the active chat's working directory (`src/renderer/file-tree/`,
+`localFiles:listDirectory` in main's `src/main/file-tree/list.ts`): expand folders, open files in
+the built-in viewers, refresh, collapse, or hide it (`files.*`; visibility per project folder is
+remembered in localStorage). Thread search lives in the centred chat-card header (assistant-ui
+thread-search shape: pinned first, then live states, then recent saved chats in Today / Yesterday /
+Earlier by last turn). Ctrl+H and File → Search chats focus it. The History view tab reads the same
+live workspace rows (`chats` events from the main process, every directory, attached or detached)
+and shares one model in `src/renderer/chat-history/history-search.ts`: one visibility rule
+(`listableChat`: a blank pane is hidden unless it is running or continues another chat), one order
+and time (`activityAt`: last turn end, else store update), and one case-insensitive matcher (fuzzy
+title subsequence, then preview substring, then project-folder basename substring, ranked in that
+order). Folder matching does not search parent directories: `/home/me/projects/ClosedAI` matches
+`closed`, but not `projects`. Chats without a project folder still match titles and previews.
+Preview-only and folder-only hits have no highlighted title characters; equal scores retain activity
+ordering. Both show the project folder. Thread search initially renders the newest 20 detached chats across recency groups
+(pinned and live groups stay complete); older chats remain searchable and the footer reports the full count; queries keep 40 ranked matches with footer counts. The History view
+flattens and pages 50 rows at a time behind a "Show more" control (`chat.history-more`).
+Clicking or focusing the input opens a dropdown below the field, over the chat. The card popup
+is portalled outside transformed/clipped card containers and constrained to the viewport. Opening
+it uses existing workspace rows without rescanning provider session catalogs. The palette has one state and closes only on
 discrete events: Escape, opening a result, focus leaving the component, a press outside it, or the
 window losing focus (a click on the native browser view). Nothing is inferred from pointer position,
 so moving the pointer over or away from the palette never opens or closes it. Presses inside the
 popup do not move focus, so the input keeps the keyboard.
-The dropdown groups chats into Running, Paused, Recently completed (unread), Open (still attached),
-and Closed (detached, 20 newest), newest last turn first, in a scrollable list whose captions carry the counts.
+The dropdown groups chats into Pinned, Running, Paused, Recently completed (unread), Open (still
+attached), and detached chats in Today, Yesterday, and Earlier, newest last turn first, in a
+scrollable list whose captions carry the counts.
 Rows are single lines in a command-palette surface wider than the input: a live-state glyph (or the
 provider's mark when idle, or the notepad icon when the chat was started from a notepad window),
 the title, the project folder as a dim description, and the last-activity time on the right; a
@@ -526,23 +533,74 @@ click without confirmation. The chat hides immediately. Running chats cannot
 be deleted; pending actions disable the buttons and failures appear below the search. The dropdown
 stays open after deletion. Archive in the History view uses the same immediate archive path.
 Ctrl+H and File →
-Search chats focus it. File → Manage chat history opens (or, when it is already in front, closes) a
-History view tab in the selected chat's tile.
-New chats use the tab + button or File → New chat (Ctrl+N).
+Search chats focus it. File → Manage chat history opens (or, when it is already in front, closes) the
+History view in its own window.
+New chats use the dock Chats action or File → New chat (Ctrl+N).
 Two full-height chats can
 sit on either side of the browser. The browser starts on the right; drag a conversation tab
 onto the browser's left or right half to dock it on that side.
 During a drag, the native browser view is temporarily covered so the drop targets can receive
-the gesture. The dock's **Browser** icon (`dock.app`, item `browser`) and View → Toggle browser pane hide/restore the browser in its saved position without
-closing tabs; `preview_html` shows it through the ui host's `revealBrowser`. The tile header **+** adds and selects a fresh conversation tab in the same tile. Chat headers end with the window buttons described under Windows on the canvas.
+the gesture. The dock's **Browser** icon (`dock.pinned`, item `browser`) and View → Toggle browser pane hide/restore the browser in its saved position without
+closing tabs; `preview_html` shows it through the ui host's `revealBrowser`. Chat headers contain the selected model; see Disposable chat cards below.
 Hiding a tile neither detaches its runtime nor stops its turn; the model command `close_chat`
 still detaches and stops it.
+
+### Disposable chat cards
+
+Chats now use one conversation per card, with no chat tab strip. New chats and fresh-context
+continuations open separate cards. Existing saved chat tab groups split into individual cards
+on restore, preserving each conversation id; view, file and notepad tabs remain unchanged.
+Chat cards cannot join another card as tabs. Layout presets and cross-window adoption also
+normalize chats into separate cards (`chat-layout/chat-cards.ts`).
+
+The card uses a plain, opaque `#141516` base, 16 px corners and a fine inset edge highlight. User
+messages span the text column on `#1e1f20`. The transcript and composer share fluid 16–32 px
+gutters and a centered column that grows with the card up to 960 px. Its header shows, from the
+left, the pin star (`layout.card-pin`, pins or unpins the chat; yellow `#facc15` outline while
+pinned, grey outline when not), with the selected model picker aligned to the right.
+New-chat and fresh-context icons are absent from the header. There is no visible drag grip;
+drag empty header space to move the card.
+The card has one inset (`--card-inset`, 16–32 px with card width) on all four sides: the header star's
+top and left edges, the model picker's right edge, the transcript column and the composer's sides and
+bottom all sit on it, and on cards wider than the 960 px column the header follows the column.
+A 28 px blank strip beneath the header controls (6 px in cards at most 400 px tall) keeps the transcript's
+scroll clipping edge away from the model text, without a visible rule.
+The model name is medium-weight off-white (`#d9dadd`, brighter than the `#7c7f85` glyphs), vertically
+centered in the control row. Its clickable text has no chevron or background, including on hover or while open.
+Earlier history loads from a red chevron-only button with an accessible label
+and hover title.
+Window buttons and the directory chip are absent. Right-click the header for
+**Dismiss this chat**; Ctrl+W dismisses the focused chat card, including the last visible one.
+Dismissal removes that card from the workspace, keeps the conversation in history, and does not
+interrupt a running turn. Search chats can reopen the dismissed thread. Use the dock Chats action
+or File → New chat to open another card.
+
+The composer stays at the card's foot, including an empty chat, with a 56 px minimum row
+and a persistent gap below it equal to the card inset. Its focused border and subtle outer glow use a soft indigo blue
+(`#7783f5`), independent of the wallpaper accent. The gap remains outside the dock's scrollable contents
+when a short card needs to scroll stacked composer content. Its + (`composer.more`) opens a speed dial to the right: fresh context, then the paperclip
+(`composer.upload`) for the file picker. There is no divider before the draft. The running-turn action is a red
+(`#e5484d`) octagon with a thin pale border; pause/resume behavior is unchanged. The model picker retains
+its model, reasoning, context and usage settings in the header. Directory selection remains
+available through the application's project actions.
+
+The tab mechanics below apply to view and notepad windows; chat groups encountered by older
+layout operations are immediately separated into cards.
 
 ### Windows on the canvas
 
 Every tile, the browser included, is a window (`src/renderer/chat-layout/floating/`). A window is
 **tiled** (a slot in the split tree, laid out by dividers), **floating** (lifted out of the split
-tree into its own rect, stacked above every tiled window) or **minimized** (listed in the dock). All
+tree into its own rect, stacked above every tiled window) or **minimized** (listed in the dock). On
+first layout the default chat and browser lift into a compact side-by-side floating pair: about
+76% of the canvas width and height, with a 30/70 chat/browser width split and an 8 px gap. The pair
+sits toward the right with wallpaper visible around it, while keeping its tiled slots for Tile windows
+(`workspace-default-float.ts`). Chat cards retain the user’s chosen zoom while their contents
+reflow continuously to the painted card size, including during a resize drag. Container queries
+tighten header, message and composer spacing in narrow or short cards. Draft growth is bounded
+by card height; the composer dock scrolls when stacked content exceeds 60% of the chat body,
+leaving transcript space. Very narrow composers put the draft above the controls. Browser chrome
+tightens via container queries on the browser tile. All
 three stay in the one saved tree: a pane carries `float: {x, y, width, height, z}` while it floats
 and `docked: true` while it is minimized, so tabs, grouping, selection, pruning, presets and
 per-space persistence treat every window alike, and a window keeps its place (slot or rect) through
@@ -585,16 +643,23 @@ chat cannot be minimized or closed. Minimizing the browser hides it; the dock's 
 it back. The selected window keeps full-strength buttons; the others dim theirs until hovered.
 Double-clicking a floating window's header puts that window alone back into its slot.
 
-The dock's **Layout** section lives in the dock settings popover (`dock.settings`, sliders icon on
-the right; `dock-layout-menu.tsx`, rows `dock.layout-item`) and is the one place to put windows back together:
-**Chats left, browser right** gathers every window and tab, floating and minimized ones included,
-into one chat window left of the browser (the `browser-side` preset); **Chat, browser, chat** puts a
-chat either side of the browser (`browser-between`: the extra windows' tabs join the right-hand
-chat, and a new chat fills the right side when there is only one); **Tile windows** puts every
-floating window back into its slot, so the last tiled layout returns exactly as it was
-(`tileWindows`; minimized windows stay minimized but return to their slot; disabled while nothing
-floats, also View → Tile windows and Ctrl+Shift+L); **Workspace layout…** opens the layout dialog.
-Tile windows and the arrangements also end a maximize.
+The normal chat+browser layout is the **compact floating pair** (about 76% of the canvas, 30/70
+chat/browser, wallpaper visible around it). Linked pairs share a **divider** on their seam
+(`layout.floating-pair-divider`) and **corner handles** on the combined outline
+(`layout.floating-pair-resize`) to resize the pair as one unit; dragging either header moves both.
+**Restore chat & browser pair** (`layout.restore-floating-pair`, View → Restore chat & browser pair,
+Ctrl+Shift+B) puts the selected chat and the browser back in that pair without moving other windows;
+it also shows the browser and ends a maximize. Drag gestures and **Tile windows** remain for power users.
+
+View → **Layout** presets (`layout.dock-preset`) and **Tile windows (full workspace)** reshape the
+whole desk, not the compact pair: **Chats left, browser right** gathers every window and tab,
+floating and minimized ones included, into one chat window left of the browser (the `browser-side`
+preset); **Chat, browser, chat** puts a chat either side of the browser (`browser-between`: the extra
+windows' tabs join the right-hand chat, and a new chat fills the right side when there is only one);
+**Tile windows** puts every floating window back into its slot, so the last tiled layout returns
+exactly as it was (`tileWindows`; minimized windows stay minimized but return to their slot; disabled
+while nothing floats, also View → Tile windows and Ctrl+Shift+L); **Workspace layout…** opens the
+layout dialog. Tile windows and the arrangements also end a maximize.
 
 **Keep on top** (`layout.keep-on-top`, a checkbox in a chat window header's context menu) marks the
 whole window, every tab in it, with `onTop: true` in the saved tree. It stacks above every window
@@ -610,36 +675,41 @@ when no such part meets the browser's minimum size does it keep its rect and sho
 that was resized is captured once more after it lays out (`createBrowserFreezeRefresh`), and the
 bounds hook waits for a gliding tile at any depth above the page before measuring it.
 
-Each tile header shows conversation and view tabs and a **+** button (`layout.new-chat`) that adds
-and selects a fresh conversation tab in that tile. It uses that tile's active chat model and
-retains the previous tabs and the other tiles and divider sizes. Trace, Agents, History, Tools,
-and the browser are opened from the title bar, composer pills, or keyboard shortcuts—not from the
-tile header.
+View and notepad tile headers retain their tabs. Chat headers have no tab strip or new-tab
+button; each conversation has its own card.
 
 ### Views
 
-A view is a tab with a kind, not a chat and not a dialog (`src/renderer/chat-layout/layout-views.ts`,
-`workspace-view.tsx`). Trace, Agents, History and Tools, which were pane dialogs, open as view tabs:
-same strip, same drag, close, split and move-to-tile as chat tabs, persisted in the saved layout
-under a `closedai:view:<kind>:<id>` tab id that main never sees (`setVisiblePanes` receives chat ids
-only; a tile whose active tab is a view has no visible chat and its chats stay retained). A view
-tab shows a kind glyph where a chat tab shows status: never a spinner, never unread. Opening a kind
-already present in the tile focuses it instead of duplicating. A view can be the only tab of a tile;
-closing it empties the tile like an emptied chat tile, and hiding the tile works as for chats. The
-tile context menu offers no rename, pin, pause or resume while a view is in front.
+A view is a tab with a kind, not a chat (`src/renderer/chat-layout/layout-views.ts`,
+`workspace-view.tsx`). **A window's tabs are all one kind:** a chat window holds only chats, a
+notepad window only notes, a Trace window only Trace. Trace, History, Tools, Saved sites and file
+views each open in a window of their own (`openTabInTree`: a window of that kind, else a new window
+tiled by auto placement when it fits, else floating), never as a tab beside chats. Trace, History,
+Tools and Saved sites are one tab per workspace, so opening one again focuses it; each file is its
+own tab and further files join the file window. Agents is not a view: it opens as a modal
+(`agent-library/agents-dialog.tsx`) whose runs start beside the chat it was opened from; opening a
+chat or starting a run closes it. Tab drags, window moves (`groupable`), cross-window docks and
+keyboard tab moves only join a strip of the same kind (`sameTabKind`); a strip of another kind is
+not a drop target. The + button adds the window's own kind (a chat, a note) and is absent from
+other view windows. A chat opened from History or by main joins a chat window, never a view window
+(a new window when none exists). Layouts saved before this rule keep each mixed tile's chats and
+drop the views that shared it, and retired Agents tabs (`oneKindPerTile`). Views persist in the
+saved layout under a `closedai:view:<kind>:<id>` tab id that main never sees (`setVisiblePanes`
+receives chat ids only). A view tab shows a kind glyph where a chat tab shows status: never a
+spinner, never unread. Closing a view window's last tab removes the window. The tile context menu
+offers no rename, pin, pause or resume while a view is in front.
 
 Each view body starts with a toolbar whose only control is the scope chip (`view.scope`):
-**Following · chat** (dashed) means the view shows its own tile's chat (the selected chat when it
-lives there, else the tile's first chat tab; a tile with no chat follows the workspace selection),
-so switching the tile's chat switches the view. **Pinned · chat** (solid) fixes one chat. Dragging or
+**Following · chat** (dashed) means the view follows the workspace selection (its window holds no
+chat), so switching chats switches the view. **Pinned · chat** (solid) fixes one chat. Dragging or
 moving a following view to another tile pins it to the chat it was showing, so it never silently
 retargets; the chip menu returns it to following (`view.scope-follow`) or pins another open chat
 (`view.scope-pin`). Pins to chats that close are dropped. Focusing a view tile selects the chat it
 follows; that chat stays behind the view rather than being pulled in front. Ctrl+W on a tile with a
 view in front closes the view before the chat behind it. The Agent and Developer menus, Ctrl+Shift+T
-and Ctrl+Shift+I open the view in the selected chat's tile. The Tools view's repair action puts the
-draft in the followed chat's composer and brings that chat forward; the Agents view starts runs beside
-the followed chat's tile; the History view opens a chosen chat in its own tile and stays open behind it. Tab creation waits for the renderer's workspace snapshot to
+and Ctrl+Shift+I open the view in its own window. The Tools view's repair action puts the
+draft in the followed chat's composer and brings that chat forward; the History view opens a chosen
+chat in a chat window and stays open in its own. Tab creation waits for the renderer's workspace snapshot to
 catch up with the new chat before reconciling tabs; menu focus restoration cannot interrupt it.
 The tab's full surface, including its title, activity icon, and padding, drags that conversation
 (tab split, stack, or join). A 36 × 38 pixel grip at the left of the tile header (matching the
@@ -715,11 +785,11 @@ Drag empty chat header space onto another tile's left, right, top, or bottom edg
 highlight previews the destination. Moving a tile collapses its former empty split, and its
 mounted composer, draft, attachments, and transcript scroller survive the move. Open an existing chat
 through header search, then drag its tab to a tile edge to place it alongside another chat. New chats
-can also be added using the split controls in each chat header.
+can be added from the dock or File → New chat.
 Opening a chat from header search or Manage chat history selects its existing tab wherever it lives,
 or adds and selects a new tab in the focused tile. The current chat and its draft remain in their
 original tab; sibling tabs, other tiles, and divider sizes stay in place. The tab strip's + button is
-the only new-chat control in a tile; the composer's + attaches files.
+the only new-chat control in a view tab strip; new chat cards open from the dock or File → New chat.
 File → New chat and continuation also add a tab in the focused
 tile; the split buttons explicitly add another tile. Moving a visible tile carries its tab group;
 dragging a tab to a tile edge splits that conversation out of its group.
@@ -734,7 +804,7 @@ pointer cancellation and lost capture restore the starting proportions, while wi
 the last position. The final geometry is painted before releasing the gesture. Nested splits support columns, rows,
 and quadrants, up to 32 visible chats. A tile has a 300 × 280 px minimum; the chat area scrolls
 when a small window cannot fit the chosen arrangement. Every layout uses the same one-line
-composer (a 48 px capsule row with a 34 px send/pause control). Once a draft wraps, holds a line break, or carries an
+composer (a 56 px capsule row in chat cards with a 34 px send/pause control). Once a draft wraps, holds a line break, or carries an
 attachment, the capsule expands: the draft spans its full width and the tools, setup chip and Send drop to a row beneath it
 until the draft is sent or cleared. A composer 460 px wide or less keeps that two-row shape even while empty,
 since one row would leave the draft a sliver. Drafts grow upward within a tile-relative height limit and then scroll, leaving room for
@@ -742,19 +812,16 @@ the transcript.
 Tiles at most 680 px wide or 640 px tall also tighten transcript spacing; under 540 px the setup
 chip folds the folder to its icon, and the model name truncates only when the chip would pass half the row. Single-tab headers use the
 available width for the title; the focused tile has the accent tab indicator.
-The composer is one glass capsule floating over the foot of the transcript (`.chat-composer-dock`
-in `chat-pane.tsx`, which also carries the connection banner, credential approvals, the agent run
-strip and pane notices). The transcript scrolls underneath it: the dock publishes its height as
-`--composer-dock-height`, the scroller pads its end by it, and text fades as it slides under the
-capsule's live blur. The one-row capsule holds attach (`composer.upload`), the agents icon (`composer.agents`)
-and, when the latest reply can hand off, **Fresh context** (`composer.continue`) on the left; the
-draft in the middle; then the setup chip, whose model half (`composer.setup`, with a chevron) and
-folder half (`composer.folder`) each open their own panel; and Send on the right. Send and the
-focus ring are the chat's one colour: the theme accent, or the wallpaper's most vivid hue while a
-backdrop is on. Sent user messages are cards cut from the same capsule material. New chat and
-Browser are not in the composer: the tile header **+** and the dock own them. **Fresh context**
-continues the full thread in a new tab with a digest on the first send. There is no collapsed mode;
-pending attachment chips sit above the line inside the card. The setup trigger opens a panel
+The composer is an opaque capsule at the foot of the transcript (`.chat-composer-dock` in
+`chat-pane.tsx`), alongside connection guidance, credential approvals and run status. The +
+(`composer.more`) replaces the paperclip on the capsule's left. Clicking it rotates the + and reveals
+a staggered row to the right: fresh context (`composer.continue`), then attachments (`composer.upload`).
+The rail overlays the draft without shifting the layout; there is no divider. Arrow keys, Home/End,
+Escape, outside clicks and focus leaving the rail support navigation and dismissal; reduced motion
+disables the animation. Send or the red octagon Pause action sits at the right. The model
+picker (`composer.setup`) is at the right of the card header. Fresh context opens a separate card with a digest
+on its first send. Attachments appear above the draft inside the capsule.
+The setup trigger opens a panel
 (above the trigger, or below when there is no room) with a Context line (`composer.context`;
 used/window tokens, the first plan window, a meter) that expands to the full usage card with Compact
 conversation, then only the providers, one row each (`composer.model-provider`), the pane's own
@@ -764,17 +831,10 @@ flyout beside the panel (`composer.model-item`, context-size badges; another pro
 overlapping the panel in a pane too narrow for either side, and grows the way the panel opened:
 upward from the row above the trigger, downward below it. Effort (segmented `composer.effort-item`,
 or a "Set by <provider>" line for models without levels) sits under the models of the provider that
-owns the selection. Left arrow or Escape returns to the provider rows. The folder trigger opens a separate panel with the current folder,
-recent chips, and choose/clear actions (`composer.project-new`, `composer.project-recent`,
-`composer.project-clear`). Model and effort rows are disabled while a turn runs; folder changes
-queue until the chat is idle when a turn is in flight. The trigger does not change while a turn
-runs: no spinner or elapsed clock. Agents opens a menu of saved agents: **Start new run**
-(`composer.agents-start`, a new tab beside **this** chat's tile and the run starts at once; only a
-**live** run for that agent offers **Open** instead), **New agent…** (`composer.agents-new`) and
-**Manage** (`composer.agents-manage`) for the workspace Agents tab. The icon badges how many runs are
-live workspace-wide. Agent → Agents… or the composer's **Manage** still opens the **Agents** view tab (`view.agents`,
-`src/renderer/agent-library/`), which shows no scope chip and stacks three screens under a one-line
-header. The **Library** opens first: a grid of saved-agent cards (`agents.card`; live runs first,
+owns the selection. Left arrow or Escape returns to the provider rows. Model and effort rows are disabled while a turn runs. The model trigger keeps its name while
+running, without a spinner or elapsed clock. Agents opens from the dock or Agent menu as a
+workspace dialog; its runs open individual chat cards.
+The **Library** opens first: a grid of saved-agent cards (`agents.card`; live runs first,
 then most recently used, then never-run by name), each with the name, the first two lines of its
 instructions, and its run count and last run, or its live run's state and cycle, plus **Edit**
 (`agents.edit`) and **Start** (`agents.card-start`, which stays on the Library). The header offers
@@ -806,9 +866,8 @@ with "App relaunched". A strip above the composer shows the state and cycle coun
 and a tool's `stop_agent` pause the run too; a user message sent between cycles is folded into
 the loop rather than raced.
 
-The **Agents tab** opens from the composer's Agents menu (Manage), the tile + menu, or Agent → Agents…. There is at most one Agents tab in
-the workspace: any of those entry points opens it in its existing tile or creates it in the
-selected chat's tile, then focuses it (Trace, History and Tools still dedupe per tile only).
+The **Agents dialog** opens from the composer's Agents menu (Manage), the dock, or Agent → Agents…. It is a modal, never a tab;
+runs started from it dock beside the chat it was opened from.
 Its **Runs** screen (from the Library
 header's Runs control, whose label carries the summary of running and attention-needed runs)
 lists every agent run in a minimal table, with state, cycle, and current activity or pause
@@ -997,100 +1056,45 @@ project's layout, so the overview is in the main window only.
 
 ### Dock
 
-The **dock** (`dock.bar`, `src/renderer/dock/`) runs along the bottom of the main window. It is
-hidden until the pointer reaches the window's bottom edge, which is the workspace's own 10 px
-padding, so no native browser view ever covers it. It slides up over the workspace and sinks
-380 ms after the pointer moves more than 24 px above it. An open list and keyboard focus keep it up.
-While it is up it counts as an overlay (`data-slot="app-dock"`, whose `data-state` stays `open`
-until the slide down ends), so a browser it covers shows its still. The Dock settings
-**Keep visible** switch (`dock.keep-visible`) keeps it up and gives it its own row: the workspace's
-bottom padding becomes `DOCK_RESERVE` (69 px — past the resting tray tiles plus the browser freeze
-edge margin), so the native page never sits under the dock and a pinned rail does not turn the
-browser into a still. The tray icons still stand above the flat strip and overlay the gutter under them. **Magnify icons** (`dock.magnify`)
-turns off the tray's magnification. Both are saved in localStorage (`closedai.dock.v1`). The dock
-reads the spaces it navigates through `SpacesStage`'s `dock` render prop, so it exists only where
-the overview does: in the main window, once a chat is selected.
+The **dock** (`dock.bar`, `src/renderer/dock/app-dock.tsx`) is a hover-reveal footer band along
+the bottom of the main window. Pointer intent uses the bottom reach band (`use-dock-reveal.ts`,
+`DOCK_REACH` in `dock-model.ts`); an open Library popover, the usage flyout, or a context menu
+holds it open until they close, then it hides after the shared delay. While shown it is an overlay
+(`data-slot="app-dock"`, `data-state="open"`), so a browser underneath shows its still. Pinned
+shortcuts and which workspace controls appear on the rail are saved in localStorage
+(`closedai.dock.v1`, `DockPrefs`). The dock is wired through `SpacesStage`'s render prop, so it
+exists only in the main window once a chat workspace is active.
 
-Left: back and forward (`dock.back`, `dock.forward`) step through the zoom history as Alt+←/→ and
-are disabled at either end and while a zoom is moving; their tooltips name where you are
-(workspace and selected chat, or "All workspaces"). Right: Layout and dock settings
-(`dock.settings`). Centre: the **app tray**, Magic UI's `Dock` (`src/components/ui/dock.tsx`,
-`@magicui/dock`), with **Start** centred in the tray and one rounded-square tile per ClosedAI surface
-on either side (`dock.app`, item is the surface), 48 px and growing to 64 px under the pointer.
-**Start** (`dock.start`) opens a panel above the tray with search
-(`dock.start-search`), a **Pinned** grid of common commands (`dock.start-pin`, item is the menu
-row key: New chat, Search chats, Manage chat history, Toggle browser, Agents, Tools &
-capabilities, Settings; `START_PIN_KEYS`), **Recent chats** (the six newest) when any listable
-history exists (`dock.start-chat`, item is the pane id), and **All apps**
-(`dock.start-all-apps`) listing every File, View, Agent, and Developer row with the same disabled
-rules as the menus. Rows with a screen (Search chats, Manage chat history, Agents, Tools &
-capabilities, Settings) open it inside Start, whether chosen from Pinned, All apps, or command
-search (`startScreenForRow` in `dock-start-model.ts`); the same rows from the title-bar menus,
-Ctrl+H, and Ctrl+, keep their header palette, view tab, or dialog. A screen has a back header
-(`dock.start-back`; Escape does the same) over the same component its view tab or dialog shows
-(`dock-start-views.tsx`: `ChatHistory`, `AgentLibraryView`, `ToolsPanel`, and `SettingsSections`,
-which the Settings dialog also wraps). The panel is one fixed size for the home and every screen,
-1120 px wide and up to 900 px tall, bounded by the room above the dock. Search chats (`dock.start-chat-search`) is the title-bar
-palette's list (`chat-search-results.tsx`, row ids `titlebar.chat-search-*`) in Start's body.
-Anything that leaves Start closes it: opening a chat, a Tools repair draft (sent to the selected
-chat), starting an agent (docked beside the selected chat), or the wallpaper picker. Start always
-reopens on its home. The footer names the current workspace and **All workspaces**
-(`dock.overview`, pressed while zoomed out) toggles the workspace overview. Menu definitions and
-`runMenuItem` are shared in `application-menu-model.ts`. The main-window header keeps chat search;
-detached windows and startup retain the header menus because no dock is available there. Each surface
-tile holds its icon from the shared list in
-`src/renderer/app-icons.tsx`, which the view tabs use too. The strip is 44 px tall and a step lighter than the workspace
-(`--surface-raised`); the tray sits in a tab that rises out of its centre, drawn with the strip as
-one shape and one outline (`dock-surface.tsx`). The dock's box reaches as high as a magnified tile,
-so a browser under any of it is covered.
+Optional **Workspaces** (`dock.overview`) and **Settings** (`dock.settings`) sit on the ends when
+pinned in `pinnedControls`. **Library** (`dock.library`) opens a popover listing every workspace
+surface (`dock.library-app`, item is the tray id), with pin toggles (`dock.library-pin`) and a
+**Tools & capabilities** row (`dock.tools`). **Downloads** in Library lists recent browser
+downloads (`dock.download`). The centre **tray** shows launchers the user pinned to the footer
+(`dock.pinned`, item is chats, browser, video, files, note, agents, saved-sites, or downloads).
+Right-click the dock backing for **Add to dock** / unpin (`dock.add-menu`, `dock.pin`, `dock.unpin`).
+Provider subscription usage opens from the trailing **Usage** control (`dock.usage`). Menu rows
+still run through `application-menu-model.ts`; the title bar keeps chat search, and detached
+windows retain the header menus because no dock is available there.
 
-**Chats** opens a new chat window with its own tabs (history stays in header Search chats and File →
-Manage chat history), including when every content window is closed or only views remain. The first
-content window in a browser-only tree tiles beside the browser; a hidden browser stays hidden. Chats
-and Notes share the same independent-window insertion, which preserves existing tabs and minimized
-windows. Closing a selected chat while only views remain keeps the backend chat selection without
-reopening that chat or sending a view id to chat services. Opening a view does not implicitly reopen
-the last closed chat. Visibility is reported even with no content tiles, so main can clear stale chat visibility and retention.
+**Chats** opens a new standalone chat card (history stays in header Search chats and File →
+Manage chat history). **Browser** shows or hides the browser. **Video** opens the in-app video
+library tab (see [Browser surface](#browser-surface)). **Files** toggles the working-directory
+tree beside the workspace. **Notes** opens the notepad (its window, else the latest note, else a
+new one). **Agents** opens the Agents dialog. **Saved** opens the Saved sites view from Library;
+**Downloads** opens the download list inside Library. A window opened from the dock is **auto-placed**
+into the current tiled layout (`chat-layout/auto-place.ts`) when a tile can be halved above the
+minimum size; otherwise it floats. Minimized windows appear after the tray icons (`dock.window`).
+`DesktopWorkspace` reports minimized windows and files-sidebar visibility for the dock labels.
 
-A window opened from the dock (Chats, or Notes when no notepad window is open) is **auto-placed**
-into the current tiled layout (`chat-layout/auto-place.ts`): it halves the roomiest chat or notepad
-tile, top/bottom when the tile is taller than wide and side by side otherwise, preferring the
-selected chat's tile among tiles of about the same size (within 4%). With chat, browser, chat, the
-first opens under one side chat, the second under the other, and the next halves one of those
-quarters side by side where it stays above the 300x280 minimum. The browser, floating, and minimized
-windows are never split; a maximized window is un-maximized so the opened window shows, including a
-floating fallback. When no tile can be halved above the minimum (or the canvas has not been
-measured) the window floats as before. The result is an ordinary split, so it drags, snaps, resizes,
-and floats like any other tile. **Browser** shows or hides the
-browser. **Notes** opens the notepad (its open window, else the latest note, else a new one). **Agent runs** opens the Agents view; its tooltip carries the runs summary. **Saved
-sites** and **Downloads** open a list above the icon. In Saved sites, a row (`dock.saved-site`)
-shows the browser and opens the site, and **All saved sites** (`dock.all-saved-sites`) opens the
-view. In Downloads, a finished file's row (`dock.download`) shows it in its folder. A neutral dot
-under a tile means something in it is running or showing. Each tooltip gives the surface's name
-and what is in it now. Windows minimized in the shown workspace follow the app tiles after a
-divider (`dock.window`, item is the window's front tab): each shows its kind's icon, its tooltip
-names the front tab and how many tabs it holds, and a click restores it where it was, in front, and
-selects it. `DesktopWorkspace` reports the list through `onMinimizedChange`.
-
-Every feature icon is named once in `src/renderer/app-icons.tsx`: a `line` icon takes the text
-colour, and a `picture` (a future full-colour SVG) keeps its own. The tray tiles and the view-tab
-glyphs read from that list, so a new icon set replaces entries there. A tile is the same shape for
-either kind, so a new icon never changes the tray's size or spacing.
+Every feature icon is named once in `src/renderer/app-icons.tsx`. Tray tiles and view-tab glyphs
+read from that list.
 
 ## Chat surface
 
-- Dark-theme chat and view tiles use a neutral charcoal (`#1d1d1d`) canvas, with raised
-  composers (`#262626`) and a darker full-width tab header (`#191919`), including
-  the tabs, pane grip, gaps, and header actions. Browser
-  tab headers retain the darker shell chrome (`#141415`); recessed workspace
-  gutters (`#161618`) separate the panels.
-  Chat tabs sit inside the header with 6 px rounded corners and short separators
-  between all neighboring tabs, including selected and hovered tabs. Each tile's active tab uses bold white text; inactive
-  labels stay gray, including on hover. Selection has no tab outline or top marker.
-  The selected chat keeps a stronger neutral frame; transcript contrast stays
-  constant across panes. Composers have a subtle
-  contact shadow. Browser active tabs flow into a lighter (`#29292c`) toolbar,
-  with a hairline beneath it and around the address field.
+- Chat cards use the charcoal surface and controls described in
+  [Disposable chat cards](#disposable-chat-cards). Browser and view windows retain their own tab headers.
+- With a backdrop, the window header paints a flat 32 px menu strip; chat-card search
+  focus and selection do not change its shape or position.
 - The window header has a soft charcoal (`#181819`) background in the dark theme.
   It is 44 px tall, with a 30 px search field. Detached windows and startup also show a 30 px Radix menubar:
   an 8 px rounded frame, theme-tinted fill, hairline border, and inset hover/open highlights.
@@ -1100,8 +1104,8 @@ either kind, so a new icon never changes the tray's size or spacing.
   The shell reserves the header's
   natural height so the workspace begins directly below its divider.
 - Header search reads chat records across directories, attached or detached, including child chats.
-  It matches titles, then previews; project names provide context. Opening a result calls `openChat` and selects
-  an existing tab or adds a new tab to the focused tile. Archived chats are excluded by the store.
+  It matches titles, then previews, then project-folder basenames. Opening a result calls `openChat` and selects
+  an existing card or opens a separate card. Archived chats are excluded by the store.
   Running results show a status label and Pause button; paused chats stay in a Paused section
   with a Resume button. Both actions target the row without opening the chat and use the same
   interrupt/continuation behavior as the composer. Pauses do not count as unread completions.
@@ -1197,12 +1201,12 @@ either kind, so a new icon never changes the tray's size or spacing.
   completes, and Pause between turns retires the process, marking those tasks stopped.
 - Completed assistant responses offer copy and branching. Timestamps appear when recorded;
   older history does not acquire invented timestamps.
-- There is no project rail: the folder lives in the composer's setup panel. The four application menus (File, View, Agent, Developer) are listed in Start's All apps; the main window's title bar shows them only as a startup fallback.
+- There is no project rail or directory chip in a chat card. The four application menus (File, View, Agent, Developer) are listed in Start's All apps; the main window's title bar shows them only as a startup fallback.
   File owns New chat, Search chats, Manage chat history, Settings (Appearance, Models, Credentials,
   and Security tabs), Sign out…, Close tab, and Close window; View owns browser visibility, Notepad,
   Workspace overview, Tile windows, layout presets, chat zoom, and fullscreen; Agent owns the
-  Agents view (Agents…, the saved-agent Library with its Build and Runs screens, one tab per
-  workspace), what the model is given (Tools & capabilities, likewise a view tab) and a "Selected chat" section naming
+  Agents dialog (Agents…, the saved-agent Library with its Build and Runs screens), what the model
+  is given (Tools & capabilities, a view in its own window) and a "Selected chat" section naming
   the pane its rows act on (Shrink provider context, Stop turn; rows that do not apply are disabled, not
   hidden). **Shrink provider context** rotates or compacts the provider thread while keeping the visible
   transcript; it is available for Codex, Claude, Cursor, and Antigravity when seamless rotation is on
@@ -1218,7 +1222,7 @@ either kind, so a new icon never changes the tray's size or spacing.
   ignores it and streams on), and Antigravity, which has no interrupt, kills its process and
   resumes the conversation id on the next turn. Antigravity sends the user's prompt directly
   on process startup; it has no hidden initialization turn. The composer's one action button is
-  Send (`composer.send`, accent-filled once there is text or an attachment; Enter also submits and
+  Send (`composer.send`, pure white with a black arrow once there is text or an attachment; Enter also submits and
   Shift+Enter inserts a newline), Pause (`composer.stop`) in the same slot while a turn runs
   (Escape also acts as a hotkey to pause the running task), and Resume (`composer.resume`) after a
   pause. An empty composer shows the muted placeholder “Message <Provider>”, “Resume, or send
@@ -1280,8 +1284,8 @@ either kind, so a new icon never changes the tray's size or spacing.
   reaches the full 44 px row and the desktop shows beside it; search is a recessed field in the tab. A chat's transcript area
   and the Overview stage are glass too: a once-blurred copy of the same image (`renderer/backdrop/`)
   under a near-opaque dark tint, painted with fixed attachment so it lines up with the desktop
-  without a live blur. The composer capsule is the one live blur, and Send takes the wallpaper's
-  most vivid hue (`--backdrop-accent`). Chat headers and tabs, the browser tile, and view tiles
+  without a live blur. The composer has a pure-white focus border, and enabled Send is pure
+  white with a black arrow. Chat headers and tabs, the browser tile, and view tiles
   (Tools, History, Agents) stay solid.
 - Ctrl/Cmd+, opens settings, Ctrl/Cmd+H focuses chat search, Ctrl/Cmd+N creates a chat,
   Ctrl/Cmd+W closes the focused chat tab or hides its tile (same path as the ×; the last
@@ -1340,69 +1344,18 @@ renderer on `browser:permissionRequests` with the tab id, origin, and kind, `bro
 answers it, and an unanswered request is denied after 60 s. The policy is read per request, so a
 settings change applies to the next request without a restart. Nothing else is remembered per origin.
 
-### Browser quick chat
-
-The main window's browser has a quick chat floating over the page. The live page is a native view
-that paints above everything the app shell draws, so the quick chat runs in a transparent native layer
-of its own: `QuickChatOverlay` (`src/main/quick-chat-overlay/`) adds a `WebContentsView` with a
-transparent background above the page views, loads the renderer with `?surface=quick-chat`
-(`src/renderer/quick-chat-overlay/`), and fits the view to the box the layer reports
-(`quickChat.setSize`), in the page's bottom-right corner. `BrowserService` emits `page` with every bounds
-report and `pageViewAttached` whenever it adds a page view, so the layer follows the page and is
-re-stacked above it. While the page is covered (menus, dialogs, drags) or the browser is away, the
-layer is parked one pixel inside the window corner like a covered page; it is transparent there, stays
-loaded, and keeps following its chat. The layer is not a window: `AppWindowRegistry.attachSurface`
-routes it workspace-wide events and the transcript of the chat it shows, and it takes no window
-commands.
-
-Closed, the layer is a round button (`browser.quick-chat`). While its chat runs, the button carries
-a progress ring and the name of the site the browser shows (`quickChat` view `site`, from the active
-tab's address); a turn that ends while the chat is closed leaves "Done on espn.com" (or "Stopped on …", "Paused on …";
-"this page" off the web) beside it until the chat is opened. Open, it is the chat's own `ChatPane` in a card with two shapes. Whole is the
-chat under a header with shrink `quick-chat.compact` (once there is a transcript), a menu
-`quick-chat.menu` holding **Clear chat** `quick-chat.new` (disabled while a task
-runs), and hide `quick-chat.close`; these card controls are shared with notepad windows and carry the
-surface (`browser` or `notepad`) as their `data-ui-key`. Compact is the composer under one status line, such as
-"Working on espn.com · Opened espn.com" (`quick-chat-feed.ts`: the turn's latest step in plain words
-from `feed-phrase.ts`), with expand `quick-chat.expand` and hide; once the turn ends the line
-reads "Done on …" with a two-line preview of the reply. While the task runs, the whole card's header
-carries a turning mark before the title and the step under way ("Thinking", "Opening espn.com") with
-how long the task has run (`run-clock.ts`); the compact line carries the same clock, so a quiet stretch
-still reads as working. Only shrink and expand change the shape;
-hide and Escape hide the card, and reopening a chat keeps the shape last chosen for it (whole at
-first). Sending a message, a turn starting, clicks on the page, typing, and focus changes leave it
-alone. Ctrl+J (Cmd+J)
-toggles it from the page, the layer, or the app window while the page is on screen: main catches it
-in `before-input-event` on each (`BrowserServiceOptions.pageKeys` for tabs, `isQuickChatShortcut`)
-and sends a `toggle` request, and opening focuses the layer so typing lands in the composer. While
-a composer panel or the menu is open, the layer grows upward so it fits; inside the layer
-(`data-composer-panels="viewport"`) composer panels use the viewport, not the chat pane, as their
-collision boundary (`composerPanelBoundary`).
-
-The main window's layout owns which chat it is and whether it is open, and reports both with
-`quickChat.setState`; the layer's requests (`quickChat.request`: open, new, close, toggle) reach the layout as
-a `quickChat` window command (`chat-layout/use-quick-chat-overlay.ts`). Only the main window may call
-`quickChat.setState`; `view`, `setSize`, and `request` answer only the layer's own page, and requests
-are checked against that list (`quick-chat-overlay/ipc.ts`). The layer denies navigation and new
-windows and reloads if its renderer process dies. It is a real chat: `newSideChat` calls
-`chat.newPeer(anchor, { select: false, modelId, quickChatSurface: 'browser' })`, which creates it in
-the focused tile's folder without changing the selection and tags the record so History shows its
-surface. It starts on the model the quick chat last used (`chat-layout/quick-chat-model.ts`,
-`closedai.quickChat.modelId` in localStorage, updated whenever the quick chat's model changes), and on the focused tile's model
-only before any quick chat has had one, and main skips its early wake so the blank chat is not discarded before the
-layout reports it. The layout saves it per space (`SavedChatLayout.browserChat`/`browserChatOpen`),
-adds it to the ids sent to `setVisiblePanes` so main keeps it attached and streaming while closed, and
-never pulls it into a tile: main selecting it leaves the tree alone, and opening it from History,
-search, or Start (`activateTab`) shows the browser with the card open. **Clear chat** creates a fresh one and closes the
-previous one through `closePeer`, which leaves a used chat in history and discards a blank one. The
-layer's controls live in its own page, so `closedai_app.ui` (which drives the main window's page) does
-not reach them.
+Playable local videos open in browser-pane **video tabs** (`src/main/local-files/video-tab.ts`,
+`src/renderer/video-viewer/`): transport controls, fullscreen, loop, and compare mode for two tabs
+(`browser:videoCompare`, `video.*` controls). The **video library** is a dedicated tab type
+(`VideoHubTab`, `browser:openVideoHub`) with search across Downloads and the user's Videos folder
+(`localFiles:searchVideos`, `localFiles:videoRecents`). Browser automation tools refuse the library
+tab itself; open a web tab or a single-file video tab for page tools.
 
 ### Notepad
 
 A notepad window (`src/renderer/notepad/`) is an ordinary tile whose tabs are notes
 (`closedai:view:note:<noteId>`, view kind `note`), so it floats, snaps, minimizes, tears off, and
-restores like any window. It opens from the dock's **Notes** icon (`dock.app` `note`), View →
+restores like any window. It opens from the dock's **Notes** icon (`dock.pinned` `note`), View →
 **Notepad**, or Ctrl+Shift+N: the open notepad window comes forward, else the latest note opens in a
 new window, else a new note does. A new notepad window is auto-placed into the tiled layout like the dock's Chats (see [Dock](#dock)), floating only when no tile can be halved. **New** (`notepad.new`) and the **Notes** menu
 (`notepad.notes`: up to 30 notes not open in the window, and **Delete this note**) sit in the status
@@ -1429,17 +1382,15 @@ marked in the gutter until the window's next task starts.
 
 Each notepad window has one chat, kept on its tile (`ChatLayout` pane `notepadChat`) and created
 unselected the first time its round button (`notepad.chat`) opens it, on the model notepad chats
-last used (`closedai.notepadChat.modelId`). The layout reports it visible like the browser's quick
-chat, and it floats over the notes with the same card (`QuickChatCard`, surface `notepad`). The
+last used (`closedai.notepadChat.modelId`). The layout reports it visible so main keeps it attached,
+and it floats over the notes in a card (`QuickChatCard`, surface `notepad`). The
 tab in front tells main which notes the chat is about (`notes.bind`: the window's note ids and the
 active note). Every turn carries that note (see [model context](model-context.md)), and a turn
 pins the note it started on: switching tabs while it runs leaves the task there, shrinks a whole
 card to its status line, and shows "The task stays on <note>" with **Go to it**
 (`notepad.chat-go-to-task`). Closed, the round button carries the note's name while the task runs
 and "Done in <note>" or "Stopped in <note>" after. Otherwise the card changes shape only on its own
-controls. Ctrl+J while typing in a note toggles that window's chat: when main catches it (browser
-page on screen), the layout's `toggle` goes to the focused notepad before the browser's quick chat;
-otherwise the note view catches it in the renderer. Esc hides the card only when pressed inside it.
+controls. Ctrl+J while typing in a note toggles that window's chat in the renderer. Esc hides the card only when pressed inside it.
 Binding also tags the chat record `quickChatSurface: 'notepad'`; bindings live in main's memory
 (`notepad-bindings.ts`) and are re-reported whenever the active note view mounts. **Clear chat**
 unbinds and starts a new chat for the window; the old one goes to History, or away when blank. Moving a note to another window leaves the chat behind.
@@ -1518,13 +1469,17 @@ selecting it parks all native web views beyond the window before emitting render
 The app renderer displays fit-to-pane, zoom, actual size, drag-to-pan, download (raster data),
 and show-in-folder (local files) controls. Image bytes are fetched once per viewer, separately
 from tab metadata. Local image links and attachment thumbnails use this image viewer, while
-other local file links open in app-owned text tabs so that source and text files get line
-highlighting instead of Chromium's plain-text rendering (Chromium's own PDF viewer still handles
-PDF URLs in web tabs). File tabs support copy path, copy content, show in folder, reload, duplication, and
-line highlighting; reopening a link updates its line target. Local HTML and SVG files are the
+other local file links (file tree, chat links, diff cards) open as **file view tabs** in a
+file window (never beside chats, never in the browser strip): `WorkspacePaneActions.openFile` resolves the
+link with `localFiles:preview` and opens `closedai:view:file:<encoded path>`
+(`chat-layout/file-view-layout.ts`), whose body (`file-viewer/file-view.tsx`, `view.file`) reads
+the text through `localFiles:readPreview`. One tab per path; reopening selects it and updates its
+line or diff target, which is renderer memory, so a restored layout reopens the plain file.
+Chromium's own PDF viewer still handles PDF URLs in web tabs. File views support copy path, copy
+content, show in folder, and line highlighting. Local HTML and SVG files are the
 exception: a plain link opens them as a web tab at their `file:` URL, showing the page the markup
-builds, and a line or diff link opens their source. Either view carries a **Page | Code** toggle
-(`file.view`, in the web toolbar or the file tab's toolbar) that `localFiles:setView` answers by
+builds, and a line or diff link opens their source as a file view. The web tab carries a **Page | Code** toggle
+(`file.view`, in the web toolbar or the source tab's toolbar) that `localFiles:setView` answers by
 swapping the tab in place (`browser-service-special-tabs.ts`): the same tab id and strip slot, so
 a chat's claim survives, and the page reloads from disk each time it is shown. In both cases, opening one
 reveals a hidden browser pane and exits maximized chat layout. Reopening the same canonical
@@ -1626,7 +1581,7 @@ instrumentation.
 | Store file reads that set a damaged file aside, durable atomic writes | `src/main/store-recovery.ts`, `src/main/atomic-write.ts` |
 | Attach/detach lifecycle, summaries, per-chat settings, idle parking, catalog reconciliation | `src/main/chat-peers/` |
 | Agent runs: the turn-by-turn loop behind agent chats, retry and pause policy, relaunch restore | `src/main/agent-runs/`, `src/shared/agent-runs.ts` |
-| Agent library: the saved agents the Agents view lists, seeds, and counts runs for | `src/main/agent-library/`, `src/shared/agent-library.ts`, `src/renderer/agent-library/` |
+| Agent library: the saved agents the Agents dialog lists, seeds, and counts runs for | `src/main/agent-library/`, `src/shared/agent-library.ts`, `src/renderer/agent-library/` |
 | Per-workspace provider model catalog cache | `src/main/chat-context/provider-catalog-cache.ts` |
 | Provider routing and id families | `src/main/chat-hub.ts`, `src/shared/chat-providers.ts` |
 | Workspace Codex process, pane routing, and transcript normalization | `src/main/codex-workspace-runtime.ts`, `src/main/chat-service.ts`, `src/main/app-server-client.ts`, `src/main/chat-normalizers.ts` |
@@ -1642,13 +1597,15 @@ instrumentation.
 | Default-browser cookie import (launch and on demand) | `src/main/browser-cookie-import.ts`, `src/main/import-cookies.ts` |
 | Typed IPC contract and narrow preload | `src/shared/api.ts`, `src/preload/index.ts` |
 | App windows: registry, event routing per window, detached-window persistence, cross-window docking | `src/main/windows/`, `src/shared/app-windows.ts`, `src/shared/cross-window-dock.ts`, `src/renderer/app-windows/`, `src/renderer/chat-layout/layout-windows.ts`, `src/renderer/chat-layout/floating/cross-window-*` |
-| Dock: bottom-edge reveal, zoom navigation, app tray and its lists, Start (`dock-start-*`); the shared feature icon list | `src/renderer/dock/`, `src/renderer/app-icons.tsx`, `src/components/ui/dock.tsx` |
-| Title-bar provider subscription usage chips and popover | `src/renderer/provider-usage/`; usage reads in `src/main/chat-context/provider-usage.ts` |
+| Dock: footer reveal, Library popover, pinned tray, usage flyout, context-menu pinning | `src/renderer/dock/`, `src/renderer/app-icons.tsx` |
+| Working-directory file tree sidebar | `src/renderer/file-tree/`, `src/main/file-tree/list.ts`, `src/shared/file-tree.ts` |
+| Video library tab, local video playback and compare | `src/main/local-files/video-*.ts`, `src/renderer/video-viewer/` |
+| Dock provider subscription usage flyout | `src/renderer/provider-usage/usage-flyout.tsx`; usage reads in `src/main/chat-context/provider-usage.ts` |
 | Workspace wallpaper: picker, presets, uploads | `src/renderer/backdrop/`, `src/shared/backdrop-presets.ts`, `src/main/wallpapers/upload-store.ts`, `src/main/desktop-wallpaper.ts` |
 | Chat/project/history orchestration | `src/renderer/chat-pane.tsx`, `src/renderer/project-menu.tsx`, `src/renderer/chat-history/` |
 | Transcript steps, background work, response actions | `src/renderer/transcript-rows.ts`, `src/renderer/activity-steps.ts`, `src/renderer/background-tasks.tsx`, `src/renderer/message-actions.tsx` |
 | Notes store, model edits, notepad chat bindings | `src/main/notes/`, `src/shared/notes.ts`, `src/main/tools/notes/`, `src/renderer/notepad/` |
-| Browser quick chat layer | `src/main/quick-chat-overlay/`, `src/shared/quick-chat-overlay.ts`, `src/renderer/quick-chat-overlay/`, `src/renderer/chat-layout/use-quick-chat-overlay.ts` |
+| Notepad floating chat card | `src/renderer/quick-chat-overlay/quick-chat-card.tsx`, `src/renderer/notepad/notepad-chat.tsx` |
 | Reusable presentation and scrolling | `src/components/ui/`; backend access stays outside this layer |
 
 `src/shared/` remains dependency-free. Renderer backend calls go through preload; model calls go
@@ -1697,7 +1654,7 @@ directory holds its own copy of every store below; `profiles.json` exists once, 
 | `security-settings.json` | Settings ▸ Security: `credentialsRequireApproval`, `secretsRequireKeychain`, `webPermissions`, `importBrowserCookies`. A missing file is every default, which is the behavior before the tab existed; an unreadable one is set aside as `security-settings.json.corrupt-<time>` and never overwritten |
 | `credential-vault.json` | Saved credentials: service id, entry label, timestamps, per-entry `agentAccess` (absent on older records, read as on), and one record per field. Secret fields are `safeStorage` ciphertext (base64); hosts, usernames and URLs stay readable so the list renders without decrypting. Written atomically at 0600. Only a missing file is an empty vault; a file that cannot be read is set aside as `credential-vault.json.corrupt-<time>` before the vault continues empty, so the next save never overwrites it. Entries the earlier localStorage vault held are moved here on first open and the localStorage copy is cleared only after every entry lands |
 | `antigravity/profile/`, `antigravity/attachments/`, `antigravity/transcripts/` | Generated agent plugin, materialized image attachments, and app-recorded transcripts; the CLI retains its own conversation store |
-| Renderer localStorage | Appearance and wallpaper choice (`closedai.appearance.v1`), dock preferences (`closedai.dock.v1`), overview stills (`closedai.spaces.still:*`), model-picker usage, quick chat and notepad chat models (`closedai.quickChat.modelId`, `closedai.notepadChat.modelId`), completion review queue (including review time; legacy storage key retained), message timestamps, per-space and per-window layouts (`closedai.chat-layout.v1:*`), spaces, and unsent composer drafts |
+| Renderer localStorage | Appearance and wallpaper choice (`closedai.appearance.v1`), dock preferences (`closedai.dock.v1`), overview stills (`closedai.spaces.still:*`), model-picker usage, notepad chat model (`closedai.notepadChat.modelId`), completion review queue (including review time; legacy storage key retained), message timestamps, per-space and per-window layouts (`closedai.chat-layout.v1:*`), spaces, and unsent composer drafts |
 | In-memory trace | At most 4,000 entries and 24,000,000 detail characters, 48,000 characters per detail before its truncation marker; cleared on restart |
 
 Only a missing store file means a fresh start. When `chats.json`, `app-settings.json`, or

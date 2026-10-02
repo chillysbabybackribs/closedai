@@ -1,4 +1,4 @@
-import { WebContentsView, type Input, type LoadURLOptions, type WebContents, type WebContentsViewConstructorOptions } from 'electron'
+import { WebContentsView, type LoadURLOptions, type WebContents, type WebContentsViewConstructorOptions } from 'electron'
 import { EventEmitter } from 'node:events'
 import type { BrowserHistory } from './browser-history-store.js'
 import type { BrowserBounds, BrowserState } from '../shared/types.js'
@@ -59,8 +59,6 @@ type TabLiveness =
 export class BrowserTab extends EventEmitter {
   /** Settings → Security web permission policy for this tab's pickers; the service sets it per tab. */
   permissionPolicy: () => WebPermissionPolicy = () => 'allow'
-  /** App shortcuts that work on the page; the service sets it per tab. */
-  pageKeys: (input: Input) => boolean = () => false
   readonly id: string
   readonly view: WebContentsView
   private bounds: BrowserBounds = hiddenBounds
@@ -470,7 +468,6 @@ export class BrowserTab extends EventEmitter {
       createPopupTab: this.createPopupTab,
       webContents: this.view.webContents,
       permissionPolicy: () => this.permissionPolicy(),
-      pageKeys: (input) => this.pageKeys(input),
       history: this.history,
       liveness: () => this.liveness,
       setLiveness: (value) => { this.liveness = value },

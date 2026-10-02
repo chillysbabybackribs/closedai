@@ -10,8 +10,8 @@
 @import "./styles/shell-chat.css";
 @import "./styles/titlebar.css";
 @import "./styles/titlebar-menu.css";
-@import "./styles/dock/launcher.css";
-@import "./styles/dock/start.css";
+@import "./styles/dock/bar.css";
+@import "./styles/dock/panels.css";
 @import "./styles/provider-usage/provider-usage.css";
 @import "./styles/dropdown-menu.css";
 @import "./styles/chat/layout.css";
@@ -19,6 +19,7 @@
 @import "./styles/chat/layout-windows.css";
 @import "./styles/chat/layout-presets.css";
 @import "./styles/spaces/overview.css";
+@import "./styles/file-tree.css";
 @import "./styles/browser.css";
 @import "./styles/browser-downloads.css";
 @import "./styles/saved-sites/panel.css";
@@ -49,6 +50,8 @@
 @import "./styles/settings/models.css";
 @import "./styles/backdrop/glass.css";
 @import "./styles/backdrop/wallpaper-dialog.css";
+@import "./styles/materials.css";
+@import "./styles/chat/cards.css";
 @source "../components";
 
 /* Antigravity accent: the card design's signature blue, used for the focused composer

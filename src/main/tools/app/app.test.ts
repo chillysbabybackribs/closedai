@@ -185,7 +185,7 @@ test('menu runs a row by key for the caller and returns the ui state once it cha
     },
     runMenu: async (key, callerPaneId) => {
       calls.push(['runMenu', key, callerPaneId])
-      if (key === 'tile-windows') return { key, label: 'Tile windows', menu: 'View', ran: false, disabled: true }
+      if (key === 'tile-windows') return { key, label: 'Tile windows (full workspace)', menu: 'View', ran: false, disabled: true }
       if (key === 'settings') setTimeout(() => { dialogs = ['dialog.settings'] }, 150)
       return { key, ran: true }
     }

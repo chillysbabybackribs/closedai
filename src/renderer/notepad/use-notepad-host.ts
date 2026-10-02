@@ -6,7 +6,7 @@ import type { ChatLayout } from '../chat-layout/layout-tree.js'
 import type { WindowOpen } from '../chat-layout/auto-place.js'
 import { tabIds } from '../chat-layout/layout-tabs.js'
 import { layoutGroups } from '../chat-layout/layout-docking.js'
-import { readQuickChatModel, rememberQuickChatModel } from '../chat-layout/quick-chat-model.js'
+import { readNotepadChatModel, rememberNotepadChatModel } from './notepad-chat-model.js'
 import { tabsHeldElsewhere } from '../app-windows/app-window-store.js'
 import type { AppearanceSettings } from '../settings/appearance-settings.js'
 import type { NotepadHost } from './notepad-host.js'
@@ -15,7 +15,7 @@ import {
 } from './notepad-layout.js'
 import { noteMeta, onNoteChange } from './notes-client.js'
 
-/** Notepad chats remember their own model, apart from the browser's quick chat. */
+/** Notepad chats remember their own model across windows. */
 const MODEL_KEY = 'closedai.notepadChat.modelId'
 
 type LayoutAccess = {
@@ -51,13 +51,13 @@ export function useNotepadHost({ layout, chats, dispatch, appearance, onError }:
   const setWindowChat = useCallback((tabId: string, chatId: string | null) => {
     access.current.windows.change((tree) => withNotepadChat(tree, tabId, chatId))
   }, [])
-  const newChat = useCallback(() => access.current.newSideChat(readQuickChatModel(window.localStorage, MODEL_KEY), 'notepad'), [])
+  const newChat = useCallback(() => access.current.newSideChat(readNotepadChatModel(window.localStorage, MODEL_KEY), 'notepad'), [])
   const closeChat = useCallback(async (chatId: string) => { await window.closedai.chat.closePeer(chatId) }, [])
 
   // The model last picked in any notepad chat is the one the next notepad chat starts on.
   const padChats = notepadChats(layout.tree)
   const padModel = chats.filter((row) => padChats.includes(row.paneId)).map((row) => row.modelId).find(Boolean) ?? null
-  useEffect(() => { if (padModel) rememberQuickChatModel(window.localStorage, padModel, MODEL_KEY) }, [padModel])
+  useEffect(() => { if (padModel) rememberNotepadChatModel(window.localStorage, padModel, MODEL_KEY) }, [padModel])
 
   useEffect(() => onNoteChange((change) => {
     const tab = noteTabId(change.note.id)

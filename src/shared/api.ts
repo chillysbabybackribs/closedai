@@ -10,7 +10,6 @@ import type {
 } from './chat-peers.js'
 import type { ProviderAvailability } from './provider-availability.js'
 import type { AppWindowContext, AppWindowId, AppWindowInfo, AppWindowRegion, AppWindowsEvent } from './app-windows.js'
-import type { QuickChatOverlayRequest, QuickChatOverlaySize, QuickChatOverlayState, QuickChatOverlayView } from './quick-chat-overlay.js'
 import type { CredentialDraft, CredentialSummary, CredentialVaultStatus } from './credentials.js'
 import type { ModelManifest, ModelSwitch, ModelsEvent } from './model-settings.js'
 import type { ToolManifest, ToolTelemetrySnapshot, ToolsEvent } from './tools.js'
@@ -23,14 +22,23 @@ export type Unsubscribe = () => void
 /** The contextBridge surface the renderer sees as `window.closedai`. */
 export type ClosedaiApi = {
   localFiles: {
+    listDirectory: (root: string, directory: string) => Promise<import('./file-tree.js').FileTreeListing>
     open: (href: string, options?: import('./local-files.js').LocalFileOpenOptions) => Promise<import('./local-files.js').LocalFileResult>
+    preview: (href: string, options?: import('./local-files.js').LocalFileOpenOptions) => Promise<import('./local-files.js').LocalFilePreview>
+    readPreview: (path: string) => Promise<import('./local-files.js').FileTabContent>
+    revealPath: (path: string) => Promise<void>
     openImage: (image: { name: string; src: string }) => Promise<string>
     image: (id: string) => Promise<import('./local-files.js').ImageTabContent>
     revealImage: (id: string) => Promise<void>
+    video: (id: string) => Promise<import('./local-files.js').VideoTabContent>
+    revealVideo: (id: string) => Promise<void>
     file: (id: string) => Promise<import('./local-files.js').FileTabContent>
     revealFile: (id: string) => Promise<void>
     /** Show a local HTML or SVG tab as its rendered page or its source, in place. */
     setView: (id: string, view: import('./local-files.js').FileView) => Promise<void>
+    searchVideos: (query: string) => Promise<import('./video-library.js').VideoLibraryEntry[]>
+    videoRecents: () => Promise<import('./video-library.js').VideoLibraryEntry[]>
+    pickVideo: () => Promise<string | null>
   }
   window: {
     minimize: () => Promise<void>
@@ -81,18 +89,6 @@ export type ClosedaiApi = {
     completeCrossDock: (payload: import('./cross-window-dock.js').CrossWindowDockComplete) => Promise<void>
     onEvent: (listener: (event: AppWindowsEvent) => void) => Unsubscribe
   }
-  /** The browser's quick chat layer (shared/quick-chat-overlay.ts). */
-  quickChat: {
-    /** Main window: which chat the layer shows and whether it is open. */
-    setState: (state: QuickChatOverlayState) => Promise<void>
-    /** The layer: what to render now; null before the main window reported any state. */
-    view: () => Promise<QuickChatOverlayView | null>
-    /** The layer: its content box, which main anchors to the foot of the page. */
-    setSize: (size: QuickChatOverlaySize) => Promise<void>
-    /** The layer: ask the main window's layout to open, renew or close the quick chat. */
-    request: (request: QuickChatOverlayRequest) => Promise<void>
-    onView: (listener: (view: QuickChatOverlayView) => void) => Unsubscribe
-  }
   browser: {
     setBounds: (bounds: BrowserBounds) => Promise<void>
     navigate: (input: string) => Promise<void>
@@ -115,6 +111,8 @@ export type ClosedaiApi = {
     selectTab: (id: string) => Promise<void>
     /** Still of the active tab, used to freeze the page under a DOM overlay. */
     capture: () => Promise<BrowserShot | null>
+    openVideoHub: () => Promise<string>
+    videoCompare: (command: import('./types.js').VideoCompareCommand) => Promise<void>
     /** Answer a page's permission request shown in the browser chrome while the policy is `ask`. */
     resolvePermission: (id: string, decision: SecurityDecision) => Promise<void>
     onState: (listener: (state: BrowserState) => void) => Unsubscribe

@@ -1,5 +1,5 @@
 import type { IpcMain, WebContents } from 'electron'
-import type { BrowserBounds } from '../shared/types.js'
+import type { BrowserBounds, VideoCompareCommand } from '../shared/types.js'
 import { IPC } from '../shared/ipc-channels.js'
 import type { BrowserService } from './browser-service.js'
 import { rankSavedFirst, type SavedSitesStore } from './saved-sites-store.js'
@@ -35,4 +35,17 @@ export function registerBrowserCoreIpc(
   ipcMain.handle(IPC.invoke.browser.selectTab, (_event, id: string) => getBrowserService()?.selectTab(id))
   ipcMain.handle(IPC.invoke.browser.capture, () => getBrowserService()?.capture() ?? null)
   ipcMain.handle(IPC.invoke.browser.snapshot, () => getBrowserService()?.browserSnapshot() ?? null)
+  ipcMain.handle(IPC.invoke.browser.openVideoHub, () => {
+    const service = getBrowserService()
+    if (!service) throw new Error('The browser pane is not available.')
+    return service.openVideoHub()
+  })
+  ipcMain.handle(IPC.invoke.browser.videoCompare, (_event, command: VideoCompareCommand) => {
+    const service = getBrowserService()
+    if (!service) return
+    if (command.op === 'start') service.startVideoCompare(command.otherTabId)
+    else if (command.op === 'clear') service.clearVideoCompare()
+    else if (command.op === 'sync') service.setVideoCompareSync(command.enabled)
+    else service.setVideoCompareAudio(command.tabId)
+  })
 }

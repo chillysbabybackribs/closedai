@@ -5,8 +5,13 @@ import { DiffViewer, highlightTokens } from '../diff-viewer.js'
 import { LocalFileMarkdown } from '../local-file-markdown.js'
 import { FileViewToggle } from './file-view-toggle.js'
 
-export function FileViewer({ id, active, revision, line, endLine, diff, cwd, fileName, path }: {
+/**
+ * A local text file: the browser's source tab for an HTML or SVG page (`id` is its tab), or a file
+ * view tab in the layout (`source: 'path'`, read by `path`).
+ */
+export function FileViewer({ id, source = 'tab', active, revision, line, endLine, diff, cwd, fileName, path }: {
   id: string
+  source?: 'tab' | 'path'
   active: boolean
   revision: number
   line?: number
@@ -35,7 +40,8 @@ export function FileViewer({ id, active, revision, line, endLine, diff, cwd, fil
     let live = true
     setLoading(true)
     setError('')
-    window.closedai.localFiles.file(id)
+    const load = source === 'path' && path ? window.closedai.localFiles.readPreview(path) : window.closedai.localFiles.file(id)
+    load
       .then((data) => {
         if (live) {
           setContent(data)
@@ -49,7 +55,7 @@ export function FileViewer({ id, active, revision, line, endLine, diff, cwd, fil
         }
       })
     return () => { live = false }
-  }, [id, revision, line, endLine, showDiff])
+  }, [id, source, path, revision, line, endLine, showDiff])
 
   useEffect(() => {
     if (active && targetRef.current) {
@@ -83,7 +89,8 @@ export function FileViewer({ id, active, revision, line, endLine, diff, cwd, fil
   }
 
   function reveal() {
-    void window.closedai.localFiles.revealFile(id).catch((err: unknown) => {
+    const shown = source === 'path' && path ? window.closedai.localFiles.revealPath(path) : window.closedai.localFiles.revealFile(id)
+    void shown.catch((err: unknown) => {
       setError(err instanceof Error ? err.message : String(err))
     })
   }
@@ -97,9 +104,7 @@ export function FileViewer({ id, active, revision, line, endLine, diff, cwd, fil
     <section
       className="file-viewer"
       hidden={!active}
-      role="tabpanel"
-      id={`file-page-${id}`}
-      aria-labelledby={`browser-tab-${id}`}
+      {...source === 'tab' ? { role: 'tabpanel', id: `file-page-${id}`, 'aria-labelledby': `browser-tab-${id}` } : {}}
     >
       <header className="file-viewer-toolbar" role="toolbar" aria-label="File controls">
         <FileCode className="file-viewer-icon" size={15} aria-hidden="true" />
@@ -118,7 +123,7 @@ export function FileViewer({ id, active, revision, line, endLine, diff, cwd, fil
           </span>
         ) : null}
         <div className="file-viewer-actions">
-          {!showDiff && isRenderableFile(displayPath ?? displayName) && (
+          {source === 'tab' && !showDiff && isRenderableFile(displayPath ?? displayName) && (
             <FileViewToggle tabId={id} view="code"
               onError={(reason) => setError(reason instanceof Error ? reason.message : String(reason))} />
           )}

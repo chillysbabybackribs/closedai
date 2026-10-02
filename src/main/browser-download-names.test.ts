@@ -39,6 +39,18 @@ test('a hidden-file name is made visible', () => {
   assert.equal(safeDownloadFilename('...hidden.txt'), 'hidden.txt')
 })
 
+test('trailing dots and spaces are removed while the extension and collisions still work', () => {
+  assert.equal(safeDownloadFilename('report.pdf. . '), 'report.pdf')
+  assert.equal(safeDownloadFilename('notes   '), 'notes')
+  assert.equal(safeDownloadFilename('a.b.'), 'a.b')
+  assert.equal(safeDownloadFilename('. . .'), 'download')
+  const taken = new Set(['/dl/report.pdf'])
+  assert.equal(
+    uniqueDownloadPath('/dl', safeDownloadFilename('report.pdf.'), (path) => taken.has(path)),
+    '/dl/report (1).pdf'
+  )
+})
+
 test('empty and non-string inputs fall back to a usable name', () => {
   for (const input of ['', '   ', null, undefined, 42, {}]) {
     assert.equal(safeDownloadFilename(input), 'download')

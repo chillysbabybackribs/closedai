@@ -7,17 +7,20 @@ import { Markdown, MarkdownLink } from '../components/ui/markdown.js'
 import { remarkBareUrls } from '../components/ui/markdown-links.js'
 import { remarkWorkspaceFilePaths } from '../components/ui/markdown-workspace-paths.js'
 import { isWorkspaceFileHref } from '../shared/local-files.js'
+import { useWorkspacePaneActions } from './chat-layout/workspace-pane-actions.js'
 
 const CHAT_REMARK_PLUGINS = [remarkGfm, remarkBreaks, remarkBareUrls, remarkWorkspaceFilePaths]
 
 function LocalFileLink({ href, cwd, children }: { href: string; cwd?: string; children?: React.ReactNode }) {
   const [error, setError] = useState('')
   const [opening, setOpening] = useState(false)
+  const workspace = useWorkspacePaneActions()
   async function open() {
     setOpening(true)
     setError('')
     try {
-      await window.closedai.localFiles.open(href, cwd ? { cwd } : undefined)
+      const options = cwd ? { cwd } : undefined
+      await (workspace ? workspace.openFile(href, options) : window.closedai.localFiles.open(href, options))
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not open this file.')
     } finally { setOpening(false) }

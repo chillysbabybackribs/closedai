@@ -8,7 +8,7 @@ const RESTORE_LOAD_CONCURRENCY = 4
 
 export type BrowserRestoreHost = {
   window: BrowserWindow
-  tabs: (BrowserTab | import('./local-files/image-tab.js').ImageTab | import('./local-files/file-tab.js').FileTab)[]
+  tabs: (BrowserTab | import('./local-files/image-tab.js').ImageTab | import('./local-files/file-tab.js').FileTab | import('./local-files/video-tab.js').VideoTab | import('./local-files/video-hub-tab.js').VideoHubTab)[]
   disposed: boolean
   createTab: (activate: boolean, index?: number, id?: string) => BrowserTab
   setActive: (id: string) => void

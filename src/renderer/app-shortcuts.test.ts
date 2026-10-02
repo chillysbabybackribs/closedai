@@ -20,6 +20,7 @@ test('ctrl and meta match the implemented application commands', () => {
   assert.equal(press('r', { ctrlKey: true }), 'reload')
   assert.equal(press('T', { ctrlKey: true, shiftKey: true }), 'tools')
   assert.equal(press('I', { ctrlKey: true, shiftKey: true }), 'trace')
+  assert.equal(press('B', { ctrlKey: true, shiftKey: true }), 'restore-floating-pair')
   assert.equal(press('L', { ctrlKey: true, shiftKey: true }), 'tile-windows')
 })
 

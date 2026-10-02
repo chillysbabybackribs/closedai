@@ -9,6 +9,8 @@ import { LocalFileMarkdown as Markdown } from './local-file-markdown.js'
 import { Marker, MarkerContent } from '../components/ui/marker.js'
 import { Message, MessageContent } from '../components/ui/message.js'
 import { NumberTicker } from '../components/ui/number-ticker.js'
+import { useScrollerContext } from '../components/ui/message-scroller-context.js'
+import { shouldCollapseBrowsedHistory } from '../components/ui/message-scroller-state.js'
 import {
   MessageScrollerItem,
   useMessageScroller,
@@ -40,6 +42,7 @@ export const ChatTranscript = memo(function ChatTranscript({
   actions,
   hasEarlier = false,
   loadEarlier,
+  trimMountedHistory,
   cwd
 }: {
   items: ChatTranscriptItem[]
@@ -47,6 +50,8 @@ export const ChatTranscript = memo(function ChatTranscript({
   activeTurnId?: string | null
   hasEarlier?: boolean
   loadEarlier?: () => Promise<number>
+  /** Drop prepended turns once the reader scrolls back to the latest messages. */
+  trimMountedHistory?: () => void
   cwd?: string
 }): JSX.Element {
   const actionMessageIds = useMemo(
@@ -58,8 +63,17 @@ export const ChatTranscript = memo(function ChatTranscript({
   const [historyError, setHistoryError] = useState<string | null>(null)
   const foldBannerRef = useRef<HTMLDivElement>(null)
   const requestRef = useRef(false)
+  const browsedEarlierRef = useRef(false)
   const { prepareForPrepend } = useMessageScroller()
+  const { state: scrollState } = useScrollerContext()
   const setPromptAnchorTopInset = useMessageScrollerPromptAnchorInset()
+
+  useLayoutEffect(() => {
+    if (!trimMountedHistory || !browsedEarlierRef.current) return
+    if (!shouldCollapseBrowsedHistory(scrollState.edges, true)) return
+    browsedEarlierRef.current = false
+    trimMountedHistory()
+  }, [scrollState.edges, trimMountedHistory])
 
   const revealEarlier = async (): Promise<void> => {
     if (requestRef.current || !hasEarlier || !loadEarlier) return
@@ -68,7 +82,8 @@ export const ChatTranscript = memo(function ChatTranscript({
     setLoadingEarlier(true)
     setHistoryError(null)
     try {
-      await loadEarlier()
+      const loaded = await loadEarlier()
+      if (loaded > 0) browsedEarlierRef.current = true
     } catch (error) {
       setHistoryError(errorMessage(error, 'Could not load earlier messages. Try again.'))
     } finally {
@@ -102,9 +117,9 @@ export const ChatTranscript = memo(function ChatTranscript({
           <button type="button" data-ui="chat.show-earlier" className="transcript-fold-toggle"
             disabled={loadingEarlier} aria-busy={loadingEarlier || undefined}
             aria-label={loadingEarlier ? 'Loading earlier messages' : 'Load earlier messages'}
+            title={loadingEarlier ? 'Loading earlier messages' : 'Load earlier messages'}
             onClick={() => { void revealEarlier() }}>
             <ChevronUp className="transcript-fold-chevron" aria-hidden="true" />
-            {loadingEarlier ? 'Loading earlier messages…' : 'Load earlier messages'}
           </button>
         </div>
       ) : null}

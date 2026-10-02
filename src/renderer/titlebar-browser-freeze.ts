@@ -8,9 +8,9 @@ import type { BrowserBounds, BrowserShot } from '../shared/types.js'
 // not drive the generic overlay scanner or the native page occludes/restores in a loop.
 // The dock (dock/app-dock.tsx) reports `data-state` from an untransformed box, because its
 // sliding panel's rect is still off-screen at the moment it starts to rise.
-const OVERLAY_SELECTOR = '.header-chat-search-popup, .header-chat-search-error, .browser-downloads, [data-slot="dialog-overlay"], [role="dialog"], [role="menu"], [data-slot="tooltip-content"], [data-slot="app-dock"], .dock-start-shell'
+const OVERLAY_SELECTOR = '.header-chat-search-popup, .header-chat-search-error, .browser-downloads, [data-slot="dialog-overlay"], [role="dialog"], [role="menu"], [data-slot="tooltip-content"], [data-slot="app-dock"]'
 const BROWSER_HOST_SELECTOR = '#browser-page'
-const EAGER_CAPTURE_TRIGGER = '[data-ui="titlebar.chat-search"], [data-ui="titlebar.menu"][data-ui-key="view"], [data-ui="browser.address"], [data-ui="browser.saved-sites"], [aria-label="Downloads"], [aria-label="Tools"], [data-ui="layout.browser-drag"], [data-ui="layout.pane-drag"], [data-ui="layout.tab"], [data-ui="dock.start"]'
+const EAGER_CAPTURE_TRIGGER = '[data-ui="titlebar.chat-search"], [data-ui="titlebar.menu"][data-ui-key="view"], [data-ui="browser.address"], [data-ui="browser.saved-sites"], [aria-label="Downloads"], [aria-label="Library"], [data-ui="layout.browser-drag"], [data-ui="layout.pane-drag"], [data-ui="layout.tab"], [data-ui="dock.library"]'
 // Right-clicking browser chrome opens a menu over the page, and unlike the triggers above it
 // was reaching apply() with nothing primed — so the still arrived a capture round-trip after
 // the native pixels were already hidden. A secondary button never switches tabs, so the shot
@@ -100,6 +100,16 @@ export function createBrowserFreezeRefresh(
   }
 }
 
+/** Decode before parking the native view: receiving the JPEG does not make an img paintable. */
+async function captureDecoded(): Promise<BrowserShot | null> {
+  const shot = await window.closedai.browser.capture()
+  if (!shot) return null
+  const image = new Image()
+  image.src = shot.imageUrl
+  await image.decode().catch(() => undefined)
+  return shot
+}
+
 // Electron paints WebContentsView above the renderer, so a DOM overlay cannot literally stack
 // over the live page. When an overlay intersects the browser host, prime a one-frame capture,
 // show that still in the unchanged browser box, and hide the native pixels while leaving the
@@ -126,7 +136,7 @@ export function useTitlebarBrowserFreeze(omniboxCoversPage = false, layoutOcclud
   const captureRef = useRef<() => void>(() => {})
   const refreshRef = useRef<ReturnType<typeof createBrowserFreezeRefresh> | null>(null)
   if (!refreshRef.current) refreshRef.current = createBrowserFreezeRefresh(
-    () => window.closedai.browser.capture(),
+    captureDecoded,
     (shot) => {
       if (pageCovered()) setFreeze(shot)
     }
@@ -136,7 +146,7 @@ export function useTitlebarBrowserFreeze(omniboxCoversPage = false, layoutOcclud
   useEffect(() => {
     const capture = (): void => {
       if (pending.current) return
-      pending.current = window.closedai.browser.capture()
+      pending.current = captureDecoded()
         .catch(() => null)
         .then((shot) => {
           pending.current = null

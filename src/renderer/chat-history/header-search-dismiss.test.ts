@@ -34,3 +34,16 @@ test('the cursor follows the highlighted chat across reorders and falls back to 
   assert.equal(cursorIndex(['a', 'b'], null), 0)
   assert.equal(cursorIndex([], 'a'), 0)
 })
+
+test('portalled popup belongs to the search for focus and pointer dismissal', () => {
+  const input = node()
+  const row = node()
+  const root = node([input])
+  const popup = node([row])
+  for (const target of [input, row, popup]) {
+    assert.equal(closesOnFocusOut(root, target, popup), false)
+    assert.equal(closesOnPointerDown(root, target, popup), false)
+  }
+  assert.equal(closesOnPointerDown(root, node(), popup), true)
+  assert.equal(closesOnFocusOut(root, null, popup), true)
+})

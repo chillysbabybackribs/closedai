@@ -1,0 +1,191 @@
+/* The charcoal chat card: one conversation, quiet edge, and a model-only header. */
+:root:root .chat-layout-tile:has(.chat-card-header) {
+  --chat-header-surface: #141516;
+  --surface-chat: #141516;
+  --chat-reading-surface: #141516;
+  --foreground: #e9eaec;
+  --transcript-copy: #e9eaec;
+  --transcript-strong: #e9eaec;
+  /* One inset on all four sides: header glyphs, transcript and composer share its edges. */
+  --card-inset: clamp(16px, 5cqw, 32px);
+  --card-column: 960px;
+  border: 0;
+  border-radius: 16px;
+  background: #141516;
+  box-shadow: 0 8px 24px -14px rgb(0 0 0 / 60%);
+}
+:root:root .chat-layout-tile:has(.chat-card-header) > .chat-layout-tile-body {
+  border-radius: 16px;
+  background: #141516;
+  overflow: hidden;
+}
+:root:root .chat-layout-tile:has(.chat-card-header)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  border-radius: 16px;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 1px rgb(235 240 245 / 7.5%), inset 0 2px 3px -2px rgb(235 240 245 / 3.5%);
+}
+:root:root .chat-layout-tile .chat-layout-header.chat-card-header {
+  /* Inset, then the 28px control row (its 20px glyph centred, drawn 2px inside its box), then
+     a blank 28px strip as the scroll cutoff. */
+  position: relative;
+  height: calc(var(--card-inset) + 50px);
+  box-sizing: border-box;
+  flex: 0 0 calc(var(--card-inset) + 50px);
+  padding: calc(var(--card-inset) - 6px) max(var(--card-inset), calc((100% - var(--card-column)) / 2)) 28px;
+  background: transparent;
+  box-shadow: none;
+}
+.chat-card-thread-search {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--card-inset) - 6px);
+  transform: translateX(-50%);
+  display: flex;
+  justify-content: center;
+  width: min(320px, calc(100% - 140px));
+  max-width: 100%;
+  pointer-events: none;
+  z-index: 2;
+}
+.chat-card-thread-search > * { pointer-events: auto; }
+/* Header row: pin star on the left, model picker at the right column edge. */
+.chat-card-pin {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  margin: 0 0 0 -2px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #7c7f85;
+  cursor: pointer;
+}
+.chat-card-pin[aria-pressed='true'],
+.chat-card-pin[aria-pressed='true']:hover { color: #facc15; }
+.chat-card-model {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  min-width: 0;
+}
+:root:root .chat-card-header .composer-chip-model-trigger {
+  height: 28px;
+  max-width: 100%;
+  flex-shrink: 1;
+  padding: 0;
+  color: #d9dadd;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1;
+}
+.chat-card-header .composer-chip-chevron { display: none; }
+:root:root .chat-layout-tile:has(.chat-card-header) .chat-pane {
+  background: transparent;
+  --capsule-fill: #141516;
+  --capsule-edge: #343536;
+  --capsule-wash: linear-gradient(transparent, transparent);
+  --capsule-sheen: transparent;
+  --capsule-shadow: none;
+  --capsule-radius: 13px;
+}
+:root:root .chat-layout-tile:has(.chat-card-header) .chat-zoom-surface {
+  /* Resolve against the card body, before the composer's own inline container. */
+  --chat-column-gutter: var(--card-inset);
+  --chat-column-width: var(--card-column);
+  --composer-max-height: clamp(34px, calc(24cqh * var(--chat-zoom-inverse)), 240px);
+}
+:root:root .chat-layout-tile:has(.chat-card-header) .composer-stack {
+  max-width: var(--chat-column-width);
+}
+:root:root .chat-layout-tile:has(.chat-card-header) .prompt-message-user-content {
+  border: 0;
+  border-radius: 6px;
+  background: #1e1f20;
+  box-shadow: none;
+  padding: 14px 16px;
+}
+:root:root .chat-layout-tile:has(.chat-card-header) .prompt-chat-composer-centered .chat-composer-dock {
+  top: auto;
+  bottom: 0;
+  transform: none;
+}
+/* Pause while a turn runs: a red octagon with a thin pale edge. */
+.composer-stop { color: #ecedef; }
+.composer-stop svg { fill: #e5484d; }
+/* With the model in the header, even a narrow card has room for a single draft row. */
+:root:root .chat-layout-tile:has(.chat-card-header) .composer-stack:not([data-expanded]) .composer-input-wrap {
+  order: 0;
+  flex: 1 1 0;
+  padding: 0;
+}
+.composer-stack[data-expanded] .composer-action { margin-left: auto; }
+
+/* CSS follows the painted card on every drag frame, including before layout is saved. */
+:root:root .chat-layout-tile:has(.chat-card-header) .chat-composer-dock {
+  max-height: 60%;
+  /* Reserve the gap outside the scrollable contents, even when the dock overflows. */
+  border-bottom: var(--card-inset) solid transparent;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+:root:root .chat-layout-tile:has(.chat-card-header) .chat-composer-dock > * {
+  flex-shrink: 0;
+}
+:root:root .chat-layout-tile:has(.chat-card-header) .composer {
+  padding-bottom: 0;
+}
+:root:root .chat-layout-tile:has(.chat-card-header) .composer-row {
+  min-height: 56px;
+  padding-block: 11px;
+}
+.chat-card-model { flex: 0 1 auto; }
+.chat-card-header .chat-layout-preset { flex-shrink: 0; }
+
+/* Media may keep its aspect ratio, but never force a message wider than the card. */
+:root:root .chat-layout-tile:has(.chat-card-header) .prompt-message-image-btn {
+  min-width: 0;
+  max-width: 100%;
+}
+
+@container chat-tile (max-width: 400px) {
+  :root:root .chat-layout-tile:has(.chat-card-header) .prompt-message-user-content {
+    padding: 10px 12px;
+  }
+  :root:root .chat-layout-tile:has(.chat-card-header) .composer-row {
+    column-gap: 4px;
+    padding-inline: 6px;
+  }
+  :root:root .chat-card-header .composer-chip-model-trigger { font-size: 12px; }
+}
+
+/* A highly zoomed or exceptionally narrow draft gets a full line above its controls. */
+@container composer (max-width: 240px) {
+  :root:root .chat-layout-tile:has(.chat-card-header) .composer-stack:not([data-expanded]) .composer-input-wrap {
+    order: -1;
+    flex-basis: 100%;
+    padding: 1px 6px 0;
+  }
+  .chat-layout-tile:has(.chat-card-header) .composer-action { margin-left: auto; }
+}
+
+@container chat-tile (max-height: 400px) {
+  :root:root .chat-layout-tile .chat-layout-header.chat-card-header {
+    height: calc(var(--card-inset) + 28px);
+    flex-basis: calc(var(--card-inset) + 28px);
+    padding-bottom: 6px;
+  }
+  .chat-layout-tile:has(.chat-card-header) .chat-scroll-content {
+    padding-top: 6px;
+  }
+  .chat-layout-tile:has(.chat-card-header) .chat-scroll-content > [data-slot="message-scroller-item"] + [data-slot="message-scroller-item"] {
+    margin-top: 8px;
+  }
+}

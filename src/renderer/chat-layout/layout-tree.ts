@@ -9,7 +9,10 @@ export type FloatRect = { x: number; y: number; width: number; height: number; z
  * `onTop` keeps the window above every window without it (Keep on top).
  */
 export type ChatLayout = {
-  kind: 'pane'; id: string; tabs?: string[]; docked?: boolean; dockNumber?: number; float?: FloatRect; onTop?: boolean
+  kind: 'pane'; id: string; tabs?: string[]; docked?: boolean; dockNumber?: number; float?: FloatRect
+  /** When set to a chat id, this pane and the browser move and resize as one floating pair. */
+  floatPair?: string
+  onTop?: boolean
   /** A notepad window's chat (renderer notepad/): one per window, kept when its notes change. */
   notepadChat?: string
 } | {
@@ -34,9 +37,12 @@ export function isViewTabId(id: string): boolean {
   return id.startsWith(VIEW_TAB_PREFIX)
 }
 
+/** Chat share in the default browser split; kept in sync with workspace-default-float. */
+export const DEFAULT_BROWSER_SPLIT_RATIO = 0.6
+
 export function withBrowser(tree: ChatLayout): ChatLayout {
   if (layoutIds(tree).includes(BROWSER_PANE_ID)) return tree
-  return { kind: 'split', id: 'closedai:browser-split', axis: 'horizontal', ratio: 0.6,
+  return { kind: 'split', id: 'closedai:browser-split', axis: 'horizontal', ratio: DEFAULT_BROWSER_SPLIT_RATIO,
     first: tree, second: { kind: 'pane', id: BROWSER_PANE_ID } }
 }
 
@@ -180,9 +186,6 @@ export type SavedChatLayout = {
   focused?: string
   /** The maximized window (a tile or one of its tabs), which fills the canvas until Escape. */
   maximized?: string
-  /** The browser's quick chat: a real chat floating over the page instead of in a tile (main window only). */
-  browserChat?: string
-  browserChatOpen?: boolean
 }
 // Keyed by the main window's space (a project folder for spaces made before space ids); a detached
 // window keeps its own layout for the project beside the main window's.
@@ -224,6 +227,8 @@ export function readLayout(storage: Pick<Storage, 'getItem'>, key: string, windo
         if (node.onTop !== undefined && typeof node.onTop !== 'boolean') return false
         if (node.docked !== undefined && typeof node.docked !== 'boolean') return false
         if (node.dockNumber !== undefined && (!Number.isSafeInteger(node.dockNumber) || node.dockNumber < 1)) return false
+        if (node.floatPair !== undefined && (typeof node.floatPair !== 'string' || !node.floatPair
+          || isViewTabId(node.floatPair) || isReservedPaneId(node.floatPair))) return false
         if (node.notepadChat !== undefined && (typeof node.notepadChat !== 'string' || !node.notepadChat
           || isViewTabId(node.notepadChat) || isReservedPaneId(node.notepadChat))) return false
         const tabs = node.tabs ?? [node.id]
@@ -242,15 +247,11 @@ export function readLayout(storage: Pick<Storage, 'getItem'>, key: string, windo
     const views = validViewScopes(raw.views, chats)
     const focused = typeof raw.focused === 'string' && chats.has(raw.focused) && !isViewTabId(raw.focused) ? raw.focused : null
     const maximized = typeof raw.maximized === 'string' && (chats.has(raw.maximized) || raw.maximized === BROWSER_PANE_ID) ? raw.maximized : null
-    const browserChat = typeof raw.browserChat === 'string' && raw.browserChat && !chats.has(raw.browserChat)
-      && !isReservedPaneId(raw.browserChat) && !isViewTabId(raw.browserChat) ? raw.browserChat : null
     return {
       tree: raw.tree, browserVisible: raw.browserVisible,
       ...(Object.keys(views).length ? { views } : {}),
       ...(focused ? { focused } : {}),
-      ...(maximized ? { maximized } : {}),
-      ...(browserChat ? { browserChat } : {}),
-      ...(raw.browserChatOpen === true ? { browserChatOpen: true } : {})
+      ...(maximized ? { maximized } : {})
     }
   } catch { return fallback }
 }

@@ -41,7 +41,8 @@ export function safeDownloadFilename(raw: unknown): string {
     .replace(/\s+/g, ' ')
     .trim()
   // Leading dots would hide the file (and ".."/"." are not names at all).
-  const visible = cleaned.replace(/^[.]+/, '').trim()
+  // Trailing dots/spaces are dropped (Windows silently strips them, leaving a different name).
+  const visible = cleaned.replace(/^[.]+/, '').replace(/[. ]+$/, '')
   if (!visible) return 'download'
   const { stem, extension } = splitExtension(visible)
   const safeStem = RESERVED.test(stem) ? `_${stem}` : stem

@@ -11,8 +11,6 @@ import type { QuickChatSurface } from '../../shared/quick-chat-overlay.js'
 import { feedLead, quickChatFeed, type QuickChatFeed } from './quick-chat-feed.js'
 import { formatRunSeconds, useRunSeconds } from './run-clock.js'
 
-const overlayRequest = (value: QuickChatRequest): void => { void window.closedai.quickChat.request(value) }
-
 export type QuickChatRequest = 'new' | 'close'
 export type QuickChatMode = 'full' | 'compact'
 export type { QuickChatSurface }
@@ -27,7 +25,7 @@ const chosenMode = new Map<string, Mode>()
  * it as it is.
  */
 export const QuickChatCard = memo(function QuickChatCard({
-  paneId, site, dispatch, appearance, surface = 'browser', onRequest = overlayRequest, mode: controlledMode, onModeChange
+  paneId, site, dispatch, appearance, surface = 'notepad', onRequest, mode: controlledMode, onModeChange
 }: {
   paneId: string
   /** What the task works on: the site the browser shows, or the note, for "Working on espn.com". */
@@ -35,8 +33,8 @@ export const QuickChatCard = memo(function QuickChatCard({
   dispatch: Dispatch<ChatWorkspaceAction>
   appearance: AppearanceSettings
   surface?: QuickChatSurface
-  /** Hide or clear the chat; the browser's layer asks main, a notepad handles it in place. */
-  onRequest?: (request: QuickChatRequest) => void
+  /** Hide or clear the chat; the notepad host handles requests in place. */
+  onRequest: (request: QuickChatRequest) => void
   /** Set by a host that changes the shape itself (a notepad compacts on a tab switch mid-task). */
   mode?: QuickChatMode
   onModeChange?: (mode: QuickChatMode) => void
@@ -69,7 +67,7 @@ export const QuickChatCard = memo(function QuickChatCard({
   useEffect(() => {
     const onKeyDown = (event: globalThis.KeyboardEvent): void => {
       if (event.key !== 'Escape' || event.defaultPrevented) return
-      if (surface !== 'browser' && !(event.target instanceof Node && cardRef.current?.contains(event.target))) return
+      if (!(event.target instanceof Node && cardRef.current?.contains(event.target))) return
       event.preventDefault()
       requestRef.current('close')
     }

@@ -1,6 +1,5 @@
 import { lazy, memo, Suspense, type ReactNode } from 'react'
 import { Check, ChevronDown, Pin } from 'lucide-react'
-import type { AgentRunStartOptions } from '../../shared/agent-runs.js'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger
@@ -14,10 +13,6 @@ const TracePanel = lazy(async () => {
 const ToolsPanel = lazy(async () => {
   const module = await import('../tools/tools-panel.js')
   return { default: module.ToolsPanel }
-})
-const AgentLibraryView = lazy(async () => {
-  const module = await import('../agent-library/agent-library-view.js')
-  return { default: module.AgentLibraryView }
 })
 const ChatHistory = lazy(async () => {
   const module = await import('../chat-history.js')
@@ -40,9 +35,6 @@ export type WorkspaceViewProps = {
   onClose: () => void
   /** Tools repair drafts go to the scoped chat's composer. */
   onSendToChat: (chatId: string, text: string) => void
-  /** Agents start beside the scoped chat's tile; undefined when the app cannot start runs. */
-  onStartAgent?: (chatId: string, options: AgentRunStartOptions) => Promise<void>
-  startEnabled: boolean
   savedSites: {
     update: (id: string, note: string) => Promise<void>
     remove: (id: string) => Promise<void>
@@ -61,12 +53,11 @@ export type WorkspaceViewProps = {
 /**
  * A view tab's body: a quiet toolbar whose only control is the scope chip, then the panel that
  * used to live in a dialog. Following a tile means the panel retargets as the tile's chat changes;
- * pinned means it does not. Agents and Saved sites show no toolbar: both are workspace-wide.
- * Agents scope only picks the tile a new run docks beside, which is always this one.
+ * pinned means it does not. Saved sites shows no toolbar: it is workspace-wide.
  */
-export const WorkspaceView = memo(function WorkspaceView({ viewId, kind, active, scope, pinOptions, onPin, onClose, onSendToChat, onStartAgent, startEnabled, history, savedSites, onSavedSitesError }: WorkspaceViewProps): ReactNode {
+export const WorkspaceView = memo(function WorkspaceView({ viewId, kind, active, scope, pinOptions, onPin, onClose, onSendToChat, history, savedSites, onSavedSitesError }: WorkspaceViewProps): ReactNode {
   const chatTitle = pinOptions.find((option) => option.id === scope.chatId)?.title ?? 'this chat'
-  const scoped = kind !== 'agents' && kind !== 'saved-sites'
+  const scoped = kind !== 'saved-sites'
   return <section className="workspace-view" data-ui={`view.${kind}`} data-ui-key={viewId} data-kind={kind}
     aria-label={`${VIEW_LABELS[kind]} view`}>
     {scoped && <div className="workspace-view-bar">
@@ -76,9 +67,6 @@ export const WorkspaceView = memo(function WorkspaceView({ viewId, kind, active,
       <Suspense fallback={null}>
         {kind === 'trace' && <TracePanel paneId={scope.chatId} active={active} />}
         {kind === 'tools' && <ToolsPanel active={active} onSendToChat={(text) => onSendToChat(scope.chatId, text)} />}
-        {kind === 'agents' && onStartAgent && <AgentLibraryView active={active} startEnabled={startEnabled}
-          chats={history.chats} onOpenChat={(chatId) => { void history.openChat(chatId) }}
-          onStart={(options) => onStartAgent(scope.chatId, options)} />}
         {kind === 'history' && <ChatHistory activeChatId={scope.chatId} busy={history.busy} listChats={history.listChats}
           chats={history.chats} openChat={history.openChat} archiveChat={history.archiveChat} onClose={onClose} onOpened={() => {}} />}
         {kind === 'saved-sites' && <SavedSitesPanel active={active} onError={onSavedSitesError} onOpenSite={savedSites.openSite}

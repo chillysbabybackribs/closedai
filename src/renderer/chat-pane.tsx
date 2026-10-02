@@ -33,7 +33,7 @@ export const ChatPane = memo(function ChatPane({
   composerFontSize = 15,
   selected = true,
   panelVisible = true,
-  onNewChat: _onNewChat,
+  onNewChat,
   onContinueInNewChat
 }: {
   controller?: ChatController
@@ -60,9 +60,8 @@ export const ChatPane = memo(function ChatPane({
   const ready = state.connection.state === 'ready'
   const running = chatRunning(state)
   const agentRun = useAgentRun(chat.selectedPaneId)
-  const peerRow = chat.chats.find((row) => row.paneId === chat.selectedPaneId)
   const hasMessages = state.items.length > 0
-  const showTranscript = hasMessages || paneHasTranscript(state, peerRow)
+  const showTranscript = hasMessages || paneHasTranscript(state)
   // 'starting' is the step on the way to ready, not a failure. Treating it as one made every new
   // chat flash the connection guidance and drop the composer to the bottom for the frames before
   // the pane's provider came up, so only a settled failure replaces the centered empty layout.
@@ -74,7 +73,7 @@ export const ChatPane = memo(function ChatPane({
   // process was ready made every launch and every provider switch a pause the user could feel.
   const usable = ready || connecting
   // A continuation stays visually empty until its first message delivers the handoff to the model.
-  const centerComposer = !blocked && !composerAnchoredBottom(chat.selectedPaneId, state, peerRow)
+  const centerComposer = !blocked && !composerAnchoredBottom(chat.selectedPaneId, state)
   const modelMenuRef = useRef<ComposerSetupHandle>(null)
   const dockRef = useRef<HTMLDivElement>(null)
   useDockInset(dockRef)
@@ -134,6 +133,7 @@ export const ChatPane = memo(function ChatPane({
             ) : showTranscript && hasMessages ? (
               <ChatTranscript items={state.items} activeTurnId={state.activeTurnId} cwd={project.cwd}
                 hasEarlier={state.history?.hasEarlier} loadEarlier={chat.loadEarlier}
+                trimMountedHistory={chat.trimMountedHistory}
                 actions={{
                 threadKey: state.threadId ?? chat.selectedPaneId,
                 running,
@@ -196,6 +196,7 @@ export const ChatPane = memo(function ChatPane({
             compactConversationEnabled={canCompact}
             continueMessageId={continueMessageId}
             onContinueInNewChat={onContinueInNewChat}
+            onNewChat={onNewChat}
           />
         </div>
       </div>

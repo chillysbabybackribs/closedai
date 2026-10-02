@@ -195,8 +195,3 @@ test('a surface hears the chats it shows and workspace-wide events, never browse
   assert.equal(sent.length, 2)
 })
 
-test('the quick chat layer’s requests go to the main window', () => {
-  const { registry, main } = harness()
-  registry.quickChat('open')
-  assert.deepEqual(main.commands(), [{ type: 'quickChat', request: 'open' }])
-})

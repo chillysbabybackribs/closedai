@@ -139,9 +139,9 @@ export const presetSlots = (preset: LayoutPreset): number =>
  * preset's windows (the extra ones join the last), floating and minimized ones included.
  */
 export const QUICK_LAYOUT_PRESETS: Array<{ key: string; label: string; preset: LayoutPreset }> = [
-  { key: 'browser-side', label: 'Chats left, browser right', preset: { kind: 'browser-side' } },
-  { key: 'browser-between', label: 'Chat, browser, chat', preset: { kind: 'browser-between' } },
-  { key: 'browser-centre', label: 'Browser centre', preset: { kind: 'browser-centre' } },
+  { key: 'browser-side', label: 'Chats left, browser right (full workspace)', preset: { kind: 'browser-side' } },
+  { key: 'browser-between', label: 'Chat, browser, chat (full workspace)', preset: { kind: 'browser-between' } },
+  { key: 'browser-centre', label: 'Browser centre (full workspace)', preset: { kind: 'browser-centre' } },
   { key: 'six', label: '6 chats', preset: { kind: 'grid', count: 6 } },
   { key: 'four', label: '4 chats', preset: { kind: 'grid', count: 4 } }
 ]

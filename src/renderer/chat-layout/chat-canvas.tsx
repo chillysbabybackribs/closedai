@@ -1,8 +1,9 @@
 import { expandedPaneIds } from './layout-docking.js'
-import { memo, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type Dispatch, type SetStateAction, type DragEvent as ReactDragEvent, type ReactNode } from 'react'
+import { memo, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type Dispatch, type RefObject, type SetStateAction, type DragEvent as ReactDragEvent, type ReactNode } from 'react'
 import type { WorkspaceBackdrop } from '../../shared/backdrop-presets.js'
 import { useWorkspaceBackdropContextMenu } from '../backdrop/workspace-backdrop-menu.js'
 import type { ChatReviewQueue } from '../chat-history/review-queue.js'
+import type { HistoryController } from '../chat-history/history-controller.js'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import { BROWSER_PANE_ID, CHAT_DRAG_TYPE, isViewTabId, layoutGeometry, removePane, type ChatLayout, type DockEdge, type Rect, type SplitResizePhase } from './layout-tree.js'
 import { LayoutDivider } from './layout-divider.js'
@@ -16,14 +17,21 @@ import { WINDOW_HEADER, findWindow, floatWindow, minimizeWindow } from './floati
 import { tearOffWindow, tileWindow } from './floating/window-arrange.js'
 import { joinTabsTarget, snapTarget } from './floating/window-targets.js'
 import { JoinTabsPreview } from './floating/join-tabs-preview.js'
-import { browserCovered, canvasTiles, floatingFront } from './floating/window-tiles.js'
+import { sameTabKind } from './layout-views.js'
+import { browserCovered, browserReaches, canvasTiles, floatingFront } from './floating/window-tiles.js'
 import { useWindowDrag, type WindowFrame } from './floating/use-window-drag.js'
 import { useMaximizedWindow } from './floating/use-maximized-window.js'
 import { BrowserWindowContext, WindowResizeHandles } from './floating/window-controls.js'
+import { FloatingPairChrome } from './floating/floating-pair-chrome.js'
+import {
+  applyFloatingPairRects, clearFloatingPair, getFloatingPair, pairContains, resizeFloatingPairBox, resizeFloatingPairDivider
+} from './floating/floating-pair.js'
 import { pressesMoveHandle } from './floating/window-move-handle.js'
 import { TEAR_OFF_TARGET, useTabTearOff } from './floating/use-tab-tear-off.js'
+import { TileSizeProvider } from './tile-size-context.js'
 import { CrossWindowDockPreview } from './cross-window-dock-preview.js'
-import { DockClearanceContext } from '../dock/dock-clearance.js'
+import { DockOpenContext } from '../dock/dock-open.js'
+import { DOCK_HEIGHT } from '../dock/dock-model.js'
 import { useReportDockSurface } from './use-report-dock-surface.js'
 
 const position = (rect: Rect): CSSProperties => ({ left: rect.x, top: rect.y, width: rect.width, height: rect.height })
@@ -73,8 +81,6 @@ type ChatCanvasProps = {
   toolsPreset?: 'full' | 'read-only' | 'custom' | null
   onRenameChat?: (id: string) => void
   onTogglePin?: (id: string, pinned: boolean) => void
-  /** Continue this conversation in a new tab of the same tile, seeded with its digest. */
-  onContinueChat?: (id: string) => void
   onPauseTab?: (id: string) => void
   onResumeTab?: (id: string) => void
   onOpenPresets?: () => void
@@ -89,9 +95,14 @@ type ChatCanvasProps = {
   backdrop: WorkspaceBackdrop
   onBackdropChange: (mode: WorkspaceBackdrop) => void
   onOpenWallpaper: () => void
+  threadSearch?: {
+    chats: ChatRowSummary[]
+    controller: HistoryController
+    inputRef: RefObject<HTMLInputElement | null>
+  }
 }
 
-function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, browserVisible, browserRevealVersion, maximized, renderBrowser, onDragActive, title, activity, reviewQueue, chatRow, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onTogglePin, onContinueChat: _onContinueChat, onPauseTab, onResumeTab, onOpenPresets, onSizeChange, onDock, onHide, onResize, windows, onBrowserCovered, backdrop, onBackdropChange, onOpenWallpaper }: ChatCanvasProps) {
+function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, browserVisible, browserRevealVersion, maximized, renderBrowser, onDragActive, title, activity, reviewQueue, chatRow, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onTogglePin, onPauseTab, onResumeTab, onOpenPresets, onSizeChange, onDock, onHide, onResize, windows, onBrowserCovered, backdrop, onBackdropChange, onOpenWallpaper, threadSearch }: ChatCanvasProps) {
   const viewport = useRef<HTMLDivElement>(null)
   const { openBackdropMenu, backdropMenu } = useWorkspaceBackdropContextMenu({ backdrop, onBackdropChange, onOpenWallpaper })
   const canvasRef = useRef<HTMLDivElement>(null)
@@ -106,7 +117,7 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
   }
   const splitResize = splitResizeRef.current
   const [size, setSize] = useState({ width: 0, height: 0 })
-  const dockClear = useContext(DockClearanceContext)
+  const dockOpen = useContext(DockOpenContext)
   layoutFrame.current = { tree, browserVisible, width: size.width, height: size.height }
   useLayoutEffect(() => {
     if (!splitResize.live.active) return
@@ -228,7 +239,9 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
   const [soloPaneId, setSoloPaneId] = useMaximizedWindow(shown, canMaximize || floating.length > 0, browserRevealVersion, maximized)
   const soloTile = soloPaneId ? shown.find((p) => p.id === soloPaneId || p.tabs.includes(soloPaneId)) ?? null : null
   const soloRect: Rect = { x: 0, y: 0, width: Math.max(size.width, minimum.width), height: Math.max(size.height, minimum.height) }
-  const covered = !soloTile && browserCovered(tiles)
+  // The dock floats over the workspace's bottom band (less the workspace's 10 px edge margin).
+  const dockCovers = dockOpen && (soloTile ? soloTile.id === BROWSER_PANE_ID : browserReaches(tiles, size.height - (DOCK_HEIGHT - 10)))
+  const covered = (!soloTile && browserCovered(tiles)) || dockCovers
   const coveredListener = useRef(onBrowserCovered)
   coveredListener.current = onBrowserCovered
   useEffect(() => { coveredListener.current?.(covered) }, [covered])
@@ -239,12 +252,38 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
   // A window torn out of the tiled layer leaves the others where they are on screen, floating.
   const floatAt = useCallback((id: string, rect: Rect, tornOff: boolean) => {
     const { tiled } = frame.current()
-    windows.change((tree) => tornOff ? tearOffWindow(tree, id, rect, tiled) : floatWindow(tree, id, rect))
+    windows.change((tree) => {
+      const pair = getFloatingPair(tree)
+      let next = tornOff ? tearOffWindow(tree, id, rect, tiled) : floatWindow(tree, id, rect)
+      if (pair && (id === pair.chatId || id === BROWSER_PANE_ID)) next = clearFloatingPair(next, pair.chatId)
+      return next
+    })
   }, [windows])
+  const pairFloatAt = useCallback((id: string, rect: Rect, partnerId: string, partnerRect: Rect) => {
+    const { size } = frame.current()
+    const pair = getFloatingPair(tree)
+    if (!pair) return
+    const chatRect = id === pair.chatId ? rect : partnerRect
+    const browserRect = id === BROWSER_PANE_ID ? rect : partnerRect
+    windows.change((current) => applyFloatingPairRects(current, pair.chatId, chatRect, browserRect, size))
+  }, [tree, windows])
   const snapAt = useCallback((id: string, target: Parameters<typeof snapTarget>[2]) => {
     const { size, tiled, floating } = frame.current()
-    windows.change((tree) => snapTarget(tree, id, target, size, tiled, floating, crypto.randomUUID()))
+    windows.change((tree) => {
+      const pair = getFloatingPair(tree)
+      let next = snapTarget(tree, id, target, size, tiled, floating, crypto.randomUUID())
+      if (pair && (id === pair.chatId || id === BROWSER_PANE_ID)) next = clearFloatingPair(next, pair.chatId)
+      return next
+    })
   }, [windows])
+  const pairPartner = useCallback((id: string) => {
+    const pair = getFloatingPair(tree)
+    if (!pair) return null
+    const partnerId = id === pair.chatId ? BROWSER_PANE_ID : id === BROWSER_PANE_ID ? pair.chatId : null
+    if (!partnerId) return null
+    const start = floating.find((tile) => tile.id === partnerId)?.rect
+    return start ? { id: partnerId, start } : null
+  }, [tree, floating])
   const dockSource = useCallback((id: string) => {
     const pane = findWindow(tree, id)
     const tabIds = pane?.tabs ?? [id]
@@ -257,7 +296,7 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
       glideArmed.current = true
       dragActiveListener.current(true)
     }, []),
-    onFloat: floatAt, onSnap: snapAt, onGroup: windows.group,
+    onFloat: floatAt, onPairFloat: pairFloatAt, pairPartner, onSnap: snapAt, onGroup: windows.group,
     onMaximize: useCallback((id: string) => setSoloPaneId(id), [setSoloPaneId]),
     dockSource
   })
@@ -273,13 +312,34 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
   }, [dragging, settling, gesture, whenGlideIdle])
 
   const tearOff = useTabTearOff(windowFrame, windows.change)
+  const linkedPair = !soloTile && browserVisible ? (() => {
+    const meta = getFloatingPair(tree)
+    if (!meta) return null
+    const chatTile = shown.find((tile) => tile.id === meta.chatId)
+    const browserTile = shown.find((tile) => tile.id === BROWSER_PANE_ID)
+    if (!chatTile || !browserTile || chatTile.kind !== 'floating' || browserTile.kind !== 'floating') return null
+    return { chatId: meta.chatId, chat: chatTile.rect, browser: browserTile.rect }
+  })() : null
+  const commitPairDivider = useCallback((chatWidth: number) => {
+    const pair = getFloatingPair(tree)
+    if (!pair) return
+    windows.change((current) => resizeFloatingPairDivider(current, pair.chatId, chatWidth, size) ?? current)
+  }, [tree, size, windows])
+  const commitPairBox = useCallback((edge: import('./floating/window-layout.js').ResizeEdge, dx: number, dy: number) => {
+    const pair = getFloatingPair(tree)
+    if (!pair) return
+    windows.change((current) => resizeFloatingPairBox(current, pair.chatId, edge, dx, dy, size) ?? current)
+  }, [tree, size, windows])
   // Tab drops meet floating windows first: a floating chat's strip takes the tab into its tabs, and
-  // free space, a floating window's body included, tears the tab off into its own window.
+  // free space, a floating window's body included, tears the tab off into its own window. A strip
+  // only takes tabs of its own kind: chats join chats, notes join notes.
   const dropAt = (x: number, y: number) => {
+    const joins = (target: string) => !dragging || sameTabKind(dragging.id, target)
     const hit = chatDropAt([...floating, ...geometry.panes], x, y, dropTarget.current)
-    if (hit && !floatingIds.has(hit.target)) return hit
+    if (hit && !floatingIds.has(hit.target)) return hit.edge === null && !joins(hit.target) ? null : hit
     const over = hit && hit.target !== BROWSER_PANE_ID ? floating.find((tile) => tile.id === hit.target) : undefined
-    return over && y - over.rect.y < WINDOW_HEADER ? { target: over.id, edge: null } : tearOff.at(dragging, x, y)
+    if (over && y - over.rect.y < WINDOW_HEADER) return joins(over.id) ? { target: over.id, edge: null } : null
+    return tearOff.at(dragging, x, y)
   }
   const browserWindow = useMemo(() => ({
     maximized: soloTile?.id === BROWSER_PANE_ID,
@@ -312,8 +372,7 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
   }
 
   return <>
-  <div className="chat-layout-viewport" ref={viewport} onContextMenu={openBackdropMenu}
-    style={dockClear ? { paddingBottom: dockClear } : undefined}>
+  <div className="chat-layout-viewport" ref={viewport} onContextMenu={openBackdropMenu}>
     <div className="chat-layout-canvas" ref={canvasRef} style={{ minWidth: minimum.width, minHeight: minimum.height }}
       onContextMenu={openBackdropMenu}
       // The shell's Escape handler leaves a drag in progress to the cancel listener above.
@@ -382,10 +441,12 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
             if (floats) windows.change((current) => tileWindow(current, activeId))
             else browserWindow.toggleMaximize()
           } : undefined}>
+          <TileSizeProvider value={{ width: tileRect.width, height: tileRect.height }}>
           <div className="chat-layout-tile-body"
             style={isPlaceholder ? { ...position(mini.layout), '--mini-scale': mini.scale } as CSSProperties : undefined}>
             {!browser && <ChatLayoutPaneHeader activeId={tileActiveId} tabs={tileTabs} chatCount={chatCount}
               busy={busy} toolsPreset={toolsPreset ?? null} title={title} activity={activity} reviewQueue={reviewQueue}
+              workspaceSelectedId={selectedId} threadSearch={threadSearch}
               row={row} soloTile={soloTile ?? null} setSoloPaneId={setSoloPaneId} tabFocus={tabFocus} onSelect={onSelect}
               onSelectTab={onSelectTab} onCloseTab={onCloseTab} onNewChat={onNewChat} onRenameChat={onRenameChat}
               onTogglePin={onTogglePin} onPauseTab={onPauseTab} onResumeTab={onResumeTab} onOpenPresets={onOpenPresets}
@@ -399,9 +460,16 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
             </div> : tileTabs.map((tabId) => <div key={tabId} className="chat-layout-content" role="tabpanel" id={`chat-panel-${tabId}`}
               aria-label={title(tabId)} hidden={tabId !== tileActiveId}>{renderPane(tabId, tabId === tileActiveId)}</div>)}
           </div>
-          {floats && !busy && <WindowResizeHandles id={activeId} onStart={startResize} />}
+          </TileSizeProvider>
+          {floats && !busy && !pairContains(tree, activeId) && <WindowResizeHandles id={activeId} onStart={startResize} />}
         </section>
       })}
+      {linkedPair && !busy && !gesture && (
+        <FloatingPairChrome pair={linkedPair} busy={busy} canvas={canvasRef}
+          onDividerCommit={commitPairDivider}
+          onBoxCommit={(edge, dx, dy) => commitPairBox(edge, dx, dy)}
+          onPaint={() => {}} />
+      )}
       {gesture?.preview && gesture.target.kind !== 'group' && <div className="chat-layout-snap-preview" data-kind={gesture.target.kind}
         style={position(gesture.preview)} aria-hidden="true" />}
       <JoinTabsPreview canvas={canvasRef} title={title} join={joinTabsTarget(shown, gesture, dragging && { id: dragging.id, drop })} />

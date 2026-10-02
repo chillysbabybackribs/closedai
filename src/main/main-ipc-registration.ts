@@ -7,8 +7,6 @@ import type { ToolsEvent } from '../shared/tools.js'
 import { IPC, type IpcEventChannel, type IpcEventChannels } from '../shared/ipc-channels.js'
 import { registerWindowIpc } from './window-ipc.js'
 import { registerAppWindowsIpc } from './windows/ipc.js'
-import { registerQuickChatIpc } from './quick-chat-overlay/ipc.js'
-import type { QuickChatOverlay } from './quick-chat-overlay/quick-chat-overlay.js'
 import { registerWallpaperIpc } from './wallpapers/ipc.js'
 import { registerProfilesIpc } from './profiles/ipc.js'
 import type { ProfileSession } from './profiles/profile-session.js'
@@ -55,7 +53,6 @@ export type MainIpcRegistration = {
   windows: () => AppWindowRegistry | null
   profiles: ProfileSession
   browserService: () => BrowserService | null
-  quickChatOverlay: () => QuickChatOverlay | null
   browserDownloads: () => BrowserDownloadService | null
   savedSites: () => SavedSitesStore | null
   notes: () => NotesStore | null
@@ -91,7 +88,6 @@ export function registerMainProcessIpc(reg: MainIpcRegistration): void {
   // Whatever an earlier launch set aside, including data deleted while it was open.
   purgeProfiles()
   registerAppWindowsIpc(reg.ipcMain, reg.windows)
-  registerQuickChatIpc(reg.ipcMain, reg.quickChatOverlay, reg.windows)
   registerBrowserCoreIpc(reg.ipcMain, reg.browserService, reg.savedSites, (sender) => reg.windows()?.isMain(sender) ?? true)
   registerBrowserDownloadsIpc(reg.ipcMain, reg.browserDownloads)
   registerSavedSitesIpc(reg.ipcMain, reg.savedSites)

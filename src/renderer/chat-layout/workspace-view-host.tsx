@@ -1,5 +1,4 @@
 import { createContext, useContext, type ReactNode } from 'react'
-import type { AgentRunStartOptions } from '../../shared/agent-runs.js'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import type { ChatLayout, ViewScopes } from './layout-tree.js'
 import { chatTabIds, tabOwner } from './layout-tabs.js'
@@ -24,8 +23,6 @@ export type WorkspaceViewContextValue = {
   closeTab: (id: string) => void
   /** Put text in a chat's composer and bring that chat forward. */
   sendToChat: (chatId: string, text: string) => void
-  /** Start a run in a new chat beside `chatId`'s tile; undefined when runs cannot start. */
-  startAgent?: (chatId: string, options: AgentRunStartOptions) => Promise<void>
   savedSites: {
     update: (id: string, note: string) => Promise<void>
     remove: (id: string) => Promise<void>
@@ -46,7 +43,7 @@ export function WorkspaceViewHost({ viewId, kind }: { viewId: string; kind: View
   const pinOptions = chatTabIds(tree).map((id) => ({ id, title: title(id) }))
   return <WorkspaceView viewId={viewId} kind={kind} active={tile === viewId} scope={scope} pinOptions={pinOptions}
     onPin={(chatId) => workspace.pinView(viewId, chatId)} onClose={() => workspace.closeTab(viewId)}
-    onSendToChat={workspace.sendToChat} onStartAgent={workspace.startAgent} startEnabled={Boolean(row)}
+    onSendToChat={workspace.sendToChat}
     history={{ listChats: workspace.listChats, chats, busy: row?.running ?? false,
       openChat: (chatId) => workspace.activateChat(chatId, tile ?? undefined), archiveChat: workspace.archiveChat }}
     savedSites={workspace.savedSites} onSavedSitesError={workspace.onSavedSitesError} />

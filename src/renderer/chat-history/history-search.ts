@@ -12,6 +12,20 @@ export type ChatSearchHit = {
 const DEFAULT_LIMIT = 8
 /** Below any title score: the weakest title match is one character at the end of a long title. */
 const PREVIEW_SCORE = -1_000_000
+/** Folder-only matches follow preview matches and retain activity ordering. */
+const FOLDER_SCORE = PREVIEW_SCORE - 1
+
+export const MS_DAY = 86_400_000
+
+const THREAD_GROUP_ORDER = ['Today', 'Yesterday', 'Earlier'] as const
+export type ThreadRecencyGroup = (typeof THREAD_GROUP_ORDER)[number]
+
+/** assistant-ui thread-search buckets from last activity (last turn, else store touch). */
+export function threadRecencyGroup(atMs: number, now = Date.now()): ThreadRecencyGroup {
+  if (atMs >= now - MS_DAY) return 'Today'
+  if (atMs >= now - 2 * MS_DAY) return 'Yesterday'
+  return 'Earlier'
+}
 
 /**
  * One visibility rule for every chat-history surface. The main process already withholds blank,
@@ -64,15 +78,15 @@ export type ChatSearchSection = {
 export type ChatSearchLimits = {
   /** Ranked matches kept for a query. */
   query?: number
-  /** Closed chats shown at rest. Live groups (running, paused, unread, open) are never windowed. */
+  /** Closed chats shown at rest across all recency groups. Live groups are never windowed. */
   closed?: number
+  /** `thread` (default): pinned, live states, then Today/Yesterday/Earlier. `activity`: legacy buckets. */
+  grouping?: 'thread' | 'activity'
+  /** Clock for recency groups; tests pass a fixed value. */
+  now?: number
 }
 
-/**
- * Closed chats shown at rest. A workspace accumulates hundreds of closed chats; painting them all
- * on every open is what made the palette and the History view slow, and nobody scrolls that far:
- * older chats are reached by typing, or paged in the History view.
- */
+/** Bound the initial dropdown; older chats remain searchable. */
 export const REST_CLOSED_LIMIT = 20
 
 const compareActivity = (a: ChatActivityHit, b: ChatActivityHit): number =>
@@ -83,6 +97,103 @@ const compareActivity = (a: ChatActivityHit, b: ChatActivityHit): number =>
  * Live groups are complete. Closed is a window of the newest chats and carries its full count,
  * so the caption can say how much history lies beyond it.
  */
+function withChatActivity(hit: ChatSearchHit, reviews: ChatReviewQueue): ChatActivityHit {
+  const review = reviews[hit.row.paneId]
+  const unread = review?.viewedAt === null
+  return {
+    ...hit,
+    status: hit.row.running ? 'running' : hit.row.paused ? 'paused' : unread ? 'completed'
+      : hit.row.attached ? 'open' : 'closed',
+    completedAt: unread ? review!.queuedAt : null
+  }
+}
+
+function threadQuerySections(matches: ChatActivityHit[], limit: number, now: number): ChatSearchSection[] {
+  const fullTotal = matches.length
+  const capped = matches.slice(0, Math.max(0, limit))
+  const pinned = capped.filter(hit => hit.row.pinnedAt != null).sort(compareActivity)
+  const rest = capped.filter(hit => hit.row.pinnedAt == null)
+  const byGroup = new Map<ThreadRecencyGroup, ChatActivityHit[]>()
+  for (const hit of rest) {
+    const label = threadRecencyGroup(activityAt(hit.row), now)
+    const bucket = byGroup.get(label) ?? []
+    bucket.push(hit)
+    byGroup.set(label, bucket)
+  }
+  for (const bucket of byGroup.values()) bucket.sort(compareActivity)
+  const sections: ChatSearchSection[] = []
+  let carryTotal = capped.length < fullTotal
+  const push = (label: string, hits: ChatActivityHit[]): void => {
+    const total = carryTotal ? fullTotal : hits.length
+    carryTotal = false
+    sections.push({ label, hits, total })
+  }
+  if (pinned.length) push('Pinned', pinned)
+  for (const label of THREAD_GROUP_ORDER) {
+    const hits = byGroup.get(label)
+    if (hits?.length) push(label, hits)
+  }
+  if (!sections.length && capped.length) push('Matching chats', capped)
+  return sections
+}
+
+function activityRestSections(recent: ChatActivityHit[], closedLimit: number): ChatSearchSection[] {
+  const section = (label: string, hits: ChatActivityHit[], total = hits.length): ChatSearchSection => ({ label, hits, total })
+  const window = (hits: ChatActivityHit[], limit: number): ChatActivityHit[] => hits.slice(0, Math.max(0, limit))
+  const running = recent.filter(hit => hit.status === 'running')
+  const completed = recent.filter(hit => hit.status === 'completed')
+    .sort((a, b) => b.completedAt! - a.completedAt! || a.row.paneId.localeCompare(b.row.paneId))
+  const open = recent.filter(hit => hit.status === 'open').sort(compareActivity)
+  const closed = recent.filter(hit => hit.status === 'closed').sort(compareActivity)
+  return [
+    section('Running', running),
+    section('Paused', recent.filter(hit => hit.status === 'paused')),
+    section('Recently completed', completed),
+    section('Open', open),
+    section('Closed', window(closed, closedLimit), closed.length)
+  ]
+}
+
+function threadRestSections(recent: ChatActivityHit[], now: number, closedLimit: number): ChatSearchSection[] {
+  const section = (label: string, hits: ChatActivityHit[]): ChatSearchSection => ({ label, hits, total: hits.length })
+  const used = new Set<string>()
+  const take = (predicate: (hit: ChatActivityHit) => boolean): ChatActivityHit[] => {
+    const hits = recent.filter(hit => !used.has(hit.row.paneId) && predicate(hit))
+    for (const hit of hits) used.add(hit.row.paneId)
+    return hits
+  }
+  const pinned = take(hit => hit.row.pinnedAt != null).sort(compareActivity)
+  const running = take(hit => hit.status === 'running')
+  const paused = take(hit => hit.status === 'paused')
+  const completed = take(hit => hit.status === 'completed')
+    .sort((a, b) => b.completedAt! - a.completedAt! || a.row.paneId.localeCompare(b.row.paneId))
+  const open = take(hit => hit.status === 'open').sort(compareActivity)
+  const closed = take(hit => hit.status === 'closed')
+  const byGroup = new Map<ThreadRecencyGroup, ChatActivityHit[]>()
+  for (const hit of closed) {
+    const label = threadRecencyGroup(activityAt(hit.row), now)
+    const bucket = byGroup.get(label) ?? []
+    bucket.push(hit)
+    byGroup.set(label, bucket)
+  }
+  for (const bucket of byGroup.values()) bucket.sort(compareActivity)
+  const sections: ChatSearchSection[] = []
+  if (pinned.length) sections.push(section('Pinned', pinned))
+  if (running.length) sections.push(section('Running', running))
+  if (paused.length) sections.push(section('Paused', paused))
+  if (completed.length) sections.push(section('Recently completed', completed))
+  if (open.length) sections.push(section('Open', open))
+  let remaining = Math.max(0, closedLimit)
+  for (const label of THREAD_GROUP_ORDER) {
+    const hits = byGroup.get(label)
+    if (!hits?.length) continue
+    const shown = hits.slice(0, remaining)
+    remaining -= shown.length
+    if (shown.length) sections.push({ label, hits: shown, total: hits.length })
+  }
+  return sections
+}
+
 export function chatSearchView(rows: ChatRowSummary[], query: string, reviews: ChatReviewQueue, limits: ChatSearchLimits = {}): {
   sections: ChatSearchSection[]
   runningCount: number
@@ -90,34 +201,20 @@ export function chatSearchView(rows: ChatRowSummary[], query: string, reviews: C
   /** Listed chats before any window was applied. */
   total: number
 } {
-  const withActivity = (hit: ChatSearchHit): ChatActivityHit => {
-    const review = reviews[hit.row.paneId]
-    const unread = review?.viewedAt === null
-    return {
-      ...hit,
-      status: hit.row.running ? 'running' : hit.row.paused ? 'paused' : unread ? 'completed'
-        : hit.row.attached ? 'open' : 'closed',
-      completedAt: unread ? review.queuedAt : null
-    }
-  }
-  const section = (label: string, hits: ChatActivityHit[], total = hits.length): ChatSearchSection => ({ label, hits, total })
-  const window = (hits: ChatActivityHit[], limit: number): ChatActivityHit[] => hits.slice(0, Math.max(0, limit))
-  const recent = rankChats(rows, '').map(withActivity)
+  const now = limits.now ?? Date.now()
+  const grouping = limits.grouping ?? 'thread'
+  const recent = rankChats(rows, '').map(hit => withChatActivity(hit, reviews))
   const running = recent.filter(hit => hit.status === 'running')
   const completed = recent.filter(hit => hit.status === 'completed')
-    .sort((a, b) => b.completedAt! - a.completedAt! || a.row.paneId.localeCompare(b.row.paneId))
-  const open = recent.filter(hit => hit.status === 'open').sort(compareActivity)
-  const closed = recent.filter(hit => hit.status === 'closed').sort(compareActivity)
-  const matches = query.trim() ? rankChats(rows, query).map(withActivity) : null
+  const matches = query.trim() ? rankChats(rows, query).map(hit => withChatActivity(hit, reviews)) : null
+  const queryLimit = limits.query ?? Infinity
   const sections = matches
-    ? [section('Matching chats', window(matches, limits.query ?? Infinity), matches.length)]
-    : [
-        section('Running', running),
-        section('Paused', recent.filter(hit => hit.status === 'paused')),
-        section('Recently completed', completed),
-        section('Open', open),
-        section('Closed', window(closed, limits.closed ?? REST_CLOSED_LIMIT), closed.length)
-      ]
+    ? grouping === 'thread'
+      ? threadQuerySections(matches, queryLimit, now)
+      : [{ label: 'Matching chats', hits: matches.slice(0, Math.max(0, queryLimit)), total: matches.length }]
+    : grouping === 'thread'
+      ? threadRestSections(recent, now, limits.closed ?? REST_CLOSED_LIMIT)
+      : activityRestSections(recent, limits.closed ?? REST_CLOSED_LIMIT)
   return {
     sections: sections.filter(section => section.hits.length > 0),
     runningCount: running.length,
@@ -158,7 +255,11 @@ export function rankChats(rows: ChatRowSummary[], query: string): ChatSearchHit[
       continue
     }
     // A chat is also findable by what was said in it; such hits rank below every title match.
-    if (row.preview.toLowerCase().includes(needle)) hits.push({ row, titleRanges: [], folder, score: PREVIEW_SCORE })
+    if (row.preview.toLowerCase().includes(needle)) {
+      hits.push({ row, titleRanges: [], folder, score: PREVIEW_SCORE })
+    } else if (folder?.toLowerCase().includes(needle)) {
+      hits.push({ row, titleRanges: [], folder, score: FOLDER_SCORE })
+    }
   }
 
   hits.sort(

@@ -23,33 +23,14 @@
   pointer-events: none;
 }
 
-/* Left of chat search: the account File dropdown and fallback application menus, then provider
-   usage centred in the remaining gap. The lead itself stays draggable; only its controls opt out. */
-.titlebar-lead {
+.titlebar-start {
   position: absolute;
   top: 0;
   left: 0;
-  right: calc(50% + var(--titlebar-search-width) / 2 + 8px);
   display: flex;
-  align-items: flex-start;
-  height: 100%;
-  min-width: 0;
-}
-
-.titlebar-start {
-  display: flex;
-  flex: none;
   align-items: center;
   height: 100%;
   -webkit-app-region: no-drag;
-}
-
-.titlebar-usage {
-  display: flex;
-  flex: 1;
-  align-items: center;
-  min-width: 0;
-  height: 100%;
 }
 
 .titlebar-search-tools {

@@ -1,73 +1,103 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
 import { HIDE_DELAY_MS, pointerReveal } from './dock-model.js'
 
-/**
- * Auto-hide, as macOS's hidden Dock: the dock rises when the pointer touches the window's bottom
- * edge and sinks a moment after the pointer leaves it. `held` (an open list, or keyboard focus in
- * the dock) keeps it up; `pinned` keeps it up for good.
- *
- * The bottom edge is the workspace's own padding, never a native browser view, so the renderer
- * always sees the pointer arrive there. While the dock is up it covers the browser, which then
- * shows a still (titlebar-browser-freeze.ts) and passes the pointer to the renderer too.
- */
-export function useDockReveal({ pinned, held }: { pinned: boolean; held: boolean }): {
-  shown: boolean
-  show: () => void
-  release: () => void
-} {
-  const [raised, setRaised] = useState(false)
-  const timer = useRef(0)
-  const raisedRef = useRef(false)
-  const heldRef = useRef(held)
-  heldRef.current = held
-  // Whether the pointer was last seen at or near the dock; closing a list over it must not hide it.
-  const near = useRef(false)
+/** Pointer intent and menu/focus holds share one cancellable hide delay. */
+export function createDockReveal(
+  publish: (shown: boolean) => void,
+  scheduleHide: (hide: () => void) => () => void = (hide) => {
+    const timer = setTimeout(hide, HIDE_DELAY_MS)
+    return () => clearTimeout(timer)
+  }
+) {
+  let shown = false
+  let held = false
+  let pointer: { y: number; height: number } | null = null
+  let cancelHide: (() => void) | null = null
+  const cancel = (): void => { cancelHide?.(); cancelHide = null }
+  const change = (next: boolean): void => {
+    if (shown === next) return
+    shown = next
+    publish(next)
+  }
+  const keepOpen = (): boolean => held || (pointer !== null && pointerReveal(pointer.y, pointer.height, shown) !== 'leave')
+  const sync = (): void => {
+    if (keepOpen()) { cancel(); change(true) }
+    else if (shown && !cancelHide) cancelHide = scheduleHide(() => {
+      cancelHide = null
+      if (!keepOpen()) change(false)
+    })
+  }
+  return {
+    pointer(y: number, height: number) { pointer = { y, height }; sync() },
+    leave() { pointer = null; sync() },
+    hold(next: boolean) { held = next; sync() },
+    dispose: cancel
+  }
+}
 
-  const cancel = useCallback((): void => {
-    window.clearTimeout(timer.current)
-    timer.current = 0
-  }, [])
-  const show = useCallback((): void => {
-    cancel()
-    if (raisedRef.current) return
-    raisedRef.current = true
-    setRaised(true)
-  }, [cancel])
-  const release = useCallback((): void => {
-    if (!raisedRef.current || heldRef.current || near.current || timer.current) return
-    timer.current = window.setTimeout(() => {
-      timer.current = 0
-      if (heldRef.current) return
-      raisedRef.current = false
-      setRaised(false)
-    }, HIDE_DELAY_MS)
-  }, [])
+/** Observe the empty bottom band without an invisible element stealing workspace clicks. */
+export function useDockReveal(root: RefObject<HTMLDivElement | null>, heldOpen: boolean): boolean {
+  const [shown, setShown] = useState(false)
+  const controller = useRef<ReturnType<typeof createDockReveal> | null>(null)
+  const panelsOpen = useRef(heldOpen)
+  const keyboardFocus = useRef(false)
+  panelsOpen.current = heldOpen
 
   useEffect(() => {
-    if (pinned) return
-    const onMove = (event: PointerEvent): void => {
-      const decision = pointerReveal(event.clientY, window.innerHeight, raisedRef.current)
-      near.current = decision !== 'leave'
-      if (decision === 'show') show()
-      else if (decision === 'hold') cancel()
-      else release()
+    const reveal = createDockReveal(setShown)
+    controller.current = reveal
+    let keyboard = true
+    const syncHold = (): void => reveal.hold(panelsOpen.current || keyboardFocus.current)
+    const inDock = (target: EventTarget | null): boolean => target instanceof Node && Boolean(root.current?.contains(target))
+    const pointerMove = (event: PointerEvent): void => reveal.pointer(event.clientY, window.innerHeight)
+    const pointerDown = (event: PointerEvent): void => {
+      keyboard = false
+      keyboardFocus.current = false
+      syncHold()
+      pointerMove(event)
     }
-    // Leaving through the bottom edge keeps the dock, as reaching past a screen edge does.
-    const onLeave = (): void => { release() }
-    const onBlur = (): void => { near.current = false; release() }
-    window.addEventListener('pointermove', onMove, { capture: true, passive: true })
-    document.documentElement.addEventListener('pointerleave', onLeave)
-    window.addEventListener('blur', onBlur)
+    const focus = (event: FocusEvent): void => {
+      keyboardFocus.current = keyboard && inDock(event.target)
+      syncHold()
+    }
+    const blur = (event: FocusEvent): void => {
+      keyboardFocus.current = keyboard && inDock(event.relatedTarget)
+      syncHold()
+    }
+    const keyDown = (): void => {
+      keyboard = true
+      keyboardFocus.current = inDock(document.activeElement)
+      syncHold()
+    }
+    const leaveWindow = (): void => {
+      keyboardFocus.current = false
+      reveal.leave()
+      syncHold()
+    }
+    const pointerOut = (event: PointerEvent): void => { if (!event.relatedTarget) reveal.leave() }
+    syncHold()
+    window.addEventListener('pointermove', pointerMove, true)
+    window.addEventListener('pointerdown', pointerDown, true)
+    window.addEventListener('pointerout', pointerOut, true)
+    window.addEventListener('focusin', focus, true)
+    window.addEventListener('focusout', blur, true)
+    window.addEventListener('keydown', keyDown, true)
+    window.addEventListener('blur', leaveWindow)
     return () => {
-      cancel()
-      window.removeEventListener('pointermove', onMove, { capture: true })
-      document.documentElement.removeEventListener('pointerleave', onLeave)
-      window.removeEventListener('blur', onBlur)
+      reveal.dispose()
+      controller.current = null
+      window.removeEventListener('pointermove', pointerMove, true)
+      window.removeEventListener('pointerdown', pointerDown, true)
+      window.removeEventListener('pointerout', pointerOut, true)
+      window.removeEventListener('focusin', focus, true)
+      window.removeEventListener('focusout', blur, true)
+      window.removeEventListener('keydown', keyDown, true)
+      window.removeEventListener('blur', leaveWindow)
     }
-  }, [pinned, show, cancel, release])
+  }, [root])
 
-  // A list closing with the pointer elsewhere starts the hide delay.
-  useEffect(() => { if (!held) release() }, [held, release])
-
-  return { shown: pinned || raised, show, release }
+  useEffect(() => {
+    controller.current?.hold(heldOpen || keyboardFocus.current)
+  }, [heldOpen])
+  return shown
 }

@@ -1,8 +1,7 @@
 /* ---- Shell menu bar -------------------------------------------------------
    File / View / Agent / Developer, living in the title bar's drag region (titlebar-menu.tsx).
    Split out of titlebar.css, which is close to its line cap. */
-/* Sits at the left edge of the drag region, where a desktop app's menu bar lives, after the
-   account File dropdown when one is signed in (.titlebar-start in titlebar.css). The framed group opts
+/* Sits at the left edge of the drag region (.titlebar-start in titlebar.css). The framed group opts
    out of dragging; the gap after it stays draggable. */
 .titlebar-nav-menu {
   display: flex;

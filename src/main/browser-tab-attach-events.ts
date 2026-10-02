@@ -1,4 +1,4 @@
-import { session, type Input, type WebContents } from 'electron'
+import { session, type WebContents } from 'electron'
 import type { BrowserHistory } from './browser-history-store.js'
 import { BrowserError, isRendererGoneReason } from './browser-error.js'
 import { selectFavicon } from './browser-favicon.js'
@@ -23,8 +23,6 @@ export type BrowserTabAttachHost = {
   createPopupTab?: CreatePopupTab
   webContents: WebContents
   permissionPolicy: () => WebPermissionPolicy
-  /** App shortcuts that work on a page (Ctrl+J); true when the key was used and the page must not see it. */
-  pageKeys: (input: Input) => boolean
   history: BrowserHistory
   liveness: () => TabLiveness
   setLiveness: (value: TabLiveness) => void
@@ -89,9 +87,6 @@ export function attachBrowserTabWebContentsEvents(host: BrowserTabAttachHost): v
     void host.adoptPageBackground()
   })
   installTabZoom(contents)
-  contents.on('before-input-event', (event, input) => {
-    if (host.pageKeys(input)) event.preventDefault()
-  })
   installContentsPermissionPolicy(contents, host.permissionPolicy)
   contents.on('page-title-updated', () => {
     host.refreshState()

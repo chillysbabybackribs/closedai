@@ -44,7 +44,7 @@ const gpt4o: ComposerProps['models'][number] = {
 test('the idle composer is one capsule row: tools, draft, setup chip, send', () => {
   const html = renderToStaticMarkup(createElement(Composer, { ...baseProps }))
   assert.match(html, /class="composer"/)
-  assert.match(html, /data-ui="composer\.upload"/)
+  assert.match(html, /data-ui="composer\.more"/)
   assert.match(html, /data-ui="composer\.input"/)
   assert.match(html, /data-ui="composer\.setup"/)
   assert.match(html, /data-ui="composer\.send"[^>]*disabled/)
@@ -65,7 +65,7 @@ test('the running composer swaps send for pause and keeps the setup chip in the 
   assert.match(html, /aria-label="Pause Codex \(Esc\)"/)
   // No spinner or clock on the trigger: it still names the model and folder while a turn runs.
   assert.match(html, /composer-chip-model-name[^>]*>GPT-4o</)
-  assert.match(html, /composer-chip-folder-name[^>]*>workspace</)
+  assert.doesNotMatch(html, /composer-chip-folder-name/)
   assert.doesNotMatch(html, /composer-setup-mark/)
   assert.doesNotMatch(html, /Working for|spinner|elapsed/)
   assert.match(html, /placeholder=""/)
@@ -78,7 +78,7 @@ test('the paused composer offers resume and says so in the placeholder', () => {
   assert.match(html, /placeholder="Resume, or send something new"/)
 })
 
-test('the trigger names the model and folder, not the context size or effort', () => {
+test('the trigger names only the model, not the folder or context size', () => {
   const html = renderToStaticMarkup(createElement(Composer, {
     ...baseProps,
     models: [{ ...gpt4o, supportedReasoningEfforts: [{ reasoningEffort: 'high', description: '' }] }],
@@ -86,15 +86,15 @@ test('the trigger names the model and folder, not the context size or effort', (
     projectPath: '/home/dp/Desktop/closedai'
   }))
   assert.match(html, /composer-chip-model-name[^>]*>GPT-4o</)
-  assert.match(html, /composer-chip-folder-name[^>]*>closedai</)
+  assert.doesNotMatch(html, /composer-chip-folder-name/)
   assert.doesNotMatch(html, /128K/)
   assert.doesNotMatch(html, /composer-chip-model-trigger[^>]*>[^<]*High/)
-  assert.match(html, /data-ui="composer\.folder"/)
+  assert.doesNotMatch(html, /data-ui="composer\.folder"/)
 })
 
-test('a queued folder change is named on the trigger', () => {
+test('the composer omits the folder even when a project change is queued', () => {
   const html = renderToStaticMarkup(createElement(Composer, { ...baseProps, projectPending: true }))
-  assert.match(html, /composer-chip-folder-name[^>]*>workspace \(queued\)</)
+  assert.doesNotMatch(html, /composer-chip-folder-name/)
 })
 
 test('composer copy names the pane provider, not Codex', () => {

@@ -23,7 +23,7 @@ export type WindowGesture = { id: string; kind: 'move' | ResizeEdge; target: Win
 
 const START_DISTANCE = 5
 
-export function useWindowDrag({ canvas, frame, onActive, onPainted, onFloat, onSnap, onGroup, onMaximize, dockSource }: {
+export function useWindowDrag({ canvas, frame, onActive, onPainted, onFloat, onPairFloat, pairPartner, onSnap, onGroup, onMaximize, dockSource }: {
   canvas: RefObject<HTMLElement | null>
   frame: () => WindowFrame
   /** A gesture started: occlude the native browser and let the release glide. */
@@ -32,6 +32,9 @@ export function useWindowDrag({ canvas, frame, onActive, onPainted, onFloat, onS
   onPainted: (element: HTMLElement) => void
   /** `tornOff`: the window left the tiled layer, so the windows it leaves keep their places too. */
   onFloat: (id: string, rect: Rect, tornOff: boolean) => void
+  /** Both panes of a linked floating pair move together. */
+  onPairFloat?: (id: string, rect: Rect, partnerId: string, partnerRect: Rect) => void
+  pairPartner?: (id: string) => { id: string; start: Rect } | null
   onSnap: (id: string, target: WindowTarget & { kind: 'split' }) => void
   onGroup: (id: string, target: string) => void
   onMaximize: (id: string) => void
@@ -42,8 +45,9 @@ export function useWindowDrag({ canvas, frame, onActive, onPainted, onFloat, onS
   const stop = useRef<(() => void) | null>(null)
   useEffect(() => () => stop.current?.(), [])
 
+  const tile = (id: string): HTMLElement | null => canvas.current ? layoutTileElement(canvas.current, id) : null
   const write = (id: string, rect: Rect): HTMLElement | null => {
-    const element = canvas.current ? layoutTileElement(canvas.current, id) : null
+    const element = tile(id)
     if (!element) return null
     element.style.left = `${rect.x}px`
     element.style.top = `${rect.y}px`
@@ -55,9 +59,13 @@ export function useWindowDrag({ canvas, frame, onActive, onPainted, onFloat, onS
     const element = write(id, rect)
     if (element) onPainted(element)
   }
-
   const track = (event: ReactPointerEvent, id: string, kind: WindowGesture['kind'], start: Rect,
-    update: (dx: number, dy: number, pointer: { x: number; y: number }, screen: { x: number; y: number }) => void, release: () => void): void => {
+    update: (dx: number, dy: number, pointer: { x: number; y: number }, screen: { x: number; y: number }) => void,
+    /** `restore` hands the box back to React as it last rendered it, before the change commits:
+     *  React writes only the values that differ from that render, so a coordinate the drop shares
+     *  with it (x 0 before and after) would otherwise keep the painted one. The glide still starts
+     *  from the drop, which the last paint recorded. */
+    release: (restore: () => void) => void): void => {
     const host = canvas.current
     if (event.button !== 0 || stop.current || !host) return
     event.preventDefault()
@@ -91,12 +99,10 @@ export function useWindowDrag({ canvas, frame, onActive, onPainted, onFloat, onS
       if (e.pointerId !== pointerId) return
       finish()
       if (!started) return
-      // Hand the box back to React as it last rendered it, before the change commits: React
-      // writes only the values that differ from that render, so a coordinate the drop shares
-      // with it (x 0 before and after) would otherwise keep the painted one. The glide still
-      // starts from the drop, which the last paint recorded.
-      write(id, start)
-      release()
+      // `release` hands the box back with `restore` just before it commits, never earlier: a
+      // release that waits on main (a cross-window route) would otherwise show the window at
+      // its start for that round trip.
+      release(() => { write(id, start) })
     }
     const cancel = (): void => {
       finish()
@@ -125,10 +131,44 @@ export function useWindowDrag({ canvas, frame, onActive, onPainted, onFloat, onS
     const start = floating ?? tiled
     if (!start) return
     const minimum = windowMinimum(id)
+    const partner = pairPartner?.(id) ?? null
     let base: Rect | null = floating ?? null
     let rect = start
     let target: WindowTarget = { kind: 'free' }
     let lastScreen = { x: event.nativeEvent.screenX, y: event.nativeEvent.screenY }
+    const retarget = (pointer: { x: number; y: number }, now: WindowFrame): void => {
+      const next = windowTargetAt(id, pointer.x, pointer.y, now.size, now.tiled, now.floating)
+      if (sameTarget(next, target)) return
+      target = next
+      setGesture({ id, kind: 'move', target: next, preview: targetPreview(now.tree, id, next, now.size, now.browserVisible, now.tiled, now.floating) })
+    }
+    // One route in flight, latest pointer wins: pointermove outruns main's answer, and a stream of
+    // unthrottled requests would queue stale hovers and previews behind it. The body flag is
+    // cleared at release, so a late answer or a queued request cannot revive the gesture.
+    let routing = false
+    let queued: { pointer: { x: number; y: number }; screen: { x: number; y: number }; now: WindowFrame } | null = null
+    const route = (): void => {
+      if (routing || !queued || !crossDock || !document.body.dataset.windowGesture) return
+      const { pointer, screen, now } = queued
+      queued = null
+      routing = true
+      const payload = crossDock(id)
+      void window.closedai.windows.routeCrossDock({
+        screenX: screen.x, screenY: screen.y,
+        source: { paneId: id, tabIds: payload.tabIds, ghostTabLabel: payload.ghostTabLabel }
+      }).then((routed) => {
+        if (!document.body.dataset.windowGesture) return
+        if (routed.targetWindowId) {
+          target = { kind: 'free' }
+          setGesture((current) => current?.id === id ? { id, kind: 'move', target, preview: null } : current)
+          return
+        }
+        retarget(pointer, now)
+      }).catch(() => undefined).finally(() => {
+        routing = false
+        route()
+      })
+    }
     track(event, id, 'move', start, (dx, dy, pointer, screen) => {
       lastScreen = screen
       const now = frame()
@@ -138,36 +178,29 @@ export function useWindowDrag({ canvas, frame, onActive, onPainted, onFloat, onS
       }
       rect = clampWindow({ ...base, x: base.x + dx, y: base.y + dy }, now.size, minimum)
       paint(id, rect)
+      if (partner) {
+        const partnerRect = clampWindow({ ...partner.start, x: partner.start.x + dx, y: partner.start.y + dy },
+          now.size, windowMinimum(partner.id))
+        paint(partner.id, partnerRect)
+      }
       if (crossDock) {
-        const payload = crossDock(id)
-        void window.closedai.windows.routeCrossDock({
-          screenX: screen.x, screenY: screen.y,
-          source: { paneId: id, tabIds: payload.tabIds, ghostTabLabel: payload.ghostTabLabel }
-        }).then((routed) => {
-          if (routed.targetWindowId) {
-            setGesture((current) => current?.id === id ? { id, kind: 'move', target: { kind: 'free' }, preview: null } : current)
-            return
-          }
-          const next = windowTargetAt(id, pointer.x, pointer.y, now.size, now.tiled, now.floating)
-          if (sameTarget(next, target)) return
-          target = next
-          const preview = targetPreview(now.tree, id, next, now.size, now.browserVisible, now.tiled, now.floating)
-          setGesture({ id, kind: 'move', target: next, preview })
-        })
+        queued = { pointer, screen, now }
+        route()
         return
       }
-      const next = windowTargetAt(id, pointer.x, pointer.y, now.size, now.tiled, now.floating)
-      if (sameTarget(next, target)) return
-      target = next
-      const preview = targetPreview(now.tree, id, next, now.size, now.browserVisible, now.tiled, now.floating)
-      setGesture({ id, kind: 'move', target: next, preview })
-    }, () => {
+      retarget(pointer, now)
+    }, (restore) => {
       const finishLocal = (): void => {
+        restore()
         if (target.kind === 'split') onSnap(id, target)
         else if (target.kind === 'group') onGroup(id, target.target)
         else if (target.kind === 'maximize') {
           paint(id, start)
           onMaximize(id)
+        }         else if (partner && onPairFloat) {
+          const partnerRect = clampWindow({ ...partner.start, x: partner.start.x + (rect.x - start.x), y: partner.start.y + (rect.y - start.y) },
+            frame().size, windowMinimum(partner.id))
+          onPairFloat(id, rect, partner.id, partnerRect)
         } else onFloat(id, rect, !floating)
       }
       if (!crossDock) { finishLocal(); return }
@@ -177,7 +210,7 @@ export function useWindowDrag({ canvas, frame, onActive, onPainted, onFloat, onS
         source: { paneId: id, tabIds: payload.tabIds, ghostTabLabel: payload.ghostTabLabel }
       }).then(async (routed) => {
         if (routed.targetWindowId) {
-          write(id, start)
+          restore()
           await window.closedai.windows.completeCrossDock({
             targetWindowId: routed.targetWindowId,
             source: { paneId: id, tabIds: payload.tabIds }
@@ -185,9 +218,9 @@ export function useWindowDrag({ canvas, frame, onActive, onPainted, onFloat, onS
           return
         }
         finishLocal()
-      })
+      }, finishLocal)
     })
-  }, [frame, onFloat, onSnap, onGroup, onMaximize, dockSource])
+  }, [frame, onFloat, onPairFloat, pairPartner, onSnap, onGroup, onMaximize, dockSource])
 
   /** Resize a floating window from one of its edges or corners. */
   const startResize = useCallback((event: ReactPointerEvent, id: string, edge: ResizeEdge): void => {
@@ -199,7 +232,7 @@ export function useWindowDrag({ canvas, frame, onActive, onPainted, onFloat, onS
     track(event, id, edge, start, (dx, dy, _pointer, _screen) => {
       rect = resizeRect(start, edge, dx, dy, minimum)
       paint(id, rect)
-    }, () => onFloat(id, rect, false))
+    }, (restore) => { restore(); onFloat(id, rect, false) })
   }, [frame, onFloat])
 
   return { gesture, startMove, startResize }

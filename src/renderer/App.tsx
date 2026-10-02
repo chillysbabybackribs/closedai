@@ -4,7 +4,6 @@ import '@fontsource-variable/inter/wght-italic.css'
 import '@fontsource-variable/geist-mono/wght.css'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { APP_REVEAL_CHAT_TAB_EVENT, type AppRevealChatTabDetail } from '../shared/app-ui-events.js'
-import { HeaderChatSearch } from './chat-history/header-search.js'
 import { useHistoryController } from './chat-history/history-controller.js'
 import { AppWindowControls } from './app-window-controls.js'
 import { appWindow } from './app-windows/app-window-store.js'
@@ -24,15 +23,12 @@ import { DesktopWorkspace, type ChatLayoutHandle } from './chat-layout/desktop-w
 import { ChatRenameDialog } from './chat-rename-dialog.js'
 import { SpacesStage, type SpacesDockNav, type SpacesHandle } from './spaces/spaces-stage.js'
 import { AppDock } from './dock/app-dock.js'
-import { ProviderUsage } from './provider-usage/provider-usage.js'
 import { TitlebarRail } from './rail/titlebar-rail.js'
-import { DockClearanceContext } from './dock/dock-clearance.js'
-import { DOCK_RESERVE, readDockPrefs, saveDockPrefs, type DockPrefs } from './dock/dock-model.js'
+import { DockOpenContext } from './dock/dock-open.js'
+import { readDockPrefs, saveDockPrefs, type DockPrefs } from './dock/dock-model.js'
 import type { LayoutPreset } from './chat-layout/layout-presets.js'
-import type { AgentRunStartOptions } from '../shared/agent-runs.js'
 import type { AppDockProps } from './dock/app-dock.js'
 import type { SettingsTab } from './settings/settings-sections.js'
-import type { StartServices } from './dock/dock-start-views.js'
 
 const SettingsDialog = lazy(async () => {
   const module = await import('./settings/settings-dialog.js')
@@ -53,7 +49,6 @@ import {
 import { useWorkspaceBackdrop } from './backdrop/use-workspace-backdrop.js'
 import type { MinimizedWindow } from './chat-layout/floating/minimized-windows.js'
 import { ProviderSetupModal } from './onboarding/provider-setup-modal.js'
-import { SessionAccountMenu } from './onboarding/session-account-menu.js'
 import { SessionGate } from './onboarding/session-gate.js'
 import { ProfileSwitchCover } from './onboarding/session-gate-parts.js'
 import { useOnboarding } from './onboarding/use-onboarding.js'
@@ -79,8 +74,19 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
   }, [openHistoryChat])
   const history = useHistoryController(chat.sidebar, openHistoryChat)
   const searchRef = useRef<HTMLInputElement>(null)
-  const [searchTools, setSearchTools] = useState<HTMLDivElement | null>(null)
-  const focusSearch = useCallback(() => { searchRef.current?.focus(); searchRef.current?.select() }, [])
+  const focusSearch = useCallback(() => {
+    const paneId = chatRef.current.selectedPaneId
+    const el = paneId
+      ? document.querySelector<HTMLInputElement>(`[data-ui="titlebar.chat-search"][data-ui-key="${paneId}"]`)
+      : searchRef.current
+    el?.focus()
+    el?.select()
+  }, [])
+  const threadSearch = useMemo(() => ({
+    chats: chat.chats,
+    controller: history,
+    inputRef: searchRef
+  }), [chat.chats, history])
   const [appearance, setAppearance] = useState(() => readAppearanceSettings(window.localStorage))
   const backdropStatus = useWorkspaceBackdrop(appearance.backdrop)
   const legacyOnboardingBypass = chat.chats.length > 0
@@ -106,6 +112,13 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
     })
   }, [])
   const [browserVisible, setBrowserVisible] = useState(false)
+  const [videoActive, setVideoActive] = useState(false)
+  useEffect(() => {
+    const sync = (state: import('../shared/types.js').BrowserState) => { setVideoActive(Boolean(state.videoHub)) }
+    void window.closedai.browser.snapshot().then((snapshot) => { if (snapshot) sync(snapshot.state) })
+    return window.closedai.browser.onState(sync)
+  }, [])
+  const [filesVisible, setFilesVisible] = useState(false)
   const [minimizedWindows, setMinimizedWindows] = useState<MinimizedWindow[]>([])
   const [windowsFloating, setWindowsFloating] = useState(false)
   const savedSites = useBrowserSavedSitesController()
@@ -142,6 +155,9 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
       } else if (shortcut === 'overview') {
         event.preventDefault()
         spacesRef.current?.toggleOverview()
+      } else if (shortcut === 'restore-floating-pair') {
+        event.preventDefault()
+        workspaceRef.current?.restoreFloatingPair()
       } else if (shortcut === 'tile-windows') {
         event.preventDefault()
         workspaceRef.current?.tileWindows()
@@ -221,8 +237,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
   const selectedRow = chat.chats.find((row) => row.paneId === chat.selectedPaneId)
   // A detached window belongs to one project; main closes it when another project is selected.
   const windowCwd = appWindow().cwd
-  // The dock belongs to the main window, beside the spaces it navigates; Keep visible gives it a row.
-  const dockPinned = appWindow().main && dockPrefs.keepVisible && Boolean(chat.selectedPaneId)
+  const [dockOpen, setDockOpen] = useState(false)
   const projectElsewhere = windowCwd !== null && (chat.workspace?.cwd ?? chat.state.cwd) !== windowCwd
   const ready = chat.state.connection.state === 'ready'
   const running = chat.state.activeTurnId !== null
@@ -242,32 +257,34 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
     switch (action) {
       case 'new-chat': history.newChat(); break
       case 'settings': setSettingsTab('appearance'); setSettingsOpen(true); break
+      case 'connect-providers': onboarding.reopenProviderSetup(); break
       case 'sign-out':
         endLocalSession()
         break
-      // Trace, Agents, History, Tools and Saved sites are view tabs, not dialogs.
+      // Trace, History, Tools and Saved sites open in windows of their own; Agents is a dialog.
       case 'history': workspaceRef.current?.toggleView('history').catch(report('Could not open chat history')); break
       case 'toggle-browser': workspaceRef.current?.toggleBrowser(); break
       case 'overview': spacesRef.current?.toggleOverview(); break
+      case 'restore-floating-pair': workspaceRef.current?.restoreFloatingPair(); break
       case 'tile-windows': workspaceRef.current?.tileWindows(); break
       case 'layout': workspaceRef.current?.openLayoutPresets(); break
       case 'toggle-fullscreen': window.closedai.window.toggleFullscreen().catch(report('Could not toggle fullscreen')); break
       case 'close-tab': workspaceRef.current?.closeFocused().catch(report('Could not close the chat')); break
       case 'close-window': window.closedai.window.close().catch(report('Could not close the window')); break
-      case 'agents': case 'tools': case 'trace': case 'saved-sites': workspaceRef.current?.openView(action); break
+      case 'agents': workspaceRef.current?.openAgents(); break
+      case 'tools': case 'trace': case 'saved-sites': workspaceRef.current?.openView(action); break
       case 'notepad': workspaceRef.current?.openNotepad().catch(report('Could not open the notepad')); break
       case 'compact': chatRef.current.compactConversation().catch(report('Could not compact the conversation')); break
       case 'stop-turn': chatRef.current.interrupt().catch(report('Could not pause the task')); break
       case 'reload': window.location.reload(); break
       case 'devtools': window.closedai.window.toggleDevTools().catch(report('Could not open developer tools')); break
     }
-  }, [endLocalSession, history.newChat, report])
+  }, [endLocalSession, history.newChat, onboarding.reopenProviderSetup, report])
 
   // Everything the title bar and dock receive is keyed on the few fields that change at turn
   // boundaries, never on the controller itself: it is rebuilt for every streamed chunk, and the
   // dock, its start panel and the usage rail must not reconcile at that rate.
   const selectedTitle = selectedRow?.title ?? null
-  const selectedBusy = selectedRow?.running ?? false
   const applyPreset = useCallback((preset: LayoutPreset) => workspaceRef.current?.applyPreset(preset), [])
   const applicationMenu = useMemo<TitlebarMenuProps>(() => ({
     chatZoom: appearance.chatZoom,
@@ -281,73 +298,35 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
     tileEnabled: windowsFloating,
     onApplyLayoutPreset: applyPreset
   }), [appearance.chatZoom, selectedTitle, compactEnabled, running, changeChatZoom, menuAction, focusSearch, chat.selectedPaneId, windowsFloating, applyPreset])
-  const sendToChat = useCallback((chatId: string, text: string) => workspaceRef.current?.sendToChat(chatId, text), [])
-  const startAgent = useCallback(async (chatId: string, options: AgentRunStartOptions) => {
-    await workspaceRef.current?.startAgent(chatId, options)
-  }, [])
-  const startServices = useMemo<StartServices>(() => ({
-    chats: chat.chats,
-    history,
-    selectedPaneId: chat.selectedPaneId,
-    selectedBusy,
-    listChats: chat.listChats,
-    archiveChat: history.deleteRow,
-    openChat: openHistoryChat,
-    sendToChat,
-    startAgent,
-    settings: { appearance, onAppearanceChange: updateAppearance, backdropStatus, onOpenWallpaper: openWallpaper }
-  }), [chat.chats, history, chat.selectedPaneId, selectedBusy, chat.listChats, openHistoryChat, sendToChat, startAgent, appearance, updateAppearance, backdropStatus, openWallpaper])
   const onDockLaunch = useCallback<AppDockProps['onLaunch']>((id) => {
-    if (id === 'chats') workspaceRef.current?.newChatWindow().catch(report('Could not open a new chat window'))
+    if (id === 'chats') workspaceRef.current?.openView('history')
+    else if (id === 'files') workspaceRef.current?.toggleFiles()
+    else if (id === 'video') { void workspaceRef.current?.openVideoHub().catch(report('Could not open video')) }
     else if (id === 'browser') workspaceRef.current?.toggleBrowser()
     else if (id === 'note') workspaceRef.current?.openNotepad().catch(report('Could not open the notepad'))
-    else workspaceRef.current?.openView('agents')
+    else workspaceRef.current?.openAgents()
   }, [report])
-  const onOpenSite = useCallback((url: string) => { workspaceRef.current?.openSite(url).catch(report('Could not open the saved site')) }, [report])
   const onAllSavedSites = useCallback(() => workspaceRef.current?.openView('saved-sites'), [])
   const onRestoreWindow = useCallback((id: string) => workspaceRef.current?.restoreWindow(id), [])
-  const onTileWindows = useCallback(() => workspaceRef.current?.tileWindows(), [])
-  const onOpenLayouts = useCallback(() => workspaceRef.current?.openLayoutPresets(), [])
-  const onOpenChat = useCallback((paneId: string) => { void workspaceRef.current?.activateChat(paneId) }, [])
-  const renderDock = useCallback((nav: SpacesDockNav) => <AppDock menu={applicationMenu} nav={nav} chats={chat.chats} chatTitle={selectedTitle}
-    browserVisible={browserVisible} prefs={dockPrefs} onPrefsChange={updateDockPrefs}
-    onLaunch={onDockLaunch} onOpenSite={onOpenSite} onAllSavedSites={onAllSavedSites}
-    minimized={minimizedWindows} onRestoreWindow={onRestoreWindow}
-    canTile={windowsFloating} onTileWindows={onTileWindows}
-    onApplyPreset={applyPreset} onOpenLayouts={onOpenLayouts} onOpenChat={onOpenChat}
-    startServices={startServices} />,
-  [applicationMenu, chat.chats, selectedTitle, browserVisible, dockPrefs, updateDockPrefs, onDockLaunch, onOpenSite, onAllSavedSites,
-    minimizedWindows, onRestoreWindow, windowsFloating, onTileWindows, applyPreset, onOpenLayouts, onOpenChat, startServices])
+  const renderDock = useCallback((nav: SpacesDockNav) => <AppDock menu={applicationMenu} nav={nav} chats={chat.chats}
+    browserVisible={browserVisible} videoActive={videoActive} filesVisible={filesVisible} prefs={dockPrefs} onPrefsChange={updateDockPrefs}
+    onLaunch={onDockLaunch} onAllSavedSites={onAllSavedSites}
+    minimized={minimizedWindows} onRestoreWindow={onRestoreWindow} onShownChange={setDockOpen}
+    />,
+  [applicationMenu, chat.chats, browserVisible, videoActive, filesVisible, dockPrefs, updateDockPrefs, onDockLaunch, onAllSavedSites,
+    minimizedWindows, onRestoreWindow])
   const onRenameChat = useCallback((id: string, title: string) => setRenamingChat({ id, title }), [])
   const onBackdropChange = useCallback((mode: AppearanceSettings['backdrop']) => updateAppearance({ backdrop: mode }), [updateAppearance])
   const savedSitesError = useMemo(() => report('Could not update saved sites'), [report])
   const notepadError = useMemo(() => report('Could not update the note'), [report])
-  // The main window's menus live in the dock; the title bar only falls back to them when startup
-  // failed and no dock exists. While starting there is no pane yet either, so gating on the pane
-  // alone flashed File / View / Agent / Developer on every launch.
-  const startupStalled = chat.state.connection.state !== 'starting' && chat.state.connection.state !== 'ready'
   useMenuRunBridge(applicationMenu, chat.selectedPaneId, () => workspaceRef.current?.focusedCloseTarget() ?? chat.selectedPaneId)
 
   return (
     <div className="shell" data-ui-surface="shell">
       <header className="shell-titlebar" aria-label="Window title bar">
-        <TitlebarRail search={searchTools} />
-        {/* File dropdown, then subscription usage centred in the gap before chat search. */}
-        <div className="titlebar-lead">
-          <div className="titlebar-start">
-            {activeLocalUser && onboarding.settings.sessionUnlocked && (
-              <SessionAccountMenu
-                user={activeLocalUser}
-                onSignOut={endLocalSession}
-                onConnectProviders={onboarding.reopenProviderSetup}
-              />
-            )}
-            {(!appWindow().main || (!chat.selectedPaneId && startupStalled)) && <TitlebarMenu {...applicationMenu} />}
-          </div>
-          {appWindow().main && <div className="titlebar-usage"><ProviderUsage chats={chat.chats} /></div>}
-        </div>
-        <div ref={setSearchTools} className="titlebar-search-tools">
-          <HeaderChatSearch chats={chat.chats} controller={history} inputRef={searchRef} />
+        <TitlebarRail />
+        <div className="titlebar-start">
+          <TitlebarMenu {...applicationMenu} />
         </div>
         <AppWindowControls />
       </header>
@@ -358,7 +337,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
           <button type="button" className="shell-alert-dismiss" data-ui="shell.alert-dismiss" onClick={() => setShellError(null)}>Dismiss</button>
         </div>
       )}
-      <DockClearanceContext.Provider value={dockPinned ? DOCK_RESERVE : 0}>
+      <DockOpenContext.Provider value={dockOpen}>
       <div className="workspace" data-mode="chat">
         {!chat.selectedPaneId && <AppStartup connection={chat.state.connection} onRetry={chat.retryStartup} />}
         {chat.selectedPaneId && !projectElsewhere && <SpacesStage ref={spacesRef} enabled={appWindow().main}
@@ -379,16 +358,18 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
             onSavedSitesError={savedSitesError}
             onNotepadError={notepadError}
             onBrowserVisibleChange={setBrowserVisible}
+            onFilesVisibleChange={setFilesVisible}
             onMinimizedChange={setMinimizedWindows}
             onFloatingChange={setWindowsFloating}
             onBackdropChange={onBackdropChange}
             onOpenWallpaper={openWallpaper}
             archiveChat={history.deleteRow}
             onChatTabClosed={history.dismissReview}
+            threadSearch={threadSearch}
           />}
         </SpacesStage>}
       </div>
-      </DockClearanceContext.Provider>
+      </DockOpenContext.Provider>
       <ChatRenameDialog
         open={Boolean(renamingChat)}
         chatId={renamingChat?.id ?? ''}

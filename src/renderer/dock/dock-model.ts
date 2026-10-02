@@ -4,21 +4,62 @@ import type { AppIconId } from '../app-icons.js'
 // pointer shows or hides it, what each tray entry says, and the "where you are" line.
 
 export type DockPrefs = {
-  /** Keep the dock on screen and give it its own row under the workspace. */
-  keepVisible: boolean
-  /** Grow tray icons under the pointer. */
-  magnify: boolean
+  /** Surfaces hidden from the footer until pinned again in dock settings. */
+  hiddenTray: TrayAppId[]
+  /** Launchers the user pinned back onto the footer rail, in tray order. */
+  pinnedTray: TrayAppId[]
+  /** Workspace, Library and Settings shortcuts; an empty list is intentional. */
+  pinnedControls: DockControlId[]
 }
 
-export const DEFAULT_DOCK_PREFS: DockPrefs = { keepVisible: false, magnify: true }
+export type DockControlId = Extract<AppIconId, 'workspaces' | 'library' | 'settings'>
+export type DockIconId = DockControlId | Exclude<TrayAppId, 'saved-sites' | 'downloads'>
+const DOCK_CONTROL_ORDER: readonly DockControlId[] = ['workspaces', 'library', 'settings']
+export const DOCK_ICON_OPTIONS: readonly { id: DockIconId; label: string }[] = [
+  { id: 'workspaces', label: 'Workspaces' },
+  { id: 'chats', label: 'Chats' },
+  { id: 'browser', label: 'Browser' },
+  { id: 'video', label: 'Video' },
+  { id: 'files', label: 'Files' },
+  { id: 'note', label: 'Notes' },
+  { id: 'agents', label: 'Agents' },
+  { id: 'library', label: 'Library' },
+  { id: 'settings', label: 'Settings' }
+]
+
+export const DEFAULT_DOCK_PREFS: DockPrefs = {
+  hiddenTray: [], pinnedTray: ['chats', 'browser', 'video', 'files', 'note'],
+  pinnedControls: [...DOCK_CONTROL_ORDER]
+}
 const PREFS_KEY = 'closedai.dock.v1'
+
+function normalizeTrayList<T extends string>(value: unknown, allowed: readonly T[]): T[] {
+  if (!Array.isArray(value)) return []
+  const allow = new Set<T>(allowed)
+  const seen = new Set<T>()
+  const out: T[] = []
+  for (const id of value) {
+    if (typeof id !== 'string' || !allow.has(id as T)) continue
+    const trayId = id as T
+    if (seen.has(trayId)) continue
+    seen.add(trayId)
+    out.push(trayId)
+  }
+  return out
+}
 
 export function readDockPrefs(storage: Pick<Storage, 'getItem'>): DockPrefs {
   try {
-    const value = JSON.parse(storage.getItem(PREFS_KEY) ?? 'null') as Partial<DockPrefs> | null
+    const value = JSON.parse(storage.getItem(PREFS_KEY) ?? 'null') as (Partial<DockPrefs> & { railVersion?: number }) | null
     return {
-      keepVisible: typeof value?.keepVisible === 'boolean' ? value.keepVisible : DEFAULT_DOCK_PREFS.keepVisible,
-      magnify: typeof value?.magnify === 'boolean' ? value.magnify : DEFAULT_DOCK_PREFS.magnify
+      hiddenTray: normalizeTrayList(value?.hiddenTray, TRAY_APP_ORDER),
+      pinnedControls: Array.isArray(value?.pinnedControls)
+        ? normalizeTrayList(value.pinnedControls, DOCK_CONTROL_ORDER)
+        : [...DEFAULT_DOCK_PREFS.pinnedControls],
+      pinnedTray: (value?.railVersion ?? 0) >= 2
+        ? normalizeTrayList(value?.railVersion === 2 && Array.isArray(value.pinnedTray) && value.pinnedTray.length
+          ? [...value.pinnedTray, 'files'] : value?.pinnedTray, PINNABLE_TRAY)
+        : [...new Set([...DEFAULT_DOCK_PREFS.pinnedTray, ...normalizeTrayList(value?.pinnedTray, PINNABLE_TRAY)])]
     }
   } catch {
     return DEFAULT_DOCK_PREFS
@@ -26,31 +67,16 @@ export function readDockPrefs(storage: Pick<Storage, 'getItem'>): DockPrefs {
 }
 
 export function saveDockPrefs(storage: Pick<Storage, 'setItem'>, prefs: DockPrefs): void {
-  try { storage.setItem(PREFS_KEY, JSON.stringify(prefs)) } catch { /* private mode or full: the defaults return */ }
+  try { storage.setItem(PREFS_KEY, JSON.stringify({ ...prefs, railVersion: 3 })) } catch { /* private mode or full: the defaults return */ }
 }
 
-/** Height of the strip along the bottom of the window; the tab over the tray keeps its own height. */
-export const DOCK_HEIGHT = 44
-/** Tray tile size at rest and under the pointer (1.33x). */
-export const TRAY_ICON = 48
-export const TRAY_MAGNIFIED = 64
-/** The resting tiles' bottom edge, above the window's bottom edge. */
-export const TRAY_LIFT = 12
-/**
- * How far above the window's bottom edge the resting tiles reach: the strip is flat, and the tiles
- * stand out of it. The dock's box is this tall, so a browser under any part of it counts as covered.
- */
-export const DOCK_REST = TRAY_LIFT + TRAY_ICON + 3
-/** How far a magnified tile reaches; it may overlap a window's bottom edge while the pointer is on it. */
-export const DOCK_REACH = Math.max(DOCK_HEIGHT, TRAY_LIFT + TRAY_MAGNIFIED) + 3
-/**
- * With Keep visible on, the workspace ends this far above the window's bottom edge. The gap past
- * the resting tiles' reach keeps the browser's edge margin (titlebar-browser-freeze.ts) clear of it, so a
- * dock that is always shown never turns the page into a still.
- */
-export const DOCK_RESERVE = DOCK_REST + 6
-/** The workspace's own bottom padding: a renderer strip no native browser view ever covers. */
-export const REVEAL_EDGE = 10
+/** Floating dock band: 68 px targets in an 82 px wrapper, with 7 px above and below. */
+export const DOCK_HEIGHT = 96
+/** Pointer-hit and hide band for the auto-revealing footer. */
+export const DOCK_REST = DOCK_HEIGHT
+export const DOCK_REACH = DOCK_HEIGHT + 4
+/** The entire dock-height band at the bottom of the window reveals the dock. */
+export const REVEAL_EDGE = DOCK_HEIGHT
 /** Above this the pointer has left the dock, so a shown dock starts its hide delay. */
 export const HOLD_BAND = DOCK_REACH + 16
 export const HIDE_DELAY_MS = 380
@@ -65,7 +91,13 @@ export function pointerReveal(y: number, height: number, shown: boolean): 'show'
   return 'leave'
 }
 
-export type TrayAppId = Extract<AppIconId, 'chats' | 'browser' | 'note' | 'agents' | 'saved-sites' | 'downloads'>
+export type TrayAppId = Extract<AppIconId, 'chats' | 'browser' | 'video' | 'files' | 'note' | 'agents' | 'saved-sites' | 'downloads'>
+
+/** Footer tray order; new surfaces append here. */
+const TRAY_APP_ORDER: readonly TrayAppId[] = ['chats', 'browser', 'video', 'files', 'note', 'agents', 'saved-sites', 'downloads']
+
+/** Launchers that can be pinned straight onto the footer rail. Stacks (Saved, Downloads) are not. */
+const PINNABLE_TRAY: readonly TrayAppId[] = ['chats', 'browser', 'video', 'files', 'note', 'agents']
 
 export type TrayApp = {
   id: TrayAppId
@@ -81,6 +113,8 @@ export type TrayApp = {
 export type TrayInput = {
   runningChats: number
   browserVisible: boolean
+  videoActive?: boolean
+  filesVisible?: boolean
   agentRuns: number
   runningAgentRuns: number
   agentSummary: string
@@ -96,19 +130,62 @@ const count = (n: number, one: string, many = `${one}s`): string => `${n} ${n ==
 export function trayApps(input: TrayInput): TrayApp[] {
   return [
     { id: 'chats', label: 'Chats', stack: false, active: input.runningChats > 0,
-      note: input.runningChats > 0 ? `${input.runningChats} running · new chat window` : 'New chat window' },
+      note: input.runningChats > 0 ? `${input.runningChats} running · open chat history` : 'Open chat history' },
     { id: 'browser', label: 'Browser', stack: false, active: input.browserVisible,
-      note: input.browserVisible ? 'Showing · click to hide' : 'Hidden · click to show' },
+      note: input.browserVisible ? 'Hide browser' : 'Show browser' },
+    { id: 'video', label: 'Video', stack: false, active: input.videoActive ?? false,
+      note: input.videoActive ? 'Video library open' : 'Open video library' },
+    { id: 'files', label: 'Files', stack: false, active: input.filesVisible ?? false,
+      note: input.filesVisible ? 'Hide files' : 'Show working directory files' },
     { id: 'note', label: 'Notes', stack: false, active: false,
       note: input.notes > 0 ? `${count(input.notes, 'note')} · open the notepad` : 'Start a note' },
-    { id: 'agents', label: 'Agent runs', stack: false, active: input.runningAgentRuns > 0,
+    { id: 'agents', label: 'Agents', stack: false, active: input.runningAgentRuns > 0,
       note: input.agentRuns > 0 ? input.agentSummary : 'No runs · open Agents' },
-    { id: 'saved-sites', label: 'Saved sites', stack: true, active: false,
+    { id: 'saved-sites', label: 'Saved', stack: true, active: false,
       note: input.savedSites > 0 ? count(input.savedSites, 'site') : 'None yet' },
     { id: 'downloads', label: 'Downloads', stack: true, active: input.activeDownloads > 0,
       note: input.activeDownloads > 0 ? `${input.activeDownloads} downloading`
         : input.downloads > 0 ? count(input.downloads, 'file') : 'None yet' }
   ]
+}
+
+export function canPinTrayApp(id: TrayAppId): boolean {
+  return PINNABLE_TRAY.includes(id)
+}
+
+export function isTrayAppPinned(id: TrayAppId, pinnedTray: readonly TrayAppId[]): boolean {
+  return pinnedTray.includes(id)
+}
+
+export function setTrayAppPinned(pinnedTray: readonly TrayAppId[], id: TrayAppId, pinned: boolean): TrayAppId[] {
+  if (pinned && !canPinTrayApp(id)) return [...pinnedTray]
+  const next = new Set(pinnedTray)
+  if (pinned) next.add(id)
+  else next.delete(id)
+  return PINNABLE_TRAY.filter((candidate) => next.has(candidate))
+}
+
+/** The launchers pinned to the footer rail, in tray order. */
+export function pinnedTrayApps(input: TrayInput, pinnedTray: readonly TrayAppId[]): TrayApp[] {
+  const pinned = new Set(pinnedTray)
+  return trayApps(input).filter((app) => canPinTrayApp(app.id) && pinned.has(app.id))
+}
+
+function isDockControl(id: DockIconId): id is DockControlId {
+  return DOCK_CONTROL_ORDER.includes(id as DockControlId)
+}
+
+export function isDockIconPinned(prefs: DockPrefs, id: DockIconId): boolean {
+  return isDockControl(id) ? prefs.pinnedControls.includes(id) : prefs.pinnedTray.includes(id)
+}
+
+/** Change only this shortcut's pins; unpinning never closes its window or changes provider usage. */
+export function dockIconPinPatch(prefs: DockPrefs, id: DockIconId, pinned: boolean): Partial<DockPrefs> {
+  if (!isDockControl(id)) return { pinnedTray: setTrayAppPinned(prefs.pinnedTray, id, pinned) }
+  const next = new Set(prefs.pinnedControls)
+  if (pinned) next.add(id)
+  else next.delete(id)
+  return { pinnedControls: DOCK_CONTROL_ORDER.filter((candidate) => next.has(candidate)) }
 }
 
 /** "Where you are": the workspace and the selected chat, or the overview itself. */

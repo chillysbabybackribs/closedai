@@ -5,13 +5,15 @@ import { BrowserTab } from './browser-tab.js'
 import { browserSurfaceVisibility } from './browser-surface-visibility.js'
 import { ImageTab } from './local-files/image-tab.js'
 import { FileTab } from './local-files/file-tab.js'
+import { VideoTab } from './local-files/video-tab.js'
+import { VideoHubTab } from './local-files/video-hub-tab.js'
 import type { TabRenderingPolicy } from './browser-tab-rendering.js'
 import type { TabCadencePolicy } from './browser-tab-cadence.js'
 import { settleFrames, TAB_SWITCH_SETTLE_MS } from './browser-frame-settle.js'
 
 export type BrowserServiceTabOpsHost = {
   window: BrowserWindow
-  tabs: (BrowserTab | ImageTab | FileTab)[]
+  tabs: (BrowserTab | ImageTab | FileTab | VideoTab | VideoHubTab)[]
   getActiveId: () => string | null
   setActiveId: (id: string | null) => void
   bounds: BrowserBounds
@@ -23,7 +25,8 @@ export type BrowserServiceTabOpsHost = {
   emitTabs: () => void
   unregisterRendering: (id: string) => void
   forgetCadence: (id: string) => void
-  detachBrowserView: (tab: BrowserTab | ImageTab | FileTab) => void
+  detachBrowserView: (tab: BrowserTab | ImageTab | FileTab | VideoTab | VideoHubTab) => void
+  sanitizeVideoCompare?: (closedId: string) => void
 }
 
 export function parkWebBrowserTabs(host: BrowserServiceTabOpsHost): void {
@@ -37,7 +40,7 @@ export function setBrowserActiveTab(host: BrowserServiceTabOpsHost, id: string):
   const next = host.tabs.find((tab) => tab.id === id)
   if (!next) return
   const activeId = host.getActiveId()
-  if (next instanceof ImageTab || next instanceof FileTab) {
+  if (next instanceof ImageTab || next instanceof FileTab || next instanceof VideoTab || next instanceof VideoHubTab) {
     if (activeId !== id) next.previousTabId = activeId
     host.setActiveId(id)
     parkWebBrowserTabs(host)
@@ -65,7 +68,7 @@ export function setBrowserActiveTab(host: BrowserServiceTabOpsHost, id: string):
 }
 
 /** Release everything a tab holds once it is out of the strip; choosing a successor is the caller's. */
-export function retireBrowserTab(host: BrowserServiceTabOpsHost, tab: BrowserTab | ImageTab | FileTab): void {
+export function retireBrowserTab(host: BrowserServiceTabOpsHost, tab: BrowserTab | ImageTab | FileTab | VideoTab | VideoHubTab): void {
   host.unregisterRendering(tab.id)
   host.forgetCadence(tab.id)
   host.detachBrowserView(tab)
@@ -76,10 +79,11 @@ export function closeBrowserTab(host: BrowserServiceTabOpsHost, id: string): voi
   const index = host.tabs.findIndex((tab) => tab.id === id)
   if (index === -1) return
   const [tab] = host.tabs.splice(index, 1)
+  host.sanitizeVideoCompare?.(id)
   retireBrowserTab(host, tab)
   if (host.getActiveId() === id) {
     host.setActiveId(null)
-    const previous = (tab instanceof ImageTab || tab instanceof FileTab)
+    const previous = (tab instanceof ImageTab || tab instanceof FileTab || tab instanceof VideoTab || tab instanceof VideoHubTab)
       ? host.tabs.find((item) => item.id === tab.previousTabId) : null
     const next = previous ?? host.tabs[index] ?? host.tabs[index - 1] ?? null
     if (next) setBrowserActiveTab(host, next.id)

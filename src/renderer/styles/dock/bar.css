@@ -1,0 +1,173 @@
+/* Only the centered wrapper takes pointer input; its full-width positioning box stays clear. */
+.dock-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 12px;
+  pointer-events: none;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.dock-bar[data-state='closed'] {
+  opacity: 0;
+  transform: translateY(12px);
+  transition-duration: 220ms, 260ms;
+}
+.dock-bar[data-state='closed'] .dock-bar-controls { pointer-events: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .dock-bar { transition: none; }
+}
+
+.dock-bar-tray {
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+  flex: 0 1 auto;
+  align-items: center;
+}
+
+.dock-bar-launchers,
+.dock-bar-controls,
+.dock-bar-windows {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.dock-bar-launchers {
+  flex-shrink: 0;
+  gap: 4px;
+  overflow: visible;
+}
+
+/* Frosted dark glass, measured off the reference dock: a warm near-black at ~60% over a blurred,
+   slightly saturated backdrop, a faint light edge and a soft drop shadow, so a wallpaper or
+   window behind it shows through. Active and hovered items lift the glass with a pale wash. */
+.dock-bar-controls {
+  min-width: 0;
+  padding: 6px;
+  border: 1px solid rgb(255 255 255 / 8%);
+  border-radius: 22px;
+  background: rgb(30 28 28 / 60%);
+  backdrop-filter: blur(22px) saturate(1.35);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 5%), 0 10px 30px rgb(0 0 0 / 35%);
+  pointer-events: auto;
+}
+
+.dock-bar-controls > * { flex-shrink: 0; }
+.dock-bar-divider {
+  width: 1px;
+  height: 38px;
+  margin-inline: 4px;
+  background: var(--hairline-strong);
+}
+
+.dock-bar-usage {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.dock-bar-controls .dock-bar-windows {
+  min-width: 4rem;
+  max-width: 24rem;
+  flex: 0 1 auto;
+  padding-inline: 3px;
+  border-inline-start: 1px solid var(--hairline);
+}
+
+.dock-bar-launchers::-webkit-scrollbar,
+.dock-bar-controls::-webkit-scrollbar,
+.dock-bar-windows::-webkit-scrollbar {
+  display: none;
+}
+
+.dock-bar-link {
+  flex-shrink: 0;
+  height: 68px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1.5rem;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  transition: color var(--duration-chrome, 160ms) var(--ease-chrome, ease);
+}
+
+.dock-bar-link:hover {
+  color: var(--foreground);
+}
+
+.dock-bar-link:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+
+.dock-bar-link.is-active {
+  color: var(--foreground);
+  font-weight: 500;
+}
+
+/* Launchers without dedicated artwork keep a small glyph and text. */
+.dock-bar-pinned {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 68px;
+  padding: 0 10px;
+}
+.dock-bar-pinned svg { flex: none; opacity: 0.7; }
+.dock-bar-app-icon {
+  display: inline-flex;
+  align-items: center;
+  width: 68px;
+  height: 68px;
+  justify-content: center;
+  padding: 0 0 4px;
+  border-radius: 14px;
+}
+.dock-bar-app-icon img {
+  display: block;
+  flex: none;
+  filter: drop-shadow(0 2px 3px rgb(0 0 0 / 28%));
+}
+.dock-bar-app-icon .dock-bar-pinned-dot {
+  bottom: 1px;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 50%;
+}
+.dock-bar-link:hover { background: rgb(255 255 255 / 8%); }
+.dock-bar-link[aria-expanded='true'],
+.dock-bar-link[aria-pressed='true'] { color: var(--foreground); background: rgb(255 255 255 / 12%); }
+.dock-bar-link:disabled { opacity: 0.5; cursor: default; }
+
+.dock-bar-pinned-dot {
+  position: absolute;
+  bottom: 1px;
+  left: 50%;
+  width: 12px;
+  height: 3px;
+  margin-left: -6px;
+  border-radius: 2px;
+  background: rgb(255 255 255 / 70%);
+}
+
+.dock-bar-minimized {
+  font-weight: 400;
+  opacity: 0.85;
+}
+
+@media (max-width: 640px) {
+  .dock-bar { padding-inline: 8px; }
+}

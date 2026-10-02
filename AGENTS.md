@@ -46,6 +46,12 @@ directory. `.rgignore` excludes generated workspace maps and the generated sessi
 default and path-scoped searches; pass an explicit file path when inspecting them, and search
 `scripts/agent-guide-outline.json` for guide text.
 
+Batch independent repository searches and reads using native provider tools. Once candidates
+are known, read the implementation, existing tests, and relevant callers together. Inspect
+results before dependent edits. Run independent required checks concurrently only when they
+do not share locks or build outputs; choose checks by the change rather than adding checks
+to fill a batch.
+
 ## Visual concept work
 
 When a user asks to see visual variations inspired by an image, consider the image generation
@@ -114,8 +120,11 @@ the structural choice in the normal change summary; no separate report or extra 
   ordinary `git diff` and `git diff --check` omit them. For a new file, use
   `git diff --no-index --check /dev/null path/to/file` to check whitespace without staging it.
 - Choose the smallest meaningful verification set and run it once per logical edit batch. Reuse
-  valid results from the current work; repeat only when relevant edits, failures, or new evidence
-  justify it. Docs-only and comment-only changes need no code tests or typecheck.
+  observed successful checks for unchanged code. Once required checks pass, finish; repeat only
+  after relevant edits, failures, or new evidence. Avoid demo scripts that duplicate passing tests.
+  Docs-only and comment-only changes need no code tests or typecheck.
+- Use one work-lock boundary when `chatWorkLockEnabled`; do not wrap a command already locked
+  by the runtime (see `scripts/work-lock.mjs`).
 - `dev` and `build` run hygiene automatically; `build` also typechecks. `check` relies on those
   build checks instead of repeating them. Do not run separate checks that the chosen workflow
   already covers for the same code state.

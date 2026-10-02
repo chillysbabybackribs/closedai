@@ -1,8 +1,9 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  DEFAULT_DOCK_PREFS, DOCK_REACH, DOCK_REST, DOCK_RESERVE, DOCK_HEIGHT, TRAY_ICON, TRAY_LIFT, TRAY_MAGNIFIED, HOLD_BAND, REVEAL_EDGE, dockLocation, dockLocationLabel, pointerReveal, readDockPrefs,
-  saveDockPrefs, trayApps, type TrayInput
+  DEFAULT_DOCK_PREFS, DOCK_REACH, DOCK_REST, DOCK_HEIGHT, HOLD_BAND, REVEAL_EDGE, dockLocation, dockLocationLabel, pointerReveal, readDockPrefs,
+  saveDockPrefs, trayApps, canPinTrayApp, isTrayAppPinned, setTrayAppPinned, pinnedTrayApps,
+  DOCK_ICON_OPTIONS, dockIconPinPatch, isDockIconPinned, type TrayInput
 } from './dock-model.js'
 
 function memoryStorage(initial: Record<string, string> = {}): Storage {
@@ -26,45 +27,99 @@ describe('dock prefs', () => {
   it('round-trips and falls back field by field', () => {
     const storage = memoryStorage()
     assert.deepEqual(readDockPrefs(storage), DEFAULT_DOCK_PREFS)
-    saveDockPrefs(storage, { keepVisible: true, magnify: false })
-    assert.deepEqual(readDockPrefs(storage), { keepVisible: true, magnify: false })
+    const prefs = { ...DEFAULT_DOCK_PREFS, hiddenTray: ['note' as const], pinnedTray: ['browser' as const] }
+    saveDockPrefs(storage, prefs)
+    assert.deepEqual(readDockPrefs(storage), prefs)
     assert.deepEqual(readDockPrefs(memoryStorage({ 'closedai.dock.v1': '{"keepVisible":"yes","magnify":false}' })),
-      { keepVisible: false, magnify: false })
+      DEFAULT_DOCK_PREFS)
     assert.deepEqual(readDockPrefs(memoryStorage({ 'closedai.dock.v1': '{not json' })), DEFAULT_DOCK_PREFS)
   })
 
-  it('reserves room past the resting tiles so a pinned dock never overlaps the browser edge margin', () => {
-    // titlebar-browser-freeze.ts widens the browser box by 3px when testing overlap.
-    assert.ok(DOCK_RESERVE - DOCK_REST > 3)
+  it('migrates the hidden footer and seeds text links once, preserving later unpins', () => {
+    const storage = memoryStorage({ 'closedai.dock.v1': '{"keepVisible":true,"pinnedTray":["agents"]}' })
+    const migrated = readDockPrefs(storage)
+    assert.deepEqual(migrated.pinnedTray, ['chats', 'browser', 'video', 'files', 'note', 'agents'])
+    saveDockPrefs(storage, { ...migrated, pinnedTray: [] })
+    assert.deepEqual(readDockPrefs(storage).pinnedTray, [])
   })
 
-  it('stands the resting tiles out of the flat strip, and a magnified tile reaches further', () => {
-    assert.ok(TRAY_LIFT + TRAY_ICON > DOCK_HEIGHT)
-    assert.ok(DOCK_REACH >= TRAY_LIFT + TRAY_MAGNIFIED)
-    assert.ok(DOCK_REACH > DOCK_REST)
+  it('pins only the launchers, keeps tray order, and ignores stacks', () => {
+    assert.ok(canPinTrayApp('browser'))
+    assert.ok(!canPinTrayApp('downloads'))
+    // Toggle on out of order; the stored list stays in tray order.
+    let pinned = setTrayAppPinned([], 'agents', true)
+    pinned = setTrayAppPinned(pinned, 'chats', true)
+    assert.deepEqual(pinned, ['chats', 'agents'])
+    assert.ok(isTrayAppPinned('agents', pinned))
+    // A stack can never be pinned, even if asked.
+    assert.deepEqual(setTrayAppPinned(pinned, 'saved-sites', true), pinned)
+    // Unpin drops just that one.
+    assert.deepEqual(setTrayAppPinned(pinned, 'chats', false), ['agents'])
+    // pinnedTrayApps returns the live TrayApp entries in tray order.
+    assert.deepEqual(pinnedTrayApps(quiet, pinned).map((app) => app.id), ['chats', 'agents'])
+  })
+
+  it('migrates fixed shortcuts without repinning previously removed apps', () => {
+    const storage = memoryStorage({ 'closedai.dock.v1': JSON.stringify({ railVersion: 2, pinnedTray: [] }) })
+    const prefs = readDockPrefs(storage)
+    assert.deepEqual(prefs.pinnedTray, [])
+    assert.deepEqual(prefs.pinnedControls, ['workspaces', 'library', 'settings'])
+  })
+
+  it('can remove every dock icon, round-trip an empty dock, and restore each shortcut', () => {
+    const storage = memoryStorage()
+    let prefs = readDockPrefs(storage)
+    for (const { id } of DOCK_ICON_OPTIONS) prefs = { ...prefs, ...dockIconPinPatch(prefs, id, false) }
+    saveDockPrefs(storage, prefs)
+    prefs = readDockPrefs(storage)
+    assert.deepEqual(prefs.pinnedTray, [])
+    assert.deepEqual(prefs.pinnedControls, [])
+    assert.ok(DOCK_ICON_OPTIONS.every(({ id }) => !isDockIconPinned(prefs, id)))
+    for (const { id } of DOCK_ICON_OPTIONS) prefs = { ...prefs, ...dockIconPinPatch(prefs, id, true) }
+    saveDockPrefs(storage, prefs)
+    assert.ok(DOCK_ICON_OPTIONS.every(({ id }) => isDockIconPinned(readDockPrefs(storage), id)))
+    assert.deepEqual(readDockPrefs(storage).pinnedTray, ['chats', 'browser', 'video', 'files', 'note', 'agents'])
+    assert.deepEqual(readDockPrefs(storage).pinnedControls, ['workspaces', 'library', 'settings'])
+  })
+
+  it('unpins one shortcut without touching other pins and filters invalid saved controls', () => {
+    const prefs = { ...DEFAULT_DOCK_PREFS, ...dockIconPinPatch(DEFAULT_DOCK_PREFS, 'library', false) }
+    assert.deepEqual(prefs.pinnedTray, DEFAULT_DOCK_PREFS.pinnedTray)
+    assert.deepEqual(prefs.pinnedControls, ['workspaces', 'settings'])
+    assert.deepEqual(dockIconPinPatch(prefs, 'note', false), { pinnedTray: ['chats', 'browser', 'video', 'files'] })
+    const storage = memoryStorage({ 'closedai.dock.v1': JSON.stringify({
+      railVersion: 2, pinnedTray: [], pinnedControls: ['library', 'codex', 'library', null, 'settings']
+    }) })
+    assert.deepEqual(readDockPrefs(storage).pinnedControls, ['library', 'settings'])
+  })
+
+  it('uses a flat footer bar for pointer bands', () => {
+    assert.equal(DOCK_REST, DOCK_HEIGHT)
+    assert.ok(DOCK_REACH >= DOCK_REST)
   })
 })
 
 describe('pointerReveal', () => {
   const height = 900
-  it('shows at the bottom edge only', () => {
+  it('shows across exactly the full dock-height band', () => {
+    assert.equal(REVEAL_EDGE, DOCK_HEIGHT)
     assert.equal(pointerReveal(height - 1, height, false), 'show')
     assert.equal(pointerReveal(height - REVEAL_EDGE, height, false), 'show')
     assert.equal(pointerReveal(height - REVEAL_EDGE - 1, height, false), 'leave')
   })
 
   it('holds a shown dock while the pointer is over or just above it', () => {
-    assert.equal(pointerReveal(height - 30, height, true), 'hold')
+    assert.equal(pointerReveal(height - 30, height, true), 'show')
     assert.equal(pointerReveal(height - HOLD_BAND, height, true), 'hold')
     assert.equal(pointerReveal(height - HOLD_BAND - 1, height, true), 'leave')
-    assert.equal(pointerReveal(height - 30, height, false), 'leave')
+    assert.equal(pointerReveal(height - HOLD_BAND, height, false), 'leave')
   })
 })
 
 describe('trayApps', () => {
   it('lists the surfaces in tray order with stacks marked', () => {
     const apps = trayApps(quiet)
-    assert.deepEqual(apps.map((app) => app.id), ['chats', 'browser', 'note', 'agents', 'saved-sites', 'downloads'])
+    assert.deepEqual(apps.map((app) => app.id), ['chats', 'browser', 'video', 'files', 'note', 'agents', 'saved-sites', 'downloads'])
     assert.deepEqual(apps.filter((app) => app.stack).map((app) => app.id), ['saved-sites', 'downloads'])
     assert.ok(apps.every((app) => !app.active))
   })
@@ -101,4 +156,13 @@ describe('dockLocation', () => {
     assert.equal(dockLocationLabel(['closedai', 'Dock work']), 'closedai › Dock work')
     assert.equal(dockLocationLabel(['All workspaces']), 'All workspaces')
   })
+})
+
+ it('adds Files to existing nonempty docks once and respects an explicit unpin', () => {
+  const storage = memoryStorage({ 'closedai.dock.v1': JSON.stringify({ railVersion: 2, pinnedTray: ['browser'] }) })
+  const migrated = readDockPrefs(storage)
+  assert.deepEqual(migrated.pinnedTray, ['browser', 'files'])
+  saveDockPrefs(storage, { ...migrated, pinnedTray: ['browser'] })
+  assert.deepEqual(readDockPrefs(storage).pinnedTray, ['browser'])
+  assert.equal(trayApps({ ...quiet, filesVisible: true }).find(app => app.id === 'files')?.active, true)
 })

@@ -1,6 +1,6 @@
 import { isViewTabId, paneIds, type ChatLayout } from './layout-tree.js'
-import { addTab, pruneTabs, selectTab, tabIds, tabOwner } from './layout-tabs.js'
-import { isWorkspaceViewKind, viewKindOf, workspaceView } from './layout-views.js'
+import { pruneTabs, selectTab, tabIds, tabOwner } from './layout-tabs.js'
+import { isSingletonViewKind, oneKindPerTile, openTabInTree, viewKindOf, viewOfKind } from './layout-views.js'
 
 // How a window's tab tree relates to the other app windows. A chat lives in one window: a window
 // never restores, adopts or pulls forward a chat another window holds.
@@ -22,7 +22,7 @@ export type WindowTreeSeed = {
 /** The tree a window opens with: its saved layout, else the tabs it was opened with. */
 export function initialWindowTree(saved: ChatLayout | null, seed: WindowTreeSeed): ChatLayout {
   const own = new Set([...seed.available].filter((id) => !seed.elsewhere.has(id)))
-  let tree = pruneTabs(saved, own)
+  let tree = pruneTabs(oneKindPerTile(saved), own)
   if (!tree || !paneIds(tree).length) {
     const tabs = seed.detached ? seed.initialTabs.filter((id) => isViewTabId(id) || own.has(id)) : []
     if (!seed.detached && own.has(seed.selectedPaneId)) tabs.push(seed.selectedPaneId)
@@ -30,25 +30,25 @@ export function initialWindowTree(saved: ChatLayout | null, seed: WindowTreeSeed
   }
   const selected = seed.selectedPaneId
   if (seed.detached || !own.has(selected)) return tree
-  if (!tabIds(tree).includes(selected)) return selectTab(tree, paneIds(tree)[0]!, selected)
-  // Behind a sibling chat it surfaces; behind a view it stays where the last session left it.
-  if (!paneIds(tree).includes(selected) && !isViewTabId(tabOwner(tree, selected)!)) return selectTab(tree, paneIds(tree)[0]!, selected)
+  if (!tabIds(tree).includes(selected)) return openTabInTree(tree, selected, null, crypto.randomUUID())
+  // Behind a sibling chat it surfaces.
+  if (!paneIds(tree).includes(selected)) return selectTab(tree, tabOwner(tree, selected)!, selected)
   return tree
 }
 
 /**
- * Tabs handed back by a closing detached window join `anchor`'s tile. A tab already here, or a
- * workspace-wide view kind this window already shows, is skipped.
+ * Tabs handed back by a closing detached window join `anchor`'s window when it holds their kind,
+ * else one that does, else a new window. A tab already here, or a singleton view kind this window
+ * already shows, is skipped.
  */
 export function adoptTabs(tree: ChatLayout, ids: string[], anchor: string | null): ChatLayout {
-  const tile = anchor && paneIds(tree).includes(anchor) ? anchor : paneIds(tree)[0]
-  if (!tile) return tree
+  if (!paneIds(tree).length) return tree
   let next = tree
   for (const id of ids) {
     if (tabIds(next).includes(id)) continue
     const kind = viewKindOf(id)
-    if (kind && isWorkspaceViewKind(kind) && workspaceView(next, kind)) continue
-    next = addTab(next, tabOwner(next, tile) ?? paneIds(next)[0]!, id)
+    if (isViewTabId(id) && (!kind || (isSingletonViewKind(kind) && viewOfKind(next, kind)))) continue
+    next = openTabInTree(next, id, anchor, crypto.randomUUID())
   }
   return next
 }

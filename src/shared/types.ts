@@ -29,9 +29,28 @@ export type BrowserNavigationError = {
   at: number
 }
 
+/** Two local video tabs shown side-by-side in the browser pane; session-only. */
+export type VideoCompareState = {
+  tabIds: [string, string]
+  syncPlay: boolean
+  /** The tile that may output audio; the other is muted. */
+  audioTabId: string
+}
+
+export type VideoCompareCommand =
+  | { op: 'start'; otherTabId: string }
+  | { op: 'clear' }
+  | { op: 'sync'; enabled: boolean }
+  | { op: 'audio'; tabId: string }
+
+export type VideoHubTabIdentity = { tabId: string }
+
 export type BrowserState = {
   image?: import('./local-files.js').ImageTabIdentity
+  video?: import('./local-files.js').VideoTabIdentity
+  videoHub?: VideoHubTabIdentity
   file?: import('./local-files.js').FileTabIdentity
+  videoCompare?: VideoCompareState | null
   url: string
   title: string
   isLoading: boolean
@@ -46,6 +65,8 @@ export type BrowserState = {
 
 export type BrowserTabInfo = {
   image?: import('./local-files.js').ImageTabIdentity
+  video?: import('./local-files.js').VideoTabIdentity
+  videoHub?: VideoHubTabIdentity
   file?: import('./local-files.js').FileTabIdentity
   id: string
   // 1-based left-to-right position in the tab strip. `id` is a monotonic creation counter

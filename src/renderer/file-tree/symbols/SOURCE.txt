@@ -1,0 +1,4 @@
+Symbols by Miguel Solorio
+https://github.com/miguelsolorio/vscode-symbols
+Revision: ab3c31d3bf63d29b77db3aaf59ca4aae203eacf6
+MIT License; see LICENSE.

@@ -1,13 +1,4 @@
-/* ---- Browser quick chat layer ------------------------------------------- */
-
-/* The quick chat floats over the live page in a transparent native layer of its own (main
-   quick-chat-overlay/). Its document is see-through; the layer is fitted to .quick-chat-layer,
-   whose padding is the shadow's room, and main rests it in the page's bottom-right corner. */
-html.quick-chat-surface,
-html.quick-chat-surface body,
-html.quick-chat-surface #root {
-  background: transparent;
-}
+/* Floating chat card shared by notepad windows (renderer/notepad/notepad-chat.tsx). */
 
 .quick-chat-layer {
   --quick-chat-margin: 16px;
@@ -20,200 +11,123 @@ html.quick-chat-surface #root {
   padding: var(--quick-chat-margin);
 }
 
-/* Closed: one round button, with the task's site beside it while it runs or once it ends. */
-.quick-chat-fab {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--chrome-fg-strong);
-}
-
-.quick-chat-fab-disc {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 42px;
-  height: 42px;
-  border: 1px solid color-mix(in srgb, var(--tab-accent, #8ab4f8) 42%, var(--hairline));
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--tab-accent, #8ab4f8) 16%, var(--surface-raised));
-  color: var(--tab-accent, #8ab4f8);
-  box-shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 22px rgb(0 0 0 / 34%);
-  transition:
-    background 110ms var(--ease-chrome),
-    transform 110ms var(--ease-chrome);
-}
-
-.quick-chat-fab:hover .quick-chat-fab-disc {
-  background: color-mix(in srgb, var(--tab-accent, #8ab4f8) 25%, var(--surface-control-hover, #343434));
-  transform: scale(1.05);
-}
-
-.quick-chat-fab:focus-visible {
-  outline: none;
-}
-
-.quick-chat-fab:focus-visible .quick-chat-fab-disc {
-  outline: 2px solid var(--tab-accent, #8ab4f8);
-  outline-offset: 2px;
-}
-
-/* The progress ring: a quarter arc turning around the disc while the task runs. */
-.quick-chat-fab.is-running .quick-chat-fab-disc::before {
-  position: absolute;
-  inset: -4px;
-  border-radius: 50%;
-  background: conic-gradient(var(--tab-accent, #8ab4f8) 0 25%, transparent 25% 100%);
-  content: "";
-  animation: work-spin 1s linear infinite;
-  mask: radial-gradient(circle, transparent 23px, #000 24px);
-}
-
-.quick-chat-fab-label {
-  max-width: 220px;
-  overflow: hidden;
-  padding: 3px 9px;
-  border: 1px solid var(--hairline);
-  border-radius: 999px;
-  background: var(--surface-raised);
-  box-shadow: 0 4px 14px rgb(0 0 0 / 28%);
-  color: color-mix(in srgb, var(--chrome-fg) 85%, transparent);
-  font-size: 11.5px;
-  line-height: 16px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.quick-chat-fab-label.is-done {
-  color: var(--ok-ink, #65b98a);
-}
-
-.quick-chat-fab-label.is-failed {
-  color: var(--danger, #f28b82);
-}
-
 /* Open: the card. Compact is the status line over the composer; whole is the chat. */
 .quick-chat-card {
   display: flex;
   flex-direction: column;
+  gap: 0;
   width: min(480px, calc(var(--page-width, 520px) - 2 * var(--quick-chat-margin)));
-  min-width: 0;
-  overflow: hidden;
+  max-height: min(560px, calc(var(--page-height, 600px) - 2 * var(--quick-chat-margin)));
   border: 1px solid var(--hairline);
-  border-radius: 16px;
-  background: var(--surface-card);
-  box-shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 16px 40px rgb(0 0 0 / 42%);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-card) 94%, transparent);
+  box-shadow: 0 10px 40px rgb(0 0 0 / 42%);
+  overflow: hidden;
 }
 
 .quick-chat-card.is-whole {
   width: min(520px, calc(var(--page-width, 560px) - 2 * var(--quick-chat-margin)));
-  height: min(680px, calc(var(--page-height, 700px) * 0.78));
+  max-height: min(640px, calc(var(--page-height, 680px) - 2 * var(--quick-chat-margin)));
 }
 
 .quick-chat-header {
   display: flex;
-  flex: none;
+  gap: 8px;
   align-items: center;
-  gap: 2px;
-  min-width: 0;
-  height: 36px;
-  padding: 0 6px 0 14px;
-  box-shadow: inset 0 -1px 0 var(--hairline);
+  min-height: 38px;
+  padding: 6px 8px 6px 12px;
+  border-bottom: 1px solid var(--hairline);
+  background: color-mix(in srgb, var(--surface-raised) 80%, transparent);
 }
 
 .quick-chat-title {
   flex: 1;
   min-width: 0;
   overflow: hidden;
-  color: color-mix(in srgb, var(--chrome-fg) 80%, transparent);
-  font-size: 12px;
+  color: var(--chrome-fg-strong);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* While the task runs: a turning mark before the title, then the step under way and its clock. */
 .quick-chat-header.is-running {
-  gap: 8px;
-  padding-left: 12px;
+  gap: 6px;
 }
 
 .quick-chat-working-icon {
-  flex: none;
+  flex-shrink: 0;
   color: var(--tab-accent, #8ab4f8);
 }
 
 .quick-chat-working {
   display: flex;
-  flex: 0 1 auto;
+  flex: 1;
   gap: 6px;
   align-items: baseline;
   min-width: 0;
-  max-width: 55%;
-  margin-right: 4px;
+  overflow: hidden;
+  color: color-mix(in srgb, var(--chrome-fg) 78%, transparent);
   font-size: 11.5px;
-  white-space: nowrap;
+  line-height: 1.25;
 }
 
 .quick-chat-working-step {
-  min-width: 0;
   overflow: hidden;
-  color: var(--tab-accent, #8ab4f8);
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .quick-chat-working-time {
-  flex: none;
-  color: color-mix(in srgb, var(--chrome-fg) 60%, transparent);
-  font-size: 11.5px;
+  flex-shrink: 0;
+  color: color-mix(in srgb, var(--chrome-fg) 55%, transparent);
   font-variant-numeric: tabular-nums;
 }
 
-@media (prefers-reduced-motion: reduce) {
+@media (prefers-reduced-motion: no-preference) {
   .quick-chat-working-icon.spin {
-    animation-duration: 2.4s;
+    animation: work-spin 1s linear infinite;
   }
 }
 
 .quick-chat-icon-button {
   display: grid;
-  flex: none;
   place-items: center;
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
   border: 0;
-  border-radius: 7px;
+  border-radius: 6px;
   background: transparent;
-  color: var(--chrome-fg);
-  transition: background 110ms var(--ease-chrome), color 110ms var(--ease-chrome);
+  color: color-mix(in srgb, var(--chrome-fg) 72%, transparent);
+  cursor: pointer;
 }
 
 .quick-chat-icon-button:hover,
 .quick-chat-icon-button[data-state="open"] {
-  background: color-mix(in srgb, var(--chrome-fg) 12%, transparent);
+  background: var(--surface-control-hover, rgb(255 255 255 / 8%));
   color: var(--chrome-fg-strong);
 }
 
-/* The status line: what the task is doing and where, then the reply once it ends. */
 .quick-chat-status {
-  flex: none;
-  padding: 7px 6px 0 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px 0;
 }
 
 .quick-chat-status-line {
   display: flex;
   gap: 8px;
-  align-items: center;
-  min-width: 0;
+  align-items: flex-start;
+  min-height: 20px;
 }
 
 .quick-chat-status-icon {
-  display: grid;
-  flex: none;
-  place-items: center;
-  color: var(--ok-ink, #65b98a);
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: color-mix(in srgb, var(--chrome-fg) 55%, transparent);
 }
 
 .quick-chat-status.is-working .quick-chat-status-icon {
@@ -225,51 +139,47 @@ html.quick-chat-surface #root {
 }
 
 .quick-chat-status.is-paused .quick-chat-status-icon {
-  color: var(--chrome-fg);
+  color: var(--warn, #fbbf24);
 }
 
 .quick-chat-status-text {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  color: color-mix(in srgb, var(--chrome-fg) 80%, transparent);
+  color: var(--chrome-fg-strong);
   font-size: 12px;
-  line-height: 18px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.35;
 }
 
 .quick-chat-status-text b {
-  color: var(--chrome-fg-strong);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .quick-chat-status-reply {
+  margin: 0;
+  padding: 0 12px 8px 32px;
+  color: color-mix(in srgb, var(--chrome-fg) 82%, transparent);
+  font-size: 11.5px;
+  line-height: 1.4;
   display: -webkit-box;
-  margin: 2px 8px 0 21px;
-  overflow: hidden;
-  color: var(--chrome-fg-strong);
-  font-size: 13px;
-  line-height: 19px;
-  -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .quick-chat-body {
+  display: flex;
   flex: 1;
-  min-width: 0;
   min-height: 0;
 }
 
 .quick-chat-body .chat-pane {
-  border-right: 0;
-  background: transparent;
+  flex: 1;
+  min-height: 0;
 }
 
-/* Compact: the chat's own composer without its transcript, sized by its content. */
 .quick-chat-card.is-compact .chat-pane,
 .quick-chat-card.is-compact .chat-zoom-surface {
-  height: auto;
+  display: none;
 }
 
 .quick-chat-card.is-compact .chat-scroll-root {
@@ -277,7 +187,5 @@ html.quick-chat-surface #root {
 }
 
 .quick-chat-card.is-compact .chat-composer-dock {
-  position: relative;
-  top: auto;
-  transform: none;
+  border-top: 0;
 }

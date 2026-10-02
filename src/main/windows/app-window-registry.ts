@@ -6,7 +6,6 @@ import {
 import type { AppWindowDockEvent, CrossWindowDockComplete, CrossWindowDockRouteRequest, CrossWindowDockRouteResult } from '../../shared/cross-window-dock.js'
 import { routeCrossDock, tabsForComplete, type DockWindowFrame } from './cross-window-dock.js'
 import type { ChatWorkspaceEvent } from '../../shared/chat-peers.js'
-import type { QuickChatOverlayRequest } from '../../shared/quick-chat-overlay.js'
 import { IPC, type IpcEventChannel, type IpcEventChannels } from '../../shared/ipc-channels.js'
 import type { AppWindowStore } from './app-window-store.js'
 
@@ -207,12 +206,6 @@ export class AppWindowRegistry {
     this.raise(owner)
     this.command(owner, { type: 'activateTab', tabId })
     return true
-  }
-
-  /** The quick chat layer asks the main window's layout, which owns the quick chat, to act. */
-  quickChat(request: QuickChatOverlayRequest): void {
-    const main = this.entries.get(MAIN_WINDOW_ID)
-    if (main) this.command(main, { type: 'quickChat', request })
   }
 
   showBrowser(): void {
