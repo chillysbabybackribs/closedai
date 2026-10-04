@@ -9,7 +9,7 @@
   gap: 1px;
 }
 .chat-layout-header .chat-window-controls button,
-.browser-tabstrip-row > .chat-window-controls button {
+:is(.browser-tabstrip-row, .browser-toolbar) > .chat-window-controls button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -22,12 +22,12 @@
   background: transparent;
   cursor: pointer;
 }
-.browser-tabstrip-row > .chat-window-controls button:hover:not(:disabled) {
+:is(.browser-tabstrip-row, .browser-toolbar) > .chat-window-controls button:hover:not(:disabled) {
   color: var(--chrome-fg-strong);
   background: var(--surface-control-hover);
 }
-.browser-tabstrip-row > .chat-window-controls button:disabled { opacity: 0.3; cursor: default; }
-.browser-tabstrip-row > .chat-window-controls button:focus-visible { outline: 1px solid var(--focus-ink); outline-offset: -1px; }
+:is(.browser-tabstrip-row, .browser-toolbar) > .chat-window-controls button:disabled { opacity: 0.3; cursor: default; }
+:is(.browser-tabstrip-row, .browser-toolbar) > .chat-window-controls button:focus-visible { outline: 1px solid var(--focus-ink); outline-offset: -1px; }
 .chat-window-controls button[data-ui='layout.pane-hide']:hover:not(:disabled) { color: #fff; background: #e5484d; }
 /* The window in front of the keyboard keeps full-strength buttons; the others step back. */
 .chat-layout-tile:not([data-selected='true']) .chat-window-controls { opacity: 0.65; }

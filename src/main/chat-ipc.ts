@@ -44,9 +44,9 @@ export function registerChatIpc(ipcMain: IpcMain, getService: () => ChatWorkspac
   ipcMain.handle(IPC.invoke.chat.selectReasoningEffort, (_event, paneId: string, effort: string) =>
     requireService().selectReasoningEffort(paneId, effort)
   )
-  ipcMain.handle(IPC.invoke.chat.readProviderUsage, (_event, provider: ChatProvider) => {
+  ipcMain.handle(IPC.invoke.chat.readProviderUsage, (_event, provider: ChatProvider, force?: boolean) => {
     if (!CHAT_PROVIDERS.includes(provider)) throw new Error('Choose a valid provider')
-    return readProviderUsage(provider)
+    return readProviderUsage(provider, force === true)
   })
   ipcMain.handle(IPC.invoke.chat.refreshPlanUsage, (_event, paneId: string, onlyIfAwake?: boolean) => requireService().refreshPlanUsage(paneId, onlyIfAwake))
   ipcMain.handle(IPC.invoke.chat.listChats, () => requireService().listChats())

@@ -4,8 +4,15 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 
 import type { ChatTranscriptItem } from '../shared/chat.ts'
-import { activitySteps, activitySummary, diffCounts, formatDuration, summaryLabel } from './activity-steps.ts'
-import { ActivitySteps } from './activity-step-list.tsx'
+import {
+  activitySteps,
+  activitySummary,
+  diffCounts,
+  formatDuration,
+  shellOutputRevealLabel,
+  summaryLabel
+} from './activity-steps.ts'
+import { ActivitySteps, LiveLine } from './activity-step-list.tsx'
 import type { ActivityItem } from './transcript-rows.ts'
 
 type Command = Extract<ChatTranscriptItem, { type: 'command' }>
@@ -22,9 +29,26 @@ test('a command step reads as the literal command after a plain verb', () => {
   assert.equal(step?.title, null)
   assert.equal(step?.phase, 'done')
   assert.deepEqual(step?.body, {
-    heading: 'Shell', invocation: 'sed -n 1,20p src/main/index.ts', shell: true, output: null, diffs: [],
-    status: { tone: 'ok', label: 'Success' }
+    heading: 'Shell', invocation: 'sed -n 1,20p src/main/index.ts', shell: true, output: null, withheldOutput: null,
+    diffs: [], status: { tone: 'ok', label: 'Success' }
   })
+})
+
+test('a successful shell step holds stdout until the user reveals it', () => {
+  const [step] = activitySteps([command('c1', 'python3 report.py', { output: '{"chatId":"x"}\n' })], 0)
+  assert.equal(step?.body?.output, null)
+  assert.equal(step?.body?.withheldOutput, '{"chatId":"x"}')
+})
+
+test('a running shell step does not attach streaming stdout to the body', () => {
+  const [step] = activitySteps([command('c1', 'npm run build', { status: 'inProgress', exitCode: null, output: 'built in 6s' })], 0)
+  assert.equal(step?.body?.output, null)
+  assert.equal(step?.body?.withheldOutput, null)
+})
+
+test('the reveal label summarizes multi-line stdout by line count', () => {
+  assert.equal(shellOutputRevealLabel('one'), 'Show output · one')
+  assert.equal(shellOutputRevealLabel('a\nb\nc'), 'Show output · 3 lines')
 })
 
 test('a long command is cut on the line but kept whole for hover', () => {
@@ -168,3 +192,12 @@ test('the step list renders the alert line, the rows, and opens failed output by
   assert.match(html, /Exit code 1/)
   assert.doesNotMatch(html, /INPUT|"steps"/)
 })
+
+test('the live line is the step under way, its verb and its subject, with no output tail', () => {
+  const [step] = activitySteps([command('c1', 'npm run build', { status: 'inProgress', exitCode: null, output: 'built in 6s' })], 0)
+  const html = renderToStaticMarkup(createElement(LiveLine, { step: step! }))
+  assert.match(html, /class="activity-live-line" data-kind="command" data-phase="running"/)
+  assert.match(html, /activity-live-verb">Running<\/span><span class="activity-step-label"> npm run build/)
+  assert.doesNotMatch(html, /built in 6s/)
+})
+

@@ -1,5 +1,5 @@
 import { useState, type JSX } from 'react'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff } from '../icons/index.js'
 import { Input } from '../../components/ui/input.js'
 import type { CredentialFieldSpec, CredentialServiceId } from '../../shared/credentials.js'
 

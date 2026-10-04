@@ -1,5 +1,5 @@
 import { setGroupDocked } from '../layout-docking.js'
-import { BROWSER_PANE_ID, WORKSPACE_DOCK_ID, dockBrowser, dockPane, paneIds, removePane, type ChatLayout, type DockEdge, type FloatRect, type Rect } from '../layout-tree.js'
+import { BROWSER_PANE_ID, WORKSPACE_DOCK_ID, dockBrowser, dockPane, evenShare, paneIds, removePane, type ChatLayout, type DockEdge, type FloatRect, type Rect } from '../layout-tree.js'
 import { moveTab, tabOwner } from '../layout-tabs.js'
 
 // Tiles as windows. A tile is tiled (a slot in the split tree), floating (lifted out of the tiled
@@ -91,8 +91,8 @@ export function snapWindow(tree: ChatLayout, id: string, target: string, edge: D
   const rest = removePane(cleared, id)
   if (!moved || !rest) return cleared
   const before = edge === 'left' || edge === 'top'
-  return { kind: 'split', id: splitId, ratio: 0.5, axis: edge === 'left' || edge === 'right' ? 'horizontal' : 'vertical',
-    first: before ? moved : rest, second: before ? rest : moved }
+  return evenShare({ kind: 'split', id: splitId, ratio: 0.5, axis: edge === 'left' || edge === 'right' ? 'horizontal' : 'vertical',
+    first: before ? moved : rest, second: before ? rest : moved }, moved.id)
 }
 
 /** Join every tab of `source` to `target`'s tabs; the source's front tab stays in front. */

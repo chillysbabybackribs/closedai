@@ -26,6 +26,7 @@ import type { ComposerSetupHandle } from './composer-setup-menu.js'
 import { securityRequests } from './security-requests.js'
 import { useCredentialApprovals } from './use-security-requests.js'
 import { ChatPaneFolderBar } from './chat-pane-folder-bar.js'
+import { ChatPaneCardActions } from './chat-pane-card-actions.js'
 
 export const ChatPane = memo(function ChatPane({
   controller,
@@ -197,6 +198,7 @@ export const ChatPane = memo(function ChatPane({
           />
           <div className="chat-composer-meta">
             <div className="chat-pane-model-slot" id={`chat-model-${chat.selectedPaneId}`} />
+            <ChatPaneCardActions paneId={chat.selectedPaneId} hasThread={Boolean(record?.threadId)} running={running} />
             <ChatPaneFolderBar
               cwd={project.cwd}
               projectPath={project.projectPath}

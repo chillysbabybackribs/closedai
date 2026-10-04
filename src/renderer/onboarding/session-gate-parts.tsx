@@ -1,5 +1,5 @@
 import { useState, type CSSProperties, type JSX } from 'react'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff } from '../icons/index.js'
 
 import type { LocalUser } from '../../shared/onboarding.js'
 

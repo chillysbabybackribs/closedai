@@ -1,7 +1,7 @@
 import type { JSX, KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Columns2, Copy, Edit3, PanelRightOpen, RefreshCw, Star, X } from 'lucide-react'
+import { Columns2, Copy, Edit3, PanelRightOpen, RefreshCw, Star, X } from './icons/index.js'
 import type { BrowserTabInfo } from '../shared/types.js'
 import { placeRowMenu, type MenuPlacement } from './menu-position.js'
 import { menuIndexForKey, tabPanelId } from './browser-tab-navigation.js'

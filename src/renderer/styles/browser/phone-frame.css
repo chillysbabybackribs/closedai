@@ -1,0 +1,105 @@
+/* Phone preview (browser-phone-frame.tsx): an iPhone 15 drawn behind the native page surface,
+   which main places in the screen from the same layout. Geometry comes from inline styles; this
+   file only paints. The status bar and home strip render at actual size and are scaled with the
+   phone, so their type and glyphs fit the way they do on the device. */
+
+.browser-view-host.is-phone-preview {
+  background:
+    radial-gradient(ellipse at 50% 35%, rgb(255 255 255 / 5%), transparent 70%),
+    var(--surface-card);
+}
+
+.phone-frame {
+  position: absolute;
+  background: #1c1c1e;
+  box-shadow:
+    inset 0 0 0 1.5px #48484c,
+    inset 0 0 0 4px #0a0a0b,
+    0 24px 60px rgb(0 0 0 / 45%),
+    0 4px 14px rgb(0 0 0 / 35%);
+  pointer-events: none;
+  /* Main parks the page while it switches, so the frame arrives first; easing it in keeps the
+     switch reading as one motion. Opacity only: a scaled frame would misalign with a page that
+     arrives before the animation ends. */
+  animation: phone-frame-in 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes phone-frame-in {
+  from { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .phone-frame { animation: none; }
+}
+
+.phone-frame-button {
+  position: absolute;
+  width: 3px;
+  border-radius: 2px;
+  background: #3a3a3d;
+}
+
+.phone-frame-button.is-action { left: -2px; top: 13%; height: 3.4%; }
+.phone-frame-button.is-volume-up { left: -2px; top: 20%; height: 7%; }
+.phone-frame-button.is-volume-down { left: -2px; top: 29%; height: 7%; }
+.phone-frame-button.is-power { right: -2px; top: 24%; height: 11%; }
+
+.phone-frame-screen {
+  position: absolute;
+  overflow: hidden;
+  background: #000;
+}
+
+.phone-frame-status,
+.phone-frame-home {
+  position: absolute;
+  left: 0;
+  transform-origin: top left;
+  color: #fff;
+}
+
+.phone-frame-status {
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 32px 0 48px;
+  font: 600 17px/1 -apple-system, "SF Pro Text", "Inter", system-ui, sans-serif;
+  letter-spacing: -0.01em;
+}
+
+.phone-frame-island {
+  position: absolute;
+  top: 11px;
+  left: 50%;
+  width: 124px;
+  height: 36px;
+  margin-left: -62px;
+  border-radius: 18px;
+  background: #000;
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 4%);
+}
+
+.phone-frame-indicators {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.phone-frame-home {
+  display: grid;
+  place-items: center;
+}
+
+.phone-frame-home-indicator {
+  width: 134px;
+  height: 5px;
+  border-radius: 3px;
+  background: rgb(255 255 255 / 85%);
+}
+
+.phone-frame-freeze {
+  position: absolute;
+  object-fit: none;
+  object-position: top left;
+}

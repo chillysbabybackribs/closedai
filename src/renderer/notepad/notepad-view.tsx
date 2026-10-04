@@ -1,5 +1,5 @@
 import { useCallback, useContext, useEffect, useLayoutEffect, useState, type CSSProperties, type JSX, type KeyboardEvent } from 'react'
-import { ChevronUp, FilePlus2, Trash2 } from 'lucide-react'
+import { ChevronUp, FilePlus2, Trash2 } from '../icons/index.js'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger
 } from '../../components/ui/dropdown-menu.js'

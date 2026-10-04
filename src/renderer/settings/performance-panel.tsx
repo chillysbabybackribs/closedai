@@ -50,7 +50,7 @@ export function PerformancePanel({ active }: { active: boolean }): JSX.Element {
       </select>
     </div>
     <div className="performance-setting">
-      <div><label id="auto-titles-label">Automatic chat titles</label><p>Generate titles after completed turns, one request at a time. Off keeps the first-message fallback; manual rename and retry still work.</p></div>
+      <div><label id="auto-titles-label">Automatic chat titles</label><p>Generate titles after completed turns, one request at a time. Off keeps the first-message fallback; manual rename still works.</p></div>
       <Switch data-ui="settings.auto-titles" aria-labelledby="auto-titles-label" checked={settings.autoTitles}
         disabled={disabled} onCheckedChange={(autoTitles) => { void updatePerformanceSettings({ autoTitles }) }} />
     </div>

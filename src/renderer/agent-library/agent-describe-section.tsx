@@ -1,6 +1,6 @@
 import type { JSX } from 'react'
 import { useRef } from 'react'
-import { Sparkles } from 'lucide-react'
+import { Sparkles } from '../icons/index.js'
 
 import { Button } from '../../components/ui/button.js'
 import { Loader } from '../../components/ui/loader.js'

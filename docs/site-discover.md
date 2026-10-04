@@ -1,6 +1,6 @@
 # Site discovery (`site.discover`)
 
-Source review: 2026-09-30. **`bootstrap`** and **`expand`** actions.
+Source review: 2026-10-04. **`bootstrap`**, **`expand`**, and **`apis`** actions.
 
 ## Purpose
 
@@ -23,7 +23,8 @@ One parallel probe pass builds a **site card** for an http(s) seed URL's origin.
 - **`url`** (required) — absolute http(s) seed; origin drives probes.
 - **`focus`** — optional keywords; rank sitemap `loc`s and same-origin nav links.
 - **`channels`** — subset of `robots`, `sitemap`, `llms_txt`, `openapi`, `html`, `feeds` (default all).
-- **`tab_id`** — optional; HTML channel reads the live tab when its URL shares the origin.
+- **`tab_id`** — optional; when the tab's URL shares the origin, the HTML channel fetches that URL
+  through the session instead of the seed (it does not read the tab's DOM).
 - Caps: `max_sitemap_urls`, `max_nav_links`, `max_llms_chars`, `max_probe_bytes`, `timeout_ms`.
 
 Large HTML documents may exceed `max_probe_bytes`; the **html** channel still parses the **first**
@@ -47,12 +48,14 @@ text extractor as research sources).
 
 ### Input (summary)
 
-- **`url`** (required) — seed URL; defines allowed origin (every `urls` entry must match).
+- **`url`** (required) — seed URL; defines the allowed origin. Other-origin `urls` entries are dropped; the
+  call fails only when no same-origin URL remains.
 - **`urls`** (required) — array of absolute same-origin URLs (max 40 listed).
 - **`focus`** — optional; reorder `urls` before `max_pages`.
 - **`max_pages`** — default 6, max 20 pages fetched after robots filtering.
 - **`max_excerpt_chars`** — per page (default 2500).
-- **`max_probe_bytes`**, **`timeout_ms`** — per-fetch and total budgets.
+- **`max_probe_bytes`** (10,000–2,000,000, default 512,000), **`timeout_ms`** (3,000–45,000) —
+  per-fetch and total budgets.
 - **`respect_robots`** — default true; loads `/robots.txt` and skips disallowed paths (longest
   prefix Allow/Disallow match for `User-agent: *`).
 
@@ -87,7 +90,8 @@ URLs before fetching. `channelCounts` can exceed the sample when the ring has dr
 
 ## Implementation
 
-`src/main/tools/site/` — `discover-probes.ts`, `bootstrap.ts`, `expand.ts`, `apis-map.ts`, `apis.ts`.
+`src/main/tools/site/` — `index.ts` (namespace), `discover-fields.ts` (shared caps), `discover-probes.ts`,
+`bootstrap.ts`, `expand.ts`, `apis-map.ts`, `apis.ts`.
 
 ## Follow-ons (not implemented)
 

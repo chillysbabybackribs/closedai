@@ -1,4 +1,4 @@
-import { BROWSER_PANE_ID, isViewTabId, type ChatLayout } from './layout-tree.js'
+import { BROWSER_PANE_ID, isViewTabId, prunePanes, type ChatLayout } from './layout-tree.js'
 
 // A docked group is a minimized window: kept in the tree at its place (tiled slot or floating
 // rect) and listed in the app dock until it is restored.
@@ -18,10 +18,11 @@ export function dockedGroups(tree: ChatLayout): DockGroup[] {
  * restoration and persistence; floating windows are laid out from their own rects.
  */
 export function tiledTree(tree: ChatLayout): ChatLayout | null {
-  if (tree.kind === 'pane') return tree.docked || tree.float ? null : tree
-  const first = tiledTree(tree.first)
-  const second = tiledTree(tree.second)
-  return !first ? second : !second ? first : { ...tree, first, second }
+  return prunePanes(tree, outOfTiledLayer)
+}
+
+export function outOfTiledLayer(pane: DockGroup): boolean {
+  return Boolean(pane.docked || pane.float)
 }
 
 export function expandedPaneIds(tree: ChatLayout): string[] {

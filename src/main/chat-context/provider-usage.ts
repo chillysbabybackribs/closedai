@@ -47,14 +47,14 @@ async function probe(provider: ChatProvider): Promise<ProviderUsageSnapshot> {
 }
 
 /** Shared across renderer mounts/windows; failures are bounded and do not erase dated readings. */
-export function createProviderUsageReader(read = probe, now = Date.now): (provider: ChatProvider) => Promise<ProviderUsageSnapshot> {
+export function createProviderUsageReader(read = probe, now = Date.now): (provider: ChatProvider, force?: boolean) => Promise<ProviderUsageSnapshot> {
   const cache = new Map<ChatProvider, { at: number; result: ProviderUsageSnapshot }>()
   const pending = new Map<ChatProvider, Promise<ProviderUsageSnapshot>>()
-  return (provider) => {
+  return (provider, force = false) => {
     const active = pending.get(provider)
     if (active) return active
     const prior = cache.get(provider)
-    if (prior && now() - prior.at < 60_000) return Promise.resolve(prior.result)
+    if (!force && prior && now() - prior.at < 60_000) return Promise.resolve(prior.result)
     const request = read(provider).then((result) => {
       if (!result.usage) throw new Error('No provider reading available. Check CLI sign-in and retry.')
       return result

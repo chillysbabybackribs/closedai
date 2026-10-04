@@ -1,5 +1,5 @@
 import { lazy, memo, Suspense, type ReactNode } from 'react'
-import { Check, ChevronDown, Pin } from 'lucide-react'
+import { Check, ChevronDown, Pin } from '../icons/index.js'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger

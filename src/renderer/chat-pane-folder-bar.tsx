@@ -1,5 +1,5 @@
 import type { JSX } from 'react'
-import { Folder } from 'lucide-react'
+import { Folder } from './icons/index.js'
 
 import { sameProjectPath } from '../shared/project-paths.js'
 import { folderName } from './composer-setup-sections.js'

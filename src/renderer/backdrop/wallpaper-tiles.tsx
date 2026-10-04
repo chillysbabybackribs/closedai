@@ -1,5 +1,5 @@
 import type { JSX } from 'react'
-import { Check, Plus, Trash2, Upload } from 'lucide-react'
+import { Check, Plus, Trash2, Upload } from '../icons/index.js'
 
 /* Presentation pieces of the wallpaper dialog: picker tiles, the Add tile, the current-wallpaper
    preview and the whole-dialog drop overlay. State lives in wallpaper-dialog.tsx. */

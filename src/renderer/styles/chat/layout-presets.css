@@ -260,7 +260,7 @@
 }
 
 .layout-preset-hint {
-  color: var(--ok-ink);
+  color: var(--muted-foreground);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
   line-height: 1.4;
@@ -317,12 +317,11 @@
 
 .layout-preset-btn.is-primary {
   border-color: transparent;
-  background: var(--primary);
-  color: var(--primary-foreground);
+  background: var(--accent-fill);
+  color: #fff;
   font-weight: 600;
 }
 
 .layout-preset-btn.is-primary:hover {
-  background: var(--primary);
-  filter: brightness(1.12);
+  background: var(--accent-fill-hover);
 }

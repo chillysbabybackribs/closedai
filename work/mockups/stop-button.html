@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Composer stop button — options</title>
+<style>
+@font-face {
+  font-family: "Inter Variable";
+  src: url("../../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2") format("woff2");
+  font-weight: 100 900;
+}
+:root {
+  color-scheme: dark;
+  --page: #0f1011;
+  --capsule-fill: #141516;
+  --capsule-edge: #343536;
+  --fg: #f7f8f8;
+  --muted: #8a8f98;
+  --quiet: #7c8087;
+  --hairline-strong: rgb(255 255 255 / 13%);
+  --red: #e5484d;
+  --red-ink: #ff6369;
+  --focus: #5e6ad2;
+  font-family: "Inter Variable", Inter, system-ui, sans-serif;
+  font-size: 13px;
+  background: var(--page);
+  color: var(--fg);
+}
+body { margin: 0; padding: 32px 40px 64px; }
+h1 { font-size: 18px; font-weight: 600; letter-spacing: -0.014em; margin: 0 0 4px; }
+.lede { color: var(--muted); margin: 0 0 28px; max-width: 760px; line-height: 1.55; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(560px, 1fr)); gap: 20px; }
+.opt {
+  border: 1px solid rgb(255 255 255 / 7%);
+  border-radius: 12px;
+  padding: 18px 20px 20px;
+  background: #121314;
+}
+.opt header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+.opt h2 { font-size: 14px; font-weight: 600; margin: 0; }
+.tag { font-size: 11px; color: var(--quiet); }
+.opt p { color: var(--muted); margin: 0 0 14px; line-height: 1.5; font-size: 12px; }
+.opt.current { border-style: dashed; }
+
+/* Composer replica — values from cards.css / composer.css */
+.composer {
+  display: flex; align-items: flex-end; gap: 6px;
+  min-height: 48px; padding: 7px 7px 7px 8px; box-sizing: border-box;
+  border: 1px solid var(--capsule-edge); border-radius: 13px; background: var(--capsule-fill);
+}
+.plus { width: 34px; height: 34px; display: grid; place-items: center; color: var(--muted); }
+.draft { flex: 1; align-self: center; color: #5d6168; padding-left: 2px; }
+.slot { flex: none; display: flex; align-items: center; height: 34px; }
+
+.states { display: flex; flex-wrap: wrap; gap: 18px 26px; align-items: flex-end; margin-top: 18px; }
+.state { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.state span { font-size: 11px; color: var(--quiet); }
+.mag { zoom: 3; }  /* real re-layout, not a bitmap stretch */
+.opt.wide .mag { zoom: 2; }
+
+/* ---- shared button base ---- */
+.b {
+  all: unset; box-sizing: border-box; cursor: pointer;
+  display: grid; place-items: center;
+  width: 34px; height: 34px; border-radius: 999px;
+  border: 1px solid transparent;
+  transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease, box-shadow 120ms ease, transform 80ms ease;
+}
+.b:active { transform: scale(0.94); }
+.b:focus-visible, .b.is-focus { box-shadow: 0 0 0 2px var(--capsule-fill), 0 0 0 4px var(--focus); }
+.sq { width: 10px; height: 10px; border-radius: 2.5px; background: currentColor; }
+
+/* Current: Octagon 24 / stroke 1.25, red fill, hairline ring */
+.cur { border-color: var(--hairline-strong); color: #ecedef; }
+.cur:hover, .cur.is-hover { background: rgb(247 248 248 / 8%); }
+.cur svg { fill: var(--red); }
+
+/* A — Mirror Send */
+.a { background: #fff; color: #000; box-shadow: 0 2px 10px rgb(0 0 0 / 20%); }
+.a:hover, .a.is-hover { background: #e9e9eb; }
+
+/* B — Working ring */
+.bring { position: relative; background: #232427; color: #e6e7e9; }
+.bring::before {
+  content: ""; position: absolute; inset: -1px; border-radius: inherit;
+  background: conic-gradient(from 0deg, transparent 0 62%, rgb(255 255 255 / 70%) 92%, transparent 100%);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 1.5px), #000 calc(100% - 1.5px));
+          mask: radial-gradient(farthest-side, transparent calc(100% - 1.5px), #000 calc(100% - 1.5px));
+  animation: spin 1.1s linear infinite;
+}
+.bring:hover, .bring.is-hover { background: #2c2d31; color: #fff; }
+.bring:hover::before, .bring.is-hover::before { opacity: 0.35; }
+@keyframes spin { to { transform: rotate(1turn); } }
+
+/* C — Quiet tonal, red on intent */
+.c { background: #2a2b2e; color: #e6e7e9; }
+.c:hover, .c.is-hover { background: rgb(229 72 77 / 16%); color: var(--red-ink); }
+
+/* D — Labeled pill */
+.d {
+  width: auto; padding: 0 6px 0 12px; gap: 8px; grid-auto-flow: column;
+  border-color: var(--hairline-strong); background: #1c1d20; color: #e6e7e9;
+  font: 500 12px/1 "Inter Variable", Inter, sans-serif;
+}
+.d .sq { width: 8px; height: 8px; border-radius: 2px; }
+.d kbd {
+  font: 500 10.5px/1 "Inter Variable", Inter, sans-serif; color: var(--quiet);
+  padding: 4px 6px; border-radius: 6px; background: rgb(255 255 255 / 6%);
+}
+.d:hover, .d.is-hover { background: #26272b; border-color: rgb(255 255 255 / 18%); }
+
+/* E — Pause glyph on white (matches Pause/Resume semantics) */
+.e { background: #fff; color: #000; box-shadow: 0 2px 10px rgb(0 0 0 / 20%); }
+.e:hover, .e.is-hover { background: #e9e9eb; }
+.bars { display: flex; gap: 3px; }
+.bars i { width: 3.5px; height: 11px; border-radius: 1.5px; background: currentColor; }
+
+/* F — Red square, refined current */
+.f { border-color: var(--hairline-strong); color: var(--red); }
+.f .sq { width: 11px; height: 11px; border-radius: 3px; }
+.f:hover, .f.is-hover { background: rgb(229 72 77 / 12%); border-color: rgb(229 72 77 / 40%); color: var(--red-ink); }
+
+/* Send reference (idle state of the same slot) */
+.send { background: #fff; color: #000; box-shadow: 0 2px 10px rgb(0 0 0 / 20%); }
+
+@media (prefers-reduced-motion: reduce) { .bring::before { animation: none; opacity: 0.5; } }
+</style>
+</head>
+<body>
+<h1>Composer stop button: options</h1>
+<p class="lede">Each option uses the real composer geometry: a 13px-radius card, a 48px row, and the 34px action slot where Send sits when idle. The 3× row is re-laid-out with CSS zoom, not stretched. Hover any live button; the forced <em>hover</em> and <em>focus</em> states are shown statically.</p>
+
+<template id="row">
+  <div class="composer"><div class="plus"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div><div class="draft">Ask anything…</div><div class="slot"></div></div>
+</template>
+
+<div class="grid" id="grid"></div>
+
+<script>
+const OPTIONS = [
+  { id: 'cur', cls: 'cur', name: 'Current', tag: 'for comparison', current: true,
+    body: '<svg width="24" height="24" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.25"><path d="M7.86 2h8.28L22 7.86v8.28L16.14 22H7.86L2 16.14V7.86z"/></svg>',
+    note: 'A thin octagon with a red fill. At 1× it reads as a status dot, not a control, and it shares no visual language with Send.' },
+  { id: 'a', cls: 'a', name: 'A · Mirror Send', tag: 'recommended',
+    body: '<i class="sq"></i>',
+    note: 'The same white disc as Send, with the arrow swapped for a square. The slot keeps one identity, so only the glyph changes when a run starts. This is the ChatGPT and Claude convention.' },
+  { id: 'b', cls: 'bring', name: 'B · Working ring', tag: 'stop + activity',
+    body: '<i class="sq"></i>',
+    note: 'A tonal disc with a slow spinning arc on the rim, so the button also shows that the agent is working. The arc dims on hover to put the stop action first. Reduced motion freezes the arc.' },
+  { id: 'c', cls: 'c', name: 'C · Quiet tonal', tag: 'red on intent',
+    body: '<i class="sq"></i>',
+    note: 'A low-key graphite disc that stays calm through long runs. Red appears only on hover or focus, when you actually intend to stop.' },
+  { id: 'd', cls: 'd', name: 'D · Labeled pill', tag: 'most explicit', wide: true,
+    body: '<i class="sq"></i>Stop<kbd>Esc</kbd>',
+    note: 'A word plus the shortcut. It is the clearest and teaches Esc, but it is wider (about 86px), so the draft field shrinks during runs.' },
+  { id: 'e', cls: 'e', name: 'E · Pause glyph', tag: 'matches semantics',
+    body: '<span class="bars"><i></i><i></i></span>',
+    note: 'The action is really Pause, since there is a Resume afterwards. Two bars on the white disc say that honestly and pair with the existing amber Resume.' },
+  { id: 'f', cls: 'f', name: 'F · Red square', tag: 'refined current',
+    body: '<i class="sq"></i>',
+    note: 'Keeps the current red identity, but as a properly sized 11px rounded square in a hairline ring, with a red wash on hover.' },
+]
+const grid = document.getElementById('grid')
+const row = document.getElementById('row')
+const btn = (o, extra = '') => `<button class="b ${o.cls} ${extra}" aria-label="Stop (Esc)">${o.body}</button>`
+for (const o of OPTIONS) {
+  const card = document.createElement('section')
+  card.className = 'opt' + (o.current ? ' current' : '') + (o.wide ? ' wide' : '')
+  card.innerHTML = `<header><h2>${o.name}</h2><span class="tag">${o.tag}</span></header><p>${o.note}</p>`
+  const live = row.content.cloneNode(true)
+  live.querySelector('.slot').innerHTML = btn(o)
+  card.append(live)
+  const states = document.createElement('div')
+  states.className = 'states'
+  states.innerHTML = [['rest', ''], ['hover', 'is-hover'], ['focus', 'is-focus']]
+    .map(([label, c]) => `<div class="state"><div class="mag">${btn(o, c)}</div><span>${label}</span></div>`).join('')
+    + (o.current ? '' : `<div class="state"><div class="mag"><button class="b send" aria-label="Send"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></div><span>idle (send)</span></div>`)
+  card.append(states)
+  grid.append(card)
+}
+</script>
+</body>
+</html>

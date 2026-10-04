@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Download, FolderOpen, Minus, Plus, Scan } from 'lucide-react'
+import { Download, FolderOpen, Minus, Plus, Scan } from '../icons/index.js'
 import type { ImageTabContent } from '../../shared/local-files.js'
 import { errorMessage } from '../error-message.js'
 

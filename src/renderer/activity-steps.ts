@@ -15,6 +15,8 @@ export type StepBody = {
   /** Whether the invocation is a shell command (drawn behind a `$` prompt). */
   shell: boolean
   output: string | null
+  /** Successful shell stdout kept out of the card until the user asks; never set while live. */
+  withheldOutput: string | null
   diffs: { path: string; diff: string }[]
   status: { tone: 'ok' | 'error' | 'live'; label: string }
 }
@@ -187,17 +189,41 @@ function stepMeta(item: ActivityItem, phase: ActivityPhase, now: number): string
 function stepBody(item: ActivityItem, phase: ActivityPhase): StepBody | null {
   const status = stepStatus(item, phase)
   if (item.type === 'command') {
-    const output = item.output.replace(/\s+$/, '')
-    return { heading: 'Shell', invocation: unwrapShell(item.command).trim(), shell: true, output: output || null, diffs: [], status }
+    const stdout = item.output.replace(/\s+$/, '')
+    const live = phase === 'running' || phase === 'pending'
+    const failed = phase === 'failed' || (item.exitCode !== null && item.exitCode !== 0)
+    return {
+      heading: 'Shell',
+      invocation: unwrapShell(item.command).trim(),
+      shell: true,
+      output: !live && failed && stdout ? stdout : null,
+      withheldOutput: !live && !failed && stdout ? stdout : null,
+      diffs: [],
+      status
+    }
   }
   if (item.type === 'fileChange') {
     const diffs = item.changes.filter((change) => change.diff.trim()).map(({ path, diff }) => ({ path, diff }))
-    return diffs.length ? { heading: 'Edit', invocation: null, shell: false, output: null, diffs, status } : null
+    return diffs.length
+      ? { heading: 'Edit', invocation: null, shell: false, output: null, withheldOutput: null, diffs, status }
+      : null
   }
   const invocation = item.detail.trim() || null
   const output = item.output?.trim() || null
   if (!invocation && !output) return null
-  return { heading: item.label, invocation, shell: false, output, diffs: [], status }
+  return { heading: item.label, invocation, shell: false, output, withheldOutput: null, diffs: [], status }
+}
+
+/** Label for revealing held shell stdout in an expanded step card. */
+export function shellOutputRevealLabel(text: string): string {
+  const trimmed = text.trimEnd()
+  if (!trimmed) return 'Show output'
+  const lines = trimmed.split('\n')
+  if (lines.length === 1) {
+    const flat = trimmed.replace(/\s+/g, ' ').trim()
+    return flat.length > 52 ? `Show output · ${flat.slice(0, 51)}…` : `Show output · ${flat}`
+  }
+  return `Show output · ${lines.length} lines`
 }
 
 function stepStatus(item: ActivityItem, phase: ActivityPhase): StepBody['status'] {

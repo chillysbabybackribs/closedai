@@ -28,8 +28,7 @@ export function useProviderUsage(chats: readonly ChatRowSummary[], open: boolean
   const read = useCallback(async (provider: ChatProvider, force = false): Promise<void> => {
     setReading((prior) => new Set(prior).add(provider))
     try {
-      void force
-      const result = await window.closedai.chat.readProviderUsage(provider)
+      const result = await window.closedai.chat.readProviderUsage(provider, force)
       setReadings((prior) => [...prior.filter((item) => item.provider !== provider), result])
     } catch {
       // Main answers a failed probe with a dated "unavailable" reading; a failed IPC keeps the last one.

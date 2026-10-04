@@ -65,6 +65,7 @@ export function openMainWindow(host: MainWindowHost): BrowserWindow {
     }
   })
   host.setBrowserService(browserService)
+  browserService.setPhonePreviewDriver((tabId, layout, initial) => host.cdpAccess?.phonePreview(tabId, layout, initial) ?? Promise.resolve())
   browserService.on('popup', (opener: string, child: string) => host.toolRegistry?.browserCoordination?.inherit(opener, child))
   wireBrowserEvents(host, browserService)
   const browserDownloads = new BrowserDownloadService({ workspaceRoot: host.downloadsRoot })

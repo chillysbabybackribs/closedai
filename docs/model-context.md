@@ -22,7 +22,9 @@ lives in `src/shared/provider-turn-profile.ts`. Every send builds context throug
 `buildTurnSendContext()` in `session-guide.ts`, which applies that profile before each adapter
 serializes blocks. Change one lane's flags there without altering the other providers' profiles.
 Cursor keeps `toolCatalogAttach: full_mcp` (task slices are telemetry only); Codex, Claude, and
-Antigravity use `task_slice` eager promotion from `scripts/tool-slices.json`.
+Antigravity use `task_slice` eager promotion from `scripts/tool-slices.json`. With Cursor baseline
+on, those three lanes take Cursor's profile with `toolCatalogAttach: native_discovery` (no guide or
+ledger; see below).
 
 These provider runtimes have their own native behavior and may load project policy through their
 own mechanisms. Codex can load `AGENTS.md` natively. ClosedAI does not copy the selected
@@ -63,9 +65,11 @@ omitted by rotation. Turning it off restores the previous saved preferences.
 Every user turn includes **`closedai.clock`** (`kind: application`) and **`closedai.runtime`**
 (`kind: application`): host facts (ClosedAI pane id, provider lane, **`appCheckoutPath`** for the
 host app checkout, **`chatProjectPath`** for this pane's working folder — `projectPath` mirrors
-`chatProjectPath` for compatibility — **`selfDevelopment`** when they match, chat memory index
-toggle, whether `closedai.guide` ships on this send) plus a single verify line pointing models
-at `closedai_app.state` and tool results rather than trusting descriptions blindly.
+`chatProjectPath` for compatibility — **`selfDevelopment`** (true when the two paths match), chat
+memory index toggle, whether `closedai.guide` ships on this send (`sessionGuideOnTurn`),
+`cursorBaselineEnabled`) plus a single verify line pointing models at `closedai_app.state` and
+tool results rather than trusting descriptions blindly, and a `mainProcessReload` line saying
+main-process changes need an app restart.
 The runtime's `userCollaboration` line tells all four providers to treat exploratory user messages as
 hypotheses, recommend options before implementing, and validate uncertain facts with docs, tools, or
 targeted search. The runtime's `developmentFirstRead` instruction tells all four providers to read `docs/application.md`
@@ -112,9 +116,11 @@ historical user and assistant text; they are labeled untrusted and are not fresh
 instructions. Codex receives typed `additionalContext`; Claude, Antigravity, and Cursor receive
 serialized `<closedai_context>` blocks. The serializer escapes embedded envelope markup so
 quoted text cannot close its enclosing block. New chats without a continuation receive no
-historical digest. The handoff fragment is `closedai.chat.handoff`; rotation and compaction seeds
+historical digest. The handoff fragment is `closedai.chat.handoff`; rotation and Compact seeds
 reuse it, naming the latest plan by `item_id` and pointing to `peer_chats.recall(scope=current)`
-for omitted evidence.
+for omitted evidence. The exception is Antigravity Compact with seamless rotation off: its
+re-seed is `closedai.chat.compacted` (`kind: untrusted`, wrapped in
+`<compacted_conversation_context>`; `provider-compaction.ts`).
 
 The session guide (`closedai.guide`, `kind: application`) is separate from handoffs: product
 routing (user scope, tiered depth for external facts—quick lookup vs multi-page official
@@ -186,7 +192,7 @@ On Codex, only a small eager set (typically `embedded_browser.page` and `closeda
 ships full schemas on every turn; tools such as `search.query`, `tool_batch.run`, and the browser
 CDP namespace load through discovery unless a task slice promotes them. **Task tool slices** default on (`chatToolSliceEnabled`); turn off in Tools & capabilities or set `chatToolSliceEnabled: false` in app settings.
 `ensureCodexThread`
-promotes a task slice from `scripts/tool-slices.json` (core, browser, or research; see [Tools](tools.md#seeing-what-exists-tools--capabilities)) before
+promotes a task slice from `scripts/tool-slices.json` (selfdev, core, browser, research, or full; see [Tools](tools.md#seeing-what-exists-tools--capabilities)) before
 `thread/start`; a slice change rotates the thread like any other catalog drift. Trace label
 `codex.tool_slice` records the slice id and promoted tool ids. On Cursor, the same flag selects a
 slice for telemetry but always attaches every enabled MCP namespace at `session/new`.
@@ -214,6 +220,6 @@ handoff on an existing chat, so a switched chat is not a clean baseline. The ses
 deliberate app-authored orientation layer; it does not replace provider-native behavior or tool
 descriptions.
 
-Chat naming is a separate, ephemeral task. Codex and Claude can receive a title-only request
+Chat naming is a separate, ephemeral task. Every provider lane can receive a title-only request
 after a completed exchange, with no ClosedAI tool registry or conversation continuation. Its
 generated title is app metadata and is not inserted into the user's transcript as guidance.

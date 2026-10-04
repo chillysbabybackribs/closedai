@@ -1,5 +1,5 @@
 import type { JSX, ReactNode } from 'react'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft } from '../icons/index.js'
 import { Button } from '../../components/ui/button.js'
 
 // The one-line header every Agents screen starts with. The Library shows its title and the

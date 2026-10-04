@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Browser top section · options</title>
+<script src="./f7-icons.js"></script>
+<style>
+@font-face {
+  font-family: "Inter Variable";
+  src: url("../../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2") format("woff2");
+  font-weight: 100 900;
+}
+:root {
+  color-scheme: dark;
+  --accent: #0a84ff;
+  --fg: #e3e5e8;
+  --quiet: #8a8f98;
+  font-family: "Inter Variable", Inter, system-ui, sans-serif;
+  font-feature-settings: "cv01", "ss03";
+}
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; background: #08090a; color: var(--fg); font-size: 13px; }
+header.bar { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 20px; background: rgb(8 9 10 / 88%); backdrop-filter: blur(12px); border-bottom: 1px solid rgb(255 255 255 / 7%); }
+header.bar h1 { margin: 0 12px 0 0; font-size: 13px; font-weight: 600; }
+.seg { display: flex; gap: 2px; padding: 2px; border: 1px solid rgb(255 255 255 / 8%); border-radius: 8px; background: rgb(255 255 255 / 3%); }
+.seg button { height: 26px; padding: 0 11px; border: 0; border-radius: 6px; background: none; color: var(--quiet); font: inherit; font-weight: 500; cursor: pointer; }
+.seg button:hover { color: var(--fg); }
+.seg button[aria-pressed='true'] { background: rgb(255 255 255 / 10%); color: #fff; }
+.hint { color: #6c7078; font-size: 12px; }
+main { padding: 22px 20px 60px; display: grid; gap: 30px; }
+.opt h2 { margin: 0 0 4px; font-size: 14px; font-weight: 600; }
+.opt h2 small { margin-left: 8px; color: var(--accent); font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+.opt p { margin: 0 0 12px; max-width: 900px; color: var(--quiet); line-height: 1.55; }
+body:not(.all) .opt:not(.shown) { display: none; }
+
+/* Stage: the wallpaper edge and a tile-shaped browser window, sized like the live one. */
+.stage { padding: 18px; border-radius: 14px; background: linear-gradient(135deg, #3a2a24, #1b2230 55%, #141821); }
+.win { overflow: hidden; border: 1px solid rgb(255 255 255 / 8%); border-radius: 12px; background: #0f1011; box-shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 12px 32px rgb(0 0 0 / 34%), 0 28px 64px rgb(0 0 0 / 30%); }
+.ic { display: block; fill: currentColor; }
+.tabs { display: flex; align-items: center; gap: 4px; height: 38px; padding: 0 8px; }
+.tab { display: flex; align-items: center; gap: 7px; width: 210px; height: 28px; padding: 0 8px 0 10px; border-radius: 7px; color: #a3a7ae; font-size: 12px; white-space: nowrap; }
+.tab .t { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.tab .x { opacity: 0; color: #9a9ea5; }
+.tab.on { color: #f1f2f4; }
+.tab.on .x, .tab:hover .x { opacity: 1; }
+.fav { flex: none; display: grid; place-items: center; width: 14px; height: 14px; border-radius: 4px; font-size: 9px; font-weight: 700; color: #fff; }
+.tb-icon { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 6px; color: #9ca0a7; }
+.tb-icon:hover { background: rgb(255 255 255 / 7%); color: #e6e7ea; }
+.tb-icon.dim { opacity: 0.4; }
+.toolbar { display: grid; grid-template-columns: auto auto auto 1fr auto auto auto; align-items: center; gap: 4px; height: 44px; padding: 0 10px; }
+.omni-wrap { display: flex; justify-content: center; min-width: 0; }
+/* The address bar you liked, unchanged: lock + domain centred on a flat 6% lift, 9px corners, max 520px. */
+.omni { display: flex; align-items: center; justify-content: center; gap: 7px; width: min(100%, 520px); height: 30px; border-radius: 9px; background: color-mix(in srgb, #fff 6%, var(--band)); color: #f4f5f6; font-size: 13.5px; }
+.omni .ic { color: #93999f; }
+.pill { display: flex; align-items: center; gap: 5px; height: 26px; padding: 0 9px; border-radius: 6px; color: #b4b8be; font-size: 12px; }
+.pill.on { background: rgb(255 255 255 / 9%); color: #f1f2f4; }
+.page { height: 230px; padding: 34px 48px; background: #f6f6f7; color: #1d1d1f; }
+.page .h { width: 300px; height: 22px; border-radius: 6px; background: #1d1d1f; opacity: 0.88; }
+.page .l { height: 10px; margin-top: 14px; border-radius: 5px; background: #c9cace; }
+.page .l:nth-child(2) { width: 82%; margin-top: 22px; }
+.page .l:nth-child(3) { width: 74%; }
+.page .l:nth-child(4) { width: 64%; }
+.page .card { display: inline-block; width: 200px; height: 70px; margin: 26px 14px 0 0; border-radius: 10px; background: #e6e7ea; }
+
+/* ---- Current: near-black strip over a lighter grey toolbar, with a seam ---- */
+.v-current { --band: #1c1c1f; }
+.v-current .tabs { background: #0b0b0c; }
+.v-current .tab.on { background: #232326; }
+.v-current .toolbar { background: #1c1c1f; box-shadow: inset 0 -1px 0 rgb(255 255 255 / 8%); }
+
+/* ---- A · One graphite band ---- */
+.v-a { --band: #222225; }
+.v-a .top { background: #222225; box-shadow: inset 0 1px 0 rgb(255 255 255 / 5%), inset 0 -1px 0 rgb(0 0 0 / 55%); }
+.v-a .tabs { height: 36px; padding-top: 6px; }
+.v-a .tab:hover:not(.on) { background: rgb(255 255 255 / 4%); }
+.v-a .tab.on { background: rgb(255 255 255 / 9%); box-shadow: inset 0 0.5px 0 rgb(255 255 255 / 10%); }
+
+/* ---- B · Lit toolbar (macOS window gradient) ---- */
+.v-b { --band: #29292c; }
+.v-b .top { background: linear-gradient(#323235, #262629); box-shadow: inset 0 1px 0 rgb(255 255 255 / 9%), inset 0 -1px 0 rgb(0 0 0 / 60%); }
+.v-b .tabs { height: 36px; padding-top: 6px; }
+.v-b .tab:hover:not(.on) { background: rgb(255 255 255 / 5%); }
+.v-b .tab.on { background: rgb(255 255 255 / 11%); box-shadow: inset 0 0.5px 0 rgb(255 255 255 / 14%), 0 1px 2px rgb(0 0 0 / 25%); }
+.v-b .omni { background: rgb(0 0 0 / 22%); box-shadow: inset 0 0.5px 0 rgb(0 0 0 / 30%); }
+
+/* ---- C · Safari stacked: toolbar first, tabs under it, one surface ---- */
+.v-c { --band: #252528; }
+.v-c .top { display: flex; flex-direction: column; background: #252528; box-shadow: inset 0 1px 0 rgb(255 255 255 / 6%), inset 0 -1px 0 rgb(0 0 0 / 55%); }
+.v-c .toolbar { order: 1; height: 46px; }
+.v-c .tabs { order: 2; gap: 0; height: 30px; padding: 0 0 4px; }
+.v-c .tab { flex: 1; width: auto; height: 26px; justify-content: center; border-radius: 0; box-shadow: inset -1px 0 0 rgb(255 255 255 / 6%); }
+.v-c .tab .t { flex: 0 1 auto; }
+.v-c .tab { position: relative; }
+.v-c .tab .x { position: absolute; left: 8px; }
+.v-c .tab.on { margin: 0 2px; border-radius: 6px; background: rgb(255 255 255 / 10%); box-shadow: none; }
+.v-c .tabs .newtab { margin: 0 6px; }
+
+/* ---- D · Frosted vibrancy ---- */
+.v-d { --band: #2a2a2e; }
+.v-d .win { background: #0f1011 url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10'/>"); }
+.v-d .top { position: relative; z-index: 1; margin-bottom: -82px; background: rgb(40 40 44 / 72%); backdrop-filter: blur(24px) saturate(1.6); box-shadow: inset 0 1px 0 rgb(255 255 255 / 8%), inset 0 -1px 0 rgb(255 255 255 / 6%); }
+.v-d .page { padding-top: 116px; height: 312px; background: linear-gradient(#e9eef8, #f6f6f7 120px); }
+.v-d .page .hero { height: 60px; margin: -116px -48px 56px; background: linear-gradient(90deg, #ff9a6b, #c86bff 50%, #5aa9ff); }
+.v-d .tabs { height: 36px; padding-top: 6px; }
+.v-d .tab.on { background: rgb(255 255 255 / 12%); }
+.v-d .omni { background: rgb(255 255 255 / 9%); }
+
+/* ---- E · Card-matched: one dark tone, same as the chat cards ---- */
+.v-e { --band: #141516; }
+.v-e .top { background: radial-gradient(ellipse 70% 120px at 0 0, rgb(255 255 255 / 4.5%), transparent 80%), #111213; box-shadow: inset 0 -1px 0 rgb(255 255 255 / 7%); }
+.v-e .tabs { height: 36px; padding-top: 6px; }
+.v-e .tab.on { background: rgb(255 255 255 / 7%); }
+.v-e .omni { background: rgb(255 255 255 / 7%); }
+</style>
+</head>
+<body>
+<header class="bar">
+  <h1>Browser top section</h1>
+  <div class="seg" id="seg"></div>
+  <div class="seg"><button id="all" aria-pressed="false">Show all</button></div>
+  <span class="hint">← → to switch · the address bar is identical in every option</span>
+</header>
+<main id="main"></main>
+<script>
+const ic = (k, s = 16) => { const i = F7[k]; const z = Math.round(s * 1.12 * 10) / 10; return `<svg class="ic" width="${z}" height="${z}" viewBox="0 0 ${i.w} ${i.h}">${i.body}</svg>` }
+const OPTIONS = [
+  { id: 'current', name: 'Current', why: 'Near-black tab strip over a lighter grey toolbar with a seam between them: the two-tone you want gone, and the darkest part of the app.' },
+  { id: 'a', name: 'A · One graphite band', rec: true, why: 'Tab strip and toolbar become one lighter graphite surface with no seam; the active tab is a soft lift and a single dark edge separates the bar from the page. Same height, closest to today, and it lightens the area without drawing attention.' },
+  { id: 'b', name: 'B · Lit toolbar', why: 'The macOS dark-window toolbar: a gentle top-to-bottom gradient with a bright top edge, so the bar reads as a lit, raised object. The address field sits slightly recessed into it. The most "native Mac" of the five, and the lightest.' },
+  { id: 'c', name: 'C · Safari stacked', why: 'Safari’s separate-tab layout: navigation and the address bar on top, equal-width tabs in a slim row underneath, all one surface. Puts the address bar first and makes tabs quieter. A bigger layout change: tab widths stretch to fill the row.' },
+  { id: 'd', name: 'D · Frosted', why: 'A translucent bar that blurs the page scrolling under it, like Safari and Finder. Most premium-looking, but it is part of the depth & material direction you set aside, and the native page view can’t render under DOM chrome, so this one needs real engineering to fake.' },
+  { id: 'e', name: 'E · Card-matched dark', why: 'One tone, but kept dark: the bar takes the chat cards’ graphite and corner glow so the browser matches the chats exactly. Fixes the two-tone without lightening anything, in case lighter feels off next to the chats.' },
+]
+const TABS = [
+  { t: 'Reddit - The heart of the internet', c: '#ff4500', l: 'r' },
+  { t: 'SF Symbols - Google Search', c: '#4285f4', l: 'G' },
+  { t: 'SF Symbols 7 - WWDC25 - Videos', c: '#1d1d1f', l: '' },
+  { t: 'linear.app — Plan and build', c: '#5e6ad2', l: 'L', on: true },
+]
+function browser() {
+  const tabs = `<div class="tabs"><span class="tb-icon">${ic('layout-grid', 14)}</span>${TABS.map((t) => `<div class="tab${t.on ? ' on' : ''}"><span class="fav" style="background:${t.c}">${t.l}</span><span class="t">${t.t}</span><span class="x">${ic('x', 11)}</span></div>`).join('')}<span class="tb-icon newtab">${ic('plus', 14)}</span></div>`
+  const bar = `<div class="toolbar"><span class="tb-icon">${ic('arrow-left', 15)}</span><span class="tb-icon dim">${ic('arrow-right', 15)}</span><span class="tb-icon">${ic('refresh-cw', 14)}</span>
+    <div class="omni-wrap"><div class="omni">${ic('lock', 12)}<span>linear.app</span></div></div>
+    <span class="pill on">${ic('layers', 13)}Page</span><span class="tb-icon">${ic('star', 15)}</span><span class="tb-icon">${ic('download', 15)}</span></div>`
+  return `<div class="win"><div class="top">${tabs}${bar}</div><div class="page"><div class="hero"></div><div class="h"></div><div class="l"></div><div class="l"></div><div class="l"></div><div class="card"></div><div class="card"></div><div class="card"></div></div></div>`
+}
+document.getElementById('main').innerHTML = OPTIONS.map((o) => `<section class="opt v-${o.id}" id="o-${o.id}"><h2>${o.name}${o.rec ? '<small>Recommended</small>' : ''}</h2><p>${o.why}</p><div class="stage">${browser()}</div></section>`).join('')
+const seg = document.getElementById('seg')
+seg.innerHTML = OPTIONS.map((o) => `<button data-id="${o.id}">${o.name.split(' · ')[0]}</button>`).join('')
+let cur = new URLSearchParams(location.search).get('o') || 'a'
+function show(id) {
+  cur = id
+  for (const b of seg.children) b.setAttribute('aria-pressed', String(b.dataset.id === id))
+  for (const s of document.querySelectorAll('.opt')) s.classList.toggle('shown', s.id === 'o-' + id)
+}
+seg.onclick = (e) => { const b = e.target.closest('button'); if (b) show(b.dataset.id) }
+const all = document.getElementById('all')
+all.onclick = () => { const on = !document.body.classList.contains('all'); document.body.classList.toggle('all', on); all.setAttribute('aria-pressed', String(on)) }
+addEventListener('keydown', (e) => {
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+  const i = OPTIONS.findIndex((o) => o.id === cur)
+  show(OPTIONS[(i + (e.key === 'ArrowRight' ? 1 : OPTIONS.length - 1)) % OPTIONS.length].id)
+})
+show(cur)
+</script>
+</body>
+</html>

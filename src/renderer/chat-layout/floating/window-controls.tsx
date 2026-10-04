@@ -1,5 +1,5 @@
 import { createContext, useContext, type JSX, type PointerEvent as ReactPointerEvent } from 'react'
-import { Copy, Minus, Square, X } from 'lucide-react'
+import { Copy, Minus, Square, X } from '../../icons/index.js'
 import type { ResizeEdge } from './window-layout.js'
 
 const EDGES: readonly ResizeEdge[] = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw']
@@ -54,9 +54,11 @@ export const BrowserWindowContext = createContext<{ maximized: boolean; floating
   maximized: false, floating: false, canMaximize: false, toggleMaximize: () => {}
 })
 
-/** The browser window's buttons: minimizing hides it, and the dock's Browser icon brings it back. */
+/** The browser window's buttons: minimizing hides it, and the dock's Browser icon brings it back.
+ *  Close is there for familiarity and does the same — the tabs are kept. */
 export function BrowserWindowControls({ busy, onMinimize }: { busy: boolean; onMinimize: () => void }): JSX.Element {
   const { maximized, floating, canMaximize, toggleMaximize } = useContext(BrowserWindowContext)
   return <WindowControls id="browser" busy={busy} maximized={maximized} floating={floating} canMinimize canMaximize={canMaximize}
-    onMinimize={onMinimize} onToggleMaximize={toggleMaximize} />
+    onMinimize={onMinimize} onToggleMaximize={toggleMaximize}
+    closeLabel="Close browser · tabs are kept; reopen it from the dock" canClose onClose={onMinimize} />
 }

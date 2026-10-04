@@ -7,7 +7,7 @@ import {
   type KeyboardEvent,
   type Ref
 } from 'react'
-import { ArrowDownIcon } from 'lucide-react'
+import { ArrowDownIcon } from '../../renderer/icons/index.js'
 
 import { cn } from '../../lib/utils.js'
 import { Button } from './button.js'

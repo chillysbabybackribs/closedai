@@ -58,10 +58,117 @@ export function chatPaneIds(tree: ChatLayout | null): string[] {
 }
 
 export function removePane(tree: ChatLayout | null, id: string): ChatLayout | null {
-  if (!tree || tree.kind === 'pane') return tree?.id === id ? null : tree
-  const first = removePane(tree.first, id)
-  const second = removePane(tree.second, id)
-  return !first ? second : !second ? first : { ...tree, first, second }
+  return tree ? prunePanes(tree, (pane) => pane.id === id) : null
+}
+
+type LayoutLeaf = Extract<ChatLayout, { kind: 'pane' }>
+type Axis = 'horizontal' | 'vertical'
+/** The share of a node's extent along each axis that its surviving panes held. */
+type Span = Record<Axis, number>
+type Pruned = { node: ChatLayout; span: Span }
+const otherAxis = (axis: Axis): Axis => axis === 'horizontal' ? 'vertical' : 'horizontal'
+const clampRatio = (ratio: number): number => Math.max(0.05, Math.min(0.95, ratio))
+
+function pruneNode(node: ChatLayout, drop: (pane: LayoutLeaf) => boolean, spans?: Map<string, [number, number]>): Pruned | null {
+  if (node.kind === 'pane') return drop(node) ? null : { node, span: { horizontal: 1, vertical: 1 } }
+  const first = pruneNode(node.first, drop, spans)
+  const second = pruneNode(node.second, drop, spans)
+  const along = node.axis
+  const across = otherAxis(along)
+  if (!first || !second) {
+    const kept = first ?? second
+    if (!kept) return null
+    const share = first ? node.ratio : 1 - node.ratio
+    return { node: kept.node, span: { [along]: share * kept.span[along], [across]: kept.span[across] } as Span }
+  }
+  const a = first.span[along]
+  const b = second.span[along]
+  spans?.set(node.id, [a, b])
+  const ratio = a === b ? node.ratio : clampRatio(node.ratio * a / (node.ratio * a + (1 - node.ratio) * b))
+  const same = first.node === node.first && second.node === node.second && ratio === node.ratio
+  return {
+    node: same ? node : { ...node, ratio, first: first.node, second: second.node },
+    span: { [along]: node.ratio * a + (1 - node.ratio) * b, [across]: Math.max(first.span[across], second.span[across]) } as Span
+  }
+}
+
+/**
+ * `tree` without the panes `drop` names. The space a removed pane held is shared by the panes left
+ * in its row or column in proportion to their sizes, rather than all going to its nearest sibling,
+ * and the tree it came from keeps its ratios, so showing the pane again restores the old sizes.
+ */
+export function prunePanes(tree: ChatLayout, drop: (pane: LayoutLeaf) => boolean): ChatLayout | null {
+  return pruneNode(tree, drop)?.node ?? null
+}
+
+/**
+ * The ratio split `id` stores so that, once `drop`'s panes are pruned, it shows `shown`: the
+ * inverse of prunePanes, so a divider dragged while a window is hidden lands where it was let go.
+ */
+export function unprunedRatio(tree: ChatLayout, drop: (pane: LayoutLeaf) => boolean, id: string, shown: number): number {
+  const spans = new Map<string, [number, number]>()
+  pruneNode(tree, drop, spans)
+  const [a, b] = spans.get(id) ?? [1, 1]
+  return a === b ? shown : shown * b / (shown * b + (1 - shown) * a)
+}
+
+/** The row (horizontal) or column (vertical) members below `node`: subtrees not split along `axis`. */
+function runMembers(node: ChatLayout, axis: Axis): ChatLayout[] {
+  return node.kind === 'split' && node.axis === axis && !node.sidebarStack
+    ? [...runMembers(node.first, axis), ...runMembers(node.second, axis)] : [node]
+}
+
+function runWeights(node: ChatLayout, axis: Axis, weight: number, out: Map<ChatLayout, number>): void {
+  if (node.kind === 'split' && node.axis === axis && !node.sidebarStack) {
+    runWeights(node.first, axis, weight * node.ratio, out)
+    runWeights(node.second, axis, weight * (1 - node.ratio), out)
+  } else out.set(node, weight)
+}
+
+function withRunWeights(node: ChatLayout, axis: Axis, weight: (member: ChatLayout) => number): ChatLayout {
+  if (node.kind !== 'split' || node.axis !== axis || node.sidebarStack) return node
+  const total = (child: ChatLayout) => runMembers(child, axis).reduce((sum, member) => sum + weight(member), 0)
+  const a = total(node.first)
+  const b = total(node.second)
+  return { ...node, ratio: clampRatio(a / (a + b)),
+    first: withRunWeights(node.first, axis, weight), second: withRunWeights(node.second, axis, weight) }
+}
+
+function splitHolding(node: ChatLayout, child: ChatLayout): Extract<ChatLayout, { kind: 'split' }> | null {
+  if (node.kind === 'pane') return null
+  return node.first === child || node.second === child ? node : splitHolding(node.first, child) ?? splitHolding(node.second, child)
+}
+
+/**
+ * Give the window `id` an even share of the row or column it was just added to (the chain of
+ * same-axis splits above it); the other members shrink in proportion and keep their relative sizes.
+ */
+export function evenShare(tree: ChatLayout, id: string): ChatLayout {
+  const visit = (node: ChatLayout): ChatLayout => {
+    if (node.kind === 'pane') return node
+    if (!node.sidebarStack) {
+      const leaf = runMembers(node, node.axis).find((member) => member.kind === 'pane' && member.id === id)
+      if (leaf) {
+        const weights = new Map<ChatLayout, number>()
+        runWeights(node, node.axis, 1, weights)
+        // The window it was split from takes back the half it gave, then shrinks with the rest.
+        const parent = splitHolding(node, leaf)
+        const target = parent && (parent.first === leaf ? parent.second : parent.first)
+        if (target && weights.has(target)) {
+          weights.set(target, weights.get(target)! + weights.get(leaf)!)
+          weights.set(leaf, 0)
+        }
+        const share = 1 / weights.size
+        const rest = 1 - weights.get(leaf)!
+        if (rest <= 0) return node
+        return withRunWeights(node, node.axis, (member) => member === leaf ? share : weights.get(member)! * (1 - share) / rest)
+      }
+    }
+    const first = visit(node.first)
+    const second = visit(node.second)
+    return first === node.first && second === node.second ? node : { ...node, first, second }
+  }
+  return visit(tree)
 }
 
 export function replacePane(tree: ChatLayout, target: string, id: string): ChatLayout {
@@ -98,9 +205,9 @@ export function dockBrowser(tree: ChatLayout, target: string, edge: DockEdge, sp
   if (!chats) return tree
   const browser: ChatLayout = { kind: 'pane', id: BROWSER_PANE_ID }
   const before = edge === 'left' || edge === 'top'
-  return { kind: 'split', id: splitId, ratio: 0.5,
+  return evenShare({ kind: 'split', id: splitId, ratio: 0.5,
     axis: edge === 'left' || edge === 'right' ? 'horizontal' : 'vertical',
-    first: before ? browser : chats, second: before ? chats : browser }
+    first: before ? browser : chats, second: before ? chats : browser }, BROWSER_PANE_ID)
 }
 
 export function resizeSplit(tree: ChatLayout, id: string, ratio: number): ChatLayout {

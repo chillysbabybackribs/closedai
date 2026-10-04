@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>In-task UI · E options</title>
+<script src="./task-icons.js"></script>
+<style>
+@font-face { font-family: "Inter Variable"; src: url("../../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2") format("woff2"); font-weight: 100 900; }
+@font-face { font-family: "Geist Mono"; src: url("../../node_modules/@fontsource-variable/geist-mono/files/geist-mono-latin-wght-normal.woff2") format("woff2"); font-weight: 100 900; }
+:root {
+  color-scheme: dark;
+  --card: #141516; --copy: #e9eaec; --activity: #74767a; --activity-hover: #a6aab1; --hair: rgb(255 255 255 / 7%);
+  --command: #b2a1e5; --edit: #d3b477; --tool: #83b5db; --read: #8fb8a8; --add: #7fbf8f; --del: #e08787;
+  font-family: "Inter Variable", Inter, system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 18px 22px 30px; background: #0b0c0d; color: var(--copy); }
+.wrap { width: 720px; margin: 0 auto; }
+svg.i { width: 15px; height: 15px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+.num { font-variant-numeric: tabular-nums; }
+.mono { font-family: "Geist Mono", ui-monospace, monospace; font-size: 13px; }
+
+/* Toolbar */
+.bar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin-bottom: 10px; font-size: 12px; color: #8a8f98; }
+.seg { display: inline-flex; padding: 2px; border-radius: 8px; background: #17181a; box-shadow: inset 0 0 0 1px rgb(255 255 255 / 6%); }
+.seg button { border: 0; background: none; color: #9a9ea6; font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 6px; cursor: pointer; }
+.seg button[aria-pressed=true] { background: #2a2c30; color: #eef0f3; box-shadow: 0 1px 2px rgb(0 0 0 / 40%), inset 0 1px 0 rgb(255 255 255 / 6%); }
+.restart { margin-left: auto; border: 0; background: #1d1f22; color: #c9ccd2; font: inherit; font-size: 12px; padding: 5px 12px; border-radius: 7px; cursor: pointer; box-shadow: inset 0 0 0 1px rgb(255 255 255 / 7%); }
+.note { margin: 0 0 12px 2px; font-size: 13px; color: #9a9ea6; line-height: 1.5; min-height: 40px; }
+.note b { color: #e3e5e8; font-weight: 600; }
+
+/* Chat card */
+.chat {
+  position: relative; height: 600px; display: flex; flex-direction: column; border-radius: 16px; background: var(--card); overflow: hidden;
+  box-shadow: 0 2px 5px -2px rgb(0 0 0 / 32%), 0 10px 24px -14px rgb(0 0 0 / 55%), inset 0 0 0 1px rgb(255 255 255 / 6%), inset 0 1px 0 rgb(255 255 255 / 5%);
+}
+.scroll { flex: 1; overflow-y: auto; padding: 26px 40px 18px; scrollbar-width: thin; scrollbar-color: #2a2c2f transparent; }
+.user { width: fit-content; max-width: 80%; margin: 0 0 22px auto; padding: 9px 14px; border-radius: 14px; background: #1f2022; font-size: 15px; line-height: 1.6; box-shadow: inset 0 0 0 1px rgb(255 255 255 / 5%), inset 0 1px 0 rgb(255 255 255 / 4%); }
+.prose { margin: 0 0 14px; font-size: 15px; line-height: 1.65; color: var(--copy); }
+.prose code { font-family: "Geist Mono", monospace; font-size: 13px; padding: 1px 5px; border-radius: 4px; background: #222326; }
+
+/* Turn header: "Working for 12s" over a hairline — the ChatGPT idea. */
+.turn-head { display: flex; align-items: center; gap: 6px; margin: 0 0 14px; padding: 0 0 10px; border-bottom: 1px solid var(--hair); font-size: 15px; color: var(--activity); cursor: default; user-select: none; }
+.turn-head[data-done] { cursor: pointer; }
+.turn-head[data-done]:hover { color: var(--activity-hover); }
+.turn-head .chev { width: 14px; height: 14px; transition: transform 200ms ease; }
+.turn-head[data-open] .chev { transform: rotate(90deg); }
+.process { display: grid; grid-template-rows: 1fr; transition: grid-template-rows 260ms cubic-bezier(.2,.7,.2,1), opacity 220ms ease; }
+.process > div { min-height: 0; overflow: hidden; }
+.process[data-collapsed] { grid-template-rows: 0fr; opacity: 0; }
+
+/* Step rows: plain text lines, no chrome. */
+.row { display: flex; align-items: center; gap: 9px; height: 26px; margin: 0 0 10px; font-size: 15px; color: var(--activity); }
+.row .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .t .obj { color: var(--activity); }
+.row .m { margin-left: 4px; font-size: 12px; color: var(--activity); opacity: .8; }
+.row .diff { margin-left: auto; display: inline-flex; gap: 6px; font-size: 12px; }
+.diff .a { color: var(--add); } .diff .d { color: var(--del); }
+.row.sum { cursor: pointer; width: fit-content; max-width: 100%; }
+.row.sum:hover { color: var(--activity-hover); }
+.row.sum .chev { width: 13px; height: 13px; opacity: 0; transition: opacity 120ms, transform 200ms; }
+.row.sum:hover .chev, .row.sum[data-open] .chev { opacity: 1; }
+.row.sum[data-open] .chev { transform: rotate(90deg); }
+.row.sum .diff { margin-left: 8px; }
+.color .row[data-k=command] > .i { color: var(--command); }
+.color .row[data-k=edit] > .i { color: var(--edit); }
+.color .row[data-k=read] > .i { color: var(--read); }
+.color .row[data-k=shot] > .i { color: var(--tool); }
+
+/* Live line: verb shimmers, slides in from below (fixed height → no scroll jump). */
+.live { position: relative; height: 26px; margin: 0 0 10px; overflow: hidden; }
+.live .row { position: absolute; inset: 0; margin: 0; animation: rollin 420ms cubic-bezier(.2,.7,.2,1); }
+@keyframes rollin { from { transform: translateY(100%); opacity: 0; } }
+.shimmer {
+  --spread: 60px;
+  background-image: linear-gradient(90deg, transparent calc(50% - var(--spread)), #d9dbe0, transparent calc(50% + var(--spread))), linear-gradient(var(--activity-hover), var(--activity-hover));
+  background-repeat: no-repeat, repeat; background-size: 250% 100%, auto;
+  -webkit-background-clip: text; background-clip: text; color: transparent; animation: shimmer 2.2s linear infinite;
+}
+@keyframes shimmer { from { background-position: 100% center, 0 0; } to { background-position: 0% center, 0 0; } }
+
+/* E2 — a quiet two-line tail under the live line, no panel. */
+.tail { height: calc(2 * 1.6em); margin: -6px 0 12px 24px; padding-left: 11px; border-left: 1px solid var(--hair); line-height: 1.6; color: #5d5f63; overflow: hidden; animation: fadein 300ms ease; }
+.tail div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@keyframes fadein { from { opacity: 0; } }
+
+/* Expanded burst detail */
+.detail { margin: -4px 0 12px 7px; padding-left: 16px; border-left: 1px solid var(--hair); }
+.detail .row { height: 24px; margin: 0 0 4px; font-size: 14px; }
+
+/* Screenshots — always a fixed box, so loading never moves the scroll. */
+.thumb { flex: none; display: block; border-radius: 5px; background: #0d0e0f center / cover no-repeat; box-shadow: inset 0 0 0 1px rgb(255 255 255 / 9%); cursor: zoom-in; transition: box-shadow 120ms, transform 120ms; }
+.thumb:hover { box-shadow: inset 0 0 0 1px rgb(255 255 255 / 22%); transform: translateY(-1px); }
+.row .thumb { width: 42px; height: 26px; margin-left: 8px; }
+.strip { display: flex; gap: 8px; height: 72px; margin: -2px 0 14px 24px; }
+.strip .thumb { width: 115px; height: 72px; border-radius: 8px; }
+.strip .cap { align-self: flex-end; font-size: 12px; color: var(--activity); }
+.lightbox { position: absolute; inset: 0; z-index: 5; display: grid; place-items: center; background: rgb(8 9 10 / 72%); backdrop-filter: blur(6px); animation: fadein 160ms ease; cursor: zoom-out; }
+.lightbox .big { width: 86%; aspect-ratio: 16 / 10; border-radius: 10px; background: center / cover no-repeat; box-shadow: 0 20px 50px -10px rgb(0 0 0 / 70%), inset 0 0 0 1px rgb(255 255 255 / 10%); }
+.lightbox .cap { position: absolute; bottom: 22px; font-size: 12px; color: #9a9ea6; }
+
+/* Composer + E3 pinned status */
+.foot { padding: 0 40px 16px; }
+.pin { display: flex; align-items: center; gap: 9px; height: 0; overflow: hidden; padding: 0 14px; font-size: 13px; color: var(--activity); transition: height 220ms cubic-bezier(.2,.7,.2,1); }
+.pin[data-on] { height: 34px; }
+.pin .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pin .r { margin-left: auto; font-size: 12px; }
+.pin .rollbox { position: relative; flex: 1; min-width: 0; height: 20px; overflow: hidden; }
+.pin .rollbox > div { position: absolute; inset: 0; display: flex; align-items: center; gap: 8px; animation: rollin 380ms cubic-bezier(.2,.7,.2,1); }
+.composer { display: flex; align-items: center; gap: 10px; height: 46px; padding: 0 10px 0 12px; border-radius: 14px; background: #1b1c1e; box-shadow: inset 0 0 0 1px rgb(255 255 255 / 7%), inset 0 1px 0 rgb(255 255 255 / 4%); font-size: 14px; color: #6d7076; }
+.composer .grow { flex: 1; }
+.composer .spin { width: 14px; height: 14px; color: #8a8d93; animation: rot 900ms linear infinite; }
+.composer .send { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: #e9eaec; color: #141516; }
+.composer .send svg { width: 13px; height: 13px; }
+.composer .send[data-stop] svg { fill: currentColor; width: 10px; height: 10px; }
+@keyframes rot { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .shimmer, .composer .spin { animation: none; } .live .row, .pin .rollbox > div { animation: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="bar">
+    <span>Layout</span>
+    <span class="seg" data-key="layout"><button data-v="e1">E1 · Ledger</button><button data-v="e2">E2 · Ledger + tail</button><button data-v="e3">E3 · Pinned status</button></span>
+    <span>Screenshots</span>
+    <span class="seg" data-key="shots"><button data-v="chip">Chip</button><button data-v="strip">Filmstrip</button><button data-v="fold">Folded</button></span>
+    <span>Icons</span>
+    <span class="seg" data-key="icons"><button data-v="mono">Mono</button><button data-v="color">Color</button></span>
+    <button class="restart" id="restart">Restart</button>
+  </div>
+  <p class="note" id="note"></p>
+  <div class="chat" id="chat">
+    <div class="scroll" id="scroll"></div>
+    <div class="foot">
+      <div class="pin" id="pin"></div>
+      <div class="composer"><svg class="i" viewBox="0 0 24 24">${''}</svg><span class="grow">Ask anything</span><span id="cspin"></span><span class="send" id="send"></span></div>
+    </div>
+  </div>
+</div>
+<script>
+const I = (n, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24">${TI[n]}</svg>`
+document.querySelector('.composer > svg').outerHTML = I('plus')
+const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+const dur = (s) => s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`
+
+const NOTES = {
+  e1: '<b>E1 · Ledger.</b> ChatGPT’s idea, ours: “Working for 12s” over a hairline, prose in between, and one live line whose verb shimmers. When a run of steps ends it folds into one summary line. When the answer starts, the whole process folds under “Worked for 38s ›”.',
+  e2: '<b>E2 · Ledger + tail.</b> Same as E1, but the live line keeps a quiet two-line output tail under it (the part of D5 that earned its place) — no panel, no border box. The tail disappears when the step finishes.',
+  e3: '<b>E3 · Pinned status.</b> The live step never enters the transcript: it rolls in a slim line pinned above the composer. The transcript only receives prose and finished summary lines, so it grows in whole steps and auto-scroll never fights it.'
+}
+
+/* A fake app-window screenshot, drawn as SVG so it has a real image to show. */
+const shot = (accent) => `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 200'><rect width='320' height='200' fill='#0f1011'/><rect width='320' height='16' fill='#18191b'/><circle cx='10' cy='8' r='3' fill='#444'/><circle cx='20' cy='8' r='3' fill='#444'/><rect x='0' y='16' width='64' height='184' fill='#131416'/><rect x='10' y='30' width='40' height='5' rx='2' fill='#2b2d30'/><rect x='10' y='44' width='34' height='5' rx='2' fill='#2b2d30'/><rect x='10' y='58' width='44' height='5' rx='2' fill='#2b2d30'/><rect x='84' y='30' width='150' height='70' rx='8' fill='#1b1c1e'/><rect x='96' y='44' width='90' height='6' rx='3' fill='${accent}'/><rect x='96' y='58' width='120' height='5' rx='2' fill='#34363a'/><rect x='96' y='70' width='100' height='5' rx='2' fill='#34363a'/><rect x='84' y='112' width='220' height='5' rx='2' fill='#2b2d30'/><rect x='84' y='124' width='190' height='5' rx='2' fill='#2b2d30'/><rect x='110' y='168' width='170' height='20' rx='8' fill='#1d1e21' stroke='#2e3034'/></svg>`).replace(/'/g, '%27')}")`
+
+const KIND = {
+  command: { icon: 'square-terminal', live: 'Running', done: 'Ran' },
+  read: { icon: 'file-text', live: 'Reading', done: 'Read' },
+  edit: { icon: 'file-pen-line', live: 'Editing', done: 'Edited' },
+  shot: { icon: 'app-window', live: 'Capturing', done: 'Captured' },
+  list: { icon: 'folder', live: 'Listing files in', done: 'Listed files in' }
+}
+const summary = (steps) => {
+  const n = (k) => steps.filter((s) => s.k === k).length
+  const parts = []
+  const p = (c, one, many) => c && parts.push(c === 1 ? one : many.replace('#', c))
+  p(n('edit'), 'edited 1 file', 'edited # files')
+  p(n('read'), 'read 1 file', 'read # files')
+  p(n('list'), 'listed 1 folder', 'listed # folders')
+  p(n('command'), 'ran 1 command', 'ran # commands')
+  p(n('shot'), 'captured the window', 'captured # screenshots')
+  const s = parts.join(', ')
+  return s[0].toUpperCase() + s.slice(1)
+}
+
+/* ---------- state ---------- */
+const opts = { layout: 'e1', shots: 'chip', icons: 'mono' }
+let S, timers = []
+const scrollEl = document.getElementById('scroll')
+
+function reset() {
+  timers.forEach(clearTimeout); timers = []
+  S = { t0: Date.now(), done: false, open: false, items: [], live: null, final: '' }
+  render(); play()
+}
+const at = (ms, fn) => timers.push(setTimeout(() => { fn(); render() }, ms))
+const elapsed = () => Math.round((Date.now() - S.t0) / 1000)
+let burst
+function startBurst() { burst = { type: 'burst', steps: [], open: false }; S.items.push(burst) }
+function step(k, obj, opt = {}) { S.live = { k, obj, ...opt, t0: Date.now(), id: Math.random() }; S.thinking = false }
+function finishStep() { const l = S.live; l.sec = Math.max(1, Math.round((Date.now() - l.t0) / 1000)); burst.steps.push(l); S.live = null }
+
+function play() {
+  let t = 0; const q = (d, fn) => at(t += d, fn)
+  q(300, () => { S.thinking = true })
+  q(1500, () => { S.thinking = false; S.items.push({ type: 'text', html: 'I’ll run the activity tests first, then fix whatever fails.' }) })
+  q(700, () => { startBurst(); step('command', 'npm run test:one -- activity-steps', { mono: true, out: ['✓ activity-steps.test.ts (14)', '✗ step icon follows phase'] }) })
+  q(2600, () => { finishStep(); step('read', 'activity-step-list.tsx') })
+  q(1300, () => { finishStep(); step('read', 'activity-steps.css') })
+  q(1100, () => { finishStep(); burst.closed = true; S.thinking = true })
+  q(1400, () => { S.thinking = false; S.items.push({ type: 'text', html: 'One test fails: the step icon doesn’t follow the running phase. I’ll patch it and check the result in the app.' }) })
+  q(800, () => { startBurst(); step('edit', 'activity-step-list.tsx', { add: 18, del: 4, out: ['-  if (step.phase === \'running\')', '+  if (isLive(step))'] }) })
+  q(2200, () => { finishStep(); step('command', 'npm run build', { mono: true, out: ['vite v6.3 building for production…', '✓ 1,284 modules transformed.'] }) })
+  q(2400, () => { finishStep(); step('shot', 'application window', { out: ['Surface: application window'] }) })
+  q(1500, () => { finishStep(); burst.steps.at(-1).img = shot('#d3b477'); step('shot', 'the activity panel', { out: ['Crop of the chat pane'] }) })
+  q(1300, () => { finishStep(); burst.steps.at(-1).img = shot('#83b5db'); burst.closed = true; S.thinking = true })
+  q(1500, () => { S.thinking = false; S.answering = true })
+  const answer = 'Fixed. The step icon now follows the live phase, so a running step shows the spinner and a finished one shows its kind icon. The activity suite passes (15 of 15), the build is clean, and the two captures show the panel in its running state.'.split(' ')
+  answer.forEach((w, i) => q(i === 0 ? 0 : 70, () => { S.final += (i ? ' ' : '') + w; if (i === 0) { S.done = true; S.doneAt = elapsed() } if (i === answer.length - 1) S.finished = true }))
+  q(9000, reset)
+}
+
+/* ---------- render ---------- */
+function liveRow(l) {
+  const K = KIND[l.k]
+  return `<div class="row" data-k="${l.k}" data-id="${l.id}">${I(K.icon)}<span class="t"><span class="shimmer">${K.live}</span> <span class="obj ${l.mono ? 'mono' : ''}">${esc(l.obj)}</span></span><span class="m num" data-tick="${l.t0}"></span></div>`
+}
+function doneRow(s, small) {
+  const K = KIND[s.k]
+  const diff = s.add ? `<span class="diff num"><span class="a">+${s.add}</span><span class="d">−${s.del}</span></span>` : ''
+  const img = s.img && (opts.shots === 'chip' || (opts.shots === 'fold' && small)) ? `<span class="thumb" data-img='${s.img}' style='background-image:${s.img}'></span>` : ''
+  return `<div class="row" data-k="${s.k}">${I(K.icon)}<span class="t">${K.done} <span class="obj ${s.mono ? 'mono' : ''}">${esc(s.obj)}</span></span><span class="m num">${s.sec}s</span>${diff}${img}</div>`
+}
+function burstHtml(b, idx) {
+  let h = ''
+  const live = !b.closed
+  if (b.steps.length && (b.closed || opts.layout === 'e3')) {
+    const lead = b.steps.find((s) => s.k === 'edit') ?? b.steps[0]
+    const add = b.steps.reduce((a, s) => a + (s.add || 0), 0), del = b.steps.reduce((a, s) => a + (s.del || 0), 0)
+    const imgs = b.steps.filter((s) => s.img)
+    const chip = opts.shots === 'chip' && imgs.length ? imgs.map((s) => `<span class="thumb" data-img='${s.img}' style='background-image:${s.img}'></span>`).join('') : ''
+    h += `<div class="row sum" data-k="${lead.k}" data-burst="${idx}" ${b.open ? 'data-open' : ''}>${I(KIND[lead.k].icon)}<span class="t">${summary(b.steps)}${live ? '…' : ''}</span>${add ? `<span class="diff num"><span class="a">+${add}</span><span class="d">−${del}</span></span>` : ''}${chip}${I('chevron-right', 'chev')}</div>`
+    if (b.open) h += `<div class="detail">${b.steps.map((s) => doneRow(s, true)).join('')}</div>`
+    if (opts.shots === 'strip' && imgs.length) h += `<div class="strip">${imgs.map((s) => `<span class="thumb" data-img='${s.img}' style='background-image:${s.img}'></span>`).join('')}</div>`
+  }
+  if (live && S.live && opts.layout !== 'e3') {
+    h += `<div class="live">${liveRow(S.live)}</div>`
+    if (opts.layout === 'e2' && S.live.out) h += `<div class="tail mono" data-id="${S.live.id}">${S.live.out.map((t) => `<div style="color:${/^[✓+]/.test(t) ? 'color-mix(in srgb, var(--add) 70%, #5d5f63)' : /^[✗-]/.test(t) ? 'color-mix(in srgb, var(--del) 70%, #5d5f63)' : ''}">${esc(t)}</div>`).join('')}</div>`
+  }
+  return h
+}
+let lastLiveId = null, lastPinId = null
+function render() {
+  const atBottom = scrollEl.scrollHeight - scrollEl.scrollTop - scrollEl.clientHeight < 40
+  const head = S.done
+    ? `<div class="turn-head" data-done ${S.open ? 'data-open' : ''} id="th">Worked for ${dur(S.doneAt)} ${I('chevron-right', 'chev')}</div>`
+    : `<div class="turn-head">Working for <span class="num" id="wf">${dur(elapsed())}</span></div>`
+  let proc = S.items.map((it, i) => it.type === 'text' ? `<p class="prose">${it.html}</p>` : burstHtml(it, i)).join('')
+  if (S.thinking && opts.layout !== 'e3') proc += `<div class="row"><span class="shimmer">Thinking</span></div>`
+  // When the answer arrives, the process folds under the header (E1/E2/E3 alike).
+  const procWrap = `<div class="process" ${S.done && !S.open ? 'data-collapsed' : ''}><div>${proc}</div></div>`
+  const final = S.final ? `<p class="prose">${S.final}</p>` : ''
+  scrollEl.innerHTML = `<div class="user">The running step icon looks wrong — run the activity tests and fix it</div>${head}${procWrap}${final}`
+  // Keep the roll animation only for genuinely new live steps.
+  const lr = scrollEl.querySelector('.live .row')
+  if (lr) { if (lr.dataset.id === String(lastLiveId)) lr.style.animation = 'none'; lastLiveId = lr.dataset.id }
+  const tl = scrollEl.querySelector('.tail'); if (tl && tl.dataset.id === String(tl._seen)) tl.style.animation = 'none'
+  // Pinned status (E3)
+  const pin = document.getElementById('pin')
+  if (opts.layout === 'e3' && !S.done) {
+    pin.setAttribute('data-on', '')
+    const l = S.live
+    const inner = l ? `<span class="rollbox"><div data-id="${l.id}" ${l.id === lastPinId ? 'style="animation:none"' : ''}>${I(KIND[l.k].icon)}<span class="t"><span class="shimmer">${KIND[l.k].live}</span> <span class="${l.mono ? 'mono' : ''}">${esc(l.obj)}</span></span><span class="num" data-tick="${l.t0}"></span></div></span>`
+      : `<span class="rollbox"><div data-id="think" ${lastPinId === 'think' ? 'style="animation:none"' : ''}><span class="shimmer">Thinking</span></div></span>`
+    lastPinId = l ? l.id : 'think'
+    pin.innerHTML = `${inner}<span class="r num">${dur(elapsed())}</span>`
+  } else { pin.removeAttribute('data-on'); pin.innerHTML = '' }
+  document.querySelector('.chat').classList.toggle('color', opts.icons === 'color')
+  document.getElementById('cspin').innerHTML = S.finished ? '' : I('loader-circle', 'spin')
+  document.getElementById('send').innerHTML = I(S.finished ? 'arrow-up' : 'square')
+  document.getElementById('send').toggleAttribute('data-stop', !S.finished)
+  tick()
+  if (atBottom) scrollEl.scrollTop = scrollEl.scrollHeight
+}
+function tick() {
+  const wf = document.getElementById('wf'); if (wf) wf.textContent = dur(elapsed())
+  document.querySelectorAll('[data-tick]').forEach((e) => { e.textContent = dur(Math.round((Date.now() - +e.dataset.tick) / 1000)) })
+  const r = document.querySelector('.pin .r'); if (r) r.textContent = dur(elapsed())
+}
+setInterval(tick, 1000)
+
+/* ---------- interactions ---------- */
+scrollEl.addEventListener('click', (e) => {
+  const th = e.target.closest('#th'); if (th) { S.open = !S.open; return render() }
+  const img = e.target.closest('.thumb')
+  if (img) {
+    e.stopPropagation()
+    const lb = document.createElement('div'); lb.className = 'lightbox'
+    lb.innerHTML = `<div class="big" style='background-image:${img.dataset.img}'></div><span class="cap">Application window · click to close</span>`
+    lb.onclick = () => lb.remove(); document.getElementById('chat').appendChild(lb); return
+  }
+  const sum = e.target.closest('[data-burst]'); if (sum) { const b = S.items[+sum.dataset.burst]; b.open = !b.open; render() }
+})
+document.querySelectorAll('.seg').forEach((seg) => {
+  const sync = () => seg.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === opts[seg.dataset.key]))
+  seg.addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return
+    opts[seg.dataset.key] = b.dataset.v; sync()
+    document.getElementById('note').innerHTML = NOTES[opts.layout]
+    render()
+  })
+  sync()
+})
+document.getElementById('note').innerHTML = NOTES[opts.layout]
+document.getElementById('restart').onclick = reset
+reset()
+</script>
+</body>
+</html>

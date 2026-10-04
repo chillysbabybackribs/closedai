@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Before/After test · 10 past chats</title>
+<script src="./scene-results.js"></script>
+<style>
+@font-face {
+  font-family: "Inter Variable";
+  src: url("../../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2") format("woff2");
+  font-weight: 100 900;
+}
+:root {
+  color-scheme: dark;
+  --accent: #0a84ff; --fg: #f5f5f7; --fg2: #d2d2d7; --quiet: #86868b;
+  --ok: #30d158; --warn: #ffd60a; --bad: #ff453a;
+  font-family: "Inter Variable", Inter, system-ui, sans-serif;
+  font-feature-settings: "cv01", "ss03";
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: #08090a; color: var(--fg); font-size: 13px; }
+header.bar { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 12px 22px; background: rgb(8 9 10 / 88%); backdrop-filter: blur(12px); border-bottom: 1px solid rgb(255 255 255 / 7%); }
+header.bar h1 { margin: 0; font-size: 13px; font-weight: 600; }
+.hint { color: #6c7078; font-size: 12px; }
+.tally { margin-left: auto; display: flex; gap: 12px; color: var(--quiet); font-size: 12px; }
+.tally b { color: var(--fg); font-variant-numeric: tabular-nums; }
+main { display: grid; grid-template-columns: repeat(auto-fill, minmax(470px, 1fr)); gap: 18px; padding: 22px; }
+
+.case { display: flex; flex-direction: column; padding: 18px; border: 1px solid rgb(255 255 255 / 8%); border-radius: 16px; background: #111113; }
+.meta { display: flex; align-items: center; gap: 8px; color: var(--quiet); font-size: 11.5px; }
+.meta .n { color: var(--fg2); font-weight: 600; }
+.meta .tag { padding: 2px 8px; border-radius: 999px; background: rgb(10 132 255 / 15%); color: #8cc4ff; font-weight: 600; }
+.meta .fit { margin-left: auto; }
+.task { margin: 8px 0 2px; color: var(--quiet); font-size: 12px; }
+.headline { margin: 0 0 14px; font-size: 16.5px; font-weight: 600; line-height: 1.38; letter-spacing: -0.005em; }
+
+.ba { position: relative; height: 260px; border: 1px solid rgb(255 255 255 / 7%); border-radius: 12px; overflow: hidden; background: #0c0c0d; user-select: none; }
+.ba .side { position: absolute; inset: 0; display: grid; place-items: center; background: #0c0c0d; }
+.ba .after { clip-path: inset(0 0 0 var(--cut, 50%)); background: #0d0f0e; }
+.ba .tag { position: absolute; top: 10px; z-index: 4; padding: 3px 9px; border-radius: 999px; background: rgb(255 255 255 / 8%); color: var(--fg2); font-size: 11px; font-weight: 600; }
+.ba .before .tag { left: 10px; }
+.ba .after .tag { right: 10px; }
+.ba .cap { position: absolute; bottom: 12px; z-index: 4; max-width: 46%; font-size: 12px; font-weight: 600; line-height: 1.35; }
+.ba .before .cap { left: 14px; color: #ff9f97; }
+.ba .after .cap { right: 14px; text-align: right; color: #7ee39a; }
+.ba .handle { position: absolute; top: 0; bottom: 0; left: var(--cut, 50%); z-index: 5; width: 2px; background: #fff; box-shadow: 0 0 12px rgb(0 0 0 / 60%); pointer-events: none; }
+.ba .handle::after { content: '‹ ›'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: #fff; color: #111; font-size: 12px; font-weight: 700; }
+.ba input { position: absolute; inset: 0; z-index: 6; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: ew-resize; }
+.scene { position: relative; width: 100%; height: 100%; }
+body.stacked .ba { height: auto; display: grid; gap: 1px; background: rgb(255 255 255 / 7%); }
+body.stacked .ba .side { position: relative; height: 220px; clip-path: none; }
+body.stacked .ba .handle, body.stacked .ba input { display: none; }
+.seg { display: flex; gap: 2px; padding: 2px; border: 1px solid rgb(255 255 255 / 8%); border-radius: 8px; background: rgb(255 255 255 / 3%); }
+.seg button { height: 26px; padding: 0 11px; border: 0; border-radius: 6px; background: none; color: var(--quiet); font: inherit; font-weight: 500; cursor: pointer; }
+.seg button[aria-pressed='true'] { background: rgb(255 255 255 / 10%); color: #fff; }
+
+.why { margin: 12px 0 0; color: var(--quiet); font-size: 12px; line-height: 1.5; }
+details { margin-top: 6px; color: #6f747b; font-size: 11.5px; line-height: 1.5; }
+details summary { cursor: pointer; }
+.verdict { display: flex; gap: 6px; margin-top: 12px; }
+.verdict button { height: 26px; padding: 0 12px; border: 1px solid rgb(255 255 255 / 9%); border-radius: 999px; background: none; color: var(--quiet); font: inherit; font-size: 12px; font-weight: 500; cursor: pointer; }
+.verdict button[aria-pressed='true'][data-v='gold'] { border-color: #d4a72c; background: rgb(212 167 44 / 18%); color: #ffd666; }
+.verdict button[aria-pressed='true'][data-v='ok'] { border-color: var(--accent); background: rgb(10 132 255 / 16%); color: #9ccaff; }
+.verdict button[aria-pressed='true'][data-v='miss'] { border-color: var(--bad); background: rgb(255 69 58 / 14%); color: #ff9f97; }
+
+/* ---------- shared scene parts ---------- */
+.lbl { position: absolute; color: var(--fg2); font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+.mk { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; font-size: 11px; font-weight: 800; flex: none; }
+.mk.x { background: var(--bad); color: #fff; }
+.mk.ok { background: var(--ok); color: #04210d; }
+.box { position: absolute; display: grid; place-items: center; padding: 0 10px; border-radius: 10px; background: #1e2330; box-shadow: inset 0 0 0 1px rgb(140 180 255 / 28%); color: #cfe0ff; font-size: 11.5px; font-weight: 600; text-align: center; line-height: 1.25; }
+.box.bad { background: rgb(255 69 58 / 14%); box-shadow: inset 0 0 0 1.5px rgb(255 69 58 / 60%); color: #ffb3ad; }
+.box.good { background: rgb(48 209 88 / 12%); box-shadow: inset 0 0 0 1.5px rgb(48 209 88 / 55%); color: #a6f0bb; }
+.box.warn { background: rgb(255 214 10 / 11%); box-shadow: inset 0 0 0 1.5px rgb(255 214 10 / 55%); color: #ffe680; }
+.box.ghost { background: none; box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / 22%); color: var(--quiet); border: 0; outline: 1.5px dashed rgb(255 255 255 / 25%); outline-offset: -1.5px; box-shadow: none; }
+
+/* cover */
+.layers { position: absolute; left: 50%; top: 44%; width: 250px; height: 170px; transform: translate(-50%, -50%); }
+.layer { position: absolute; left: 10px; width: 210px; height: 120px; border-radius: 10px; transform: rotateX(52deg) rotateZ(-28deg); }
+.layer.base { top: 46px; background: linear-gradient(#24324a, #18202d); box-shadow: inset 0 0 0 1px rgb(120 170 255 / 35%); }
+.layer.base i { position: absolute; left: 14px; right: 14px; height: 8px; border-radius: 4px; background: rgb(156 195 255 / 22%); }
+.layer.top { top: 6px; background: rgb(200 200 210 / 14%); box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / 45%); }
+.layer span { position: absolute; left: 12px; font-size: 11px; font-weight: 600; }
+.layer.base span { bottom: 10px; color: #9cc3ff; }
+.layer.top span { top: 10px; color: #fff; }
+.actor { position: absolute; display: flex; align-items: center; gap: 6px; color: #fff; font-size: 11.5px; font-weight: 600; }
+
+/* pipe */
+.pipe { position: absolute; left: 13%; right: 13%; top: 42%; height: 4px; border-radius: 2px; background: #2a3550; }
+.pipe.done { background: linear-gradient(90deg, #2a3550, rgb(48 209 88 / 60%)); }
+.dot { position: absolute; width: 14px; height: 14px; border-radius: 50%; background: #9cc3ff; box-shadow: 0 0 12px rgb(156 195 255 / 70%); }
+.dot.go { animation: go 2.6s linear infinite; }
+@keyframes go { from { left: 13%; } to { left: calc(87% - 14px); } }
+.dot.stuck { animation: stuck 2.6s ease-in infinite; }
+@keyframes stuck { from { left: 13%; } 70%, to { left: var(--stop); } }
+.barrier { position: absolute; width: 5px; height: 34px; border-radius: 3px; background: var(--bad); box-shadow: 0 0 10px rgb(255 69 58 / 60%); }
+.drip { position: absolute; width: 6px; height: 6px; border-radius: 50%; background: #9cc3ff; animation: drip 1.4s ease-in infinite; }
+@keyframes drip { from { transform: translateY(0); opacity: 1; } to { transform: translateY(60px); opacity: 0; } }
+.branch { position: absolute; height: 4px; border-radius: 2px; background: rgb(255 69 58 / 55%); transform-origin: 0 50%; transform: rotate(32deg); }
+
+/* stale */
+.sync { position: absolute; height: 2px; top: 40%; }
+.sync.broken { background: repeating-linear-gradient(90deg, rgb(255 214 10 / 60%) 0 6px, transparent 6px 12px); }
+.sync.ok { background: rgb(48 209 88 / 60%); }
+.val { display: block; margin-top: 6px; font-size: 18px; font-weight: 700; }
+
+/* mislabel */
+.bin { position: absolute; bottom: 52px; width: 120px; height: 70px; border-radius: 0 0 14px 14px; border: 2px solid rgb(255 255 255 / 18%); border-top: 0; display: grid; place-items: end center; padding-bottom: 8px; color: var(--quiet); font-size: 11px; font-weight: 600; }
+.bin.bad { border-color: rgb(255 69 58 / 60%); color: #ff9f97; }
+.bin.good { border-color: rgb(48 209 88 / 60%); color: #7ee39a; }
+.fall { position: absolute; padding: 5px 10px; border-radius: 8px; background: #2a3550; color: #cfe0ff; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+
+/* screenshots / none */
+.shot { position: absolute; inset: 40px 30px 50px; display: grid; place-items: center; border-radius: 10px; background: repeating-linear-gradient(135deg, #15171b 0 12px, #121316 12px 24px); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 10%); color: var(--quiet); font-size: 12px; text-align: center; line-height: 1.5; }
+.none { display: grid; place-items: center; height: 100%; color: var(--quiet); font-size: 13px; }
+</style>
+</head>
+<body class="stacked">
+<header class="bar">
+  <h1>Before / After · test on 10 past chats</h1>
+  <div class="seg" id="mode"><button data-m="stacked" aria-pressed="true">Stacked</button><button data-m="slider">Slider</button></div>
+  <span class="hint">Scenes and every word were chosen by a fresh model reading only the chat. The drawings are fixed templates. Drag each slider, then mark it.</span>
+  <div class="tally"><span>Gold <b id="t-gold">0</b></span><span>OK <b id="t-ok">0</b></span><span>Miss <b id="t-miss">0</b></span></div>
+</header>
+<main id="cases"></main>
+
+<script>
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
+const X = '<span class="mk x">✕</span>', OK = '<span class="mk ok">✓</span>'
+
+// Each scene returns [beforeHTML, afterHTML]. Layout is fixed; only labels come from the model.
+const SCENES = {
+  cover(f) {
+    const base = `<div class="layer base"><i style="top:16px"></i><i style="top:32px;right:70px"></i><i style="top:48px;right:36px"></i><span>${esc(f.base)}</span></div>`
+    return [
+      `<div class="layers">${base}<div class="layer top"><span>${esc(f.cover)}</span></div><div class="actor" style="left:110px;top:28px">${X}${esc(f.actor)}</div></div>`,
+      `<div class="layers">${base}<div class="actor" style="left:110px;top:92px">${OK}${esc(f.actor)}</div></div>`
+    ]
+  },
+  pipe(f) {
+    const st = f.stages || [], n = st.length, at = Math.min(f.breakAt ?? n - 1, n - 1)
+    const x = i => 13 + (74 * i) / Math.max(n - 1, 1)
+    const nodes = (bad, good) => st.map((s, i) => `<div class="box ${bad && i === at ? 'bad' : ''} ${good && i === n - 1 ? 'good' : ''}" style="left:calc(${x(i)}% - 44px);top:calc(42% + 18px);width:88px;height:44px">${esc(s)}</div>`).join('')
+    const stop = `calc(${x(at)}% - 22px)`
+    let fail = ''
+    if (f.kind === 'leak') fail = `<div class="drip" style="left:${x(at)}%;top:calc(42% + 4px)"></div><div class="drip" style="left:calc(${x(at)}% + 8px);top:calc(42% + 4px);animation-delay:.5s"></div>`
+    else if (f.kind === 'wrong-turn') fail = `<div class="branch" style="left:${x(at)}%;top:42%;width:90px;transform:rotate(-32deg)"></div><div class="box bad" style="left:calc(${x(at)}% + 60px);top:6%;width:110px;height:34px">${esc(f.wrongDestination)}</div>`
+    else fail = `<div class="barrier" style="left:calc(${x(at)}% - 14px);top:calc(42% - 15px)"></div>`
+    const payload = `<div class="lbl" style="left:13%;top:calc(42% - 34px)">${esc(f.payload)}</div>`
+    return [
+      `<div class="scene"><div class="pipe"></div>${nodes(true, false)}${fail}<div class="dot stuck" style="--stop:${stop};top:calc(42% - 5px)"></div>${payload}</div>`,
+      `<div class="scene"><div class="pipe done"></div>${nodes(false, true)}<div class="dot go" style="top:calc(42% - 5px)"></div>${payload}</div>`
+    ]
+  },
+  order(f) {
+    const row = (items, bad) => {
+      const n = items.length
+      return items.map((s, i) => {
+        const hit = s === f.culprit
+        return `<div class="box ${hit ? (bad ? 'warn' : 'good') : ''}" style="left:calc(${8 + (84 * i) / n}% + 4px);top:36%;width:calc(${84 / n}% - 8px);height:58px"><span style="position:absolute;top:-22px;left:2px;color:#6c7078;font-size:11px">${i + 1}</span>${esc(s)}</div>`
+      }).join('')
+    }
+    return [`<div class="scene">${row(f.before || [], true)}</div>`, `<div class="scene">${row(f.after || [], false)}</div>`]
+  },
+  missing(f) {
+    const p = f.pieces || [], n = p.length, c = f.changedIndex ?? 0, add = f.mode !== 'removed'
+    const row = before => p.map((s, i) => {
+      let cls = ''
+      if (i === c) cls = before ? (add ? 'ghost' : 'bad') : (add ? 'good' : 'ghost')
+      const txt = i === c && ((before && add) || (!before && !add)) ? '' : esc(s)
+      return `<div class="box ${cls}" style="left:calc(${6 + (88 * i) / n}% + 4px);top:36%;width:calc(${88 / n}% - 8px);height:58px">${txt}${i === c && !before && !add ? '<span style="color:#6c7078">removed</span>' : ''}${i === c && before && add ? '<span style="color:#6c7078">missing</span>' : ''}</div>`
+    }).join('')
+    return [`<div class="scene">${row(true)}</div>`, `<div class="scene">${row(false)}</div>`]
+  },
+  conflict(f) {
+    return [
+      `<div class="scene"><div class="box warn" style="left:calc(50% - 70px);top:22%;width:140px;height:54px">${esc(f.slot)}</div>
+        <div class="box" style="left:12%;top:60%;width:110px;height:40px">${esc(f.a)}</div><div class="box" style="right:12%;top:60%;width:110px;height:40px">${esc(f.b)}</div>
+        <div class="lbl" style="left:50%;top:50%;transform:translateX(-50%);font-size:20px">⚡</div></div>`,
+      `<div class="scene"><div class="box good" style="left:calc(50% - 70px);top:22%;width:140px;height:54px">${esc(f.slot)}<span style="display:block;color:#7ee39a;font-size:10.5px;margin-top:2px">${esc(f.resolution)}</span></div>
+        <div class="box" style="left:12%;top:60%;width:110px;height:40px">${esc(f.a)}</div><div class="box" style="right:12%;top:60%;width:110px;height:40px;opacity:.75">${esc(f.b)}</div></div>`
+    ]
+  },
+  stale(f) {
+    const card = (label, v, cls) => `<div class="box ${cls}" style="top:22%;width:150px;height:84px;${label.pos}"><span>${esc(label.t)}<span class="val">${esc(v)}</span></span></div>`
+    return [
+      `<div class="scene">${card({ t: f.source, pos: 'left:8%' }, f.newValue, '')}<div class="sync broken" style="left:calc(8% + 150px);right:calc(8% + 150px)"></div>${card({ t: f.copy, pos: 'right:8%' }, f.oldValue, 'warn')}</div>`,
+      `<div class="scene">${card({ t: f.source, pos: 'left:8%' }, f.newValue, '')}<div class="sync ok" style="left:calc(8% + 150px);right:calc(8% + 150px)"></div>${card({ t: f.copy, pos: 'right:8%' }, f.newValue, 'good')}</div>`
+    ]
+  },
+  mislabel(f) {
+    const bins = (hit) => `<div class="bin ${hit === 'wrong' ? 'bad' : ''}" style="left:12%">${esc(f.wrongBin)}</div><div class="bin ${hit === 'right' ? 'good' : ''}" style="right:12%">${esc(f.rightBin)}</div>`
+    return [
+      `<div class="scene">${bins('wrong')}<div class="fall" style="left:calc(12% + 60px);top:46%;transform:translateX(-50%)">${esc(f.item)}</div></div>`,
+      `<div class="scene">${bins('right')}<div class="fall" style="right:calc(12% + 60px);top:46%;transform:translateX(50%)">${esc(f.item)}</div></div>`
+    ]
+  },
+  screenshots(f) {
+    const s = t => `<div class="shot">Real screenshot<br><b style="color:var(--fg2)">${esc(f.region)}</b><br>${t}</div>`
+    return [s('before the change'), s('after the change')]
+  },
+  none() { return ['<div class="none">No scene fits</div>', '<div class="none">Text answer only</div>'] }
+}
+
+const votes = JSON.parse(localStorage.getItem('scene-votes') || '{}')
+function tally() { ['gold', 'ok', 'miss'].forEach(v => { document.getElementById('t-' + v).textContent = Object.values(votes).filter(x => x === v).length }) }
+
+const root = document.getElementById('cases')
+;(window.SCENE_RESULTS || []).forEach((r, i) => {
+  const [b, a] = (SCENES[r.scene] || SCENES.none)(r.fields || {})
+  const el = document.createElement('section')
+  el.className = 'case'
+  el.innerHTML = `
+    <div class="meta"><span class="n">${i + 1}</span><span>${esc(r.title)}</span><span class="tag">${esc(r.scene)}</span><span class="fit">model's fit score ${esc(r.fit)}/5</span></div>
+    <div class="task">${esc(r.task)}</div>
+    <h3 class="headline">${esc(r.headline)}</h3>
+    <div class="ba"><div class="side before"><span class="tag">Before</span>${b}<span class="cap">${esc(r.before)}</span></div>
+      <div class="side after"><span class="tag">After</span>${a}<span class="cap">${esc(r.after)}</span></div>
+      <div class="handle"></div><input type="range" min="4" max="96" value="50" aria-label="Compare before and after"></div>
+    <p class="why">Why this scene: ${esc(r.why)}</p>
+    <details><summary>Technical</summary>${esc(r.technical)}</details>
+    <div class="verdict">${['gold', 'ok', 'miss'].map(v => `<button data-v="${v}" aria-pressed="${votes[r.chatId] === v}">${{ gold: 'Gold', ok: 'OK', miss: 'Miss' }[v]}</button>`).join('')}</div>`
+  const ba = el.querySelector('.ba')
+  el.querySelector('input').oninput = e => ba.style.setProperty('--cut', e.target.value + '%')
+  el.querySelector('.verdict').onclick = e => {
+    const v = e.target.dataset.v; if (!v) return
+    votes[r.chatId] = votes[r.chatId] === v ? undefined : v
+    localStorage.setItem('scene-votes', JSON.stringify(votes))
+    el.querySelectorAll('.verdict button').forEach(x => x.setAttribute('aria-pressed', votes[r.chatId] === x.dataset.v))
+    tally()
+  }
+  root.appendChild(el)
+})
+tally()
+document.getElementById('mode').onclick = e => {
+  const m = e.target.dataset.m; if (!m) return
+  document.body.classList.toggle('stacked', m === 'stacked')
+  document.querySelectorAll('#mode button').forEach(b => b.setAttribute('aria-pressed', b.dataset.m === m))
+}
+</script>
+</body>
+</html>

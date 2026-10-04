@@ -1,3 +1,6 @@
+import type { AppWindowInfo } from '../../shared/app-windows.js'
+import { isViewTabId } from '../chat-layout/layout-tree.js'
+
 /** Assign sequence numbers when chats newly appear on the desk; drop ids that left the layout. */
 export function syncDeskOpenedAt(
   current: Record<string, number>,
@@ -24,4 +27,11 @@ export function sortDeskOpenIds(openIds: readonly string[], openedAt: Record<str
   return openIds.slice().sort(
     (left, right) => (openedAt[right] ?? 0) - (openedAt[left] ?? 0) || left.localeCompare(right)
   )
+}
+/** Use the live local layout and the tabs held by every other app window. */
+export function deskChatIds(localIds: readonly string[], selfId: string, windows: readonly AppWindowInfo[]): string[] {
+  return [...new Set([
+    ...localIds,
+    ...windows.filter((entry) => entry.id !== selfId).flatMap((entry) => entry.tabIds)
+  ])].filter((id) => !isViewTabId(id))
 }

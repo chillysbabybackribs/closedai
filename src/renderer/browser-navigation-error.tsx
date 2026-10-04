@@ -1,5 +1,5 @@
 import type { JSX } from 'react'
-import { ArrowLeft, RefreshCw, ShieldAlert } from 'lucide-react'
+import { ArrowLeft, RefreshCw, ShieldAlert } from './icons/index.js'
 import type { BrowserNavigationError as NavigationError } from '../shared/types.js'
 import { Button } from '../components/ui/button.js'
 

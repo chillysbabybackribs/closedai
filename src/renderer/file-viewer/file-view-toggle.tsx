@@ -1,11 +1,11 @@
 import type { JSX } from 'react'
-import { AppWindow, CodeXml } from 'lucide-react'
+import { AppWindow, CodeXml } from '../icons/index.js'
 import { ToggleGroup, ToggleGroupItem } from '../../components/ui/toggle-group.js'
 import type { FileView } from '../../shared/local-files.js'
 
 /**
- * Page | Code for a local HTML or SVG tab. The same control sits in the web toolbar (page
- * showing) and the file viewer toolbar (code showing); main swaps the tab in place.
+ * Page | Code for a local HTML or SVG tab. The same control sits in the file header over the page
+ * (page showing) and the file viewer's header (code showing); main swaps the tab in place.
  */
 export function FileViewToggle({ tabId, view, onError }: {
   tabId: string

@@ -34,6 +34,12 @@ const hiddenBounds: BrowserBounds = { x: 0, y: 0, width: 1, height: 1 }
 // draws under it never shows; rounding the native view itself is the only thing that works.
 // Tracks the border-radius in src/renderer/styles/browser.css.
 export const PAGE_CORNER_RADIUS = 7
+
+/**
+ * A native surface smaller than the pane: emulated viewports and the phone preview. `left`/`top`
+ * are pane-relative; without them the surface is centred along the top edge.
+ */
+export type EmulatedSurface = { width: number; height: number; left?: number; top?: number; radius?: number }
 // Bound on the first-paint probe that lets a navigation settle early; a throttled hidden tab
 // never answers and falls back to the fixed settle inside waitForUsableLoad.
 const PAINT_PROBE_MS = 500
@@ -63,7 +69,9 @@ export class BrowserTab extends EventEmitter {
   readonly view: WebContentsView
   private bounds: BrowserBounds = hiddenBounds
   /** Emulated viewport size; the native surface shrinks to it so the page really lays out there. */
-  private emulatedViewport: { width: number; height: number } | null = null
+  private emulatedViewport: EmulatedSurface | null = null
+  /** Mapped outside the window (occluded) rather than hidden; see applyBounds. */
+  private parked = false
   private visible = false
   private favicon: string | null = null
   private customTitle: string | null = null
@@ -205,7 +213,8 @@ export class BrowserTab extends EventEmitter {
     const wasVisible = this.visible
     this.bounds = sanitizeBounds(bounds)
     this.visible = show && this.bounds.width > 1 && this.bounds.height > 1
-    if (!show && bounds.occluded === true && this.bounds.width > 1 && this.bounds.height > 1) {
+    this.parked = !show && bounds.occluded === true && this.bounds.width > 1 && this.bounds.height > 1
+    if (this.parked) {
       // Keep the loaded native surface mapped and full-sized so Chromium keeps laying it out and
       // producing frames at the pane's size. The renderer's freeze still covers the browser box
       // while this view sits almost entirely outside the window; restoring its real bounds later
@@ -228,21 +237,27 @@ export class BrowserTab extends EventEmitter {
    * device mode resizes the inspected view for exactly this reason, and so does this — the page
    * then lays out at the width it was asked for instead of only believing it did.
    */
-  setEmulatedViewport(size: { width: number; height: number } | null): void {
+  setEmulatedViewport(size: EmulatedSurface | null): void {
+    const radius = size?.radius ?? PAGE_CORNER_RADIUS
+    if (radius !== (this.emulatedViewport?.radius ?? PAGE_CORNER_RADIUS)) this.view.setBorderRadius(radius)
     this.emulatedViewport = size
-    this.applyBounds(this.bounds, this.visible)
+    // A parked tab stays parked: re-applying without `occluded` would take the setVisible(false)
+    // path this parking exists to avoid, and a phone-preview swap resizes while parked.
+    this.applyBounds({ ...this.bounds, occluded: this.parked }, this.visible)
   }
 
-  /** Pane bounds, or the emulated viewport centred inside them. */
+  /** Pane bounds, or the emulated viewport inside them: at its offset, else centred at the top. */
   private surfaceBounds(): BrowserBounds {
     const emulated = this.emulatedViewport
     if (!emulated) return this.bounds
     const width = Math.max(1, Math.min(emulated.width, this.bounds.width))
     const height = Math.max(1, Math.min(emulated.height, this.bounds.height))
+    const left = emulated.left ?? Math.round((this.bounds.width - width) / 2)
+    const top = emulated.top ?? 0
     return {
       ...this.bounds,
-      x: this.bounds.x + Math.round((this.bounds.width - width) / 2),
-      y: this.bounds.y,
+      x: this.bounds.x + Math.max(0, Math.min(left, this.bounds.width - width)),
+      y: this.bounds.y + Math.max(0, Math.min(top, this.bounds.height - height)),
       width,
       height
     }
@@ -324,7 +339,9 @@ export class BrowserTab extends EventEmitter {
   }
 
   private refreshVisibleSurface(): void {
-    refreshVisibleBrowserSurface(this.view, this.bounds, this.visible)
+    // The surface box, not the pane: an emulated or phone-preview page re-placed at pane bounds
+    // after a navigation would cover the drawn phone and render from the pane's top-left.
+    refreshVisibleBrowserSurface(this.view, this.surfaceBounds(), this.visible)
   }
 
   back(): void {

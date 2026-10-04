@@ -69,17 +69,17 @@ desktop app's OAuth client and call the internal endpoint directly are deliberat
   of the workspace's `AGENTS.md`. The profile is refreshed on provider connection and loaded
   by a new CLI process; changing documentation alone does not update it. See
   [Model context](model-context.md).
-- **No context gauge.** `agy` reports token usage per step but no context window, and the transcript
-  shows a gauge only with a denominator.
 - **Subscription plan usage.** `agy -p "/quota" --output-format json` reports 5-hour and weekly rolling
   buckets for Gemini and third-party models with exact reset timestamps, surfaced on the composer's usage
   card (`antigravity-service.ts`, `plan-usage.ts`). The reading is shared across panes and reused for
   60 seconds (`ANTIGRAVITY_QUOTA_REUSE_MS`): start-up, hover, and turn end all ask for it, but only
   spawn the two-second `agy` process when the shared reading is older than that.
-- **Re-seed compaction.** `agy` has no native compact verb, so the app can drop the CLI conversation
-  handle and inject a bounded transcript summary on the next turn (`compactConversation` on the pane,
-  button in the usage card). The visible transcript is unchanged; only provider-side context shrinks.
-  Same strategy as the Cursor lane's re-seed compaction in AppV1.
+- **Rotation and compaction.** `agy` has no native compact verb. With seamless rotation on (the
+  default), the app rotates the conversation automatically before a send under context pressure
+  (not under Cursor baseline), and Compact (`compactConversation`, button in the usage card) rotates
+  on demand; either seeds the new conversation with a `closedai.chat.handoff`. With seamless rotation off, Compact drops the CLI
+  conversation handle and injects a bounded summary as `closedai.chat.compacted` on the next turn.
+  Either way the visible transcript is unchanged; only provider-side context shrinks.
 - **Direct startup.** A freshly spawned `agy` process receives the user's prompt immediately;
   there is no internal READY turn or primer queue (`antigravity-session.ts`). On 2026-09-04,
   live cold-start and resumed-process checks with `gemini-3.8-flash-low` called the shared
@@ -96,13 +96,16 @@ desktop app's OAuth client and call the internal endpoint directly are deliberat
 
 ## Process lifecycle (`antigravity-session.ts`, `antigravity-process.ts`)
 
-One `agy --print= --input-format stream-json --output-format stream-json` process per live thread.
+One `agy --print= --input-format stream-json --output-format stream-json --dangerously-skip-permissions
+--disable-slash-commands --print-timeout 60m` process per live thread, plus `--model`, `--conversation`,
+`--agent closedai`, and `--add-dir` for the workspace and then the profile (`antigravityChatArgs`).
 Turns go in as one JSON line each (`{"event":"user","message":{"role":"user","content":…}}`); the
-process stays alive across turns on one conversation, is closed after 15 idle minutes, and the next
+process stays alive across turns on one conversation, is closed after four times the warm-minutes
+setting (20 idle minutes by default), and the next
 turn resumes the conversation in a fresh process with `--conversation <id>`. `--print=` with an
 empty value is load-bearing: a bare `--print` swallows the next flag as its prompt.
-The outer pane manager can park an unselected pane after five idle minutes, before the
-provider's 15-minute timer. Its conversation id remains available for resumption.
+The outer pane manager can park an unselected pane after the warm-minutes setting (five idle
+minutes by default), before the provider's own timer. Its conversation id remains available for resumption.
 To prevent long-running tasks from crossing Google's 60-minute OAuth access token expiration window
 mid-turn, a process older than 30 minutes is automatically retired between turns so the next turn
 spawns fresh with the latest keyring token.

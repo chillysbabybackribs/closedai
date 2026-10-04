@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>New icon set: candidates</title>
+<script src="./icon-sets.js"></script>
+<style>
+@font-face {
+  font-family: "Inter Variable";
+  src: url("../../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2") format("woff2");
+  font-weight: 100 900;
+}
+:root {
+  color-scheme: dark;
+  --page: #0b0c0d; --card: #141516; --header: #191919; --edge: #2a2b2e;
+  --fg: #f7f8f8; --muted: #8a8f98; --quiet: #7c8087; --ink: #9a9fa8; --focus: #5e6ad2;
+  font-family: "Inter Variable", Inter, system-ui, sans-serif; font-size: 13px;
+  background: var(--page); color: var(--fg);
+}
+body { margin: 0; padding: 32px 40px 80px; }
+h1 { font-size: 18px; font-weight: 600; letter-spacing: -0.014em; margin: 0 0 6px; }
+h2 { font-size: 15px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+.lede { color: var(--muted); margin: 0 0 24px; max-width: 920px; line-height: 1.55; }
+.set { display: grid; grid-template-columns: 300px 1fr; gap: 24px; border: 1px solid #1f2023; border-radius: 12px; background: #0f1011; padding: 18px 20px; margin-bottom: 14px; }
+.meta .tag { font-size: 11px; color: var(--quiet); margin: 3px 0 8px; }
+.meta .tag.rec { color: #9ba3ff; }
+.meta p { color: var(--muted); font-size: 12px; line-height: 1.5; margin: 0 0 8px; }
+.meta dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin: 0; font-size: 11.5px; }
+.meta dt { color: var(--quiet); } .meta dd { margin: 0; color: #b3b8c1; }
+
+.ui { display: grid; grid-template-columns: 1.15fr 1.35fr 0.6fr 1fr; gap: 10px; }
+.surf { border: 1px solid var(--edge); border-radius: 10px; overflow: hidden; background: var(--card); }
+.bar { display: flex; align-items: center; gap: 2px; padding: 8px; }
+.bar.header { background: var(--header); }
+.field { flex: 1; min-width: 0; height: 26px; margin: 0 6px; border-radius: 7px; display: flex; align-items: center; gap: 6px; padding: 0 8px; color: var(--quiet); font-size: 12px; background: rgb(0 0 0 / 28%); }
+.field.url { height: 28px; background: #0e0f10; border: 1px solid #26272a; color: #b3b8c1; }
+.field svg { width: 13px; height: 13px; flex: none; }
+.msg { color: #b3b8c1; font-size: 12px; padding: 8px 10px 0; line-height: 1.45; }
+.composer { margin: 8px; border: 1px solid #343536; border-radius: 13px; display: flex; align-items: center; gap: 4px; padding: 6px; }
+.composer .draft { flex: 1; color: #5d6168; font-size: 12px; padding-left: 2px; }
+
+.ib { all: unset; box-sizing: border-box; cursor: pointer; flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 7px; color: var(--ink); transition: background-color 120ms ease, color 120ms ease, transform 80ms ease; }
+.ib:hover { background: rgb(255 255 255 / 7%); color: #f2f3f5; }
+.ib:active { background: rgb(255 255 255 / 11%); transform: scale(0.95); }
+.ib:focus-visible { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--focus); }
+.ib.on { color: #f5c84c; }
+.ib.dis { opacity: 0.35; cursor: default; }
+.ib.sm { width: 24px; height: 24px; border-radius: 6px; }
+.ib svg { width: var(--i, 16px); height: var(--i, 16px); }
+.ib.sm svg { width: var(--i-sm, 14px); height: var(--i-sm, 14px); }
+.send { all: unset; flex: none; width: 30px; height: 30px; border-radius: 999px; background: #fff; color: #000; display: grid; place-items: center; cursor: pointer; }
+.send svg { width: 16px; height: 16px; }
+
+@media (max-width: 1500px) {
+  .set { grid-template-columns: 1fr; gap: 14px; }
+  .meta p { max-width: 820px; }
+  .meta dl { grid-template-columns: repeat(4, auto 1fr); }
+  .ui { grid-template-columns: 1fr 1fr; }
+}
+.specimen { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 12px; align-items: center; }
+.specimen .cell { width: 52px; height: 52px; display: grid; place-items: center; border-radius: 8px; background: #121314; color: #d6d9de; }
+.specimen .cell svg { width: 32px; height: 32px; }
+.specimen .cell.on { color: #f5c84c; }
+.specimen .label { font-size: 11px; color: var(--quiet); margin-left: 8px; }
+</style>
+</head>
+<body>
+<h1>New icon set: candidates for an expensive, new-Mac feel</h1>
+<p class="lede">SF Symbols is the real "new Mac" look, but Apple licenses it only for apps on Apple platforms, so it can't ship in this Linux Electron app. These are the open-licence sets closest to that feel. Every set below is drawn in the same live surfaces with identical button styling, so only the icons differ. The bottom row of each set shows all 16 glyphs at 2× so you can judge the craft: corner rounding, terminals and optical balance. Icons are the actual files from each project, fetched through Iconify.</p>
+<div id="sets"></div>
+<script>
+const META = {
+  'f7': { name: 'Framework7 Icons', tag: 'closest to SF Symbols', rec: true,
+    note: 'Designed to match iOS and macOS: SF-style geometry, rounded terminals, and a filled variant for every glyph, which is how macOS shows toggled-on states. This is the most "Apple" of the group. The catalogue is smaller, so a few app-specific icons may need a nearby substitute.',
+    lic: 'MIT', count: '1,253', pkg: 'framework7-icons (SVG / font)', styles: 'outline + fill' },
+  'ph-light': { name: 'Phosphor Light', tag: 'airy and refined',
+    note: 'A thin, elegant weight with generous curves. It looks like high-end design tools. Phosphor has six weights (thin to bold, fill and duotone) that switch with one prop, plus a huge catalogue, so nothing would be missing. A light weight needs care on 96dpi screens.',
+    lic: 'MIT', count: '9,072 (all weights)', pkg: '@phosphor-icons/react', styles: 'thin · light · regular · bold · fill · duotone' },
+  'ph': { name: 'Phosphor Regular', tag: 'balanced, very complete',
+    note: 'The same family at regular weight: friendly and well balanced, and the safest of the group on low-DPI screens. It has the same six-weight system and the same depth of catalogue.',
+    lic: 'MIT', count: '9,072 (all weights)', pkg: '@phosphor-icons/react', styles: 'thin · light · regular · bold · fill · duotone' },
+  'mingcute': { name: 'MingCute', tag: 'soft, rounded, Apple-adjacent',
+    note: 'Soft rounded geometry with matching line and fill pairs. It feels close to modern iOS app UIs, with plenty of personality but slightly more decorative than SF.',
+    lic: 'Apache 2.0', count: '3,320', pkg: 'mingcute_icon (SVG)', styles: 'line + fill' },
+  'hugeicons': { name: 'Hugeicons', tag: 'polished, contemporary',
+    note: 'Rounded strokes with a contemporary, premium-SaaS look. The free MIT tier is outline only; solid, duotone and bulk styles are paid.',
+    lic: 'MIT (free tier)', count: '6,065 free', pkg: '@hugeicons/react', styles: 'stroke-rounded (free)' },
+  'heroicons': { name: 'Heroicons', tag: 'crisp, restrained',
+    note: 'From the Tailwind team: clean 1.5px outlines with matching solid variants, and separate 20px and 16px drawings tuned for small sizes. Very tidy, but more "web app" than "Mac", and the catalogue is the smallest of the main options.',
+    lic: 'MIT', count: '~320 per style', pkg: '@heroicons/react', styles: 'outline · solid · mini 20 · micro 16' },
+  'solar': { name: 'Solar', tag: 'distinctive, expressive',
+    note: 'Bold rounded forms with many styles. It has strong character, but several glyphs come in boxed or circled shapes, which is busier than a Mac toolbar. CC BY 4.0 requires attribution.',
+    lic: 'CC BY 4.0 (attribution)', count: '8,706', pkg: '@iconify-json/solar', styles: 'linear · bold · broken · duotone · outline' },
+  'radix-icons': { name: 'Radix Icons', tag: 'pixel-perfect at 15px',
+    note: 'Drawn on a 15px pixel grid, so they are the crispest at 1× on your screens. The style is minimal and engineered (Linear or Vercel rather than Apple). Small catalogue with noticeable gaps; branch and attach are stand-ins here.',
+    lic: 'MIT', count: '332', pkg: '@radix-ui/react-icons', styles: 'single 15px style', size: 15 },
+}
+const ORDER = ['f7', 'ph-light', 'ph', 'mingcute', 'hugeicons', 'heroicons', 'solar', 'radix-icons']
+const ROLES = ['star', 'starOn', 'plus', 'share', 'minus', 'square', 'x', 'left', 'right', 'reload', 'download', 'copy', 'branch', 'clip', 'up', 'search']
+
+function icon(set, role) {
+  const ic = window.SETS[set][role] || window.SETS[set][role === 'starOn' ? 'star' : role]
+  return `<svg viewBox="0 0 ${ic.w} ${ic.h}" fill="none">${ic.body}</svg>`
+}
+function b(set, role, cls = '', label = role) { return `<button class="ib ${cls}" aria-label="${label}">${icon(set, role)}</button>` }
+
+const root = document.getElementById('sets')
+for (const set of ORDER) {
+  const m = META[set]
+  const el = document.createElement('section')
+  el.className = 'set'
+  if (m.size) { el.style.setProperty('--i', m.size + 'px'); el.style.setProperty('--i-sm', '14px') }
+  el.innerHTML = `
+    <div class="meta"><h2>${m.name}</h2><div class="tag${m.rec ? ' rec' : ''}">${m.tag}</div><p>${m.note}</p>
+      <dl><dt>License</dt><dd>${m.lic}</dd><dt>Icons</dt><dd>${m.count}</dd><dt>Styles</dt><dd>${m.styles}</dd><dt>Package</dt><dd>${m.pkg}</dd></dl></div>
+    <div>
+      <div class="ui">
+        <div class="surf"><div class="bar header">${b(set, 'starOn', 'on', 'Pinned')}${b(set, 'plus')}${b(set, 'share')}
+          <div class="field">${icon(set, 'search')}Search</div>${b(set, 'minus', 'sm')}${b(set, 'square', 'sm')}${b(set, 'x', 'sm')}</div></div>
+        <div class="surf"><div class="bar">${b(set, 'left')}${b(set, 'right', 'dis')}${b(set, 'reload')}
+          <div class="field url">linear.app</div>${b(set, 'star')}${b(set, 'download')}</div></div>
+        <div class="surf"><div class="msg">Pushed to github.com.</div><div class="bar">${b(set, 'copy', 'sm')}${b(set, 'branch', 'sm')}</div></div>
+        <div class="surf"><div class="composer">${b(set, 'plus')}<span class="draft">Message Codex</span>${b(set, 'clip')}<button class="send" aria-label="Send">${icon(set, 'up')}</button></div></div>
+      </div>
+      <div class="specimen">${ROLES.map(r => `<div class="cell${r === 'starOn' ? ' on' : ''}" title="${r}">${icon(set, r)}</div>`).join('')}</div>
+    </div>`
+  root.append(el)
+}
+</script>
+</body>
+</html>

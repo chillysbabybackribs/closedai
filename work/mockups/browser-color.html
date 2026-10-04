@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Browser top · colour options</title>
+<script src="./f7-icons.js"></script>
+<style>
+@font-face {
+  font-family: "Inter Variable";
+  src: url("../../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2") format("woff2");
+  font-weight: 100 900;
+}
+:root { color-scheme: dark; --accent: #0a84ff; --fg: #e3e5e8; --quiet: #8a8f98; font-family: "Inter Variable", Inter, system-ui, sans-serif; font-feature-settings: "cv01", "ss03"; }
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; background: #08090a; color: var(--fg); font-size: 13px; }
+header.bar { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 20px; background: rgb(8 9 10 / 88%); backdrop-filter: blur(12px); border-bottom: 1px solid rgb(255 255 255 / 7%); }
+header.bar h1 { margin: 0 12px 0 0; font-size: 13px; font-weight: 600; }
+.seg { display: flex; gap: 2px; padding: 2px; border: 1px solid rgb(255 255 255 / 8%); border-radius: 8px; background: rgb(255 255 255 / 3%); }
+.seg button { height: 26px; padding: 0 11px; border: 0; border-radius: 6px; background: none; color: var(--quiet); font: inherit; font-weight: 500; cursor: pointer; }
+.seg button:hover { color: var(--fg); }
+.seg button[aria-pressed='true'] { background: rgb(255 255 255 / 10%); color: #fff; }
+.hint { color: #6c7078; font-size: 12px; }
+main { padding: 20px; }
+.opt h2 { margin: 0 0 4px; font-size: 14px; font-weight: 600; }
+.opt h2 small { margin-left: 8px; color: var(--accent); font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+.opt p { margin: 0 0 6px; max-width: 980px; color: var(--quiet); line-height: 1.55; }
+.opt .swatches { display: flex; gap: 14px; margin: 0 0 14px; color: #6c7078; font-size: 11.5px; }
+.opt .swatches i { display: inline-block; width: 11px; height: 11px; margin-right: 5px; vertical-align: -1px; border-radius: 3px; box-shadow: inset 0 0 0 1px rgb(255 255 255 / 12%); }
+.opt:not(.shown) { display: none; }
+
+.stage { display: grid; grid-template-columns: 380px 1fr; gap: 8px; padding: 10px; border-radius: 14px; background: linear-gradient(135deg, #4a3226, #2a2522 40%, #1b1f27); }
+/* The chat card next door, as it is today: graphite #0f1011 with a corner glow. */
+.card { display: flex; flex-direction: column; border: 1px solid rgb(255 255 255 / 8%); border-radius: 12px; background: radial-gradient(ellipse 82% 330px at 0 0, rgb(255 255 255 / 4.5%), transparent 90%), #0f1011; box-shadow: 0 12px 32px rgb(0 0 0 / 34%); }
+.card-head { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px; color: #8a8f98; font-size: 12px; }
+.card-head .title { flex: 1; text-align: center; color: #c9ccd1; }
+.card-body { flex: 1; padding: 6px 20px; color: #c9ccd1; font-size: 13px; line-height: 1.7; }
+.card-body b { color: #f1f2f4; font-weight: 600; }
+.card-body .ln { height: 9px; margin: 10px 0; border-radius: 4px; background: #24262a; }
+.card-comp { margin: 12px; height: 40px; border-radius: 13px; background: #191a1c; box-shadow: inset 0 0 0 1px #26272a; }
+
+.ic { display: block; fill: currentColor; }
+.win { overflow: hidden; border: 1px solid rgb(255 255 255 / 8%); border-radius: 12px; box-shadow: 0 12px 32px rgb(0 0 0 / 34%); }
+.toolbar { display: grid; grid-template-columns: auto auto auto 1fr auto auto auto auto auto auto; align-items: center; gap: 4px; height: 42px; padding: 0 8px; background: var(--tb); box-shadow: var(--tb-edge, none); }
+.tabs { display: flex; align-items: center; height: 31px; padding: 0 6px 5px; background: var(--strip); box-shadow: var(--strip-edge, none); }
+.tbi { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 6px; color: var(--glyph, #9ca0a7); }
+.tbi.dim { opacity: 0.4; }
+.tbi.sm { width: 26px; height: 24px; }
+.tbi.close:hover { background: #e5484d; color: #fff; }
+.omni-wrap { display: flex; justify-content: center; min-width: 0; }
+.omni { display: flex; align-items: center; justify-content: center; gap: 7px; width: min(100%, 520px); height: 30px; border-radius: 9px; background: var(--field); box-shadow: var(--field-edge, none); color: #f4f5f6; font-size: 13.5px; }
+.omni .ic { color: #93999f; }
+.pill { display: flex; align-items: center; gap: 5px; height: 26px; padding: 0 9px; border-radius: 6px; background: rgb(255 255 255 / 8%); color: #e6e7ea; font-size: 12px; }
+.tab { position: relative; display: flex; flex: 1 1 0; align-items: center; justify-content: center; gap: 7px; min-width: 0; height: 26px; padding: 0 28px; border-radius: 6px; color: var(--tab-ink, #9a9ea5); font-size: 12px; white-space: nowrap; }
+.tab + .tab::before { content: ''; position: absolute; left: 0; top: 5px; bottom: 5px; width: 1px; background: var(--sep, rgb(255 255 255 / 9%)); }
+.tab.on::before, .tab.on + .tab::before { display: none; }
+.tab .t { overflow: hidden; text-overflow: ellipsis; }
+.tab .x { position: absolute; left: 8px; opacity: 0; color: #9a9ea5; }
+.tab.on { background: var(--tab-on); box-shadow: var(--tab-on-edge, none); color: var(--tab-on-ink, #f4f5f6); }
+.tab.on .x { opacity: 1; }
+.fav { flex: none; display: grid; place-items: center; width: 14px; height: 14px; border-radius: 50%; font-size: 9px; font-weight: 700; color: #fff; }
+.page { height: 340px; padding: 0; background: #0e1113; }
+.page .nav { display: flex; align-items: center; gap: 16px; height: 50px; padding: 0 22px; box-shadow: inset 0 -1px 0 #ffffff14; }
+.page .logo { color: #fff; font-weight: 800; font-size: 19px; letter-spacing: -0.02em; }
+.page .search { flex: 0 1 460px; height: 32px; margin: 0 auto; border-radius: 16px; background: #2a3236; }
+.page .feed { width: 520px; margin: 22px auto; }
+.page .h { color: #f2f3f5; font-size: 18px; font-weight: 700; }
+.page .row { display: flex; gap: 12px; margin-top: 14px; padding: 10px; border-radius: 8px; background: #1a2024; }
+.page .row i { flex: none; width: 26px; height: 26px; border-radius: 50%; background: #3a4246; }
+.page .row div { flex: 1; }
+.page .row b { display: block; width: 60%; height: 9px; border-radius: 4px; background: #c9ced2; }
+.page .row span { display: block; width: 85%; height: 8px; margin-top: 8px; border-radius: 4px; background: #5b6468; }
+
+/* ---- Built: one flat band ---- */
+.v-built { --tb: #1c1c1e; --strip: #1c1c1e; --field: #232325; --tab-on: rgb(255 255 255 / 10%); --strip-edge: inset 0 -1px 0 rgb(0 0 0 / 55%); --tab-on-ink: #8f939a; }
+
+/* ---- A · Safari tiers: toolbar is the lit title bar, tab row recessed, active tab rises to meet the toolbar ---- */
+.v-a {
+  --tb: linear-gradient(#2e2e31, #2a2a2d); --tb-edge: inset 0 1px 0 rgb(255 255 255 / 7%);
+  --field: #3a3a3e; --field-edge: inset 0 0.5px 0 rgb(255 255 255 / 6%);
+  --strip: #1f1f21; --strip-edge: inset 0 1px 0 rgb(0 0 0 / 35%), inset 0 -1px 0 rgb(0 0 0 / 60%);
+  --tab-on: #2c2c2f; --tab-on-edge: inset 0 0.5px 0 rgb(255 255 255 / 9%), 0 1px 2px rgb(0 0 0 / 35%);
+  --sep: rgb(255 255 255 / 8%);
+}
+
+/* ---- B · Slate: the same tiers, tinted toward the system blue ---- */
+.v-b {
+  --tb: linear-gradient(#2a2d33, #262930); --tb-edge: inset 0 1px 0 rgb(255 255 255 / 7%);
+  --field: #353a42; --field-edge: inset 0 0.5px 0 rgb(255 255 255 / 6%);
+  --strip: #1c1f24; --strip-edge: inset 0 1px 0 rgb(0 0 0 / 35%), inset 0 -1px 0 rgb(0 0 0 / 60%);
+  --tab-on: #2b2f36; --tab-on-edge: inset 0 0.5px 0 rgb(255 255 255 / 9%), 0 1px 2px rgb(0 0 0 / 35%);
+  --glyph: #a2a8b2; --tab-ink: #9aa1ab; --sep: rgb(255 255 255 / 8%);
+}
+
+/* ---- C · Inset field: the bar stays one calm tone; contrast moves into the address field and active tab ---- */
+.v-c {
+  --tb: #2a2a2d; --tb-edge: inset 0 1px 0 rgb(255 255 255 / 6%);
+  --field: #1a1a1c; --field-edge: inset 0 1px 1px rgb(0 0 0 / 35%), 0 0.5px 0 rgb(255 255 255 / 7%);
+  --strip: #2a2a2d; --strip-edge: inset 0 -1px 0 rgb(0 0 0 / 60%);
+  --tab-on: #38383c; --tab-on-edge: inset 0 0.5px 0 rgb(255 255 255 / 10%);
+  --sep: rgb(255 255 255 / 9%);
+}
+
+/* ---- D · Card-tuned: graphite drawn from the chat cards, toolbar a lift above them, tabs between ---- */
+.v-d {
+  --tb: radial-gradient(ellipse 60% 140px at 0 0, rgb(255 255 255 / 5%), transparent 90%), #1d1e20; --tb-edge: inset 0 1px 0 rgb(255 255 255 / 6%);
+  --field: #2b2c2f; --field-edge: inset 0 0.5px 0 rgb(255 255 255 / 6%);
+  --strip: #161719; --strip-edge: inset 0 -1px 0 rgb(255 255 255 / 7%);
+  --tab-on: #232427; --tab-on-edge: inset 0 0.5px 0 rgb(255 255 255 / 8%);
+  --sep: rgb(255 255 255 / 7%);
+}
+</style>
+</head>
+<body>
+<header class="bar">
+  <h1>Browser top · colour</h1>
+  <div class="seg" id="seg"></div>
+  <span class="hint">← → to switch · layout, sizes and the address bar shape are identical in every option</span>
+</header>
+<main id="main"></main>
+<script>
+const ic = (k, s = 16) => { const i = F7[k]; const z = Math.round(s * 1.12 * 10) / 10; return `<svg class="ic" width="${z}" height="${z}" viewBox="0 0 ${i.w} ${i.h}">${i.body}</svg>` }
+const OPTIONS = [
+  { id: 'built', name: 'Built', why: 'What is in the app now: one flat near-black band. The address field barely separates from it, and the active tab title is faded.', sw: [['Toolbar + tabs', '#1c1c1e'], ['Field', '#232325']] },
+  { id: 'a', name: 'A · Safari tiers', rec: true, why: 'Each part gets the tone of its job, like Safari: the toolbar is the lit title bar (a soft top-down gradient with a bright top edge); the tab row sits a step darker, recessed under it; the active tab rises back up to the toolbar’s tone so it reads as the page you’re on. The address field is the lightest surface, so it is what the eye finds first.', sw: [['Toolbar', '#2c2c2f'], ['Field', '#3a3a3e'], ['Tab row', '#1f1f21'], ['Active tab', '#2c2c2f']] },
+  { id: 'b', name: 'B · Slate', why: 'The same tiers as A, tinted a few degrees toward the system blue. Cooler and more “pro tool”, and it ties the chrome to the blue accent. Slightly less neutral next to the graphite chat cards.', sw: [['Toolbar', '#282b31'], ['Field', '#353a42'], ['Tab row', '#1c1f24'], ['Active tab', '#2b2f36']] },
+  { id: 'c', name: 'C · Inset field', why: 'Toolbar and tab row stay one calm mid-graphite; the contrast moves into the controls instead. The address field is a darker inset well (like macOS search fields) and the active tab is a lighter raised chip.', sw: [['Toolbar + tabs', '#2a2a2d'], ['Field (inset)', '#1a1a1c'], ['Active tab', '#38383c']] },
+  { id: 'd', name: 'D · Card-tuned', why: 'Stays darker, but built from the chat cards’ own graphite and corner glow so the browser and chats read as one family: toolbar a lift above the cards, tab row between card and page, active tab a soft step up.', sw: [['Toolbar', '#1d1e20'], ['Field', '#2b2c2f'], ['Tab row', '#161719'], ['Active tab', '#232427']] },
+]
+const TABS = [{ t: 'Inbox', c: '#ff4500', l: 'r', on: true }, { t: 'SF Symbols, - Google Search', c: '#4285f4', l: 'G' }, { t: 'SF Symbols 2 - WWDC20 - Videos - Apple Developer', c: '#1d6fe0', l: '' }]
+const card = `<div class="card"><div class="card-head">${ic('star', 13)}<span class="title">Running Task UI Mockup Options in Chat</span>${ic('search', 12)}</div>
+  <div class="card-body"><b>Finished steps:</b> a finished group becomes its summary line, led by the icon of what it mostly did.<div class="ln"></div><div class="ln" style="width:80%"></div><b>Folding:</b> when a finished turn has an answer after its steps, the steps fold under “Worked for…”.<div class="ln" style="width:70%"></div></div><div class="card-comp"></div></div>`
+const browser = `<div class="win">
+  <div class="toolbar"><span class="tbi">${ic('arrow-left', 15)}</span><span class="tbi dim">${ic('arrow-right', 15)}</span><span class="tbi">${ic('refresh-cw', 14)}</span>
+    <div class="omni-wrap"><div class="omni">${ic('lock', 12)}<span>reddit.com</span></div></div>
+    <span class="tbi">${ic('star', 15)}</span><span class="tbi">${ic('download', 15)}</span><span style="width:4px"></span>
+    <span class="tbi sm">${ic('minus', 13)}</span><span class="tbi sm">${ic('square', 11)}</span><span class="tbi sm close">${ic('x', 13)}</span></div>
+  <div class="tabs"><span class="tbi sm">${ic('layout-grid', 13)}</span>${TABS.map((t) => `<div class="tab${t.on ? ' on' : ''}"><span class="x">${ic('x', 10)}</span><span class="fav" style="background:${t.c}">${t.l}</span><span class="t">${t.t}</span></div>`).join('')}<span class="tbi sm">${ic('plus', 13)}</span></div>
+  <div class="page"><div class="nav"><span class="logo">reddit</span><span class="search"></span></div><div class="feed"><div class="h">Notifications</div>${'<div class="row"><i></i><div><b></b><span></span></div></div>'.repeat(4)}</div></div>
+</div>`
+document.getElementById('main').innerHTML = OPTIONS.map((o) => `<section class="opt v-${o.id}" id="o-${o.id}"><h2>${o.name}${o.rec ? '<small>Recommended</small>' : ''}</h2><p>${o.why}</p><div class="swatches">${o.sw.map(([n, c]) => `<span><i style="background:${c}"></i>${n} ${c}</span>`).join('')}</div><div class="stage">${card}${browser}</div></section>`).join('')
+const seg = document.getElementById('seg')
+seg.innerHTML = OPTIONS.map((o) => `<button data-id="${o.id}">${o.name.split(' · ')[0]}</button>`).join('')
+let cur = new URLSearchParams(location.search).get('o') || 'a'
+function show(id) { cur = id; for (const b of seg.children) b.setAttribute('aria-pressed', String(b.dataset.id === id)); for (const s of document.querySelectorAll('.opt')) s.classList.toggle('shown', s.id === 'o-' + id) }
+seg.onclick = (e) => { const b = e.target.closest('button'); if (b) show(b.dataset.id) }
+addEventListener('keydown', (e) => { if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return; const i = OPTIONS.findIndex((o) => o.id === cur); show(OPTIONS[(i + (e.key === 'ArrowRight' ? 1 : OPTIONS.length - 1)) % OPTIONS.length].id) })
+show(cur)
+</script>
+</body>
+</html>

@@ -44,7 +44,8 @@ const gpt4o: ComposerProps['models'][number] = {
 test('the idle composer is one capsule row: tools, draft, setup chip, send', () => {
   const html = renderToStaticMarkup(createElement(Composer, { ...baseProps }))
   assert.match(html, /class="composer"/)
-  assert.match(html, /data-ui="composer\.more"/)
+  assert.match(html, /data-ui="composer\.upload"/)
+  assert.doesNotMatch(html, /data-ui="composer\.more"/)
   assert.match(html, /data-ui="composer\.input"/)
   assert.match(html, /data-ui="composer\.setup"/)
   assert.match(html, /data-ui="composer\.send"[^>]*disabled/)
@@ -62,7 +63,7 @@ test('the running composer swaps send for pause and keeps the setup chip in the 
   }))
   assert.match(html, /data-ui="composer\.stop"/)
   assert.doesNotMatch(html, /data-ui="composer\.send"/)
-  assert.match(html, /aria-label="Pause Codex \(Esc\)"/)
+  assert.match(html, /aria-label="Stop Codex \(Esc\)"/)
   // No spinner or clock on the trigger: it still names the model and folder while a turn runs.
   assert.match(html, /composer-chip-model-name[^>]*>GPT-4o</)
   assert.doesNotMatch(html, /composer-chip-folder-name/)

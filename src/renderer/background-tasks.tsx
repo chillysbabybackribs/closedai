@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Check, ChevronRight, CircleSlash, LoaderCircle, XCircle } from 'lucide-react'
+import { Check, ChevronRight, CircleSlash, Layers, LoaderCircle, XCircle } from './icons/index.js'
 import { activityPhase, type ChatTranscriptItem } from '../shared/chat.js'
 
 type Task = Extract<ChatTranscriptItem, { type: 'tool' }>
@@ -18,13 +18,17 @@ export function BackgroundTasks({ items }: { items: Task[] }) {
   useEffect(() => { setExpanded(null) }, [running > 0])
   // Collapsed by default: a group opening itself mid-turn shifts the transcript under the reader.
   const open = expanded ?? false
+  // Set like a ledger line: the kind icon, a shimmering verb while anything runs, and what ran.
+  const kinds = new Set(items.map((item) => item.background?.kind))
+  const noun = kinds.size === 1 && kinds.has('agent') ? 'subagent' : kinds.size === 1 && kinds.has('command') ? 'command' : 'task'
+  const what = `${items.length} ${items.length === 1 ? noun : `${noun}s`} in the background`
   return (
     <section className="background-tasks" aria-label="Background work">
       <button type="button" className="background-tasks-heading" data-state={running ? 'running' : failed ? 'failed' : 'done'} data-ui="chat.background-group"
         data-ui-key={items[0]?.id} aria-expanded={open} onClick={() => setExpanded(!open)}>
-        {running ? <LoaderCircle className="background-task-spinner" /> : failed ? <XCircle /> : <Check />}
-        <span>{running ? 'Background work' : `${items.length} background ${items.length === 1 ? 'task' : 'tasks'} finished`}</span>
-        <span className="background-task-meta">{running ? `${running} running · ${items.length - running} finished` : failed ? `${failed} failed` : ''}</span>
+        {failed && !running ? <XCircle /> : <Layers />}
+        <span>{running ? <><span className="activity-live-verb">Running</span> {what}</> : `Ran ${what}`}</span>
+        <span className="background-task-meta">{running ? `${items.length - running} of ${items.length} done` : failed ? `${failed} failed` : ''}</span>
         <ChevronRight className={open ? 'is-open' : ''} />
       </button>
       {items.map((item) => {

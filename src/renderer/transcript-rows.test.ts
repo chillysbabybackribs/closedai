@@ -10,6 +10,7 @@ import {
   commandTitle,
   lastTurnRowStart,
   mountedTurnWindowStart,
+  turnLayout,
   dedupeAssistantSegments,
   transcriptRows,
   transcriptRowKey
@@ -315,4 +316,76 @@ test('rotation schedule notices are filtered out from transcript rows', () => {
   ]
   const rows = transcriptRows(items)
   assert.deepEqual(rows.map((row) => row.kind === 'item' ? row.item.id : row.id), ['u1', 'a1'])
+})
+
+test('a capture joins the step group that took it; a generated image stays its own row', () => {
+  const shot = (id: string, surface: 'app_window' | 'generated_image'): ChatTranscriptItem => (
+    { type: 'screenshot', id, turnId: 't1', imageUrl: 'data:,', surface, caption: '' }
+  )
+  const rows = transcriptRows([
+    command('c1', 't1', 'npm run build'),
+    shot('s1', 'app_window'),
+    command('c2', 't1', 'npm test'),
+    shot('g1', 'generated_image')
+  ])
+  assert.deepEqual(rows.map((row) => row.kind), ['activity', 'item'])
+  const activity = rows[0] as Extract<(typeof rows)[0], { kind: 'activity' }>
+  assert.deepEqual(activity.items.map((item) => item.id), ['c1', 'c2'])
+  assert.deepEqual(activity.shots.map((item) => item.id), ['s1'])
+})
+
+test('a settled turn folds its steps and commentary under the header; the live turn folds nothing', () => {
+  const items: ChatTranscriptItem[] = [
+    { type: 'user', id: 'u1', turnId: 't1', text: 'Fix it' },
+    { type: 'assistant', id: 'n1', turnId: 't1', text: 'Running the tests first.', phase: null, streaming: false },
+    { ...command('c1', 't1', 'npm test'), startedAt: 1_000, finishedAt: 4_000 } as ChatTranscriptItem,
+    { type: 'assistant', id: 'a1', turnId: 't1', text: 'Fixed.', phase: null, streaming: false },
+    { type: 'user', id: 'u2', turnId: 't2', text: 'Again' },
+    command('c2', 't2', 'npm test')
+  ]
+  const rows = transcriptRows(items)
+  const { heads, folds } = turnLayout(rows, true)
+  assert.deepEqual([...heads.keys()], [0, 4])
+  assert.deepEqual(heads.get(0), { key: 't1', live: false, foldable: true, stage: null, steps: 1, startedAt: 1_000, endedAt: 4_000 })
+  assert.equal(heads.get(4)?.live, true)
+  assert.deepEqual([...folds.entries()], [[1, 't1'], [2, 't1'], [5, 't2']])
+  // A settled turn without steps keeps no header; one that ended on a step has nothing to fold.
+  const plain = turnLayout(transcriptRows([items[0]!, items[3]!]), false)
+  assert.equal(plain.heads.size, 0)
+  const unanswered = turnLayout(transcriptRows(items.slice(0, 3)), false)
+  assert.equal(unanswered.heads.get(0)?.foldable, false)
+  assert.equal(unanswered.folds.size, 0)
+})
+
+test('a live turn folds into its stage: the newest step group and the newest text', () => {
+  const rows = transcriptRows([
+    { type: 'user', id: 'u', turnId: 't', text: 'Go' },
+    { type: 'assistant', id: 'n1', turnId: 't', text: 'First I will look.', phase: null, streaming: false },
+    command('c1', 't', 'ls'),
+    { type: 'assistant', id: 'n2', turnId: 't', text: 'Now the tests.', phase: null, streaming: false },
+    command('c2', 't', 'npm test')
+  ])
+  const { heads, folds } = turnLayout(rows, true)
+  assert.deepEqual(heads.get(0)?.stage, { step: 4, text: 3, textOpen: false })
+  assert.equal(heads.get(0)?.foldable, true)
+  assert.deepEqual([...folds.keys()], [1, 2, 3, 4])
+  // Text before any step is open: it may be the whole answer.
+  const fresh = turnLayout(rows.slice(0, 2), true)
+  assert.deepEqual(fresh.heads.get(0)?.stage, { step: -1, text: 1, textOpen: true })
+  assert.equal(fresh.heads.get(0)?.foldable, false)
+})
+
+test('text after the newest step stays open until a step follows it', () => {
+  const base: ChatTranscriptItem[] = [
+    { type: 'user', id: 'u', turnId: 't', text: 'Go' },
+    { type: 'assistant', id: 'n1', turnId: 't', text: 'Looking first.', phase: null, streaming: false },
+    command('c1', 't', 'ls'),
+    { type: 'assistant', id: 'a', turnId: 't', text: 'Here is the answer', phase: null, streaming: true }
+  ]
+  assert.deepEqual(turnLayout(transcriptRows(base), true).heads.get(0)?.stage, { step: 2, text: 3, textOpen: true })
+  // Labelled commentary never counts as the answer.
+  const labelled = [...base.slice(0, 3), { ...base[3]!, phase: 'commentary' } as ChatTranscriptItem]
+  assert.deepEqual(turnLayout(transcriptRows(labelled), true).heads.get(0)?.stage, { step: 2, text: 3, textOpen: false })
+  const followed = turnLayout(transcriptRows([...base, command('c2', 't', 'npm test')]), true)
+  assert.deepEqual(followed.heads.get(0)?.stage, { step: 4, text: 3, textOpen: false })
 })

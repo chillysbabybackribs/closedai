@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Organizing long turns · A + C</title>
+<script src="./canvas-icons.js"></script>
+<style>
+@font-face { font-family: "Inter Variable"; src: url("../../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2") format("woff2"); font-weight: 100 900; }
+@font-face { font-family: "Geist Mono"; src: url("../../node_modules/@fontsource-variable/geist-mono/files/geist-mono-latin-wght-normal.woff2") format("woff2"); font-weight: 100 900; }
+:root {
+  color-scheme: dark;
+  --card: #141516; --copy: #e9eaec; --dim: #74767a; --dim2: #a6aab1; --hair: rgb(255 255 255 / 7%);
+  --command: #b2a1e5; --edit: #d3b477; --tool: #83b5db; --ok: #7fbf8f; --bad: #e08787; --run: #d3b477; --accent: #4f8cff;
+  font-family: "Inter Variable", Inter, system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 14px 18px 24px; background: #0b0c0d; color: var(--copy); }
+svg.i { width: 15px; height: 15px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+.num { font-variant-numeric: tabular-nums; }
+code, .mono { font-family: "Geist Mono", ui-monospace, monospace; font-size: 12.5px; }
+code { padding: 1px 5px; border-radius: 4px; background: #222326; }
+
+/* Toolbar */
+.bar { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; max-width: 1420px; margin: 0 auto 8px; font-size: 12px; color: #8a8f98; }
+.seg { display: inline-flex; padding: 2px; border-radius: 8px; background: #17181a; box-shadow: inset 0 0 0 1px rgb(255 255 255 / 6%); }
+.seg button { border: 0; background: none; color: #9a9ea6; font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 6px; cursor: pointer; }
+.seg button[aria-pressed=true] { background: #2a2c30; color: #eef0f3; box-shadow: 0 1px 2px rgb(0 0 0 / 40%), inset 0 1px 0 rgb(255 255 255 / 6%); }
+.seg[data-off] { opacity: .35; pointer-events: none; }
+.note { max-width: 1420px; margin: 0 auto 12px; font-size: 13px; color: #9a9ea6; line-height: 1.5; }
+.note b { color: #e3e5e8; font-weight: 600; }
+
+.stage { display: flex; gap: 14px; justify-content: center; }
+
+/* Chat card */
+.chat { position: relative; width: 600px; height: 780px; display: flex; flex-direction: column; border-radius: 16px; background: var(--card); overflow: hidden; flex: none;
+  box-shadow: 0 2px 5px -2px rgb(0 0 0 / 32%), 0 10px 24px -14px rgb(0 0 0 / 55%), inset 0 0 0 1px rgb(255 255 255 / 6%), inset 0 1px 0 rgb(255 255 255 / 5%); }
+.chat-title { height: 44px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #cfd2d7; border-bottom: 1px solid rgb(255 255 255 / 4%); flex: none; }
+.scroll { flex: 1; overflow-y: auto; padding: 22px 30px 18px; scrollbar-width: thin; scrollbar-color: #2a2c2f transparent; }
+.user { width: calc(100% - 64px); margin: 0 0 18px 64px; padding: 10px 14px; border-radius: 14px; background: #232427; font-size: 15px; line-height: 1.6; }
+.prose { margin: 0 0 14px; font-size: 15px; line-height: 1.62; color: var(--copy); }
+.prose ul { margin: 6px 0 0; padding-left: 20px; }
+.prose li { margin: 3px 0; }
+.prose h3 { margin: 4px 0 8px; font-size: 16px; font-weight: 650; }
+.prose h4 { margin: 14px 0 6px; font-size: 14px; font-weight: 650; color: #d6d8dc; }
+.prose ol { margin: 6px 0 0; padding-left: 20px; }
+.more { display: inline-flex; align-items: center; gap: 2px; margin-left: 4px; color: var(--dim); font-size: 13px; cursor: pointer; white-space: nowrap; }
+.more:hover { color: var(--dim2); }
+.more svg { width: 12px; height: 12px; }
+.prose.quiet { color: #c9ccd1; }
+
+.turn-head { display: flex; align-items: center; gap: 6px; margin: 0 0 14px; padding: 0 0 10px; border-bottom: 1px solid var(--hair); font-size: 15px; color: var(--dim); }
+.turn-head svg { width: 13px; height: 13px; }
+.row { display: flex; align-items: center; gap: 9px; min-height: 26px; margin: 0 0 12px; font-size: 15px; font-weight: 500; color: var(--dim); }
+.row .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .m { font-size: 12px; font-weight: 400; color: var(--dim); }
+.row svg.chev { width: 13px; height: 13px; opacity: .7; }
+.row[data-k=command] > .i:first-child { color: var(--command); }
+.row[data-k=bg] > .i:first-child { color: var(--tool); }
+.row[data-k=canvas] > .i:first-child { color: var(--accent); }
+.shimmer { --spread: 56px;
+  background-image: linear-gradient(90deg, transparent calc(50% - var(--spread)), #e4e6ea, transparent calc(50% + var(--spread))), linear-gradient(var(--dim2), var(--dim2));
+  background-repeat: no-repeat, repeat; background-size: 250% 100%, auto; -webkit-background-clip: text; background-clip: text; color: transparent; animation: shimmer 2.2s linear infinite; }
+@keyframes shimmer { from { background-position: 100% center, 0 0; } to { background-position: 0% center, 0 0; } }
+
+/* A — report cards: one per subagent, the gist on the card, the body one click away. */
+.tray { margin: -4px 0 14px 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.rc { padding: 9px 11px 10px; border-radius: 10px; background: rgb(255 255 255 / 2.5%); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 6%); cursor: pointer; transition: background 120ms; }
+.rc:hover { background: rgb(255 255 255 / 4.5%); }
+.rc-top { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; color: #d9dbdf; }
+.rc-top .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rc-top svg { width: 13px; height: 13px; }
+.rc[data-s=done] .rc-top svg:first-child { color: var(--ok); }
+.rc[data-s=run] .rc-top svg:first-child { color: var(--run); animation: rot 1s linear infinite; }
+.rc[data-s=wait] .rc-top svg:first-child { color: var(--dim2); }
+.rc-meta { margin-top: 3px; font-size: 12px; color: var(--dim); }
+.rc-meta b { color: var(--bad); font-weight: 600; } .rc-meta i { font-style: normal; color: var(--ok); }
+.rc-gist { margin-top: 5px; font-size: 12.5px; line-height: 1.45; color: #a9acb2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.rc-note { margin-top: 5px; font-size: 11.5px; color: var(--dim); display: flex; gap: 5px; align-items: center; }
+.rc-note svg { width: 11px; height: 11px; }
+@keyframes rot { to { transform: rotate(360deg); } }
+
+.sections { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 14px; }
+.chip { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; border-radius: 13px; font-size: 12.5px; color: #c4c7cc; background: rgb(255 255 255 / 4%); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 6%); cursor: pointer; }
+.chip svg { width: 12px; height: 12px; }
+.chip.accent { color: #cfe0ff; background: rgb(79 140 255 / 12%); box-shadow: inset 0 0 0 1px rgb(79 140 255 / 28%); }
+
+/* C — the canvas line in the chat */
+.canvas-line { display: flex; align-items: center; gap: 10px; margin: 0 0 14px; padding: 10px 12px; border-radius: 12px; background: rgb(79 140 255 / 7%); box-shadow: inset 0 0 0 1px rgb(79 140 255 / 20%); cursor: pointer; }
+.canvas-line > svg { color: var(--accent); }
+.canvas-line .t { font-size: 14px; font-weight: 600; color: #dfe7f7; }
+.canvas-line .s { font-size: 12px; color: #8ea3c4; }
+.canvas-line .open { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: #a9c3f2; }
+.canvas-line .open svg { width: 13px; height: 13px; }
+.canvas-line[data-active] { box-shadow: inset 0 0 0 1px rgb(79 140 255 / 45%); }
+
+.foot { padding: 0 30px 14px; flex: none; }
+.composer { display: flex; align-items: center; gap: 10px; height: 48px; padding: 0 10px 0 12px; border-radius: 14px; background: #1b1c1e; box-shadow: inset 0 0 0 1px rgb(255 255 255 / 7%); font-size: 14px; color: #6d7076; }
+.composer .grow { flex: 1; }
+.composer .send { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: #3a1f22; color: #ff6b6b; }
+.composer .send svg { width: 10px; height: 10px; fill: currentColor; }
+.composer .send[data-idle] { background: #e9eaec; color: #141516; }
+.composer .send[data-idle] svg { fill: none; width: 13px; height: 13px; }
+
+/* Browser pane */
+.browser { width: 800px; height: 780px; flex: none; display: flex; flex-direction: column; border-radius: 16px; overflow: hidden; background: #111213; box-shadow: 0 10px 24px -14px rgb(0 0 0 / 55%), inset 0 0 0 1px rgb(255 255 255 / 6%); }
+.tabs { height: 40px; display: flex; align-items: flex-end; gap: 4px; padding: 0 10px; background: #0e0f10; flex: none; }
+.tab { display: flex; align-items: center; gap: 7px; height: 30px; padding: 0 12px; border-radius: 9px 9px 0 0; font-size: 12px; color: #8a8f98; max-width: 220px; }
+.tab span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tab[data-on] { background: #17181a; color: #e4e6ea; }
+.tab svg { width: 13px; height: 13px; }
+.tab[data-canvas] svg { color: var(--accent); }
+.addr { height: 40px; display: flex; align-items: center; gap: 10px; padding: 0 12px; background: #17181a; border-bottom: 1px solid rgb(255 255 255 / 5%); flex: none; color: #6f737a; }
+.addr .url { flex: 1; height: 26px; display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: 8px; background: #1f2023; font-size: 12px; color: #b9bcc2; }
+.addr svg { width: 14px; height: 14px; }
+.page { flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #2a2c2f transparent; }
+.blank { height: 100%; display: grid; place-items: center; color: #4c4f54; font-size: 13px; }
+.blank-doc { padding: 34px 48px; color: #6c7076; font-size: 14px; line-height: 1.7; }
+.blank-doc h1 { color: #9a9ea6; font-size: 22px; font-weight: 600; margin: 0 0 14px; }
+
+/* Canvas page */
+.cv { padding: 26px 32px 40px; }
+.cv-head { display: flex; align-items: center; gap: 10px; }
+.cv-head h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.01em; }
+.pill { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 12px; font-size: 12px; font-weight: 500; }
+.pill svg { width: 12px; height: 12px; }
+.pill.run { color: #f0d9a8; background: rgb(211 180 119 / 12%); }
+.pill.run svg { animation: rot 1s linear infinite; }
+.pill.done { color: #bfe3c8; background: rgb(127 191 143 / 12%); }
+.cv-sub { margin: 6px 0 20px; font-size: 13px; color: var(--dim); }
+.cv-sec { margin: 0 0 22px; }
+.cv-sec > h2 { display: flex; align-items: center; gap: 7px; margin: 0 0 10px; font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: #8a8f98; }
+.cv-sec > h2 svg { width: 13px; height: 13px; }
+.cv-sec > h2 .by { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 500; color: #8ea3c4; display: inline-flex; gap: 5px; align-items: center; }
+.panel { border-radius: 12px; background: rgb(255 255 255 / 2.5%); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 6%); }
+.brief { padding: 14px 16px; font-size: 14.5px; line-height: 1.6; color: #dadde2; background: linear-gradient(180deg, rgb(79 140 255 / 7%), rgb(79 140 255 / 3%)); box-shadow: inset 0 0 0 1px rgb(79 140 255 / 18%); }
+.plan { padding: 6px 0; }
+.plan div { display: flex; align-items: center; gap: 10px; padding: 7px 14px; font-size: 13.5px; color: #c9ccd1; }
+.plan div svg { width: 14px; height: 14px; }
+.plan .ok svg { color: var(--ok); } .plan .run svg { color: var(--run); animation: rot 1s linear infinite; } .plan .todo svg { color: #55585d; }
+.plan .todo { color: #7c8086; }
+.plan .m { margin-left: auto; font-size: 12px; color: var(--dim); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.grid2 .rc { padding: 11px 13px 12px; }
+.grid2 .rc-gist { -webkit-line-clamp: 3; }
+.rc.open { grid-column: 1 / -1; cursor: default; }
+.rc-body { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--hair); font-size: 13px; line-height: 1.55; color: #c3c6cb; }
+.rc-body ul { margin: 0; padding-left: 18px; } .rc-body li { margin: 4px 0; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; font-weight: 500; color: #7c8086; font-size: 12px; padding: 9px 14px; border-bottom: 1px solid var(--hair); }
+td { padding: 9px 14px; border-bottom: 1px solid rgb(255 255 255 / 4%); color: #cfd2d7; }
+tr:last-child td { border-bottom: 0; }
+td.n { text-align: right; width: 60px; }
+.bar2 { display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: rgb(255 255 255 / 5%); width: 160px; }
+.bar2 i { display: block; height: 100%; }
+.fix { padding: 6px 0; }
+.fix div { display: flex; gap: 10px; padding: 8px 14px; font-size: 13.5px; line-height: 1.5; color: #d2d5da; }
+.fix div b { flex: none; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 6px; background: rgb(255 255 255 / 6%); font-size: 11px; color: #a6aab1; }
+.timeline div { display: flex; gap: 12px; padding: 6px 14px; font-size: 13px; color: #aeb1b7; }
+.timeline .tm { width: 44px; flex: none; color: #5f6267; font-variant-numeric: tabular-nums; }
+.choices { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.choice { padding: 12px 13px; border-radius: 12px; background: rgb(255 255 255 / 2.5%); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 7%); cursor: pointer; }
+.choice:hover { background: rgb(255 255 255 / 4.5%); }
+.choice h5 { margin: 0 0 5px; font-size: 13.5px; font-weight: 600; color: #e5e7ea; }
+.choice p { margin: 0; font-size: 12.5px; line-height: 1.45; color: #9a9ea6; }
+.choice[data-rec] { box-shadow: inset 0 0 0 1px rgb(79 140 255 / 40%); }
+.choice[data-rec] h5::after { content: 'Recommended'; margin-left: 8px; font-size: 10.5px; font-weight: 600; color: #a9c3f2; }
+@media (prefers-reduced-motion: reduce) { .shimmer, .rc[data-s=run] .rc-top svg:first-child, .pill.run svg, .plan .run svg { animation: none; } }
+</style>
+</head>
+<body>
+<div class="bar">
+  <span>View</span>
+  <span class="seg" data-key="view"><button data-v="today">Today</button><button data-v="a">A · Organized chat</button><button data-v="ac">A + C · Chat + canvas</button></span>
+  <span>Moment</span>
+  <span class="seg" data-key="moment"><button data-v="run">While running</button><button data-v="done">Finished</button></span>
+  <span>Canvas</span>
+  <span class="seg" data-key="canvas"><button data-v="app">Assembled by the app</button><button data-v="model">+ Model-written sections</button></span>
+</div>
+<p class="note" id="note"></p>
+<div class="stage">
+  <div class="chat">
+    <div class="chat-title">Documentation audit</div>
+    <div class="scroll" id="chat"></div>
+    <div class="foot"><div class="composer"><span class="grow">Ask anything</span><span class="send" id="send"></span></div></div>
+  </div>
+  <div class="browser">
+    <div class="tabs" id="tabs"></div>
+    <div class="addr"></div>
+    <div class="page" id="page"></div>
+  </div>
+</div>
+<script>
+const I = (n, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24">${CI[n]}</svg>`
+document.querySelector('.composer').insertAdjacentHTML('afterbegin', I('plus'))
+const opts = { view: 'a', moment: 'run', canvas: 'app' }
+let openCard = 'p2'
+
+/* ---------- content: the real documentation-audit turn ---------- */
+const PROMPT = 'can you audit the documentation against the codebase and look for updates'
+const REPORTS = [
+  { id: 'p1', title: 'application.md · lines 1–1000', found: 27, ok: 270, stale: 21, missing: 6,
+    gist: 'Chats became floating cards, but older paragraphs still describe chat tabs, joined windows and a centred search field.',
+    body: ['Usage button shows one mark per provider, not the lowest percentage', 'Five layout presets, not two, and they sit in the card header', 'Some text contradicts uncommitted edits around lines 594–598'],
+    runNote: 'Restarted · first run returned only a status line', runState: 'run' },
+  { id: 'p2', title: 'application.md · lines 1000–1999', found: 31, ok: 330, stale: 21, missing: 9, dead: 1,
+    gist: 'Window and chrome sections describe the old design: dock, title bar and menubar.',
+    body: ['Dock: Chats opens History, not a new chat; Library can be unpinned', 'Title bar: search moved into each chat card', 'Menubar now shows in every window', '“docked” now means minimized to the dock'],
+    runNote: 'Restarted · first run returned only a status line', runState: 'run' },
+  { id: 'tools', title: 'tools.md', found: 24, ok: 190, stale: 14, missing: 10,
+    gist: 'The audit script misses two tools, and capture_spa has no catalog entry.',
+    body: ['site.discover is not orphaned: the script’s tool list is stale', 'browser_cdp.capture_spa is live but missing from TOOL_CATALOG', 'peer_chats.search no longer “literal phrase” only'],
+    runState: 'done' },
+  { id: 'ctx', title: 'model-context + provider guides', found: 19, ok: 70, stale: 13, missing: 6,
+    gist: 'Cursor baseline isn’t explained; closedai.runtime is sent every turn but the docs only mention the clock.',
+    body: ['Cursor baseline drops the session guide for Codex, Claude and Antigravity', 'closedai.runtime field list is incomplete (mainProcessReload missing)', 'All four context-block names match source'],
+    runState: 'done' },
+  { id: 'rest', title: 'Remaining guides + root docs', found: 39, ok: 240, stale: 24, missing: 13, dead: 2,
+    gist: 'CDP doc contradicts itself on what loads up front; site-discover.md has three wrong claims.',
+    body: ['cdp-tool-foundation.md: deferred tools described as eager', 'Inspection refs resolve against the last 20 snapshots, not only the latest', 'site-discover.md: missing apis action; off-origin urls dropped silently'],
+    runNote: 'Its CDP sub-audit already found 9', runState: 'wait' }
+]
+const state = (r) => opts.moment === 'done' ? 'done' : r.runState
+const total = REPORTS.reduce((a, r) => a + r.found, 0), confirmed = REPORTS.reduce((a, r) => a + r.ok, 0)
+
+/* What the transcript holds today, verbatim (abridged lines from the real session). */
+const TODAY_RUN = [
+  ['p', 'There’s a built-in <code>audit:docs</code> drift check — running that first as a baseline.'],
+  ['row', 'command', 'Ran 5 commands'],
+  ['p', 'Five audits are running in parallel:<ul><li><code>application.md</code>, in two halves</li><li><code>tools.md</code></li><li><code>model-context.md</code> and the provider guides</li><li>the remaining guides, plus <code>README.md</code>, <code>AGENTS.md</code> and the doc index</li></ul>One finding already: <code>/home/dp/Documents/CLAUDE.md</code>, which gets loaded into this session, describes a different project. It’s an older Gemini split-view app, and the files it points to don’t exist here. I’ll include it in the report when the audits finish.'],
+  ['bg', 'Running 5 subagents in the background', '0 of 5 done'],
+  ['p', 'The first <code>application.md</code> audit stopped without returning any findings; its output was a status line, not an audit. I’ll ask it to finish.'],
+  ['p', 'I’ve restarted the audit of <code>application.md</code> lines 1–1000. Its first run returned only a status line and no findings. The other four audits are still running. When they’re all done I’ll send you one combined report with the fixes I’d suggest. I won’t edit any docs until you say so.'],
+  ['p', 'The second <code>application.md</code> audit came back with the same kind of status-only reply. It looks like these agents start their own sub-agents and then stop before collecting the results. I’ll ask it to finish the work itself.'],
+  ['p', 'I’ve restarted both <code>application.md</code> audits and told them to check the source themselves rather than hand the work to sub-agents. The <code>tools.md</code>, model-context/provider, and remaining-guides audits are still running. I’ll put everything into one report once they’re all back.'],
+  ['p', 'The <code>tools.md</code> audit also came back with only a status line and no findings. I’ve asked it to write out its findings: its pass made 34 tool calls, so the checking was done but never reported.<br><br>So far three of the five audits have stopped this way: both <code>application.md</code> halves and <code>tools.md</code>. I’ve restarted each one. Once all five have reported, I’ll send you one consolidated report.'],
+  ['p', 'The audit of the remaining guides and root docs isn’t finished. It started its own sub-audit of the CDP and native-instrumentation docs, which is still running, and it should pick up automatically when that returns. I won’t restart it.<br><br>So the state is:<ul><li><b>Still running:</b> the model-context/provider audit and the remaining-guides audit.</li><li><b>Asked to resend actual findings:</b> both <code>application.md</code> halves and <code>tools.md</code>.</li></ul>When all five have reported, I’ll send one combined report.'],
+  ['p', 'The sub-audit of the CDP and native-instrumentation docs is back with 9 discrepancies; about 90 other claims checked out. The main ones:<ul><li><b><code>cdp-tool-foundation.md</code> contradicts itself on what loads up front.</b> It says <code>browser_cdp.page</code> and <code>embedded_browser.network</code> are available from the start, but the source defers them.</li><li><b>The doc says inspection refs come only from the latest snapshot.</b> The code keeps the last 20 snapshots.</li><li><b>The doc says Network events must be enabled per child session.</b> In fact <code>requests</code> enables them automatically.</li></ul>'],
+  ['p', 'The model-context and provider audit is in: 19 problems across six docs (13 wrong statements, 6 gaps) and about 70 claims confirmed. The main problems:<ul><li><b>Cursor baseline isn’t explained.</b> When it’s on, Codex, Claude and Antigravity drop the session guide and ledger.</li><li><b><code>closedai.runtime</code> is also sent every turn,</b> but the docs only call out the clock.</li></ul>'],
+  ['p', 'The <code>tools.md</code> audit is done. Findings so far:<ul><li><b><code>site.discover</code> is not actually orphaned.</b> The audit script keeps its own copy of the tool list.</li><li><b>There is a real catalog gap the script couldn’t see.</b> <code>browser_cdp.capture_spa</code> has no <code>TOOL_CATALOG</code> entry.</li></ul>'],
+  ['live', 'Running', 'grep -rn "TOOL_CATALOG" src/main/tools/catalog.ts', '0:04']
+]
+const FINAL_FULL = `<h3>Docs audit: about 140 problems across the current guides, and one real code bug</h3>
+<p>About 140 claims in the current guides are wrong or missing. Roughly 1,100 others match the code. I didn’t edit any docs. The one file I changed is the generated workspace index: <code>map:check</code> was failing, so I regenerated it.</p>
+<h4>Fix first</h4><ol><li><b>Your <code>/home/dp/Documents/CLAUDE.md</code> describes a different, older Gemini project.</b> It points to files that don’t exist here.</li><li><b>The audit script can’t see two tools</b> and doesn’t read <code>docs/README.md</code>.</li><li><b><code>browser_cdp.capture_spa</code> has no catalog entry</b>, so the Tools dialog shows a generated name.</li></ol>
+<h4>application.md (58)</h4><ul><li>Chat-card sections still describe chat tabs and joined windows…</li><li>Dock, title bar and menubar describe the old chrome…</li><li>Five layout presets, not two…</li></ul>
+<h4>tools.md (24)</h4><ul><li>Locking section contradicts the lock rules in source…</li><li><code>peer_chats.search</code> is no longer literal-only…</li></ul>
+<h4>Model context and providers (19)</h4><ul><li>Cursor baseline is undocumented…</li><li><code>closedai.runtime</code> field list is incomplete…</li></ul>
+<h4>Remaining guides (39)</h4><ul><li><code>site-discover.md</code> has 3 wrong claims…</li><li>CDP foundation doc contradicts itself…</li></ul>
+<h4>How do you want to proceed?</h4><p><b>A (recommended): highest-value fixes first.</b> Remove the stale CLAUDE.md, fix the audit script, add the catalog entry, fix the chat-card and chrome sections… <b>B:</b> everything, section by section. <b>C:</b> only the code-side fixes.</p>`
+
+/* ---------- renderers ---------- */
+const row = (k, icon, text, meta = '', chev = true) => `<div class="row" data-k="${k}">${I(icon)}<span class="t">${text}</span>${meta ? `<span class="m num">${meta}</span>` : ''}${chev ? I('chevron-right', 'chev') : ''}</div>`
+const live = (verb, obj, t) => `<div class="row" data-k="command">${I('square-terminal')}<span class="t"><span class="shimmer">${verb}</span> <span class="mono" style="color:var(--dim)">${obj}</span></span><span class="m num">${t}</span></div>`
+const firstSentence = (html) => { const m = html.match(/^(.*?[.:])(\s|<|$)/); return m ? m[1] : html }
+const short = (html) => `<p class="prose quiet">${firstSentence(html)}<span class="more">more ${I('chevron-down')}</span></p>`
+
+function card(r, opts2 = {}) {
+  const s = state(r)
+  const icon = s === 'done' ? 'circle-check' : s === 'run' ? 'loader-circle' : 'clock'
+  const meta = s === 'done'
+    ? `<b>${r.found} problems</b> · <i>${r.ok} confirmed</i>`
+    : s === 'run' ? 'Running · findings not in yet' : 'Waiting on its own sub-audit'
+  const note = s !== 'done' && r.runNote ? `<div class="rc-note">${I(s === 'run' ? 'rotate-ccw' : 'clock')}${r.runNote}</div>` : ''
+  const gist = s === 'done' ? `<div class="rc-gist">${r.gist}</div>` : ''
+  const body = opts2.open && s === 'done' ? `<div class="rc-body"><ul>${r.body.map((b) => `<li>${b}</li>`).join('')}</ul></div>` : ''
+  return `<div class="rc${opts2.open && s === 'done' ? ' open' : ''}" data-s="${s}" data-card="${r.id}"><div class="rc-top">${I(icon)}<span class="t">${r.title}</span></div><div class="rc-meta num">${meta}</div>${gist}${note}${body}</div>`
+}
+
+function chatToday() {
+  const run = opts.moment === 'run'
+  let h = `<div class="user">${PROMPT}</div>`
+  if (run) {
+    h += `<div class="turn-head">Working for <span class="num">&nbsp;9m 12s</span></div>`
+    for (const it of TODAY_RUN) {
+      if (it[0] === 'p') h += `<div class="prose">${it[1]}</div>`
+      else if (it[0] === 'row') h += row(it[1], 'square-terminal', it[2])
+      else if (it[0] === 'bg') h += `<div class="row" data-k="bg">${I('layers')}<span class="t"><span class="shimmer">Running</span> 5 subagents in the background</span><span class="m">${it[2]}</span>${I('chevron-right', 'chev')}</div>`
+      else h += live(it[1], it[2], it[3])
+    }
+  } else {
+    h += `<div class="turn-head">Worked for 14m 32s ${I('chevron-right')}</div><div class="prose">${FINAL_FULL}</div>`
+  }
+  return h
+}
+
+function chatA(withCanvas) {
+  const run = opts.moment === 'run'
+  const done = REPORTS.filter((r) => state(r) === 'done').length
+  let h = `<div class="user">${PROMPT}</div>`
+  if (run) {
+    h += `<div class="turn-head">Working for <span class="num">&nbsp;9m 12s</span></div>`
+    h += short(TODAY_RUN[0][1])
+    h += row('command', 'square-terminal', 'Ran 5 commands')
+    h += `<p class="prose quiet">Five audits are running in parallel. One finding already: <code>CLAUDE.md</code> describes a different project.<span class="more">more ${I('chevron-down')}</span></p>`
+    if (withCanvas) {
+      h += canvasLine(`${done} of 5 reports in · 43 problems so far`)
+    } else {
+      h += `<div class="row" data-k="bg">${I('layers')}<span class="t"><span class="shimmer">Running</span> 5 audits in the background</span><span class="m num">${done} of 5 reported</span>${I('chevron-down', 'chev')}</div>`
+      h += `<div class="tray">${REPORTS.map((r) => card(r)).join('')}</div>`
+    }
+    // Re-narrated reports shrink to their headline; status-only lines live on the cards.
+    h += `<p class="prose quiet">The model-context and provider audit is in: 19 problems, about 70 claims confirmed.<span class="more">more ${I('chevron-down')}</span></p>`
+    h += `<p class="prose quiet">The <code>tools.md</code> audit is done: the script’s tool list is stale, and <code>capture_spa</code> has no catalog entry.<span class="more">more ${I('chevron-down')}</span></p>`
+    h += live('Running', 'grep -rn "TOOL_CATALOG" src/main/tools/catalog.ts', '0:04')
+  } else {
+    h += `<div class="turn-head">Worked for 14m 32s ${I('chevron-right')}</div>`
+    if (withCanvas) h += canvasLine(`5 reports · ${total} problems · ${confirmed.toLocaleString()} confirmed`, true)
+    else {
+      h += `<div class="row" data-k="bg">${I('layers')}<span class="t">Ran 5 audits in the background</span><span class="m num">${total} problems · ${confirmed.toLocaleString()} confirmed</span>${I('chevron-down', 'chev')}</div>`
+      h += `<div class="tray">${REPORTS.map((r) => card(r)).join('')}</div>`
+    }
+    h += `<div class="prose"><h3>Docs audit: about 140 problems, and one real code bug</h3>
+      <p>About 140 claims in the current guides are wrong or missing; roughly 1,100 match the code. I didn’t edit any docs.</p>
+      <h4>Fix first</h4><ol><li><b><code>/home/dp/Documents/CLAUDE.md</code> describes an older Gemini project.</b></li><li><b>The audit script can’t see two tools.</b></li><li><b><code>capture_spa</code> has no catalog entry.</b></li></ol></div>`
+    h += withCanvas
+      ? `<div class="sections"><span class="chip accent">${I('panel-right')}Full report and options in the canvas</span></div>`
+      : `<div class="sections"><span class="chip">${I('chevron-down')}application.md (58)</span><span class="chip">${I('chevron-down')}tools.md (24)</span><span class="chip">${I('chevron-down')}Model context (19)</span><span class="chip">${I('chevron-down')}Remaining guides (39)</span><span class="chip">${I('chevron-down')}How to proceed</span></div>`
+    h += `<p class="prose">Pick A, B or C and I’ll start; I recommend <b>A</b>, the highest-value fixes first.</p>`
+  }
+  return h
+}
+
+const canvasLine = (status, done) => `<div class="canvas-line" data-active>${I('panel-right')}<div><div class="t">Task canvas · Docs audit</div><div class="s num">${status}</div></div><span class="open">Open in browser ${I('arrow-up-right')}</span></div>`
+
+/* ---------- browser pane ---------- */
+function browser() {
+  const ac = opts.view === 'ac'
+  const tabs = [`<div class="tab">${I('globe')}<span>reddit.com</span></div>`, `<div class="tab" ${ac ? '' : 'data-on'}>${I('file-text')}<span>application.md</span></div>`]
+  if (ac) tabs.push(`<div class="tab" data-on data-canvas>${I('panel-right')}<span>Docs audit · canvas</span></div>`)
+  document.getElementById('tabs').innerHTML = tabs.join('')
+  document.querySelector('.addr').innerHTML = `${I('arrow-left')}${I('arrow-right')}${I('rotate-ccw')}<div class="url">${ac ? `${I('panel-right')} closedai://canvas/docs-audit` : `${I('file-text')} docs/application.md`}</div>`
+  document.getElementById('page').innerHTML = ac ? canvas() : `<div class="blank-doc"><h1>Application guide</h1><p>The browser pane shows whatever the user last opened. In views Today and A, long content still lives in the chat, so the pane plays no part in the task.</p></div>`
+}
+
+function canvas() {
+  const run = opts.moment === 'run', model = opts.canvas === 'model'
+  const done = REPORTS.filter((r) => state(r) === 'done')
+  let h = `<div class="cv"><div class="cv-head"><h1>Docs audit</h1>${run ? `<span class="pill run">${I('loader-circle')}Running · 9m 12s</span>` : `<span class="pill done">${I('circle-check')}Done · 14m 32s</span>`}</div>`
+  h += `<div class="cv-sub">“${PROMPT}” · Opus 5.5 · closedai</div>`
+  if (model) {
+    h += `<div class="cv-sec"><h2>Brief <span class="by">${I('sparkles')}Written by the model</span></h2><div class="panel brief">${run
+      ? 'Two of five audits are in with 43 problems. The pattern so far: docs describe features that moved (search, dock, context blocks) rather than ones that broke. Three auditors returned status lines instead of findings and were restarted; expect the full count in about five minutes.'
+      : 'About 140 claims are wrong or missing across the current guides; roughly 1,100 match the code. Almost all drift comes from two redesigns — floating chat cards and the new window chrome — plus a stale tool list in the audit script that hid two tools. One real bug: <code>capture_spa</code> is missing from the tool catalog.'}</div></div>`
+  }
+  h += `<div class="cv-sec"><h2>${I('list-checks')}Plan</h2><div class="panel plan">
+    <div class="ok">${I('circle-check')}Run the <code>audit:docs</code> baseline<span class="m">0:41</span></div>
+    <div class="${run ? 'run' : 'ok'}">${I(run ? 'loader-circle' : 'circle-check')}Audit every current guide in 5 parallel passes<span class="m num">${run ? `${done.length} of 5` : '5 of 5'}</span></div>
+    <div class="${run ? 'todo' : 'ok'}">${I(run ? 'clock' : 'circle-check')}Compile one report with fixes ranked<span class="m">${run ? '' : '13:58'}</span></div>
+  </div></div>`
+  if (!run) {
+    h += `<div class="cv-sec"><h2>${I('circle-alert')}Findings by guide</h2><div class="panel"><table><tr><th>Guide</th><th>Mix</th><th class="n">Problems</th><th class="n">Confirmed</th></tr>${REPORTS.map((r) => {
+      const w = (n) => `${(n / r.found) * 100}%`
+      return `<tr><td>${r.title}</td><td><div class="bar2"><i style="width:${w(r.stale)};background:#e08787"></i><i style="width:${w(r.missing)};background:#d3b477"></i><i style="width:${w(r.dead || 0)};background:#83b5db"></i></div></td><td class="n num">${r.found}</td><td class="n num" style="color:#7c8086">${r.ok}</td></tr>`
+    }).join('')}</table></div><div style="margin:8px 2px 0;font-size:11.5px;color:#6c7076"><span style="color:#e08787">■</span> wrong &nbsp; <span style="color:#d3b477">■</span> missing &nbsp; <span style="color:#83b5db">■</span> dead reference</div></div>`
+    h += `<div class="cv-sec"><h2>Fix first</h2><div class="panel fix"><div><b>1</b><span><code>/home/dp/Documents/CLAUDE.md</code> describes an older Gemini project; remove or relocate it.</span></div><div><b>2</b><span>The audit script’s tool list misses <code>site.discover</code> and <code>capture_spa</code>, and it doesn’t read <code>docs/README.md</code>.</span></div><div><b>3</b><span>Add the missing <code>capture_spa</code> catalog entry.</span></div></div></div>`
+  }
+  h += `<div class="cv-sec"><h2>${I('layers')}Reports <span class="by" style="color:#7c8086">click a card to read it</span></h2><div class="grid2">${REPORTS.map((r) => card(r, { open: r.id === openCard })).join('')}</div></div>`
+  if (!run && model) {
+    h += `<div class="cv-sec"><h2>Next step <span class="by">${I('sparkles')}Written by the model</span></h2><div class="choices">
+      <div class="choice" data-rec><h5>A</h5><p>Highest-value fixes first: stale CLAUDE.md, audit script, catalog entry, chat-card and chrome sections.</p></div>
+      <div class="choice"><h5>B</h5><p>Everything, guide by guide, with a check after each.</p></div>
+      <div class="choice"><h5>C</h5><p>Only the code-side fixes; docs later.</p></div></div></div>`
+  }
+  h += `<div class="cv-sec"><h2>${I('clock')}Timeline</h2><div class="panel timeline">
+    <div><span class="tm">0:00</span>Started; ran the <code>audit:docs</code> baseline</div>
+    <div><span class="tm">0:52</span>Launched 5 audits; found the stale CLAUDE.md</div>
+    <div><span class="tm">3:10</span>3 audits returned status lines; restarted them</div>
+    <div><span class="tm">7:45</span>CDP sub-audit in: 9 problems</div>
+    <div><span class="tm">8:30</span>Model-context audit in: 19 problems</div>
+    <div><span class="tm">9:05</span>tools.md audit in: 24 problems</div>
+    ${run ? '' : '<div><span class="tm">12:40</span>Both application.md halves in: 58 problems</div><div><span class="tm">14:32</span>Report written; waiting for your choice</div>'}
+  </div></div>`
+  h += `<div class="cv-sec"><h2>${I('file-pen-line')}Files changed</h2><div class="panel timeline"><div>${run ? 'None yet' : '<code>docs/workspace-index.md</code> · regenerated by <code>npm run map</code>'}</div></div></div>`
+  return h + '</div>'
+}
+
+/* ---------- notes + wiring ---------- */
+const NOTES = {
+  today: '<b>Today.</b> Every status update and every re-told report lands in the chat at full length: 13 paragraphs while it runs. The fold hides them afterwards, but the final answer is itself a full report.',
+  a: '<b>A · Organized chat.</b> Narration that has been superseded shrinks to its first sentence (“more” opens it). Each subagent becomes a card: running, waiting or done, with its counts and a two-line gist, and “restarted” notes sit on the card instead of in the chat. The final answer keeps its summary and “Fix first”; its long sections become chips you open.',
+  ac: '<b>A + C · Chat + canvas.</b> The chat keeps the short narration and the answer’s summary; the cards move into a canvas tab in the browser pane, which fills in live: plan, report cards, findings table, fix-first list, timeline and files changed. “Assembled by the app” is built only from what the transcript already records. “+ Model-written sections” adds a brief and the next-step choices written by the model.'
+}
+function render() {
+  document.getElementById('chat').innerHTML = opts.view === 'today' ? chatToday() : chatA(opts.view === 'ac')
+  document.getElementById('note').innerHTML = NOTES[opts.view]
+  document.getElementById('send').innerHTML = opts.moment === 'run' ? I('square') : I('arrow-up')
+  document.getElementById('send').toggleAttribute('data-idle', opts.moment !== 'run')
+  document.querySelector('[data-key=canvas]').toggleAttribute('data-off', opts.view !== 'ac')
+  browser()
+}
+document.querySelectorAll('.seg').forEach((seg) => {
+  const sync = () => seg.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === opts[seg.dataset.key]))
+  seg.addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; opts[seg.dataset.key] = b.dataset.v; sync(); render() })
+  sync()
+})
+document.getElementById('page').addEventListener('click', (e) => { const c = e.target.closest('[data-card]'); if (c) { openCard = openCard === c.dataset.card ? null : c.dataset.card; render() } })
+render()
+// Fit the whole stage (chat + browser) into whatever width the pane has.
+const fit = () => { const z = Math.min(1, (innerWidth - 36) / 1414); document.querySelector('.stage').style.zoom = z; document.querySelectorAll('.bar, .note').forEach((e) => { e.style.maxWidth = `${1414 * z}px` }) }
+addEventListener('resize', fit); fit()
+</script>
+</body>
+</html>

@@ -1,5 +1,5 @@
 import type { JSX, MouseEvent } from 'react'
-import { Archive } from 'lucide-react'
+import { Archive, Trash2 } from '../icons/index.js'
 import { Button } from '../../components/ui/button.js'
 import type { ChatSearchHit } from './history-search.js'
 import { activityAt, segmentTitle } from './history-search.js'
@@ -55,12 +55,13 @@ export function ChatHistoryThreadRow({
   const current = thread.paneId === activeChatId
   const archiveDisabled = pending || (current && busy) || thread.running
   const activityLabel = status && status.state !== 'idle' ? status.label : null
-  const whenLabel = current ? 'Current' : activityLabel ?? formatChatTime(activityAt(thread))
+  const paletteLabel = status?.state === 'working' ? 'Running' : status?.state === 'unread' ? 'Completed · New' : activityLabel
+  const whenLabel = current ? (palette ? '✓ Current' : 'Current') : (palette ? paletteLabel : activityLabel) ?? formatChatTime(activityAt(thread))
   const openBody = <>
     <span className="chat-history-leading" aria-hidden="true">
       {status && status.state !== 'idle'
         ? <TabStatusIndicator status={status} />
-        : <ChatHistorySurfaceMark surface={thread.quickChatSurface} size={16} className="chat-history-surface" />}
+        : !palette && <ChatHistorySurfaceMark surface={thread.quickChatSurface} size={16} className="chat-history-surface" />}
     </span>
     <span className="chat-history-body">
       <span className="chat-history-title">
@@ -77,6 +78,7 @@ export function ChatHistoryThreadRow({
     type: 'button' as const,
     className: 'chat-history-open',
     'data-ui-key': thread.paneId,
+    'data-status': status?.state,
     disabled: busy || pending,
     'aria-current': current ? 'true' as const : undefined,
     title: activityLabel ?? chatHistorySurfaceLabel(thread.quickChatSurface) ?? undefined,
@@ -100,7 +102,7 @@ export function ChatHistoryThreadRow({
     disabled: archiveDisabled,
     onMouseDown: palette ? swallowFocus : undefined,
     onClick: onArchive,
-    children: <Archive aria-hidden="true" />
+    children: palette ? <Trash2 aria-hidden="true" /> : <Archive aria-hidden="true" />
   }
   const archiveButton = archiveUi === 'titlebar.chat-search-delete'
     ? <Button {...archiveProps} data-ui="titlebar.chat-search-delete" />

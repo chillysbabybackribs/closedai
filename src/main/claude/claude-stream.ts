@@ -111,7 +111,12 @@ export class ClaudeTurnTranslator {
         return { ops: [notice(`${stringOf(message.original_model)} declined this request; continued on ${stringOf(message.fallback_model)}`, 'info')] }
       case 'permission_denied':
         return { ops: [notice(`${stringOf(message.tool_name)} was not allowed: ${stringOf(message.message)}`, 'error')] }
+      case 'background_tasks_changed': {
+        const live = Array.isArray(message.tasks) ? message.tasks.map((task) => stringOf(recordOf(task).task_id)) : []
+        return { ops: this.backgroundTasks.sync(live).map((item) => ({ type: 'item', item })) }
+      }
       case 'task_started':
+      case 'task_updated':
       case 'task_progress':
       case 'task_notification': {
         const item = this.backgroundTasks.handle(message, this.turnId, this.options.replay)

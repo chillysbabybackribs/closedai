@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chat history · menu polish mockup</title>
+<style>
+@font-face { font-family: Inter; src: url('../../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2'); }
+:root { color-scheme: dark; font-family: Inter, system-ui, sans-serif; color: #f5f5f7; background: #101010; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+button, input { font: inherit; }
+button { cursor: pointer; }
+button:focus-visible, input:focus-visible { outline: 2px solid #2997ff; outline-offset: 2px; }
+.review { padding: 16px 24px; display: flex; gap: 16px; align-items: center; border-bottom: 1px solid #303030; }
+.review strong { font-size: 14px; font-weight: 550; }
+.review span { color: #969699; font-size: 12px; flex: 1; }
+.review button { background: #272727; color: #eee; border: 1px solid #404040; border-radius: 6px; padding: 6px 10px; font-size: 12px; }
+.app { margin: 20px auto; width: min(1140px, calc(100% - 32px)); background: linear-gradient(135deg, #74614f, #2b231e); padding: 0 8px 8px; border-radius: 12px; overflow: hidden; box-shadow: 0 20px 70px #0008; }
+.menubar { height: 32px; margin: 0 -8px 8px; background: #131313e8; border-bottom: 1px solid #424245; display: flex; align-items: center; gap: 18px; padding: 0 14px; font-size: 12px; }
+.desk { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 10px; }
+.chat { position: relative; height: min(790px, calc(100vh - 145px)); min-height: 540px; background: #151515; border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; box-shadow: inset 0 0 0 1px #ffffff0d; }
+.header { height: 54px; display: flex; gap: 12px; align-items: center; padding: 0 18px; flex-shrink: 0; }
+.header button { border: 0; background: transparent; color: #97979b; font-size: 18px; padding: 4px; }
+.header .title-search { display: flex; align-items: center; justify-content: center; gap: 8px; flex: 1; min-width: 0; height: 30px; padding: 0 8px; border-radius: 6px; color: #f5f5f7; }
+.header .title-search:hover, .header .title-search[aria-expanded='true'] { background: #ffffff08; }
+.header .title { min-width: 0; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.header .search-icon { flex-shrink: 0; width: 14px; height: 14px; color: #a1a1a6; }
+.transcript { flex: 1; padding: 48px 30px 0; font-size: 15px; line-height: 1.7; color: #dedee0; }
+.bubble { background: #202020; border-radius: 12px; margin-left: 55px; padding: 9px 14px; font-size: 14px; }
+.worked { color: #969699; font-size: 12px; margin: 28px 0 14px; border-bottom: 1px solid #ffffff0a; padding-bottom: 12px; }
+.transcript code { background: #292929; padding: 2px 5px; border-radius: 4px; font-size: 12px; }
+.composer { margin: 18px 24px 8px; padding: 15px; border-radius: 14px; background: #202020; color: #77777b; font-size: 13px; display: flex; align-items: center; gap: 12px; }
+.send { margin-left: auto; background: #f5f5f7; color: #151515; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; }
+.meta { margin: 0 30px 18px; display: flex; justify-content: space-between; color: #8b8b8f; font-size: 11px; }
+.history { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); width: min(480px, calc(100% - 48px)); max-height: calc(100% - 180px); display: flex; flex-direction: column; padding: 5px; border: 1px solid #ffffff20; border-radius: 8px; background: #222222f2; backdrop-filter: blur(24px); box-shadow: inset 0 1px 0 #ffffff04, 0 2px 6px #0003, 0 12px 30px #0005; }
+.history[hidden] { display: none; }
+.filter { display: flex; align-items: center; gap: 8px; margin: 5px 7px 8px; height: 32px; padding: 0 12px; border: 1px solid transparent; border-radius: 10px; background: #191919; color: #929297; }
+.filter:focus-within { border-color: #2997ff80; }
+.filter input { min-width: 0; width: 100%; border: 0; outline: none; background: transparent; color: #f5f5f7; font-size: 12px; text-align: center; }
+.filter input:focus, .filter input:not(:placeholder-shown) { text-align: left; }
+.filter input:focus-visible { outline: none; }
+.filter input::-webkit-search-cancel-button { -webkit-appearance: none; }
+.filter button { border: 0; background: transparent; color: #aaa; padding: 0 3px; font-size: 16px; }
+.empty { padding: 22px 12px; color: #99999e; text-align: center; font-size: 12px; }
+[hidden] { display: none !important; }
+.filter input::placeholder { color: #d2d2d5; opacity: 1; }
+.list { overflow: auto; min-height: 0; scrollbar-width: thin; scrollbar-color: #ffffff26 transparent; }
+.label { padding: 6px 9px 4px; font-size: 10.5px; color: #9a9a9f; }
+.row { display: flex; gap: 12px; align-items: center; width: 100%; min-height: 28px; padding: 5px 9px; line-height: 18px; border: 0; border-radius: 5px; color: #f0f0f2; background: transparent; text-align: left; font-size: 13px; }
+.row.selected, .row:hover, .row:focus-visible { background: #0a84ff; color: #fff; }
+.list:has(.row:hover) .row.selected:not(:hover), .list:has(.row:focus-visible) .row.selected:not(:focus-visible) { background: transparent; color: #f0f0f2; }
+.status { width: 12px; height: 12px; flex: 0 0 12px; display: grid; place-items: center; color: #2997ff; }
+.status.running::before { content: ''; width: 10px; height: 10px; border: 1.5px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin 900ms linear infinite; }
+.status.unread::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.row[data-state='unread'] .name { font-weight: 550; }
+.row.selected .status, .row:hover .status, .row:focus-visible .status { color: white; }
+.list:has(.row:hover) .row.selected:not(:hover) .status, .list:has(.row:focus-visible) .row.selected:not(:focus-visible) .status { color: #2997ff; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .status.running::before { animation: none; } }
+.row .name { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.row .time { font-size: 10.5px; color: #949499; white-space: nowrap; }
+.row .current { color: #b9b9bd; }
+.row.selected .time, .row:hover .time, .row:focus-visible .time { color: #ffffffd9; }
+.list:has(.row:hover) .row.selected:not(:hover) .time, .list:has(.row:focus-visible) .row.selected:not(:focus-visible) .time { color: #949499; }
+.divider { height: 1px; margin: 6px 4px 0; background: #ffffff12; }
+.browser { border-radius: 14px; overflow: hidden; background: #151515; }
+.tabs { padding: 13px 16px; background: #1d1d1d; font-size: 11px; color: #adadb1; }
+.toolbar { padding: 10px 12px; background: #202020; display: flex; gap: 12px; align-items: center; color: #97979b; }
+.url { background: #191919; padding: 7px 12px; border-radius: 6px; font-size: 11px; flex: 1; }
+.page { text-align: center; }
+.page nav { padding: 16px; border-bottom: 1px solid #ffffff18; font-size: 13px; }
+.page h1 { font-size: 36px; letter-spacing: -1px; margin-top: 70px; }
+.page p { font-size: 14px; line-height: 1.6; color: #96969c; padding: 0 35px; }
+.art { margin: 45px 25px; padding: 45px 10px; background: radial-gradient(ellipse at bottom, #26476b, #12161d 70%); border-radius: 8px; color: #c9dcf0; font-size: 34px; letter-spacing: -1px; font-weight: 650; }
+.caption { max-width: 1140px; margin: 0 auto 24px; padding: 0 18px; font-size: 12px; color: #969699; line-height: 1.6; }
+@media (max-width: 780px) { .desk { grid-template-columns: 1fr; } .browser { display: none; } .review { flex-wrap: wrap; } .review span { flex-basis: 100%; } .history { width: calc(100% - 32px); } .app { margin-top: 12px; } }
+</style>
+</head>
+<body>
+<div class="review"><strong>Chat history · menu polish</strong><span>HTML/CSS concept · centered inside the chat card</span><button id="toggle">Hide history</button></div>
+<main class="app">
+<div class="menubar"><span>File</span><span>View</span><span>Agent</span><span>Developer</span></div>
+<div class="desk">
+<section class="chat" aria-label="Chat mockup">
+<header class="header"><button aria-label="Favorite">☆</button><button aria-label="New chat">+</button><button class="title-search" aria-label="Search chats and open chat history" aria-expanded="true" aria-controls="chat-history"><svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><span class="title">Chat cards background color and app polish</span></button><button aria-label="Minimize">−</button><button aria-label="Close">×</button></header>
+<div class="transcript"><div class="bubble">lighten the url text input area a bit</div><div class="worked">Worked for 25s ›</div><p>I lightened the address field so it reads as a distinct inset within the toolbar.</p><p>The change is one value, <code>--browser-field</code>. The neutral palette keeps the application calm and consistent.</p></div>
+<div class="composer"><span>+</span><span>Message Codex</span><span class="send">↑</span></div><div class="meta"><span>GPT-6.1-Sol</span><span>▱ closedai</span></div>
+<section class="history" id="chat-history" aria-label="Chat history">
+<div class="filter"><input id="filter" type="search" aria-label="Search Open chats and History" placeholder="Search chats"><button id="clear" aria-label="Clear search" hidden>×</button></div>
+<div class="list"><section class="group" id="open-chats"><div class="label">Open chats</div>
+<button class="row" data-state="running" aria-label="Running Task UI Mockup Options in Chat, Running" title="Running"><span class="status running" aria-hidden="true"></span><span class="name">Running Task UI Mockup Options in Chat</span><span class="time">Running</span></button>
+<button class="row selected"><span class="status" aria-hidden="true"></span><span class="name">Chat cards background color and app polish</span><span class="time current">✓ Current</span></button>
+<button class="row" data-state="running" aria-label="Brainstorming Live Task UI Display Options, Running" title="Running"><span class="status running" aria-hidden="true"></span><span class="name">Brainstorming Live Task UI Display Options</span><span class="time">Running</span></button>
+<button class="row" data-state="unread" aria-label="Enterprise UI Upgrades Quality Review, Completed · New" title="Completed · New"><span class="status unread" aria-hidden="true"></span><span class="name">Enterprise UI Upgrades Quality Review</span><span class="time">Completed · New</span></button>
+</section><div class="divider" id="group-divider"></div><section class="group" id="closed-chats"><div class="label">History</div>
+<button class="row"><span class="status" aria-hidden="true"></span><span class="name">Continuing: Documentation audit</span><span class="time">30m ago</span></button>
+<button class="row" data-state="unread" aria-label="Review Recent Icon Transcript Updates, Completed · New" title="Completed · New"><span class="status unread" aria-hidden="true"></span><span class="name">Review Recent Icon Transcript Updates</span><span class="time">Completed · New</span></button>
+<button class="row"><span class="status" aria-hidden="true"></span><span class="name">Review Recent Updates</span><span class="time">40m ago</span></button>
+<button class="row"><span class="status" aria-hidden="true"></span><span class="name">Audit Documentation Against Codebase for Drift</span><span class="time">41m ago</span></button>
+<button class="row"><span class="status" aria-hidden="true"></span><span class="name">Restyle Settings and Modals to macOS Look</span><span class="time">1h ago</span></button>
+<button class="row"><span class="status" aria-hidden="true"></span><span class="name">Chat task UI refinement</span><span class="time">1h ago</span></button></section><div class="empty" role="status" hidden>No chats found</div></div>
+</section>
+</section>
+<aside class="browser" aria-label="Browser mockup"><div class="tabs">⠿ &nbsp; Apple Developer &nbsp; ×</div><div class="toolbar"><span>‹</span><span>›</span><span>⟳</span><div class="url">developer.apple.com</div></div><div class="page"><nav>Apple Developer &nbsp; &nbsp; Discover &nbsp; Design</nav><h1>Develop something<br>wonderful.</h1><p>Tools, technologies, and inspiration<br>for your next great idea.</p><div class="art">WWDC20</div></div></aside>
+</div></main>
+<p class="caption">Open chats stay at the top, including running and completed chats. History below contains closed chat windows only. Blue ring: running · Blue dot: completed and unviewed. Click an unread chat to preview clearing its dot.</p>
+<script>
+const panel = document.querySelector('.history');
+const toggle = document.querySelector('#toggle');
+const input = document.querySelector('#filter');
+const rows = [...document.querySelectorAll('.row')];
+function show(open) { panel.hidden = !open; toggle.textContent = open ? 'Hide history' : 'Show history'; document.querySelector('.title-search').setAttribute('aria-expanded', String(open)); }
+toggle.onclick = () => show(panel.hidden);
+document.querySelector('.title-search').onclick = () => { show(panel.hidden); if (!panel.hidden) input.focus(); };
+input.oninput = () => {
+  const query = input.value.trim().toLowerCase();
+  rows.forEach(row => { row.hidden = !row.querySelector('.name').textContent.toLowerCase().includes(query); row.style.display = row.hidden ? 'none' : ''; });
+  const matches = rows.filter(row => !row.hidden).length;
+  const groups = [...document.querySelectorAll('.group')];
+  groups.forEach(group => { group.hidden = ![...group.querySelectorAll('.row')].some(row => !row.hidden); });
+  document.querySelector('#group-divider').hidden = groups.some(group => group.hidden);
+  document.querySelector('.empty').hidden = matches > 0;
+  document.querySelector('#clear').hidden = !input.value;
+};
+document.querySelector('#clear').onclick = () => { input.value = ''; input.oninput(); input.focus(); };
+rows.forEach(row => row.onclick = () => {
+  rows.forEach(item => item.classList.remove('selected'));
+  row.classList.add('selected');
+  if (row.dataset.state === 'unread') {
+    row.dataset.state = 'viewed';
+    row.querySelector('.status').classList.remove('unread');
+    row.querySelector('.time').textContent = 'Completed';
+    row.title = 'Completed · Viewed';
+    row.setAttribute('aria-label', `${row.querySelector('.name').textContent}, Completed, Viewed`);
+  }
+});
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape') show(false);
+  if (panel.hidden || !['ArrowDown', 'ArrowUp', 'Enter'].includes(event.key)) return;
+  const visible = rows.filter(row => !row.hidden);
+  if (!visible.length) return;
+  event.preventDefault();
+  let index = visible.indexOf(document.activeElement);
+  if (event.key === 'Enter') { if (index >= 0) visible[index].click(); return; }
+  index = event.key === 'ArrowDown' ? (index + 1) % visible.length : (index < 0 ? visible.length - 1 : (index - 1 + visible.length) % visible.length);
+  visible[index].focus();
+});
+</script>
+</body>
+</html>

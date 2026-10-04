@@ -1,16 +1,15 @@
 import type { ClipboardEvent, DragEvent, FormEvent, JSX, KeyboardEvent, Ref } from 'react'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { ArrowUp, Play, Octagon, Paperclip } from 'lucide-react'
+import { ArrowUp, Play } from './icons/index.js'
 
 import { Button } from '../components/ui/button.js'
 import { PromptInput, PromptInputAction, PromptInputTextarea } from '../components/ui/prompt-input.js'
 import type { ChatAttachment, ChatContextUsage, ChatModel, ChatPlanUsage, ChatProvider } from '../shared/chat.js'
 import { CHAT_PROVIDER_LABELS } from '../shared/chat-providers.js'
-import { AttachmentChips, attachmentsFromFiles } from './composer-attachments.js'
+import { AttachmentChips, AttachmentPicker, attachmentsFromFiles } from './composer-attachments.js'
 import { createPortal } from 'react-dom'
 import { ComposerSetupMenu, type ComposerSetupHandle } from './composer-setup-menu.js'
 import { useComposerDraft } from './composer-drafts.js'
-import { ComposerSpeedDial } from './composer-speed-dial.js'
 import { errorMessage } from './error-message.js'
 
 export type ComposerProps = {
@@ -193,17 +192,17 @@ export function Composer({
   }
 
   const action = running ? (
-    <PromptInputAction tooltip={`Pause ${providerLabel} (Esc)`} disabled={false}>
+    <PromptInputAction tooltip={`Stop ${providerLabel}; you can resume after (Esc)`} disabled={false}>
       <Button
         type="button"
         variant="ghost"
         size="icon"
         className="composer-action composer-stop"
-        aria-label={`Pause ${providerLabel} (Esc)`}
+        aria-label={`Stop ${providerLabel} (Esc)`}
         data-ui="composer.stop"
         onClick={() => void stop()}
       >
-        <Octagon size={24} strokeWidth={1.25} aria-hidden="true" />
+        <span className="composer-stop-glyph" aria-hidden="true" />
       </Button>
     </PromptInputAction>
   ) : paused ? (
@@ -262,16 +261,8 @@ export function Composer({
         )}
         <div className="composer-row">
           <div className="composer-tools">
-            <input ref={fileInputRef} className="prompt-attachment-input" type="file" multiple
+            <AttachmentPicker inputRef={fileInputRef} disabled={!enabled || running || sending}
               onChange={(event) => { if (event.target.files) void addFiles(event.target.files); event.target.value = '' }} />
-            <ComposerSpeedDial actions={[
-              {
-                id: 'composer.upload', label: 'Attach file',
-                icon: <Paperclip size={17} strokeWidth={1.9} aria-hidden="true" />,
-                disabled: !enabled || running || sending,
-                run: () => fileInputRef.current?.click()
-              }
-            ]} />
           </div>
           <div className="composer-input-wrap">
             {visibleSuggestion && <div className="composer-suggestion" aria-hidden="true">

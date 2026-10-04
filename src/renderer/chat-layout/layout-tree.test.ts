@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { BROWSER_PANE_ID, WORKSPACE_DOCK_ID, withBrowser, dockBrowser, dockPane, layoutGeometry, paneIds, readLayout, removePane, resizeSplit, saveLayout, type ChatLayout } from './layout-tree.ts'
+import { BROWSER_PANE_ID, WORKSPACE_DOCK_ID, withBrowser, dockBrowser, dockPane, evenShare, layoutGeometry, paneIds, prunePanes, readLayout, removePane, resizeSplit, saveLayout, unprunedRatio, type ChatLayout } from './layout-tree.ts'
 import { addTab, moveTab, pruneTabs, tabIds } from './layout-tabs.ts'
 
 test('the browser stacks over one chat and returns to a full-height column without changing chat groups', () => {
@@ -20,14 +20,16 @@ test('the browser stacks over one chat and returns to a full-height column witho
       assert.equal(browser.height, target.height)
       assert.equal(browser.x < target.x, edge === 'left')
     }
-    assert.deepEqual(removePane(stacked, BROWSER_PANE_ID), chats)
+    // Beside b, the browser's half of b's column is shared by the whole row; stacked, b gets it back.
+    const unstacked = edge === 'top' || edge === 'bottom' ? chats : { ...chats, ratio: 2 / 3 } as ChatLayout
+    assert.deepEqual(removePane(stacked, BROWSER_PANE_ID), unstacked)
     assert.deepEqual(tabIds(stacked), tabIds(chats))
     for (const side of ['left', 'right'] as const) {
       const column = dockBrowser(stacked, WORKSPACE_DOCK_ID, side, 'outer')
       const panes = layoutGeometry(column, 1600, 900).panes
       assert.equal(panes.find((pane) => pane.id === BROWSER_PANE_ID)!.rect.height, 900)
       assert.equal(panes[side === 'left' ? 0 : panes.length - 1]!.id, BROWSER_PANE_ID)
-      assert.deepEqual(removePane(column, BROWSER_PANE_ID), chats)
+      assert.deepEqual(removePane(column, BROWSER_PANE_ID), unstacked)
       assert.deepEqual(readLayout({ getItem: () => JSON.stringify({ tree: column, browserVisible: true }) }, '/a').tree, column)
     }
   }
@@ -147,4 +149,45 @@ test('a saved layout keeps its focused chat and maximized window while they are 
   assert.deepEqual(readLayout(storage, '/p'), { tree, browserVisible: true, focused: 'b', maximized: 'a' })
   saveLayout(storage, '/p', { tree, browserVisible: true, focused: 'gone', maximized: BROWSER_PANE_ID })
   assert.deepEqual(readLayout(storage, '/p'), { tree, browserVisible: true, maximized: BROWSER_PANE_ID })
+})
+
+const leaf = (id: string): ChatLayout => ({ kind: 'pane', id })
+const split = (id: string, axis: 'horizontal' | 'vertical', ratio: number, first: ChatLayout, second: ChatLayout): ChatLayout =>
+  ({ kind: 'split', id, axis, ratio, first, second })
+/** Each pane's share of a horizontal row, to a tenth of a percent; a vertical split's panes share its column. */
+const shares = (tree: ChatLayout | null, weight = 1, out: Record<string, number> = {}): Record<string, number> => {
+  if (!tree) return out
+  if (tree.kind === 'pane') out[tree.id] = Math.round(weight * 1000) / 10
+  else if (tree.axis === 'vertical') { shares(tree.first, weight, out); shares(tree.second, weight, out) }
+  else { shares(tree.first, weight * tree.ratio, out); shares(tree.second, weight * (1 - tree.ratio), out) }
+  return out
+}
+// Chat, browser, chat at 30%, 40% and 30% of the row.
+const row = split('outer', 'horizontal', 0.3, leaf('l'), split('inner', 'horizontal', 4 / 7, leaf(BROWSER_PANE_ID), leaf('r')))
+
+test('a closed window shares its space with its whole row in proportion, not only its sibling', () => {
+  assert.deepEqual(shares(row), { l: 30, [BROWSER_PANE_ID]: 40, r: 30 })
+  assert.deepEqual(shares(removePane(row, BROWSER_PANE_ID)), { l: 50, r: 50 })
+  const uneven = split('outer', 'horizontal', 0.2, leaf('l'), split('inner', 'horizontal', 0.5, leaf(BROWSER_PANE_ID), leaf('r')))
+  assert.deepEqual(shares(removePane(uneven, BROWSER_PANE_ID)), { l: 33.3, r: 66.7 }, 'the chats keep their 1:2 sizes')
+  // A window stacked in a column only grows its column; the row keeps its divider.
+  const column = split('outer', 'horizontal', 0.25, leaf('l'), split('inner', 'vertical', 0.5, leaf('top'), leaf('bottom')))
+  assert.equal((removePane(column, 'top') as { ratio: number }).ratio, 0.25)
+  // Nothing removed: the same tree, so memoized geometry is untouched.
+  assert.equal(prunePanes(row, () => false), row)
+})
+
+test('a divider dragged while a window is pruned stores the ratio that shows where it was let go', () => {
+  const hidden = (pane: { id: string }) => pane.id === BROWSER_PANE_ID
+  const stored = unprunedRatio(row, hidden, 'outer', 0.4)
+  const shown = prunePanes({ ...row, ratio: stored } as ChatLayout, hidden) as { ratio: number }
+  assert.ok(Math.abs(shown.ratio - 0.4) < 1e-9)
+  assert.equal(unprunedRatio(row, () => false, 'outer', 0.4), 0.4)
+})
+
+test('a window added to a row takes an even share and the others keep their proportions', () => {
+  const added = evenShare(dockPane(row, 'n', 'r', 'right', 'added'), 'n')
+  assert.deepEqual(shares(added), { l: 22.5, [BROWSER_PANE_ID]: 30, r: 22.5, n: 25 })
+  // A window stacked into a column halves it as before.
+  assert.deepEqual(shares(evenShare(dockPane(row, 'n', 'r', 'bottom', 'added'), 'n')), shares(dockPane(row, 'n', 'r', 'bottom', 'added')))
 })

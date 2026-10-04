@@ -167,7 +167,7 @@
 
 .wallpaper-tile[data-selected] .wallpaper-tile-frame {
   border-color: transparent;
-  box-shadow: 0 0 0 2px var(--primary), 0 0 0 4px color-mix(in srgb, var(--primary) 25%, transparent);
+  box-shadow: 0 0 0 2px var(--accent-fill), 0 0 0 4px color-mix(in srgb, var(--accent-fill) 25%, transparent);
 }
 
 .wallpaper-tile-label {
@@ -194,8 +194,8 @@
   width: 20px;
   height: 20px;
   border-radius: 999px;
-  background: var(--primary);
-  color: var(--primary-foreground);
+  background: var(--accent-fill);
+  color: #fff;
   box-shadow: 0 0 0 2px var(--popover);
   pointer-events: none;
 }
@@ -262,7 +262,7 @@
   display: grid;
   place-content: center;
   justify-items: center;
-  border: 2px dashed var(--primary);
+  border: 2px dashed var(--accent-fill);
   border-radius: 10px;
   background: color-mix(in srgb, var(--popover) 88%, transparent);
   backdrop-filter: blur(4px);
@@ -279,10 +279,10 @@
   place-items: center;
   width: 44px;
   height: 44px;
-  border: 1px solid color-mix(in srgb, var(--primary) 40%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-fill) 40%, transparent);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--primary) 15%, transparent);
-  color: var(--primary);
+  background: color-mix(in srgb, var(--accent-fill) 15%, transparent);
+  color: var(--accent-fill);
 }
 
 .wallpaper-drop-title {

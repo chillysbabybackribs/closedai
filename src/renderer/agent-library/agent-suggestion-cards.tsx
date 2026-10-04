@@ -1,6 +1,6 @@
 import type { JSX } from 'react'
 import { useState } from 'react'
-import { Shuffle } from 'lucide-react'
+import { Shuffle } from '../icons/index.js'
 
 import { Button } from '../../components/ui/button.js'
 import { AGENT_SUGGESTION_COUNT, AGENT_SUGGESTIONS, createSuggestionRotation, type AgentSuggestion } from './agent-suggestions.js'

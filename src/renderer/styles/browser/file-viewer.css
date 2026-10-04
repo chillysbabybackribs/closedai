@@ -1,4 +1,3 @@
-.browser-shell.has-file-viewer { grid-template-rows: auto minmax(0, 1fr); }
 .browser-view-host.is-file-viewer { visibility: hidden; }
 
 .file-viewer {
@@ -20,6 +19,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  /* One fixed height for Code view and the Page view header, so Page | Code never moves. */
+  height: var(--file-header-height, 41px);
   padding: 6px 12px;
   border-bottom: 1px solid var(--border);
   background: var(--card, var(--background));
@@ -216,4 +217,22 @@
 
 .file-viewer-diff .activity-card-diff-container {
   margin: 0;
+}
+
+/* Page view of a local HTML/SVG file: the file header pins to the top of the browser frame, where
+   the file viewer's own header sits in Code view, and the live page starts below it. The toolbar
+   above stays the same for every tab. */
+.browser-frame.has-file-page {
+  padding-top: calc(var(--file-header-height, 41px) + 6px);
+}
+
+.browser-file-page-header {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 1;
+}
+
+.browser-frame.has-file-page .browser-view-freeze {
+  top: calc(var(--file-header-height, 41px) + 6px);
+  height: calc(100% - var(--file-header-height, 41px) - 12px);
 }

@@ -79,7 +79,6 @@
 
 .appearance-control-inputs input {
   width: 100%;
-  accent-color: var(--chrome-control-selected);
 }
 
 .appearance-control-inputs output {

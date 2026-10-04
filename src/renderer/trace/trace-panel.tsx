@@ -1,5 +1,5 @@
 import type { JSX } from 'react'
-import { RefreshCw, Trash2 } from 'lucide-react'
+import { RefreshCw, Trash2 } from '../icons/index.js'
 
 import { Button } from '../../components/ui/button.js'
 import type { TraceKind } from '../../shared/trace.js'

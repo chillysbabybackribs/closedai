@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react'
+import { Plus } from '../../icons/index.js'
 import { useLayoutEffect, useState, type RefObject } from 'react'
 import { layoutTileElement } from '../layout-geometry-dom.js'
 import type { Rect } from '../layout-tree.js'

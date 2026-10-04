@@ -1,6 +1,6 @@
 import type { JSX } from 'react'
 import { useState } from 'react'
-import { MessageSquareShare } from 'lucide-react'
+import { MessageSquareShare } from './icons/index.js'
 import { cn } from '../lib/utils.js'
 import { errorMessage } from './error-message.js'
 

@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState, type JSX } from 'react'
-import { Pin, PinOff } from 'lucide-react'
+import { Pin, PinOff } from '../icons/index.js'
 import { Button } from '../../components/ui/button.js'
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover.js'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../components/ui/tooltip.js'

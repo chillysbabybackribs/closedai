@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import type { BrowserHistory } from './browser-history-store.js'
 import type { BrowserBounds, BrowserShot, BrowserState, BrowserTabInfo, VideoCompareState } from '../shared/types.js'
 import type { TabPersistRecord } from './browser-tab-session-store.js'
-import { allocateTabId, BrowserTab, HOME_URL, PARTITION } from './browser-tab.js'
+import { allocateTabId, BrowserTab, HOME_URL, PARTITION, type EmulatedSurface } from './browser-tab.js'
 import { ImageTab } from './local-files/image-tab.js'
 import { FileTab } from './local-files/file-tab.js'
 import { VideoTab } from './local-files/video-tab.js'
@@ -36,6 +36,7 @@ import {
   type BrowserServiceTabOpsHost
 } from './browser-service-tab-ops.js'
 import type { CdpBrowserTarget } from './cdp/browser-cdp-access.js'
+import { phonePreviewLayout, type PhonePreviewLayout } from '../shared/phone-preview.js'
 
 type BrowserServiceOptions = {
   initialUrl?: string
@@ -58,6 +59,11 @@ type BrowserServiceOptions = {
 const REVEAL_SETTLE_MS = 400
 // The same bound for a still: a capture is worth a couple of frames' wait, never a stall.
 const CAPTURE_SETTLE_MS = 250
+// A phone-preview switch reloads the page while it is parked; a slow page is revealed still loading.
+const PHONE_RELOAD_WAIT_MS = 2500
+
+/** Applies phone metrics to a tab's page (null clears them); `initial` also sets touch and user agent. */
+export type PhonePreviewDriver = (tabId: string, layout: PhonePreviewLayout | null, initial: boolean) => Promise<void>
 
 // Owns the ordered list of tabs and the single human-visible one. All tabs share one session
 // (persist:browser), so a login in one tab applies to all.
@@ -72,6 +78,13 @@ export class BrowserService extends EventEmitter {
   private pageVisible = true
   private boundsRevision = 0
   private videoCompare: VideoCompareState | null = null
+  /** Tabs in phone preview, with the fit scale whose metrics were last sent (0 until the first send). */
+  private readonly phoneScales = new Map<string, number>()
+  private phoneDriver: PhonePreviewDriver | null = null
+  /** Tabs mid-switch into or out of phone preview, parked until their page has settled. */
+  private readonly phoneSwaps = new Set<string>()
+  /** Removes each phone-preview tab's navigation listener. */
+  private readonly phoneNavigationWatch = new Map<string, () => void>()
   private overlayCapture: Promise<BrowserShot | null> | null = null
   // One colour memory for the whole window: what a site paints is a property of the site.
   // See browser-page-background.ts for what it buys.
@@ -147,11 +160,13 @@ export class BrowserService extends EventEmitter {
       this.history,
       (request) => {
         const child = this.openTab(request.url, request.activate, request.options)
+        this.inheritPhonePreview(tab.id, child)
         this.emit('popup', tab.id, child.id)
       },
       PARTITION,
       (options, request) => {
         const child = this.createTab(request.activate && this.activeId === tab.id, undefined, undefined, options)
+        this.inheritPhonePreview(tab.id, child)
         this.emit('popup', tab.id, child.id)
         // Chromium navigates adopted children itself. Background-tab opens may not supply
         // WebContents; only that deferred case needs an explicit initial navigation.
@@ -371,7 +386,7 @@ export class BrowserService extends EventEmitter {
 
   private enrichState(state: BrowserState): BrowserState {
     const compare = this.validVideoCompare()
-    return { ...state, videoCompare: compare }
+    return { ...state, videoCompare: compare, phonePreview: this.phoneScales.has(this.activeId ?? '') }
   }
 
   private validVideoCompare(): VideoCompareState | null {
@@ -410,6 +425,8 @@ export class BrowserService extends EventEmitter {
 
   closeTab(id: string): void {
     closeBrowserTab(this.tabOpsHost(), id)
+    this.phoneScales.delete(id)
+    this.phoneNavigationWatch.get(id)?.()
   }
 
   closeOtherTabs(id: string): void {
@@ -443,6 +460,8 @@ export class BrowserService extends EventEmitter {
 
   private setActive(id: string): void {
     setBrowserActiveTab(this.tabOpsHost(), id)
+    const active = this.active
+    if (active instanceof BrowserTab) void this.syncPhonePreview(active)
   }
 
   private tabInfos(): BrowserTabInfo[] {
@@ -515,6 +534,11 @@ export class BrowserService extends EventEmitter {
       const contents = active.view.webContents
       if (!contents.isDestroyed() && pageVisible) contents.setBackgroundThrottling(false)
     }
+    if (active instanceof BrowserTab) {
+      // A phone-preview switch owns the page until it has painted; it applies these bounds then.
+      if (this.phoneSwaps.has(active.id)) return
+      void this.syncPhonePreview(active)
+    }
     active?.applyBounds(this.bounds, pageVisible)
     // The renderer holds its freeze still until this call resolves. Returning the moment the
     // view is made visible drops the still onto a surface that has not painted yet, which is
@@ -558,11 +582,139 @@ export class BrowserService extends EventEmitter {
    * False when the tab is unknown. See BrowserTab.setEmulatedViewport for why the surface has
    * to move rather than the protocol override alone.
    */
-  setEmulatedViewport(tabId: string | undefined, size: { width: number; height: number } | null): boolean {
+  setEmulatedViewport(tabId: string | undefined, size: EmulatedSurface | null): boolean {
     const tab = tabId ? this.tabs.find((candidate) => candidate.id === tabId) ?? null : this.active
     if (!(tab instanceof BrowserTab)) return false
     tab.setEmulatedViewport(size)
     return true
+  }
+
+  /** Wired once at startup; the CDP layer owns the debugger session the metrics go through. */
+  setPhonePreviewDriver(driver: PhonePreviewDriver): void {
+    this.phoneDriver = driver
+  }
+
+  /**
+   * Show the active web tab inside the iPhone frame the renderer draws, or return it to the full
+   * pane. The surface moves synchronously; the page metrics follow over CDP.
+   */
+  async setPhonePreview(enabled: boolean): Promise<void> {
+    const tab = this.active
+    if (!(tab instanceof BrowserTab)) throw new Error('Phone preview needs a web page tab')
+    if (enabled === this.phoneScales.has(tab.id) || this.phoneSwaps.has(tab.id)) return
+    await this.swapPhoneSurface(tab, async () => {
+      if (enabled) {
+        this.phoneScales.set(tab.id, 0)
+        this.watchPhoneNavigations(tab)
+      } else {
+        this.phoneScales.delete(tab.id)
+        this.phoneNavigationWatch.get(tab.id)?.()
+      }
+      // The frame appears (or goes) while the page is parked, so the page shows up in its final place.
+      this.emit('state', this.enrichState(tab.getState()))
+      if (enabled) {
+        await this.syncPhonePreview(tab)
+      } else {
+        tab.setEmulatedViewport(null)
+        await this.phoneDriver?.(tab.id, null, false).catch((error: unknown) => this.emit('error', error))
+      }
+      await this.reloadForPhoneSwitch(tab)
+    })
+  }
+
+  /**
+   * Reload so the server sees the new user agent. Responsive pages reflow on the metrics alone, but
+   * some sites (Google search) choose desktop or mobile HTML per request, and the document already
+   * loaded keeps the old choice until reloaded. Waits, bounded, for the load to finish so a parked
+   * switch returns showing the right page rather than a blank one.
+   */
+  private async reloadForPhoneSwitch(tab: BrowserTab): Promise<void> {
+    const contents = tab.view.webContents
+    if (contents.isDestroyed() || !/^https?:/.test(contents.getURL())) return
+    const loaded = new Promise<void>((resolve) => {
+      const done = () => {
+        clearTimeout(timer)
+        contents.off('did-stop-loading', done)
+        resolve()
+      }
+      const timer = setTimeout(done, PHONE_RELOAD_WAIT_MS)
+      contents.on('did-stop-loading', done)
+    })
+    contents.reload()
+    await loaded
+  }
+
+  /**
+   * A tab a phone-preview page opens (target=_blank, window.open) stays on the phone, as Safari
+   * opens it in a new phone tab. The child's first document may commit before the metrics land;
+   * the navigation watch re-sends them once it does.
+   */
+  private inheritPhonePreview(openerId: string, child: BrowserTab): void {
+    if (!this.phoneScales.has(openerId) || this.phoneScales.has(child.id)) return
+    this.phoneScales.set(child.id, 0)
+    this.watchPhoneNavigations(child)
+    // The child's first request left before the user agent override existed; reload it as a phone.
+    void this.syncPhonePreview(child).then(() => this.reloadForPhoneSwitch(child))
+    if (child.id === this.activeId) this.emit('state', this.enrichState(child.getState()))
+  }
+
+  /**
+   * Re-send the metrics after each main-frame navigation. A cross-site navigation can swap the
+   * renderer process, and a new document recomputes its page scale; either can leave a page laid
+   * out for the surface instead of the phone until the next resize.
+   */
+  private watchPhoneNavigations(tab: BrowserTab): void {
+    const contents = tab.view.webContents
+    const refit = () => { void this.syncPhonePreview(tab, true) }
+    contents.on('did-navigate', refit)
+    this.phoneNavigationWatch.set(tab.id, () => {
+      this.phoneNavigationWatch.delete(tab.id)
+      if (!contents.isDestroyed()) contents.off('did-navigate', refit)
+    })
+  }
+
+  /**
+   * Run a phone-preview switch with the page parked outside the window. Left visible, the page
+   * would change shape in three steps: the smaller surface first lays out a narrow desktop page,
+   * the phone metrics then reflow it zoomed in, and the page-scale reset finally settles it. Pane
+   * bounds arriving meanwhile are recorded, not applied, and the page returns refitted to them
+   * once it has painted its final frame.
+   */
+  private async swapPhoneSurface(tab: BrowserTab, change: () => Promise<void>): Promise<void> {
+    const shown = () => this.active === tab && this.pageVisible
+    this.phoneSwaps.add(tab.id)
+    if (shown()) tab.applyBounds({ ...this.bounds, occluded: true }, false)
+    try {
+      await change()
+      if (shown() && !tab.view.webContents.isDestroyed()) await settleFrames(tab.view.webContents, REVEAL_SETTLE_MS)
+    } finally {
+      this.phoneSwaps.delete(tab.id)
+      if (this.active === tab && !this.disposed && browserSurfaceVisibility(this.bounds).paneVisible) {
+        void this.syncPhonePreview(tab)
+        tab.applyBounds(this.pageVisible ? this.bounds : { ...this.bounds, occluded: true }, this.pageVisible)
+      }
+    }
+  }
+
+  /**
+   * Re-fit a phone-preview tab to the current pane; metrics are re-sent only when the fit changed.
+   * Resolves once they are sent; a failure is reported as a service error rather than thrown.
+   */
+  private async syncPhonePreview(tab: BrowserTab, force = false): Promise<void> {
+    const applied = this.phoneScales.get(tab.id)
+    if (applied === undefined || this.bounds.width <= 1 || this.bounds.height <= 1) return
+    // Rounded as BrowserTab rounds the pane, and as the renderer measures it for the drawn frame.
+    const layout = phonePreviewLayout({ width: Math.round(this.bounds.width), height: Math.round(this.bounds.height) })
+    tab.setEmulatedViewport({
+      width: layout.page.width,
+      height: layout.page.height,
+      left: layout.page.x,
+      top: layout.page.y,
+      radius: layout.pageRadius
+    })
+    if (layout.scale === applied && !force) return
+    this.phoneScales.set(tab.id, layout.scale)
+    await this.phoneDriver?.(tab.id, layout, applied === 0).catch((error: unknown) => this.emit('error', error))
   }
 
   /** Live WebContents of a tab (the active one when omitted); null if unknown or destroyed. */
@@ -680,6 +832,13 @@ export class BrowserService extends EventEmitter {
   /** Renderer-reported browser pane box in window coordinates (DIP). */
   paneBounds(): BrowserBounds {
     return { ...this.bounds }
+  }
+
+  /** Where the active web tab's surface sits: the pane, or a smaller box under emulation or phone preview. */
+  activeWebTabSurfaceBounds(): BrowserBounds {
+    const tab = this.active
+    if (!(tab instanceof BrowserTab)) return this.paneBounds()
+    return { ...this.bounds, ...tab.view.getBounds() }
   }
 
   /** Active web tab pixels for composited app-window capture; null for non-web tabs. */

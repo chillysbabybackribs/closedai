@@ -1,5 +1,5 @@
 import type { JSX } from 'react'
-import { ImageIcon, Minus, Plus, RotateCcw } from 'lucide-react'
+import { ImageIcon, Minus, Plus, RotateCcw } from '../icons/index.js'
 import { Button } from '../../components/ui/button.js'
 import type { BackdropStatus } from '../backdrop/use-workspace-backdrop.js'
 import {

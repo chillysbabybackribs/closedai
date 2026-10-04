@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, Copy } from 'lucide-react'
+import { Check, Copy } from './icons/index.js'
 import type { ChatTranscriptItem } from '../shared/chat.js'
 
 export type MessageActionContext = {

@@ -102,6 +102,18 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
   const searchRef = useRef<HTMLInputElement>(null)
   const focusSearch = useCallback(() => {
     const paneId = chatRef.current.selectedPaneId
+    if (paneId) {
+      const trigger = document.querySelector<HTMLButtonElement>(`[data-ui="titlebar.chat-history-toggle"][data-ui-key="${paneId}"]`)
+      if (trigger && trigger.getAttribute('aria-expanded') !== 'true') {
+        trigger.click()
+        window.requestAnimationFrame(() => {
+          const field = document.querySelector<HTMLInputElement>(`[data-ui="titlebar.chat-search"][data-ui-key="${paneId}"]`)
+          field?.focus()
+          field?.select()
+        })
+        return
+      }
+    }
     const el = paneId
       ? document.querySelector<HTMLInputElement>(`[data-ui="titlebar.chat-search"][data-ui-key="${paneId}"]`)
       : searchRef.current

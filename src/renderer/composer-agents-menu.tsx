@@ -1,6 +1,6 @@
 import type { JSX } from 'react'
 import { useCallback, useEffect, useRef } from 'react'
-import { Users } from 'lucide-react'
+import { Users } from './icons/index.js'
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover.js'
 import { cn } from '../lib/utils.js'
 import { savedAgentStartOptions, type SavedAgent } from '../shared/agent-library.js'

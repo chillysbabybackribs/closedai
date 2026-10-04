@@ -25,7 +25,7 @@ import { browserCovered, browserReaches, canvasTiles, floatingFront } from './fl
 import { useWindowDrag, type WindowFrame } from './floating/use-window-drag.js'
 import { useMaximizedWindow } from './floating/use-maximized-window.js'
 import { BrowserWindowContext, WindowResizeHandles } from './floating/window-controls.js'
-import { pressesMoveHandle } from './floating/window-move-handle.js'
+import { pressesMoveHandle, selectsWindow } from './floating/window-move-handle.js'
 import { TEAR_OFF_TARGET, useTabTearOff } from './floating/use-tab-tear-off.js'
 import { TileSizeProvider } from './tile-size-context.js'
 import { CrossWindowDockPreview } from './cross-window-dock-preview.js'
@@ -60,7 +60,6 @@ type ChatCanvasProps = {
   tree: ChatLayout
   selectedId: string
   busy: boolean
-  notice?: string
   browserVisible: boolean
   browserRevealVersion?: number
   /** The maximized window, saved with the layout so a relaunch reopens it maximized. */
@@ -108,7 +107,7 @@ type ChatCanvasProps = {
   onChatZoomChange: (command: ChatZoomCommand) => void
 }
 
-function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, browserVisible, browserRevealVersion, maximized, renderBrowser, onDragActive, title, activity, reviewQueue, chatRow, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onTogglePin, onPauseTab, onResumeTab, onOpenPresets, onSizeChange, onDock, onHide, onResize, onFitVisibleWindows, windows, onBrowserCovered, backdrop, onBackdropChange, onOpenWallpaper, threadSearch, chatZoom, onChatZoomChange }: ChatCanvasProps) {
+function ChatCanvasInner({ tree, selectedId, busy, toolsPreset = null, browserVisible, browserRevealVersion, maximized, renderBrowser, onDragActive, title, activity, reviewQueue, chatRow, renderPane, onSelect, onSelectTab, onCloseTab, onNewChat, onRenameChat, onTogglePin, onPauseTab, onResumeTab, onOpenPresets, onSizeChange, onDock, onHide, onResize, onFitVisibleWindows, windows, onBrowserCovered, backdrop, onBackdropChange, onOpenWallpaper, threadSearch, chatZoom, onChatZoomChange }: ChatCanvasProps) {
   const viewport = useRef<HTMLDivElement>(null)
   const { openBackdropMenu, backdropMenu } = useWorkspaceBackdropContextMenu({ backdrop, onBackdropChange, onOpenWallpaper })
   const canvasRef = useRef<HTMLDivElement>(null)
@@ -258,7 +257,7 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
   const chatCount = expandedPaneIds(tree).length
   const canMaximize = chatCount > 1 || (browserVisible && chatCount >= 1)
   const shown = tiles.filter((tile) => tile.kind !== 'hidden')
-  const [soloPaneId, setSoloPaneId] = useMaximizedWindow(shown, canMaximize || floating.length > 0, browserRevealVersion, maximized)
+  const [soloPaneId, setSoloPaneId] = useMaximizedWindow(shown, browserRevealVersion, maximized)
   const soloTile = soloPaneId ? shown.find((p) => p.id === soloPaneId || p.tabs.includes(soloPaneId)) ?? null : null
   const soloRect: Rect = { x: 0, y: 0, width: Math.max(size.width, minimum.width), height: Math.max(size.height, minimum.height) }
   // The dock floats over the workspace's bottom band (less the workspace's 10 px edge margin).
@@ -367,10 +366,10 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
       data-drag-placeholder={isPlaceholder ? held ? 'mini' : 'empty' : undefined}
       hidden={soloTile ? !isThisTileSolo : kind === 'hidden'}
       data-selected={activeId === selectedId || tabs.includes(selectedId)} aria-label={browser ? 'Browser' : title(activeId)}
-      onFocusCapture={(event) => { if (!browser && activeId !== selectedId && !(event.target as HTMLElement).closest('[role="tablist"]')) onSelect(activeId) }}
+      onFocusCapture={(event) => { if (!browser && activeId !== selectedId && selectsWindow(event.target)) onSelect(activeId) }}
       onPointerDownCapture={(event) => {
         if (floats) windows.raise(activeId)
-        if (!browser && activeId !== selectedId && !(event.target as HTMLElement).closest('[role="tablist"]')) onSelect(activeId)
+        if (!browser && activeId !== selectedId && selectsWindow(event.target)) onSelect(activeId)
       }}
       onPointerDown={(event) => { if (!busy && !soloTile && pressesMoveHandle(event)) startMove(event, activeId) }}>
       <TileSizeProvider value={{ width: tileRect.width, height: tileRect.height }}>
@@ -387,7 +386,6 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
             onTogglePin={onTogglePin} onHide={onHide} setDragging={setDragging}
             canMaximize={canMaximize || kind === 'floating'} isThisTileSolo={isThisTileSolo}
             canMinimize={minimizeWindow(tree, activeId) !== tree} onMinimize={windows.minimize} floating={floats} />}
-          {activeId === selectedId && <div className="chat-layout-notice" role="status" aria-atomic="true">{notice}</div>}
           {browser ? <div className="chat-layout-browser-frame" data-ui="layout.browser-dock">
             <BrowserWindowContext.Provider value={browserWindow}>{renderBrowser}</BrowserWindowContext.Provider>
           </div> : tileTabs.map((tabId) => <div key={tabId} className="chat-layout-content" role="tabpanel" id={`chat-panel-${tabId}`}
@@ -478,7 +476,7 @@ function ChatCanvasInner({ tree, selectedId, busy, notice, toolsPreset = null, b
 
 function chatCanvasPropsEqual(previous: ChatCanvasProps, next: ChatCanvasProps): boolean {
   return previous.tree === next.tree && previous.selectedId === next.selectedId && previous.busy === next.busy
-    && previous.notice === next.notice && previous.toolsPreset === next.toolsPreset
+    && previous.toolsPreset === next.toolsPreset
     && previous.browserVisible === next.browserVisible && previous.browserRevealVersion === next.browserRevealVersion
     && previous.maximized[0] === next.maximized[0] && previous.maximized[1] === next.maximized[1]
     && previous.renderBrowser === next.renderBrowser && previous.renderPane === next.renderPane

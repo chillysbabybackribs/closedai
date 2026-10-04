@@ -1,5 +1,5 @@
 import { useRef, useState, type DragEvent, type JSX } from 'react'
-import { ImageIcon } from 'lucide-react'
+import { ImageIcon } from '../icons/index.js'
 import { Button } from '../../components/ui/button.js'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../../components/ui/dialog.js'
 import { ToggleGroup, ToggleGroupItem } from '../../components/ui/toggle-group.js'

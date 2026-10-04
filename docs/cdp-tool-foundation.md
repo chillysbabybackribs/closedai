@@ -1,10 +1,10 @@
 # CDP tool foundation
 
 ClosedAI uses Electron's in-process `webContents.debugger` transport. It does not open a
-remote-debugging port. Models start with `embedded_browser.page`, `network`, and `session`.
-`browser_cdp.protocol` is the advanced fallback; protocol, profiling, instrumentation, and
-emulation tools are deferred on providers supporting tool discovery. `browser_cdp.page` remains
-eagerly available for semantic element refs and an input wrapper.
+remote-debugging port. Models start with `embedded_browser.page`; its `script`, `network`,
+`network_replay`, and `session` tools are deferred. `browser_cdp.protocol` is the advanced
+fallback; every `browser_cdp` tool (protocol, page, capture_spa, profiling, instrumentation, and
+emulation) is deferred on providers supporting tool discovery.
 Source review: 2026-09-21; the behavior below follows the current implementation. Registry-level
 CDP tool actions and limits are summarized in [Tools](tools.md).
 
@@ -13,7 +13,9 @@ CDP tool actions and limits are summarized in [Tools](tools.md).
 - A ClosedAI tab id is the public identity. CDP target and session ids are transient children.
 - One lazy CDP connection belongs to the current `WebContents` of a ClosedAI tab.
 - Destroying that `WebContents` destroys the connection and its event history.
-- A connection id distinguishes event cursor generations after a reconnect or replacement.
+- A connection id distinguishes event cursor generations after `WebContents` replacement. A
+  debugger detach and later reattach keep the same id and cursor history, recording a
+  `closedai.debuggerDetached` event.
 - Flat child-target sessions are routed by the optional CDP `session_id`.
 - Target discovery and flattened auto-attach are initialized lazily. Auto-attach is recursive:
   each attached page or frame target auto-attaches its own frames and workers, so nested
@@ -38,8 +40,8 @@ assuming tip-of-tree support.
 ### `targets`
 
 Returns `Target.getTargetInfo` for the selected root, `Target.getTargets`, and the connection's
-live `inventory`. Each inventory entry includes type, title, URL, attachment status, `sessionId`,
-opener id, subtype, and waiting-for-debugger status. `Target.setDiscoverTargets` and
+live `inventory`, plus `roots` (the app's regular tabs). Each inventory entry includes type,
+title, URL, attachment status, `sessionId`, opener id, subtype, and waiting-for-debugger status. `Target.setDiscoverTargets` and
 `Target.setAutoAttach({ autoAttach: true, flatten: true, waitForDebuggerOnStart: true })` run
 on attachment, and the same auto-attach is sent into each page/frame child as it attaches.
 Use an inventory `sessionId` as `session_id` in subsequent commands. When a
@@ -94,8 +96,10 @@ type/byte counts are not attributed to an individual captured request by URL mat
 `matched` counts request records plus unique timing-only URLs, before the output limit.
 
 `protocol body` accepts `session_id` from the request listing and routes `Network.getResponseBody`
-to that target. It never reissues a network request. Enable Network explicitly in a child
-session to collect its events; the listing enables capture in the root only. These handles
+to that target. It never reissues a network request. The listing enables capture in the root
+and in every attached or later-attaching frame and worker; `childSessions.failed` reports
+children that refused. `body` can project JSON with `json_path`/`fields`/`max_items` or window
+text with `max_chars` (default 6,000)/`offset`. These handles
 remain transient, and redirects sharing a request id describe the latest hop. Text byte counts
 use UTF-8. No durable body archive or exact mapping to Electron webRequest ids is promised.
 
@@ -109,19 +113,22 @@ quad. Coordinates are always labelled `main_viewport_css`: CSS pixels measured f
 frame viewport's top-left corner. Child-frame coordinates are transformed through the iframe's
 live content quad. Frames that cannot be inspected are reported instead of silently omitted.
 
-Refs intentionally expire. An inspection installs an isolated-world element registry for its
-snapshot; a later inspection replaces it, and navigation destroys its execution context.
+Refs intentionally expire. Each inspection adds an isolated-world element registry for its
+snapshot; the 20 most recent snapshots are kept, older ones are evicted, and navigation
+destroys their execution context. A ref fails once its snapshot is evicted or its element detaches.
 Inspection alone can read a background tab without selecting it. All input verbs, including
 both scroll forms, currently pass through `BrowserCdpAccess.realInput`: it foregrounds a regular
 tab, waits for frames after switching, and returns `activatedTab: true` when selection changed.
 An obscured/hidden browser page cannot use this semantic input path until revealed.
-Click, type, press-key, and overlay-dismiss actions require `fallback_reason`; scroll does not,
-because it is commonly needed for inspection rather than committing a UI action.
+Click, click-at, type, press-key, and overlay-dismiss actions require `fallback_reason` and must
+run inside `tool_batch.run` (or one exec script); scroll does not, because it is commonly needed
+for inspection rather than committing a UI action. `dismiss_overlay` and `capture_spa` are
+described in [Tools](tools.md).
 
 ### `click`
 
-Accepts a ref from the latest inspection. It verifies the same snapshot and connected element,
-rejects disabled elements, scrolls the element and its iframe-owner chain into view, recomputes
+Accepts a ref from a retained inspection snapshot. It verifies the same snapshot and connected
+element, rejects disabled elements, scrolls the element and its iframe-owner chain into view, recomputes
 the point, verifies the element is not covered in its own frame, hit-tests the main-viewport
 coordinate, and dispatches the mouse move/press/release sequence through CDP.
 
@@ -151,14 +158,15 @@ insert characters. Text entry belongs in `type`; this is for submits, dismissals
 
 With a ref, scrolls the element to its frame's viewport center and reports the resulting scroll
 offsets. Without one, dispatches a real `mouseWheel` at the main viewport's center using
-`delta_x`/`delta_y` CSS pixels. Refs and coordinates from earlier inspections may be stale after
+`delta_x`/`delta_y` CSS pixels; the wheel fails after 5 seconds if the compositor never
+acknowledges it. Refs and coordinates from earlier inspections may be stale after
 scrolling; inspect again before clicking.
 
 This first wrapper inspects frames reachable from the selected page target. Out-of-process
 frames that require their own flat target session are surfaced as uninspected frames. Automatic
-target attachment makes raw session commands possible, and `requests`/`instrument` follow every
-attached frame and worker; it does not extend semantic wrapper traversal (inspect/click/type) to
-every OOPIF. Use the inventory and raw protocol for those frames.
+target attachment makes raw session commands possible; `requests` follows every attached frame
+and worker, and `instrument` follows attached page and iframe targets. It does not extend
+semantic wrapper traversal (inspect/click/type) to every OOPIF. Use the inventory and raw protocol for those frames.
 
 ## Deliberately deferred
 

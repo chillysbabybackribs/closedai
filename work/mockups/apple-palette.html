@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Apple developer palette · polish options</title>
+<script src="./f7-icons.js"></script>
+<style>
+@font-face { font-family: "Inter Variable"; src: url("../../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2") format("woff2"); font-weight: 100 900; }
+@font-face { font-family: "Geist Mono"; src: url("../../node_modules/@fontsource-variable/geist-mono/files/geist-mono-latin-wght-normal.woff2") format("woff2"); font-weight: 100 900; }
+:root { color-scheme: dark; font-family: "Inter Variable", Inter, system-ui, sans-serif; font-size: 13px; }
+* { box-sizing: border-box; }
+body { margin: 0; background: #0b0b0c; color: #f5f5f7; }
+
+/* ---------- Compare bar (not part of the app) ---------- */
+.compare { position: sticky; top: 0; z-index: 50; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 10px 16px; background: #0b0b0c; border-bottom: 1px solid #1f1f21; }
+.compare b { font-size: 13px; font-weight: 600; }
+.compare label { font-size: 11px; color: #86868b; text-transform: uppercase; letter-spacing: .04em; margin-right: -8px; }
+.seg { display: inline-flex; padding: 2px; border-radius: 9px; background: #18181a; box-shadow: inset 0 0 0 1px rgb(255 255 255 / 7%); }
+.seg button { all: unset; cursor: pointer; padding: 5px 11px; border-radius: 7px; font-size: 12px; font-weight: 500; color: #86868b; }
+.seg button[aria-pressed="true"] { background: #2c2c2e; color: #f5f5f7; box-shadow: 0 1px 2px rgb(0 0 0 / 40%); }
+.seg.presets button[aria-pressed="true"] { background: #0071e3; color: #fff; }
+.note { width: min(1480px, calc(100vw - 24px)); margin: 10px auto 0; font-size: 12.5px; line-height: 1.55; color: #a1a1a6; min-height: 40px; }
+.note b { color: #f5f5f7; font-weight: 600; }
+.swatches { display: flex; gap: 6px; margin-top: 6px; }
+.sw { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px 3px 3px; border-radius: 6px; background: #161617; font: 11px "Geist Mono", monospace; color: #a1a1a6; }
+.sw i { width: 16px; height: 16px; border-radius: 4px; box-shadow: inset 0 0 0 1px rgb(255 255 255 / 12%); }
+kbd { font: 500 11px "Inter Variable"; color: #86868b; padding: 2px 6px; border-radius: 5px; background: rgb(255 255 255 / 6%); }
+
+/* ---------- Tokens: three independent axes ---------- */
+.win {
+  /* card */
+  --card: #141516;
+  /* chrome: current graphite */
+  --titlebar: rgb(17 17 19 / 82%); --title-edge: rgb(255 255 255 / 10%);
+  --tabs: #161618; --tab-active: #232326; --toolbar: #1a1b1d; --toolbar-edge: rgb(255 255 255 / 8%);
+  --omni: #0e0f10; --omni-edge: #26272a; --composer: #141516; --composer-edge: #343536; --head-edge: transparent;
+  /* ink: current */
+  --fg: #f7f8f8; --copy: #b3b8c1; --muted: #8a8f98; --quiet: #7c8087; --activity: #696a6c;
+  --raised: #1e1f20; --code: #232326; --link: #9eccf8; --accent: #0a84ff; --hair: rgb(255 255 255 / 8%);
+  --ink: #9a9fa8; --card-edge: rgb(255 255 255 / 6%);
+}
+.win[data-card="apple"] { --card: #151515; }
+
+.win[data-chrome="neutral"] { --titlebar: rgb(16 16 16 / 82%); --tabs: #161616; --tab-active: #242424; --toolbar: #1a1a1a; --omni: #0e0e0e; --omni-edge: #2a2a2a; --composer: var(--card); --composer-edge: #333333; }
+/* Black glass: the Apple page's nav bar (#000 @ 80%, #424245 hairline). */
+.win[data-chrome="glass"] { --titlebar: rgb(0 0 0 / 80%); --title-edge: #424245; --tabs: #000; --tab-active: #1d1d1f; --toolbar: rgb(6 6 6); --toolbar-edge: #424245; --omni: #1d1d1f; --omni-edge: transparent; --composer: #1d1d1f; --composer-edge: transparent; --head-edge: rgb(255 255 255 / 6%); }
+/* Footer grey: the Apple page's footer (#1d1d1f) framing everything around the #151515 reading area. */
+.win[data-chrome="footer"] { --titlebar: rgb(29 29 31 / 92%); --title-edge: rgb(255 255 255 / 6%); --tabs: #1d1d1f; --tab-active: #2c2c2e; --toolbar: #1d1d1f; --toolbar-edge: #2c2c2e; --omni: #151515; --omni-edge: #333336; --composer: #1d1d1f; --composer-edge: #333336; --head-edge: transparent; }
+
+/* Apple ink: #f5f5f7 primary, #86868b secondary, #2997ff links, #424245 hairlines, #1d1d1f lift. */
+.win[data-ink="apple"] { --fg: #f5f5f7; --copy: #d2d2d7; --muted: #86868b; --quiet: #6e6e73; --activity: #6e6e73; --raised: #1d1d1f; --code: #2c2c2e; --link: #2997ff; --accent: #0071e3; --hair: #2c2c2e; --ink: #a1a1a6; --card-edge: rgb(255 255 255 / 5%); }
+
+/* ---------- App window ---------- */
+.win { width: min(1480px, calc(100vw - 24px)); height: 820px; margin: 12px auto 40px; border-radius: 10px; overflow: hidden; display: grid; grid-template-rows: 30px 1fr; color: var(--fg);
+  background: linear-gradient(160deg, #3a2c24 0%, #5b4434 38%, #2b211c 100%); box-shadow: 0 0 0 1px rgb(255 255 255 / 6%), 0 30px 80px rgb(0 0 0 / 50%); }
+.win * { transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease, box-shadow 200ms ease; }
+.titlebar { display: flex; align-items: center; gap: 16px; padding: 0 12px; background: var(--titlebar); backdrop-filter: blur(20px) saturate(180%); border-bottom: 1px solid var(--title-edge); font-size: 11.5px; color: var(--fg); }
+.desk { display: grid; grid-template-columns: minmax(300px, 1fr) minmax(0, 1.3fr) minmax(300px, 1fr); gap: 8px; padding: 8px; min-height: 0; }
+
+.ib { all: unset; box-sizing: border-box; cursor: pointer; flex: none; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 6px; color: var(--ink); }
+.ib:hover { background: rgb(255 255 255 / 7%); color: var(--fg); }
+.ib.on { color: #ffd60a; }
+.ic { display: block; flex: none; }
+
+/* Chat card */
+.card { display: flex; flex-direction: column; min-height: 0; border-radius: 16px; overflow: hidden; background: var(--card); position: relative;
+  box-shadow: inset 0 0 0 1px var(--card-edge), inset 0 1px 0 rgb(255 255 255 / 5%), 0 2px 5px -2px rgb(0 0 0 / 32%), 0 10px 24px -14px rgb(0 0 0 / 55%); }
+.card-head { display: flex; align-items: center; gap: 2px; height: 50px; padding: 10px 14px 0; border-bottom: 1px solid var(--head-edge); }
+.card-head .title { flex: 1; text-align: center; font-size: 12px; font-weight: 600; color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 8px; }
+.transcript { flex: 1; overflow: hidden; padding: 18px 24px 0; font-size: 14px; line-height: 1.62; color: var(--copy); }
+.transcript p { margin: 0 0 12px; }
+.transcript b { color: var(--fg); font-weight: 600; }
+.transcript a { color: var(--link); text-decoration: none; }
+.transcript a:hover { text-decoration: underline; }
+.transcript code { font: 12px "Geist Mono", monospace; background: var(--code); border-radius: 4px; padding: 1px 5px; color: var(--fg); }
+.transcript ul { margin: 0 0 12px; padding-left: 18px; }
+.transcript li { margin-bottom: 6px; }
+.bubble { margin: 0 0 16px 48px; background: var(--raised); border-radius: 14px; padding: 10px 14px; color: var(--fg); }
+.activity { display: inline-flex; align-items: center; gap: 4px; color: var(--activity); font-size: 13px; margin: 0 0 10px; }
+.steps { border-left: 1px solid var(--hair); margin: -4px 0 14px 2px; padding-left: 12px; display: grid; gap: 6px; font-size: 12.5px; }
+.step { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+.step code { font: 11.5px "Geist Mono", monospace; color: var(--copy); background: none; padding: 0; }
+.step .ok { color: #30d158; margin-left: auto; }
+.t-cmd { color: #bf5af2; } .t-edit { color: #ff9f0a; } .t-tool { color: var(--link); }
+.composer { margin: 0 14px 8px; display: flex; align-items: center; gap: 6px; min-height: 48px; padding: 7px; border: 1px solid var(--composer-edge); border-radius: 14px; background: var(--composer); }
+.composer .draft { flex: 1; color: var(--quiet); font-size: 14px; }
+.send { width: 32px; height: 32px; border-radius: 999px; display: grid; place-items: center; background: var(--accent); color: #fff; }
+.send.idle { background: rgb(255 255 255 / 9%); color: rgb(255 255 255 / 36%); }
+.foot { display: flex; justify-content: space-between; padding: 0 20px 12px; font-size: 11.5px; color: var(--muted); }
+
+/* Browser */
+.browser { display: flex; flex-direction: column; min-height: 0; border-radius: 16px; overflow: hidden; background: var(--toolbar); box-shadow: inset 0 0 0 1px var(--card-edge), 0 10px 24px -14px rgb(0 0 0 / 55%); }
+.tabs { display: flex; align-items: center; gap: 4px; height: 38px; padding: 0 6px; background: var(--tabs); }
+.tab { display: flex; align-items: center; gap: 8px; height: 28px; width: 210px; padding: 0 10px; border-radius: 7px; color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; }
+.tab.active { background: var(--tab-active); color: var(--fg); }
+.toolbar { display: flex; align-items: center; gap: 2px; height: 42px; padding: 0 8px; background: var(--toolbar); border-bottom: 1px solid var(--toolbar-edge); }
+.omni { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; height: 30px; margin: 0 8px; border-radius: 8px; background: var(--omni); box-shadow: inset 0 0 0 1px var(--omni-edge); color: var(--fg); font-size: 12.5px; }
+.omni .ic { color: var(--muted); }
+
+/* The reference page itself, so the card can sit beside the real #151515 */
+.page { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; background: #000; }
+.ap-nav { height: 48px; display: flex; align-items: center; padding: 0 28px; background: rgb(0 0 0 / 80%); border-bottom: 1px solid #424245; }
+.ap-nav b { font-size: 19px; font-weight: 600; flex: 1; }
+.ap-nav span { font-size: 12px; color: #f5f5f7; margin-left: 22px; }
+.ap-mid { flex: 1; background: #151515; padding: 26px 0 0 12%; }
+.ap-mid h3 { margin: 0 0 12px; font-size: 19px; font-weight: 600; }
+.ap-mid a { display: flex; align-items: center; gap: 12px; margin: 0 0 13px; color: #2997ff; font-size: 15px; text-decoration: none; }
+.ap-mid a i { width: 18px; height: 18px; border-radius: 99px; border: 1.5px solid #f5f5f7; display: grid; place-items: center; }
+.ap-mid a i::after { content: ''; border-left: 6px solid #f5f5f7; border-top: 4px solid transparent; border-bottom: 4px solid transparent; margin-left: 2px; }
+.ap-mid h3 + a { margin-top: 0; } .ap-mid a + h3 { margin-top: 24px; }
+.ap-foot { height: 210px; background: #1d1d1f; padding: 16px 28px; font-size: 11.5px; color: #86868b; display: grid; grid-template-columns: repeat(4, 1fr); align-content: start; gap: 6px; }
+.ap-foot .crumb { grid-column: 1 / -1; padding-bottom: 10px; border-bottom: 1px solid #424245; margin-bottom: 8px; }
+.ap-foot b { color: #e8e8ed; font-weight: 600; display: block; margin-bottom: 6px; }
+.ap-foot div { line-height: 1.9; color: #d2d2d7; }
+</style>
+</head>
+<body>
+<div class="compare">
+  <b>Apple developer palette</b>
+  <label>Preset</label>
+  <div class="seg presets" id="presets">
+    <button data-p="now">Now</button><button data-p="a">A · Card only</button><button data-p="b">B · Neutral</button><button data-p="c">C · Black glass</button><button data-p="d">D · Footer frame</button>
+  </div>
+  <label>Card</label><div class="seg" data-axis="card"><button data-v="current">#141516</button><button data-v="apple">#151515</button></div>
+  <label>Chrome</label><div class="seg" data-axis="chrome"><button data-v="current">Graphite</button><button data-v="neutral">Neutral</button><button data-v="glass">Black glass</button><button data-v="footer">Footer grey</button></div>
+  <label>Ink</label><div class="seg" data-axis="ink"><button data-v="current">Current</button><button data-v="apple">Apple</button></div>
+  <span style="color:#86868b;font-size:12px"><kbd>Space</kbd> flips to “Now” and back</span>
+</div>
+<div class="note" id="note"></div>
+<div id="app"></div>
+
+<script>
+const ic = (k, s = 16, cls = '') => { const i = F7[k]; const z = Math.round(s * 1.12 * 10) / 10; return `<svg class="ic ${cls}" width="${z}" height="${z}" viewBox="0 0 ${i.w} ${i.h}">${i.body}</svg>` }
+const btn = (k, s = 16, cls = '') => `<button class="ib ${cls}">${ic(k, s)}</button>`
+
+const head = title => `<div class="card-head">${btn('star-on', 16, 'on')}${btn('plus', 16)}<div class="title">${title}</div>${btn('minus', 14)}${btn('square', 12)}${btn('x', 14)}</div>`
+const composer = running => `<div class="composer">${btn('plus', 16)}<div class="draft">Message Claude Code</div><div class="send ${running ? '' : 'idle'}">${ic('arrow-up', 15)}</div></div>
+  <div class="foot"><span>Opus 5.5</span><span style="display:flex;gap:5px;align-items:center">${ic('folder', 12)}closedai</span></div>`
+
+const left = `<section class="card">${head('Apple palette for chat cards')}
+  <div class="transcript">
+    <div class="bubble">that background color is what i want for the chat cards — its already almost identical but i can see the difference</div>
+    <p>The reference band is a neutral <code>#151515</code>. Your cards are <code>#141516</code>: the same lightness with a slight blue tint.</p>
+    <div class="activity">Edited 1 file, ran 2 commands ${ic('chevron-right', 13)}</div>
+    <div class="steps">
+      <div class="step">${ic('file-pen-line', 14, 't-edit')}<code>styles/chat/cards.css</code><span style="color:#30d158">+3</span><span style="color:#ff453a">−3</span></div>
+      <div class="step">${ic('square-terminal', 14, 't-cmd')}<code>npm run build</code>${ic('check', 14, 'ok')}</div>
+      <div class="step">${ic('wrench', 14, 't-tool')}Application window capture${ic('check', 14, 'ok')}</div>
+    </div>
+    <p>The card now matches the page. See <a href="#">src/renderer/styles/materials.css</a> for the full ramp.</p>
+  </div>${composer(true)}</section>`
+
+const browser = `<section class="browser">
+  <div class="tabs">${btn('layout-grid', 15)}<div class="tab">${ic('globe', 13)}Google Search</div><div class="tab active">${ic('globe', 13)}SF Symbols 2 – WWDC20</div>${btn('plus', 15)}</div>
+  <div class="toolbar">${btn('arrow-left', 15)}${btn('arrow-right', 15)}${btn('refresh-cw', 14)}<div class="omni">${ic('lock', 12)}developer.apple.com</div>${btn('star', 15)}${btn('download', 15)}</div>
+  <div class="page">
+    <div class="ap-nav"><b>Videos</b><span>Collections</span><span>All Videos</span><span>About</span></div>
+    <div class="ap-mid"><h3>WWDC20</h3><a><i></i>Adopt the new look of macOS</a><a><i></i>The details of UI typography</a><a><i></i>What's new in SwiftUI</a>
+      <h3>WWDC19</h3><a><i></i>Building Custom Views with SwiftUI</a><a><i></i>Introducing SF Symbols</a></div>
+    <div class="ap-foot"><div class="crumb">Developer › Videos › WWDC20 › SF Symbols 2</div>
+      <div><b>Platforms</b>iOS<br>iPadOS<br>macOS</div><div><b>Technologies</b>Accessibility<br>Accessories<br>Design</div><div><b>Resources</b>Documentation<br>Downloads<br>Videos</div><div><b>Programs</b>Developer Program<br>Enterprise Program<br>MFi Program</div></div>
+  </div></section>`
+
+const right = `<section class="card">${head('Audit documentation against codebase')}
+  <div class="transcript">
+    <p><b>A pre-existing test failure</b> in <a href="#">src/shared/ui-controls.test.ts</a>:</p>
+    <ul><li><code>composer.continue</code> is rendered but has never been in the manifest.</li>
+      <li>It's rendered by <code>ComposerContinuePill</code>, which only appears inside <code>ComposerWorkspaceTools</code>.</li>
+      <li>Either delete that unused code (my recommendation) or add the manifest entry.</li></ul>
+    <p>I added a test covering all three cases and updated <a href="#">docs/application.md</a>.</p>
+  </div>${composer(false)}</section>`
+
+document.getElementById('app').innerHTML = `<div class="win" id="win"><div class="titlebar"><span>File</span><span>View</span><span>Agent</span><span>Developer</span></div>
+  <div class="desk">${left}${browser}${right}</div></div>`
+
+const PRESETS = {
+  now: { card: 'current', chrome: 'current', ink: 'current', note: '<b>Now.</b> Linear-style graphite: cards #141516, cool blue-grey text (#b3b8c1 / #8a8f98), pale-blue links.' },
+  a: { card: 'apple', chrome: 'current', ink: 'current', note: '<b>A · Card only.</b> The smallest change: the card swaps to the page\'s neutral #151515 and nothing else moves. Compare it against the WWDC band in the browser.' },
+  b: { card: 'apple', chrome: 'neutral', ink: 'apple', note: '<b>B · Neutral everywhere.</b> Removes the blue tint from every surface and adopts Apple\'s text ramp: #f5f5f7 headings, #d2d2d7 body, #86868b secondary, #2997ff links, #1d1d1f bubbles. Same structure as today, just Apple\'s greys.' },
+  c: { card: 'apple', chrome: 'glass', ink: 'apple', note: '<b>C · Black glass.</b> Borrows the page\'s nav bar: title bar and browser chrome go to translucent black with a #424245 hairline; the composer and address field become #1d1d1f fills without an outline. This has the most contrast between chrome and content.' },
+  d: { card: 'apple', chrome: 'footer', ink: 'apple', note: '<b>D · Footer frame.</b> Borrows the page\'s footer: chrome, tabs and composer use #1d1d1f, so the #151515 reading area is the darkest, calmest plane. This is softer than C and closest to macOS window chrome.' },
+}
+const SW = { '#151515': 'card', '#1d1d1f': 'lift', '#000000': 'nav', '#424245': 'hairline', '#f5f5f7': 'text', '#86868b': 'secondary', '#2997ff': 'link' }
+const win = document.getElementById('win'), note = document.getElementById('note')
+let current = 'b', last = 'b'
+function apply(p) {
+  current = p; if (p !== 'now') last = p
+  const s = PRESETS[p]; for (const k of ['card', 'chrome', 'ink']) win.dataset[k] = s[k]
+  note.innerHTML = s.note + `<div class="swatches">${Object.entries(SW).map(([c, n]) => `<span class="sw"><i style="background:${c}"></i>${c} ${n}</span>`).join('')}</div>`
+  sync()
+}
+function sync() {
+  document.querySelectorAll('[data-axis]').forEach(g => g.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === win.dataset[g.dataset.axis])))
+  document.querySelectorAll('#presets button').forEach(b => b.setAttribute('aria-pressed', b.dataset.p === current))
+}
+document.querySelectorAll('#presets button').forEach(b => b.onclick = () => apply(b.dataset.p))
+document.querySelectorAll('[data-axis]').forEach(g => g.querySelectorAll('button').forEach(b => b.onclick = () => { win.dataset[g.dataset.axis] = b.dataset.v; current = 'custom'; note.firstChild && (note.querySelector('b').textContent = 'Custom mix.'); sync() }))
+addEventListener('keydown', e => { if (e.code === 'Space') { e.preventDefault(); apply(current === 'now' ? last : 'now') } })
+apply('b')
+</script>
+</body>
+</html>

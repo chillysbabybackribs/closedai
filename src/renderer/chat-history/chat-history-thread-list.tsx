@@ -56,7 +56,7 @@ function paletteSearchRow(hit: ChatSearchHit, index: number, palette: NonNullabl
       data-desk={desk || undefined}
       onMouseEnter={() => palette.setHighlightId(hit.row.paneId)}
     >
-      {desk && props.reviewQueue
+      {props.reviewQueue
         ? <ChatHistoryThreadRowLive {...rowProps} reviewQueue={props.reviewQueue} />
         : <ChatHistoryThreadRow {...rowProps} />}
     </li>
@@ -87,12 +87,12 @@ export function ChatHistoryThreadList({
       <ul id={palette.listId} role="grid" aria-label="Chat history" aria-busy={palette.busy}
         className="chat-history-list header-chat-search-history-list">
         {openCount > 0 && <>
-          <li role="presentation" className="header-chat-search-caption">Open on desk</li>
+          <li role="presentation" className="header-chat-search-caption">Open chats</li>
           {openHits.map((hit, offset) => paletteSearchRow(hit, offset, palette,
             { activeChatId, busy, pendingId, reviewQueue, onOpen, onArchive }, true))}
         </>}
         {historyHits.length > 0 && <>
-          {openCount > 0 && <li role="presentation" className="header-chat-search-caption">History</li>}
+          <li role="presentation" className={`header-chat-search-caption${openCount > 0 ? ' header-chat-search-caption-history' : ''}`}>History</li>
           {historyHits.map((hit, offset) => paletteSearchRow(hit, openCount + offset, palette,
             { activeChatId, busy, pendingId, reviewQueue, onOpen, onArchive }, false))}
         </>}

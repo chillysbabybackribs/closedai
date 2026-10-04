@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Globe2 } from 'lucide-react'
+import { Globe2 } from './icons/index.js'
 
 /** Remember which image failed so a new icon can load without an effect/reset flash. */
 export function BrowserSiteIcon({ favicon }: { favicon?: string }) {

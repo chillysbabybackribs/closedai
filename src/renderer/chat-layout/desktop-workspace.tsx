@@ -334,6 +334,7 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, on
     newChat: (paneId) => { void layout.newChat(paneId) },
     newChatWindow: () => { void layout.newChatWindow() },
     continueChat: (paneId) => continueChatRef.current(paneId),
+    clearChat: (paneId) => layout.clearChat(paneId),
     canPromoteStackMonitorLead: (paneId) => layout.stackMonitorLeadPromotable(paneId),
     promoteStackMonitorIfCompact: (paneId) => layout.maybePromoteStackMonitorLead(paneId),
     openAgentsView: setAgentsAnchor,
@@ -341,7 +342,7 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, on
     startAgentFromPane: (paneId, options) => startAgentRef.current(paneId, options),
     agentsMenuPaneId,
     setAgentsMenuPaneId
-  }), [toggleBrowserHere, openFile, layout.newChat, layout.newChatWindow, focusChatTab, agentsMenuPaneId])
+  }), [toggleBrowserHere, openFile, layout.newChat, layout.newChatWindow, layout.clearChat, focusChatTab, agentsMenuPaneId])
   const viewContext = useMemo<WorkspaceViewContextValue>(() => ({
     tree: layout.tree, views: layout.views, selectedPaneId: chat.selectedPaneId, chats: chat.chats, title: chatTitle,
     listChats: chat.listChats, archiveChat: archiveChat ?? chat.archiveChat, activateChat: layout.activateTab,
@@ -361,7 +362,7 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, on
     </Suspense> : null}
     <div className="workspace-files-canvas">
     <ChatCanvas tree={layout.tree} selectedId={chat.selectedPaneId} busy={layout.busy}
-        notice={layout.notice} toolsPreset={toolsPreset}
+        toolsPreset={toolsPreset}
         browserRevealVersion={browserRevealVersion} maximized={maximized}
         onDragActive={setLayoutDragging}
         browserVisible={layout.browserVisible}

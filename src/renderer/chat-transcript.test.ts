@@ -91,7 +91,9 @@ test('a compacted activity headline does not dump a file path', () => {
   ]
   const html = renderTranscript({ items, activeTurnId: 't' })
   assert.match(html, /Editing 1 file, Reading file/)
-  assert.doesNotMatch(html, /src\/renderer\/titlebar-menu|home\/dp\/Desktop/)
+  // The live step keeps the full path for hover only, as the opened step list does.
+  const shown = html.replace(/ title="[^"]*"/g, '')
+  assert.doesNotMatch(shown, /src\/renderer\/titlebar-menu|home\/dp\/Desktop/)
 })
 
 test('an activity row with edits shows its line counts at the right end, and one without shows none', () => {
@@ -104,7 +106,7 @@ test('an activity row with edits shows its line counts at the right end, and one
     { type: 'command', id: 'c1', turnId: 't', command: 'npm test', cwd: '/', status: 'completed', output: '', exitCode: 0 }
   ]
   const html = renderTranscript({ items })
-  assert.match(html, /class="prompt-tool-activity-lines"[^>]*>.*\+<span[^>]*>2<\/span>.*−<span[^>]*>1<\/span>/)
+  assert.match(html, /class="prompt-tool-activity-head"[^>]*>[\s\S]*class="prompt-tool-activity-lines"[^>]*>[\s\S]*\+<span[^>]*>2<\/span>[\s\S]*−<span[^>]*>1<\/span>/)
   assert.match(html, /aria-label="Edited 1 file, Ran tests, 2 lines added, 1 removed, completed"/)
   const plain = renderTranscript({ items: [items[0]!, items[2]!] })
   assert.doesNotMatch(plain, /prompt-tool-activity-lines/)
@@ -187,11 +189,47 @@ test('background group stays collapsed while running and once completed', () => 
     status: 'inProgress', background: { taskId: 'bg', kind: 'agent', progress: 'Reading SDK events' }
   }
   const running = renderTranscript({ items: [task], activeTurnId: 't' })
-  assert.match(running, /Background work/)
-  assert.match(running, /1 running/)
+  assert.match(running, /activity-live-verb">Running<\/span> 1 subagent in the background/)
+  assert.match(running, /0 of 1 done/)
   assert.match(running, /aria-expanded="false"/)
   assert.doesNotMatch(running, /Reading SDK events/)
   const completed = renderTranscript({ items: [{ ...task, status: 'completed', output: 'All checked' }] })
-  assert.match(completed, /1 background task finished/)
+  assert.match(completed, /Ran 1 subagent in the background/)
   assert.match(completed, /aria-expanded="false"/)
+})
+
+test('a settled turn shows only its header and answer; the live turn counts up over its steps', () => {
+  const items: ChatTranscriptItem[] = [
+    { type: 'user', id: 'u', turnId: 't', text: 'Go' },
+    { type: 'assistant', id: 'n', turnId: 't', text: 'Checking the build.', phase: null, streaming: false },
+    { type: 'command', id: 'c1', turnId: 't', command: 'npm run build', cwd: '/', status: 'completed', output: '', exitCode: 0, startedAt: 0, finishedAt: 38_000 },
+    { type: 'screenshot', id: 's1', turnId: 't', imageUrl: 'data:,', surface: 'app_window', caption: '' },
+    { type: 'assistant', id: 'a', turnId: 't', text: 'All good.', phase: null, streaming: false }
+  ]
+  const settled = renderTranscript({ items })
+  assert.match(settled, /data-ui="chat.turn-steps"[^>]*aria-expanded="false"[^>]*><span>Worked for 38s/)
+  assert.match(settled, /All good\./)
+  assert.doesNotMatch(settled, /Checking the build|npm run build|prompt-shot/)
+  const live = renderTranscript({ items: items.slice(0, 4), activeTurnId: 't' })
+  assert.match(live, /class="prompt-turn-head" data-live="true" role="status">Working/)
+  assert.match(live, /Checking the build/)
+  assert.match(live, /class="prompt-shot-strip"><button[^>]*data-ui="chat.screenshot" data-ui-key="s1"/)
+  assert.equal((live.match(/data-ui-key="s1"/g) ?? []).length, 1)
+  assert.match(live, /<\/div><\/div><div class="prompt-shot-strip">/,
+    'the screenshot strip follows the closed rolling slot instead of inheriting its fade')
+})
+
+test('a live turn shows one stage row: the newest text above the newest step, nothing earlier', () => {
+  const items: ChatTranscriptItem[] = [
+    { type: 'user', id: 'u', turnId: 't', text: 'Go' },
+    { type: 'assistant', id: 'n1', turnId: 't', text: 'Looking around first.', phase: null, streaming: false },
+    { type: 'command', id: 'c1', turnId: 't', command: 'ls', cwd: '/', status: 'completed', output: '', exitCode: 0 },
+    { type: 'assistant', id: 'n2', turnId: 't', text: 'Running the suite now.', phase: null, streaming: false },
+    { type: 'command', id: 'c2', turnId: 't', command: 'npm test', cwd: '/', status: 'inProgress', output: '', exitCode: null }
+  ]
+  const html = renderTranscript({ items, activeTurnId: 't' })
+  assert.equal((html.match(/class="turn-stage"/g) ?? []).length, 1)
+  assert.doesNotMatch(html, /Looking around first/)
+  assert.ok(html.indexOf('Running the suite now.') < html.indexOf('npm test'))
+  assert.match(html, /class="turn-stage-slot turn-stage-text"/)
 })

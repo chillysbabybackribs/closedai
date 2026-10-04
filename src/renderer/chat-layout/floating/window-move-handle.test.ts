@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { pressesMoveHandle } from './window-move-handle.js'
+import { pressesMoveHandle, selectsWindow } from './window-move-handle.js'
 
 type Node = {
   tag: string
@@ -64,4 +64,16 @@ test('pressesMoveHandle keeps browser tab strip empty space draggable', () => {
 test('pressesMoveHandle honors pane and browser grips', () => {
   const grip = { tag: 'button', attrs: { 'data-window-grip': '' } }
   assert.equal(pressesMoveHandle({ target: chain(grip) }), true)
+})
+
+
+test('window buttons and their icons do not select or start dragging the departing chat', () => {
+  const header = { tag: 'header', className: 'chat-layout-header' }
+  const controls = { tag: 'div', className: 'chat-window-controls' }
+  for (const target of [chain(header, controls, { tag: 'button' }),
+    chain(header, controls, { tag: 'button' }, { tag: 'svg' }, { tag: 'path' })]) {
+    assert.equal(selectsWindow(target), false)
+    assert.equal(pressesMoveHandle({ target }), false)
+  }
+  assert.equal(selectsWindow(chain(header)), true)
 })

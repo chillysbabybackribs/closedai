@@ -1,5 +1,5 @@
 import type { ChangeEvent, JSX, RefObject } from 'react'
-import { FileImage, FileText, Paperclip, X } from 'lucide-react'
+import { FileImage, FileText, Paperclip, X } from './icons/index.js'
 import {
   Attachment,
   AttachmentAction,
@@ -133,13 +133,13 @@ export function TranscriptAttachments({
           <button
             key={attachment.id}
             type="button"
-            className="prompt-message-image-btn"
+            className="prompt-shot"
             aria-label={`Open ${attachment.name}`}
             data-ui="composer.attachment-preview"
             data-ui-key={attachment.id}
             onClick={() => viewer.open({ src: preview, name: attachment.name })}
           >
-            <img className="prompt-message-image" src={preview} alt={attachment.name} title={attachment.name} />
+            <img src={preview} alt={attachment.name} title={attachment.name} decoding="async" />
           </button>
         ) : (
           <AttachmentCard key={attachment.id} attachment={attachment} />

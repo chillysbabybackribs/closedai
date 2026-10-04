@@ -1,5 +1,5 @@
 import type { JSX } from 'react'
-import { Check } from 'lucide-react'
+import { Check } from '../icons/index.js'
 import { cn } from '../../lib/utils.js'
 import { CREDENTIAL_SERVICES, type CredentialServiceId, type CredentialServiceSpec } from '../../shared/credentials.js'
 import { CREDENTIAL_SERVICE_LOGOS, RemoteServiceLogo } from './credential-service-logos.js'

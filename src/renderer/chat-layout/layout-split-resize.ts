@@ -1,5 +1,16 @@
-import { BROWSER_PANE_ID, layoutGeometry, removePane, type ChatLayout, type SplitRatioOverrides } from './layout-tree.js'
+import { BROWSER_PANE_ID, layoutGeometry, removePane, unprunedRatio, type ChatLayout, type SplitRatioOverrides } from './layout-tree.js'
+import { outOfTiledLayer } from './layout-docking.js'
 import { applyLayoutGeometryDom } from './layout-geometry-dom.js'
+
+/**
+ * The ratio to store for a divider let go at `shown`. Hidden, minimized and floating windows are
+ * pruned before layout, which re-weights their row; this undoes both prunes in the order they apply.
+ */
+export function storedSplitRatio(tree: ChatLayout, id: string, shown: number, browserVisible: boolean): number {
+  const visible = browserVisible ? tree : removePane(tree, BROWSER_PANE_ID)
+  const tiled = visible ? unprunedRatio(visible, outOfTiledLayer, id, shown) : shown
+  return browserVisible ? tiled : unprunedRatio(tree, (pane) => pane.id === BROWSER_PANE_ID, id, tiled)
+}
 
 export type SplitResizeLive = {
   active: boolean

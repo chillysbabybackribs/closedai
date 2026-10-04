@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type JSX } from 'react'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw } from '../icons/index.js'
 
 import { Button } from '../../components/ui/button.js'
 import { ProviderMark } from '../../components/ui/provider-mark.js'

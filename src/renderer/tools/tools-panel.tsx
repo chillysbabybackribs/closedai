@@ -228,7 +228,7 @@ export function ToolsPanel({ active: open, onSendToChat }: ToolsPanelProps): JSX
                   </div>
                   <Switch
                     checked={active.state !== 'off'}
-                    className={cn('shrink-0', active.state === 'mixed' && 'data-[state=checked]:bg-primary/55')}
+                    className={cn('shrink-0', active.state === 'mixed' && 'data-[state=checked]:bg-[color-mix(in_srgb,var(--accent-fill)_55%,transparent)]')}
                     aria-label={`${active.state === 'off' ? 'Turn on' : 'Turn off'} ${active.group.label}`}
                     data-ui="tools.group-toggle"
                     data-ui-key={active.group.id}

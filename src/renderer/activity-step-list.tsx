@@ -1,12 +1,13 @@
 import type { JSX } from 'react'
 import { memo, useEffect, useMemo, useState } from 'react'
-import { Check, ChevronRight, CircleEllipsis, FilePenLine, LoaderCircle, SquareTerminal, Wrench, X, XCircle } from 'lucide-react'
+import { Check, ChevronRight, CircleEllipsis, FilePenLine, LoaderCircle, SquareTerminal, Wrench, X, XCircle } from './icons/index.js'
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../components/ui/collapsible.js'
 import {
   activitySteps,
   activitySummary,
   PHASE_LABEL,
+  shellOutputRevealLabel,
   summaryLabel,
   type ActivityStep,
   type StepBody
@@ -49,7 +50,7 @@ export const ActivitySteps = memo(function ActivitySteps({ items, cwd }: { items
 })
 
 /** Durations tick once a second only while something is still running. */
-function useClock(live: boolean): number {
+export function useClock(live: boolean): number {
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
     if (!live) return
@@ -68,7 +69,7 @@ const StepRow = memo(function StepRow({ step, cwd }: { step: ActivityStep; cwd?:
   const [opened, setOpened] = useState(step.phase === 'failed')
   const text = step.label ? `${step.verb} ${step.label}` : step.verb
   return (
-    <li className="activity-step" data-phase={step.phase} data-expandable={expandable || undefined}>
+    <li className="activity-step" data-kind={step.kind} data-phase={step.phase} data-expandable={expandable || undefined}>
       <Collapsible open={open && expandable} onOpenChange={(next) => { if (next) setOpened(true); setOpen(next) }}>
         <CollapsibleTrigger asChild disabled={!expandable}>
           <button type="button" className="activity-step-row" aria-label={`${text}, ${PHASE_LABEL[step.phase]}`}>
@@ -85,7 +86,7 @@ const StepRow = memo(function StepRow({ step, cwd }: { step: ActivityStep; cwd?:
         </CollapsibleTrigger>
         {step.body && opened ? (
           <CollapsibleContent className="activity-step-body">
-            <StepBodyView body={step.body} cwd={cwd} />
+            <StepBodyView body={step.body} stepId={step.id} cwd={cwd} />
           </CollapsibleContent>
         ) : null}
       </Collapsible>
@@ -93,21 +94,41 @@ const StepRow = memo(function StepRow({ step, cwd }: { step: ActivityStep; cwd?:
   )
 })
 
-/** Running steps use a monochrome progress ring; settled steps show their kind. */
+/** Status takes precedence while running or failed; settled steps show their kind. */
 function StepIcon({ step }: { step: ActivityStep }): JSX.Element {
   const className = 'activity-step-icon'
   if (step.phase === 'running') {
-    return (
-      <svg className={`${className} activity-step-spinner`} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <circle cx="12" cy="12" r="8.5" stroke="currentColor" opacity="0.2" />
-        <path d="M12 3.5a8.5 8.5 0 0 1 8.5 8.5" stroke="currentColor" strokeLinecap="round" />
-      </svg>
-    )
+    return <LoaderCircle className={`${className} activity-step-spinner`} aria-hidden="true" />
   }
+  if (step.phase === 'failed') return <XCircle className={className} aria-hidden="true" />
   if (step.phase === 'pending') return <CircleEllipsis className={className} aria-hidden="true" />
-  if (step.kind === 'command') return <SquareTerminal className={className} aria-hidden="true" />
-  if (step.kind === 'fileChange') return <FilePenLine className={className} aria-hidden="true" />
+  return <KindIcon kind={step.kind} className={className} />
+}
+
+export function KindIcon({ kind, className }: { kind: ActivityItem['type']; className: string }): JSX.Element {
+  if (kind === 'command') return <SquareTerminal className={className} aria-hidden="true" />
+  if (kind === 'fileChange') return <FilePenLine className={className} aria-hidden="true" />
   return <Wrench className={className} aria-hidden="true" />
+}
+
+/**
+ * A running group is one line: the newest step, its verb shimmering while it runs, and its
+ * timer. Keyed by step id at the call site, so each new step rolls in from below at the same
+ * height and the transcript under it never moves.
+ */
+export function LiveLine({ step }: { step: ActivityStep }): JSX.Element {
+  return (
+    <span className="activity-live-line" data-kind={step.kind} data-phase={step.phase}>
+      {step.phase === 'failed'
+        ? <XCircle className="activity-step-icon" aria-hidden="true" />
+        : <KindIcon kind={step.kind} className="activity-step-icon" />}
+      <span className="activity-step-text" title={step.title ?? undefined}>
+        <span className={step.phase === 'running' || step.phase === 'pending' ? 'activity-live-verb' : 'activity-step-verb'}>{step.verb}</span>
+        {step.label ? <span className="activity-step-label"> {step.label}</span> : null}
+      </span>
+      {step.meta.length ? <span className="activity-step-meta">{step.meta.join(' · ')}</span> : null}
+    </span>
+  )
 }
 
 /**
@@ -115,8 +136,10 @@ function StepIcon({ step }: { step: ActivityStep }): JSX.Element {
  * surface, the invocation behind a prompt, the output, and the outcome in the corner. The
  * invocation clamps to a few lines and opens on click.
  */
-function StepBodyView({ body, cwd }: { body: StepBody; cwd?: string }): JSX.Element {
+function StepBodyView({ body, stepId, cwd }: { body: StepBody; stepId: string; cwd?: string }): JSX.Element {
   const [fullInvocation, setFullInvocation] = useState(false)
+  const [showOutput, setShowOutput] = useState(Boolean(body.output))
+  const revealed = body.output ?? (showOutput ? body.withheldOutput : null)
   return (
     <div className="activity-card" data-tone={body.status.tone}>
       <div className="activity-card-heading">{body.heading}</div>
@@ -132,7 +155,18 @@ function StepBodyView({ body, cwd }: { body: StepBody; cwd?: string }): JSX.Elem
           {body.invocation}
         </button>
       ) : null}
-      {body.output ? <pre className="activity-card-output">{body.output}</pre> : null}
+      {body.withheldOutput && !showOutput ? (
+        <button
+          type="button"
+          className="activity-card-output-toggle"
+          data-ui="chat.activity-step-output"
+          data-ui-key={stepId}
+          onClick={() => setShowOutput(true)}
+        >
+          {shellOutputRevealLabel(body.withheldOutput)}
+        </button>
+      ) : null}
+      {revealed ? <pre className="activity-card-output">{revealed}</pre> : null}
       {body.diffs.map((entry) => (
         <DiffViewer key={entry.path} path={entry.path} diff={entry.diff} cwd={cwd} />
       ))}

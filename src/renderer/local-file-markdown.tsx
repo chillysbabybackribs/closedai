@@ -3,6 +3,7 @@ import type { Components } from 'react-markdown'
 import remarkBreaks from 'remark-breaks'
 import remarkGfm from 'remark-gfm'
 import { cn } from '../lib/utils.js'
+import { errorMessage } from './error-message.js'
 import { Markdown, MarkdownLink } from '../components/ui/markdown.js'
 import { remarkBareUrls } from '../components/ui/markdown-links.js'
 import { remarkWorkspaceFilePaths } from '../components/ui/markdown-workspace-paths.js'
@@ -22,7 +23,7 @@ function LocalFileLink({ href, cwd, children }: { href: string; cwd?: string; ch
       const options = cwd ? { cwd } : undefined
       await (workspace ? workspace.openFile(href, options) : window.closedai.localFiles.open(href, options))
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not open this file.')
+      setError(errorMessage(cause, 'Could not open this file.'))
     } finally { setOpening(false) }
   }
   return <>

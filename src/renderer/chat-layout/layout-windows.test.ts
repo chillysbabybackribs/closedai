@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import type { ChatLayout } from './layout-tree.js'
+import { BROWSER_PANE_ID, type ChatLayout } from './layout-tree.js'
 import { tabIds } from './layout-tabs.js'
-import { adoptTabs, initialWindowTree, type WindowTreeSeed } from './layout-windows.js'
+import { adoptTabs, dismissWindow, initialWindowTree, type WindowTreeSeed } from './layout-windows.js'
 
 const seed = (patch: Partial<WindowTreeSeed>): WindowTreeSeed => ({
   available: new Set(['a', 'b', 'c']), elsewhere: new Set(), selectedPaneId: 'a', detached: false,
@@ -15,8 +15,9 @@ test('the main window drops chats another window holds and never pulls one forwa
   assert.deepEqual(tabIds(tree), ['a'])
 })
 
-test('the main window still adds its own selected chat', () => {
-  assert.deepEqual(tabIds(initialWindowTree(pane('a'), seed({ selectedPaneId: 'c' }))), ['a', 'c'])
+test('a saved desk does not reopen the backend-selected chat absent from its layout', () => {
+  assert.deepEqual(tabIds(initialWindowTree(pane('a'), seed({ selectedPaneId: 'c' }))), ['a'])
+  assert.deepEqual(tabIds(initialWindowTree(null, seed({ selectedPaneId: 'c' }))), ['c'])
 })
 
 test('a new detached window opens with the tabs moved into it, ignoring the selection', () => {
@@ -29,9 +30,9 @@ test('a detached window whose chats are gone shows the history view', () => {
   assert.deepEqual(tree, { kind: 'pane', id: 'closedai:view:history:x' })
 })
 
-test('a main window whose only chat moved away opens on the history view, not on that chat', () => {
+test('a saved main window whose only chat moved away stays empty', () => {
   const tree = initialWindowTree(pane('b'), seed({ elsewhere: new Set(['b']), selectedPaneId: 'b' }))
-  assert.deepEqual(tree, { kind: 'pane', id: 'closedai:view:history:x' })
+  assert.deepEqual(tree, pane(BROWSER_PANE_ID))
 })
 
 test('handed-back tabs join the anchor tile once, and a second Agents view is skipped', () => {
@@ -39,4 +40,32 @@ test('handed-back tabs join the anchor tile once, and a second Agents view is sk
     first: pane('a'), second: pane('closedai:view:agents:1') }
   const next = adoptTabs(tree, ['b', 'a', 'closedai:view:agents:2'], 'a')
   assert.deepEqual(tabIds(next), ['a', 'b', 'closedai:view:agents:1'])
+})
+
+
+test('dismissing a card preserves surviving floating, tiled, minimized and maximized windows', () => {
+  const float = { x: 80, y: 40, width: 600, height: 700, z: 2 }
+  for (const survivor of [pane('b'), { ...pane('b'), float }, { ...pane('b'), float, docked: true }]) {
+    const tree: ChatLayout = { kind: 'split', id: 'pair', axis: 'horizontal', ratio: 0.7,
+      first: pane('a'), second: survivor }
+    const layout = { tree, maximized: 'b', browserVisible: false }
+    const next = dismissWindow(layout, 'a')
+    assert.equal(next.tree, survivor)
+    assert.equal(next.maximized, 'b')
+    assert.equal(next.browserVisible, false)
+    assert.equal(dismissWindow(next, 'a'), next, 'repeated close is a no-op')
+  }
+})
+
+test('closing the maximized card clears only its maximize state, and closed cards stay gone after restore', () => {
+  const survivor = { ...pane('b'), docked: true }
+  const tree: ChatLayout = { kind: 'split', id: 'pair', axis: 'horizontal', ratio: 0.7,
+    first: pane('a'), second: survivor }
+  const next = dismissWindow({ tree, maximized: 'a', browserVisible: false }, 'a')
+  assert.equal(next.maximized, undefined)
+  assert.equal(next.tree, survivor)
+  assert.deepEqual(initialWindowTree(next.tree, seed({ selectedPaneId: 'a' })), survivor)
+  const empty = dismissWindow(next, 'b')
+  assert.deepEqual(empty.tree, pane(BROWSER_PANE_ID))
+  assert.deepEqual(initialWindowTree(empty.tree, seed({ selectedPaneId: 'b' })), empty.tree)
 })

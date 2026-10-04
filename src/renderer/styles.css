@@ -126,12 +126,12 @@
   font-kerning: normal;
   font-variant-ligatures: common-ligatures contextual;
 
-  /* One easing curve for every chrome transition, and three tracking steps.
-     Chrome type is set tight: at 11-13px the default tracking is drawn
-     for paragraphs, and a UI label wants slightly less. Display sizes take
-     more, since optical tracking should shrink as the type grows. */
+  /* One easing curve for every chrome transition, and three tracking steps,
+     following Inter's size-dependent tracking: ~0 at 11-13px chrome labels
+     (negative tracking at those sizes closes counters and reads soft at 96dpi),
+     tight from ~18px, and tighter still for display sizes. */
   --ease-chrome: cubic-bezier(0.25, 0.1, 0.25, 1);
-  --tracking-ui: -0.006em;
+  --tracking-ui: 0em;
   --tracking-tight: -0.014em;
   --tracking-display: -0.022em;
 

@@ -4,8 +4,16 @@
    No frame at this level. Steps are flat single lines, indented under the headline,
    each with an icon for the kind of step, a verb, the literal command or path, and
    timing on the right. Expanded step details keep the same unboxed text treatment.
-   Running steps use a quiet monochrome ring; failures retain their red accent.
+   Small kind accents stay on the icons; running is amber and failures stay red.
 --------------------------------------------------------------------------- */
+
+.prompt-tool-activity,
+.activity-steps {
+  --activity-command: #b2a1e5;
+  --activity-edit: #d3b477;
+  --activity-tool: #83b5db;
+  --activity-running: #d3b477;
+}
 
 .activity-steps {
   display: flex;
@@ -111,11 +119,18 @@
 /* A line that opens something is the brighter one, as in a file list where the
    entries with contents stand forward and the rest sit back. */
 .activity-step[data-expandable] .activity-step-text,
-.activity-step[data-expandable] .activity-step-icon,
 .activity-step-row:not(:disabled):hover .activity-step-text { color: var(--transcript-activity-hover, #d4d4d8); }
 
+.activity-step[data-kind='command'] .activity-step-icon { color: var(--activity-command); }
+.activity-step[data-kind='fileChange'] .activity-step-icon { color: var(--activity-edit); }
+.activity-step[data-kind='tool'] .activity-step-icon { color: var(--activity-tool); }
+
+.activity-step[data-phase='pending'] .activity-step-icon {
+  color: var(--transcript-activity, #9b9ba1);
+}
+
 .activity-step[data-phase='running'] .activity-step-icon {
-  color: var(--transcript-activity-hover, #d4d4d8);
+  color: var(--activity-running);
 }
 
 .activity-step-spinner {
@@ -205,6 +220,28 @@
 }
 
 .activity-card-prompt { color: var(--code-muted, #8a8a8f); }
+
+.activity-card-output-toggle {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 8px 14px 10px;
+  border: 0;
+  appearance: none;
+  background: transparent;
+  color: var(--link-ink, #6eb6ff);
+  font: inherit;
+  font-size: 11.5px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.activity-card-output-toggle:hover { text-decoration: underline; }
+
+.activity-card-output-toggle:focus-visible {
+  outline: 1px solid var(--ring, rgb(255 255 255 / 35%));
+  outline-offset: -2px;
+}
 
 .activity-card-output {
   max-height: 280px;
@@ -623,7 +660,48 @@
 .diff-token-number { color: #d19a66; }
 .diff-token-type { color: #e5c07b; }
 
+/* A running group is one line (LiveLine): the step under way, its verb shimmering, its timer.
+   Each new step rolls in from below at the same height, so nothing under it moves. */
+.activity-live-line {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
+  animation: activity-live-in 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@keyframes activity-live-in {
+  from { transform: translateY(100%); opacity: 0; }
+}
+
+.activity-live-line[data-kind='command'] .activity-step-icon { color: var(--activity-command); }
+.activity-live-line[data-kind='fileChange'] .activity-step-icon { color: var(--activity-edit); }
+.activity-live-line[data-kind='tool'] .activity-step-icon { color: var(--activity-tool); }
+.activity-live-line[data-phase='failed'] .activity-step-icon { color: var(--destructive, #d28b8b); }
+.activity-live-line .activity-step-text { color: var(--transcript-activity, #9b9ba1); }
+.activity-live-line .activity-step-meta { margin-left: 2px; font-weight: 400; }
+
+.activity-live-verb {
+  --shimmer-spread: 56px;
+  background-image:
+    linear-gradient(90deg, transparent calc(50% - var(--shimmer-spread)), #e4e6ea, transparent calc(50% + var(--shimmer-spread))),
+    linear-gradient(var(--transcript-activity-hover, #d4d4d8), var(--transcript-activity-hover, #d4d4d8));
+  background-repeat: no-repeat, repeat;
+  background-size: 250% 100%, auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: activity-live-shimmer 2.2s linear infinite;
+}
+
+@keyframes activity-live-shimmer {
+  from { background-position: 100% center, 0 0; }
+  to { background-position: 0% center, 0 0; }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .activity-step-spinner { animation: none; }
+  .activity-step-spinner,
+  .activity-live-line,
+  .activity-live-verb { animation: none; }
   .activity-step-chevron { transition: none; }
 }

@@ -23,6 +23,7 @@ import { mediaTools } from '../src/main/tools/media/index.ts'
 import { notesTools } from '../src/main/tools/notes/index.ts'
 import { peerChatTools } from '../src/main/tools/peer-chats/index.ts'
 import { searchTools } from '../src/main/tools/search/index.ts'
+import { siteTools } from '../src/main/tools/site/index.ts'
 import type { ResearchDependencies } from '../src/main/tools/search/research/service.ts'
 import type { ToolTelemetrySnapshot, ToolStats } from '../src/shared/tools.ts'
 
@@ -39,6 +40,7 @@ const CURRENT_GUIDES = [
   'docs/cursor.md',
   'docs/native-instrumentation.md',
   'docs/autogit.md',
+  'docs/site-discover.md',
   'AGENTS.md',
   'docs/README.md'
 ]
@@ -103,7 +105,8 @@ function buildRegistry(): ToolRegistry {
     appTools(stubHost, stubHost),
     mediaTools({ app: stubHost, ui: stubHost, page: stubHost, record: stubHost as never }),
     browserTools(() => stubHost(), () => stubHost(), () => stubHost()),
-    cdpTools(stubHost),
+    cdpTools(stubHost, undefined, stubHost),
+    siteTools(stubHost, stubHost, stubHost),
     captureTools(stubHost, stubHost as never),
     searchTools({ research: minimalResearch() }),
     peerChatTools(stubHost),
@@ -347,22 +350,21 @@ async function historicalDocFindings(): Promise<Finding[]> {
   const entries = await readdir(path.join(root, 'docs'), { withFileTypes: true })
   const markdown = entries.filter((entry) => entry.isFile() && entry.name.endsWith('.md')).map((entry) => entry.name)
   const currentBasenames = new Set(CURRENT_GUIDES.map((file) => path.basename(file)))
-  currentBasenames.add('README.md')
+  const indexed = new Set(
+    [...(await readFile(path.join(root, 'docs/README.md'), 'utf8')).matchAll(/\]\(([^)#]+\.md)/g)]
+      .map((match) => path.basename(match[1]))
+  )
   const findings: Finding[] = []
   for (const name of markdown.sort()) {
-    if (currentBasenames.has(name)) continue
-    const isDated = /\d{4}-\d{2}-\d{2}/.test(name) ||
-      /research|recon|audit|benchmark|backlog|blueprint|plan/i.test(name)
+    if (currentBasenames.has(name) || indexed.has(name)) continue
     findings.push({
       section: 'Research and dated docs — historical classification',
       severity: 'maintainer-only',
-      summary: `docs/${name} treated as ${isDated ? 'historical evidence' : 'review manually'}`,
-      detail: isDated
-        ? 'Listed in docs/README.md dated table or filename pattern; not authoritative over current guides.'
-        : 'Not in the current-guides table; confirm README classification.'
+      summary: `docs/${name} is not linked from docs/README.md`,
+      detail: 'Add it to the current-guides or dated table, or remove it.'
     })
   }
-  return findings.slice(0, 12)
+  return findings
 }
 
 function followUps(all: Finding[]): Finding[] {

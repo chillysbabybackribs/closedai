@@ -112,6 +112,8 @@ export type ClosedaiApi = {
     duplicateTab: (id: string) => Promise<void>
     reloadTab: (id: string) => Promise<void>
     renameTab: (id: string, title: string | null) => Promise<void>
+    /** Show the active web tab inside the iPhone frame, or back at full pane size. */
+    setPhonePreview: (enabled: boolean) => Promise<void>
     selectTab: (id: string) => Promise<void>
     /** Still of the active tab, used to freeze the page under a DOM overlay. */
     capture: () => Promise<BrowserShot | null>
@@ -170,7 +172,7 @@ export type ClosedaiApi = {
     selectModel: (paneId: ChatPaneId, modelId: string) => Promise<void>
     selectReasoningEffort: (paneId: ChatPaneId, effort: string) => Promise<void>
     /** Read the signed-in CLI account without opening a chat; shared for one minute. */
-    readProviderUsage: (provider: import('./chat.js').ChatProvider) => Promise<import('./chat.js').ProviderUsageSnapshot>
+    readProviderUsage: (provider: import('./chat.js').ChatProvider, force?: boolean) => Promise<import('./chat.js').ProviderUsageSnapshot>
     /** Re-read the pane provider's usage; onlyIfAwake preserves parking and its idle deadline. */
     refreshPlanUsage: (paneId: ChatPaneId, onlyIfAwake?: boolean) => Promise<void>
     loginWithChatGPT: () => Promise<void>

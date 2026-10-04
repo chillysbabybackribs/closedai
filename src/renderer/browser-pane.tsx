@@ -1,6 +1,6 @@
 import type { JSX, ReactNode } from 'react'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowLeft, ArrowRight, Download, FileCode, FileImage, FileVideo, Globe2, Loader2, Lock, Plus, RefreshCw, Search, Star, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Download, FileCode, FileImage, FileVideo, Globe2, Loader2, Lock, Plus, RefreshCw, Search, Smartphone, Star, X } from './icons/index.js'
 import { ImageViewer } from './image-viewer/image-viewer.js'
 import { VideoViewer } from './video-viewer/video-viewer.js'
 import { VideoHome } from './video-viewer/video-home.js'
@@ -15,6 +15,7 @@ import { useBrowserDownloadsController, type BrowserDownloadsController } from '
 import { BrowserDownloadsShelf } from './browser-downloads-shelf.js'
 import type { BrowserSavedSitesController } from './browser-saved-sites-controller.js'
 import { BrowserNavigationError } from './browser-navigation-error.js'
+import { BrowserPhoneFrame } from './browser-phone-frame.js'
 import { BrowserTabMenu, BrowserTabRename, type BrowserTabMenuTarget } from './browser-tab-menu.js'
 import { securityRequests } from './security-requests.js'
 import { useWebPermissionRequests } from './use-security-requests.js'
@@ -56,7 +57,13 @@ export const BrowserPane = memo(function BrowserPane({
     securityRequests().permissions.resolve(id, decision).catch(report)
   }, [report])
   const appViewer = Boolean(controller.browser.image || controller.browser.video || controller.browser.videoHub || controller.browser.file)
+  // The toolbar is the browser's constant top: file tabs keep it in Code view too. Only the image
+  // and video viewers, separate application surfaces, replace it.
+  const showToolbar = !appViewer || Boolean(controller.browser.file)
+  const phonePreview = Boolean(controller.browser.phonePreview) && !appViewer
   const activeTab = controller.tabs.find((tab) => tab.active) ?? null
+  // A local HTML/SVG page: its Page | Code switch rides in a file header over the page, never in the toolbar.
+  const filePage = appViewer ? null : renderableFilePath(controller.browser.url)
   const compare = controller.browser.videoCompare
   const showVideoCompare = Boolean(
     compare
@@ -66,7 +73,7 @@ export const BrowserPane = memo(function BrowserPane({
   )
   return (
     <section className="browser-pane" aria-label="Browser" data-ui-surface="browser">
-      <div className={`browser-shell ${downloads.isOpen && !appViewer ? 'has-downloads' : ''} ${controller.browser.image ? 'has-image-viewer' : ''} ${controller.browser.video ? 'has-video-viewer' : ''} ${controller.browser.videoHub ? 'has-video-home' : ''} ${showVideoCompare ? 'has-video-compare' : ''} ${controller.browser.file ? 'has-file-viewer' : ''}`}>
+      <div className={`browser-shell ${downloads.isOpen && showToolbar ? 'has-downloads' : ''} ${controller.browser.image ? 'has-image-viewer' : ''} ${controller.browser.video ? 'has-video-viewer' : ''} ${controller.browser.videoHub ? 'has-video-home' : ''} ${showVideoCompare ? 'has-video-compare' : ''} ${controller.browser.file ? 'has-file-viewer' : ''}`}>
         <div className="browser-tabstrip-host">
           <div className="browser-tabstrip-row"
             onDoubleClickCapture={onHeaderDoubleClick
@@ -86,18 +93,21 @@ export const BrowserPane = memo(function BrowserPane({
           ) : null}
           <WebPermissionBar requests={permissions} onDecide={decidePermission} />
         </div>
-        {!appViewer && <BrowserToolbar controller={controller} downloads={downloads} savedSites={savedSites} onError={report} />}
-        {downloads.isOpen && !appViewer ? <BrowserDownloadsShelf controller={downloads} /> : null}
-        <div className={`browser-frame ${controller.browser.navigationError && !appViewer ? 'has-navigation-error' : ''}`}>
+        {showToolbar && <BrowserToolbar controller={controller} downloads={downloads} savedSites={savedSites} onError={report} />}
+        {downloads.isOpen && showToolbar ? <BrowserDownloadsShelf controller={downloads} /> : null}
+        <div className={`browser-frame ${controller.browser.navigationError && !appViewer ? 'has-navigation-error' : ''} ${filePage ? 'has-file-page' : ''}`}>
+          {filePage && activeTab ? <FilePageHeader tabId={activeTab.id} path={filePage} onError={report} /> : null}
           <div
-            className={`browser-view-host ${controller.browser.image ? 'is-image-viewer' : controller.browser.video ? 'is-video-viewer' : controller.browser.videoHub ? 'is-video-home' : controller.browser.file ? 'is-file-viewer' : controller.browser.navigationError ? 'is-navigation-error' : ''}`}
+            className={`browser-view-host ${controller.browser.image ? 'is-image-viewer' : controller.browser.video ? 'is-video-viewer' : controller.browser.videoHub ? 'is-video-home' : controller.browser.file ? 'is-file-viewer' : controller.browser.navigationError ? 'is-navigation-error' : ''} ${phonePreview ? 'is-phone-preview' : ''}`}
             id="browser-page"
             role="tabpanel"
             aria-label="Browser page"
             aria-hidden={appViewer || controller.browser.navigationError ? 'true' : undefined}
             ref={controller.browserHostRef}
-          />
-          {controller.titlebarFreeze && !appViewer ? (
+          >
+            {phonePreview ? <BrowserPhoneFrame hostRef={controller.browserHostRef} freezeUrl={controller.titlebarFreeze?.imageUrl} /> : null}
+          </div>
+          {controller.titlebarFreeze && !appViewer && !phonePreview ? (
             <img className="browser-view-freeze" src={controller.titlebarFreeze.imageUrl} alt="" aria-hidden="true" />
           ) : null}
           {controller.tabs.filter((tab) => tab.image).map((tab) =>
@@ -255,6 +265,21 @@ function TabIcon({ tab }: { tab: BrowserTabInfo }): JSX.Element {
   return <Globe2 className="browser-tab-icon browser-tab-fallback" size={16} aria-hidden="true" />
 }
 
+/** Page view of a local HTML/SVG file: the same header the file viewer shows in Code view, so the
+ *  Page | Code switch stays in one place when the tab changes view. */
+function FilePageHeader({ tabId, path, onError }: { tabId: string; path: string; onError: (reason: unknown) => void }): JSX.Element {
+  const name = path.split('/').pop() || path
+  return (
+    <header className="file-viewer-toolbar browser-file-page-header" role="toolbar" aria-label="File controls">
+      <FileCode className="file-viewer-icon" size={15} aria-hidden="true" />
+      <span className="file-viewer-name" title={path}>{name}</span>
+      <div className="file-viewer-actions">
+        <FileViewToggle tabId={tabId} view="page" onError={onError} />
+      </div>
+    </header>
+  )
+}
+
 function BrowserToolbar({
   controller,
   downloads,
@@ -350,7 +375,6 @@ function BrowserToolbar({
           </div>
         ) : null}
       </div>
-      {activeTab && renderableFilePath(browser.url) ? <FileViewToggle tabId={activeTab.id} view="page" onError={onError} /> : null}
       <button
         type="button"
         className={`browser-nav-button ${pageIsSaved ? 'is-saved' : ''}`}
@@ -365,6 +389,18 @@ function BrowserToolbar({
         aria-pressed={pageIsSaved}
       >
         <Star size={16} />
+      </button>
+      <button
+        type="button"
+        className={`browser-nav-button ${browser.phonePreview ? 'is-active' : ''}`}
+        disabled={Boolean(browser.image || browser.video || browser.videoHub || browser.file)}
+        onClick={() => { void window.closedai.browser.setPhonePreview(!browser.phonePreview).catch(onError) }}
+        title={browser.phonePreview ? 'Exit phone preview' : 'Phone preview'}
+        aria-label="Phone preview"
+        data-ui="browser.phone-preview"
+        aria-pressed={Boolean(browser.phonePreview)}
+      >
+        <Smartphone size={16} />
       </button>
       <button
         type="button"

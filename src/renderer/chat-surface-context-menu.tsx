@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react'
 import { ContextMenu } from 'radix-ui'
-import { ClipboardPaste, Copy, RotateCcw, ZoomIn, ZoomOut } from 'lucide-react'
+import { ClipboardPaste, Copy, RotateCcw, ZoomIn, ZoomOut } from './icons/index.js'
 import { type ChatZoomCommand, chatZoomCommandDisabled } from './chat-zoom.js'
 import { copySelectedText, pasteTextToComposer } from './chat-clipboard-actions.js'
 import { LayoutMenuRow } from './chat-layout/layout-context-menu.js'

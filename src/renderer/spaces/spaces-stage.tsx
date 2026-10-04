@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type CSSProperties, type ReactElement, type ReactNode, type Ref } from 'react'
-import { Plus, X } from 'lucide-react'
+import { Plus, X } from '../icons/index.js'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import { chatTabIds } from '../chat-layout/layout-tabs.js'
 import { readLayout } from '../chat-layout/layout-tree.js'

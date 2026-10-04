@@ -1,6 +1,6 @@
 import { useState, type JSX, type ReactElement } from 'react'
 import { ContextMenu } from 'radix-ui'
-import { ChevronRight, Pin, PinOff } from 'lucide-react'
+import { ChevronRight, Pin, PinOff } from '../icons/index.js'
 import { DOCK_ICON_OPTIONS, isDockIconPinned, type DockIconId, type DockPrefs } from './dock-model.js'
 
 /** One menu for dock icons and its empty backing; provider and window controls opt out. */

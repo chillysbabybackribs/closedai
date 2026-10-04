@@ -1,5 +1,5 @@
 import { useEffect, useState, type JSX } from 'react'
-import { LogIn } from 'lucide-react'
+import { LogIn } from './icons/index.js'
 
 import { Button } from '../components/ui/button.js'
 import type { ChatConnectionState, ChatProvider } from '../shared/chat.js'

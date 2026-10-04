@@ -1,5 +1,5 @@
 import { useCallback, useImperativeHandle, useRef, useState, type JSX, type Ref } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown } from './icons/index.js'
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover.js'
 
 import type { ChatContextUsage, ChatModel, ChatPlanUsage, ChatProvider } from '../shared/chat.js'

@@ -1,5 +1,5 @@
 import type { JSX } from 'react'
-import { ChevronRight, Folder, Plus, X } from 'lucide-react'
+import { ChevronRight, Folder, Plus, X } from './icons/index.js'
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../components/ui/collapsible.js'
 import { Progress } from '../components/ui/progress.js'

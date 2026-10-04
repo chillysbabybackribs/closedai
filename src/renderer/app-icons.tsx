@@ -1,6 +1,6 @@
 import type { JSX } from 'react'
-import type { LucideIcon } from 'lucide-react'
-import { FileVideo } from 'lucide-react'
+import type { IconComponent } from './icons/index.js'
+import { FileVideo } from './icons/index.js'
 import {
   AskGlyph, HistoryGlyph, NewChatGlyph, SearchGlyph, StartGlyph,
   TraceGlyph, type GlyphComponent
@@ -9,10 +9,10 @@ import {
 /**
  * Every feature's icon, named once. The dock tray and the view tabs read from here, so a new icon
  * set replaces entries in this list and nothing else. A `glyph` is a hand-built duotone SVG from
- * `icons/glyphs.tsx`; a `line` icon is a lucide stroke. Both take the surrounding text colour. A
+ * `icons/glyphs.tsx`; a `line` icon is a Framework7 glyph from `icons/index.tsx`. Both take the surrounding text colour. A
  * `picture` keeps its own colours: use SVG or a raster asset large enough for dock magnification.
  */
-export type AppIcon = { kind: 'line'; glyph: LucideIcon } | { kind: 'glyph'; Glyph: GlyphComponent } | { kind: 'picture'; src: string }
+export type AppIcon = { kind: 'line'; glyph: IconComponent } | { kind: 'glyph'; Glyph: GlyphComponent } | { kind: 'picture'; src: string }
 
 export type AppIconId =
   | 'files' | 'file' | 'chats' | 'browser' | 'video' | 'agents' | 'saved-sites' | 'downloads' | 'history' | 'tools' | 'trace' | 'note'

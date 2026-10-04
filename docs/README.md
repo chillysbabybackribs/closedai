@@ -13,6 +13,7 @@ These are the sources AGENTS.md treats as authoritative for implemented behavior
 | [Provider guides](claude-code.md) | Claude, [Antigravity](antigravity.md), [Cursor](cursor.md) lane contracts |
 | [Native instrumentation](native-instrumentation.md) | Frida probe lifecycle and limits |
 | [Auto-git](autogit.md) | Optional local snapshot service |
+| [Site discovery](site-discover.md) | `site.discover` bootstrap, expand, and API-map contracts |
 
 Root [README.md](../README.md) covers install/run and points here. [AGENTS.md](../AGENTS.md) is the
 engineering contract for contributors.
@@ -26,8 +27,8 @@ What reaches a provider, and when:
 | Context | Owner | When / maintainer rule |
 |---|---|---|
 | Provider-native chat behavior | Provider session adapters | Provider-specific; native project instructions may also load through that provider. |
-| Session guide | `src/main/chat-context/`, `scripts/agent-guide-outline.json` | Attached to a new provider thread or handoff, not every turn. Edit the outline and regenerate the guide. |
-| Turn context and handoffs | `src/main/chat-context/` | The clock is attached every turn and notepad context on every notepad-chat turn; the ambient browser tab, the workspace ledger (regex-gated), and historical handoffs are conditional. Keep data scoped to the relevant turn. |
+| Session guide | `src/main/chat-context/`, `scripts/agent-guide-outline.json` | Codex, Claude, and Antigravity only: attached to a new provider thread or handoff, not every turn; never on Cursor or with Cursor baseline on. Edit the outline and regenerate the guide. |
+| Turn context and handoffs | `src/main/chat-context/` | The clock and runtime are attached every turn and notepad context on every notepad-chat turn; research routing (prompt-matched), the ambient browser tab, the workspace ledger (regex- or path-gated), historical handoffs, and the Antigravity compaction seed are conditional. Keep data scoped to the relevant turn. |
 | Tool schemas and descriptions | `src/main/tools/**` | Provider-specific delivery and discovery. Schemas own arguments, defaults, and limits; link to them instead of copying. |
 | Human guides | `docs/application.md`, `docs/tools.md` | Reference for people; guide text is not automatically sent to chats. |
 
@@ -53,8 +54,11 @@ guides when behavior diverges.
 | [tool-task-slice-design-2026-09-29.md](tool-task-slice-design-2026-09-29.md) | Task tool slice design; implementation notes at its top, [Tools](tools.md) owns the contract |
 | [reddit-multi-provider-landscape-2026-09-29.md](reddit-multi-provider-landscape-2026-09-29.md) | Multi-provider user landscape research |
 | [tool-harness-simulation-plan-2026-09-23.md](tool-harness-simulation-plan-2026-09-23.md) | Historical prompt and tool optimization plan; its shared-prompt assumptions are retired |
+| [browser-efficiency-audit-2026-09-30.md](browser-efficiency-audit-2026-09-30.md) | Browser tool efficiency fixes and live cross-provider runs |
+| [agent-run-access-investigation-2026-10-02.md](agent-run-access-investigation-2026-10-02.md) | Per-provider access enforcement for agent runs (investigation only) |
+| [chat-transcript-recall-phases.md](chat-transcript-recall-phases.md) | Phased transcript-recall design record; [Tools](tools.md) owns the `peer_chats` contract |
 | [ui-context-audit-2026-09-30.md](ui-context-audit-2026-09-30.md) | Empty workspace fixes, remaining layout conflicts, and provider continuity audit |
-| [ui-polish-backlog.md](ui-polish-backlog.md), [../design-qa.md](../design-qa.md) | Visual QA backlog |
+| [ui-polish-backlog.md](ui-polish-backlog.md) | Visual QA backlog |
 | [design-mocks/](design-mocks/) | Dated static HTML layout and chrome explorations; not shipped product behavior |
 
 When a guide and a dated document disagree, trust the guide after verifying in source.

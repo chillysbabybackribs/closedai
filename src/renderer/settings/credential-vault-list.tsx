@@ -1,5 +1,5 @@
 import { useState, type JSX } from 'react'
-import { Check, CheckCircle2, Copy, Eye, EyeOff, Lock, Plus, ShieldAlert, Trash2 } from 'lucide-react'
+import { Check, CheckCircle2, Copy, Eye, EyeOff, Lock, Plus, ShieldAlert, Trash2 } from '../icons/index.js'
 import { Switch } from '../../components/ui/switch.js'
 import { credentialDomain, credentialService, type CredentialSummary } from '../../shared/credentials.js'
 import { errorMessage } from '../error-message.js'
@@ -84,7 +84,7 @@ export function CredentialVaultList({
             {entry.committing ? '…' : '.'}
           </span>
           {entry.committing ? null : (
-            <button type="button" data-ui="credentials.undo-remove" data-ui-key={entry.id} className="font-medium text-primary hover:underline" onClick={() => onUndoRemove(entry.id)}>
+            <button type="button" data-ui="credentials.undo-remove" data-ui-key={entry.id} className="font-medium text-[var(--link-ink)] hover:underline" onClick={() => onUndoRemove(entry.id)}>
               Undo
             </button>
           )}

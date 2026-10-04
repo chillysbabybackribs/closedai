@@ -1,5 +1,5 @@
 import { createContext, type MouseEvent, type ReactNode, useContext, useState } from 'react'
-import { Globe } from 'lucide-react'
+import { Globe } from '../../renderer/icons/index.js'
 
 import { cn } from '../../lib/utils.js'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '../ui/hover-card.js'

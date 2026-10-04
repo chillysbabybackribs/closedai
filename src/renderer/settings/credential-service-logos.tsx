@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type JSX } from 'react'
-import { KeyRound, UserRound } from 'lucide-react'
+import { KeyRound, UserRound } from '../icons/index.js'
 import type { CredentialServiceId } from '../../shared/credentials.js'
 
 /**

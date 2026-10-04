@@ -1,5 +1,5 @@
 import type { Dispatch, MutableRefObject, RefObject, SetStateAction } from 'react'
-import { MessageSquareShare, Plus, Star } from 'lucide-react'
+import { Plus, Star } from '../icons/index.js'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import type { ChatReviewQueue } from '../chat-history/review-queue.js'
 import { HeaderChatSearch } from '../chat-history/header-search.js'
@@ -14,7 +14,7 @@ import { ChatLayoutPaneHints } from './chat-layout-pane-hints.js'
 import { handleHeaderDoubleClickFit } from './header-double-click-fit.js'
 import { useWorkspacePaneActions } from './workspace-pane-actions.js'
 
-function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset, title, activity, reviewQueue, row, soloTile, setSoloPaneId, onFitVisibleWindows, tabFocus, hideHint, workspaceSelectedId, threadSearch, onSelect, onSelectTab, onCloseTab, onNewChat, onTogglePin, onHide, setDragging, canMaximize, isThisTileSolo, canMinimize, onMinimize, floating }: {
+function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset, title, activity, reviewQueue, row, setSoloPaneId, onFitVisibleWindows, tabFocus, hideHint, workspaceSelectedId, threadSearch, onSelect, onSelectTab, onCloseTab, onNewChat, onTogglePin, onHide, setDragging, canMaximize, isThisTileSolo, canMinimize, onMinimize, floating }: {
   activeId: string
   workspaceSelectedId?: string | null
   threadSearch?: {
@@ -57,7 +57,6 @@ function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset
   const pinned = row?.pinnedAt != null
   const workspace = useWorkspacePaneActions()
   const promoteToMainPanel = Boolean(workspace?.canPromoteStackMonitorLead(activeId))
-  const canContinue = Boolean(row?.threadId) && !row?.running
   const newTabButton = (className: string) => (
     <button type="button" className={className}
       data-ui="layout.new-chat" data-ui-key={activeId} disabled={busy}
@@ -91,42 +90,27 @@ function ChatLayoutPaneHeaderBody({ activeId, tabs, chatCount, busy, toolsPreset
           }
           onTogglePin(activeId, !pinned)
         }}>
-        <Star size={17} strokeWidth={1.6} aria-hidden="true" />
+        <Star size={17} fill={pinned ? 'currentColor' : 'none'} aria-hidden="true" />
       </button>}
-      {workspace && <>
-        <button type="button" className="chat-card-action" data-ui="layout.card-new-chat" data-ui-key={activeId}
-          disabled={busy} title="New chat window" aria-label="New chat window"
-          onClick={() => workspace.newChatWindow()}>
-          <Plus size={17} strokeWidth={1.8} aria-hidden="true" />
-        </button>
-        <button type="button" className="chat-card-action" data-ui="layout.card-continue" data-ui-key={activeId}
-          disabled={busy || !canContinue} title="Continue in new chat with fresh context"
-          aria-label="Continue in new chat with fresh context"
-          onClick={() => { void workspace.continueChat(activeId).catch(() => {}) }}>
-          <MessageSquareShare size={16} strokeWidth={1.8} aria-hidden="true" />
-        </button>
-      </>}
       {threadSearch && <div className="chat-card-thread-search">
         <HeaderChatSearch chats={threadSearch.chats} controller={threadSearch.controller}
-          activeChatId={threadSearch.activeChatId} openDeskChatIds={threadSearch.openDeskChatIds}
+          activeChatId={activeId} openDeskChatIds={threadSearch.openDeskChatIds}
           reviewQueue={threadSearch.reviewQueue} busy={busy}
           inputRef={activeId === workspaceSelectedId ? threadSearch.inputRef : undefined}
-          paneKey={activeId} variant="card" />
+          paneKey={activeId} variant="card" title={title(activeId)} />
       </div>}
+      {!threadSearch && <span className="chat-card-title">{title(activeId)}</span>}
     </>}
     {toolsPreset === 'read-only' && <span className="chat-layout-preset" data-ui="layout.tools-preset"
       title="Tools are in Read-only: the model can look but not act. Change it in Agent → Tools & capabilities.">Read-only</span>}
     <WindowControls id={activeId} busy={busy} maximized={isThisTileSolo} floating={floating} canMinimize={canMinimize}
       canMaximize={canMaximize} closeLabel={view ? `Close window · ${hideHint}` : `Dismiss chat · ${hideHint}`} canClose
       onMinimize={() => {
-        if (soloTile) setSoloPaneId(null)
+        if (isThisTileSolo) setSoloPaneId(null)
         onMinimize(activeId)
       }}
       onToggleMaximize={() => setSoloPaneId((current) => current ? null : activeId)}
-      onClose={() => {
-        if (soloTile) setSoloPaneId(null)
-        onHide(activeId)
-      }} />
+      onClose={() => onHide(activeId)} />
   </header>
 }
 

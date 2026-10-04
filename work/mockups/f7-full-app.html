@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Framework7 icons across the full app</title>
+<script src="./lucide-app-icons.js"></script>
+<script src="./f7-icons.js"></script>
+<style>
+@font-face {
+  font-family: "Inter Variable";
+  src: url("../../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2") format("woff2");
+  font-weight: 100 900;
+}
+@font-face {
+  font-family: "Geist Mono";
+  src: url("../../node_modules/@fontsource-variable/geist-mono/files/geist-mono-latin-wght-normal.woff2") format("woff2");
+  font-weight: 100 900;
+}
+:root {
+  color-scheme: dark;
+  --wall: linear-gradient(160deg, #3a2c24 0%, #5b4434 38%, #2b211c 100%);
+  --card: #141516; --header: #191919; --raised: #1e1f20; --edge: #2a2b2e; --hair: rgb(255 255 255 / 8%);
+  --fg: #f7f8f8; --copy: #b3b8c1; --muted: #8a8f98; --quiet: #7c8087; --activity: #696a6c;
+  --ink: #9a9fa8; --ink-hover: #f2f3f5; --accent: #5e6ad2; --link: #9eccf8;
+  font-family: "Inter Variable", Inter, system-ui, sans-serif; font-size: 13px; color: var(--fg);
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: #0b0c0d; }
+
+/* Compare bar (not part of the app) */
+.compare { position: sticky; top: 0; z-index: 50; display: flex; align-items: center; gap: 14px; padding: 10px 16px; background: #0b0c0d; border-bottom: 1px solid #1f2023; }
+.compare b { font-size: 13px; font-weight: 600; }
+.compare span { color: var(--muted); font-size: 12px; }
+.seg { display: inline-flex; padding: 2px; border-radius: 9px; background: #17181a; box-shadow: inset 0 0 0 1px rgb(255 255 255 / 7%); }
+.seg button { all: unset; cursor: pointer; padding: 6px 12px; border-radius: 7px; font-size: 12px; font-weight: 500; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: #2a2b2f; color: var(--fg); box-shadow: 0 1px 2px rgb(0 0 0 / 40%); }
+.compare kbd { font: 500 11px "Inter Variable"; color: var(--quiet); padding: 2px 6px; border-radius: 5px; background: rgb(255 255 255 / 6%); }
+
+/* App window */
+.win { width: 1480px; height: 860px; margin: 14px auto 40px; border-radius: 10px; overflow: hidden; background: var(--wall); display: grid; grid-template-rows: 32px 1fr; box-shadow: 0 0 0 1px rgb(255 255 255 / 6%), 0 30px 80px rgb(0 0 0 / 50%); }
+.titlebar { display: flex; align-items: center; padding: 0 6px 0 12px; background: rgb(17 17 19 / 82%); border-bottom: 1px solid rgb(255 255 255 / 10%); font-size: 11px; color: #e3e5e8; }
+.titlebar .menus { display: flex; gap: 16px; }
+.grow { flex: 1; }
+.desk { display: grid; grid-template-columns: 420px 1fr 420px; gap: 8px; padding: 8px; min-height: 0; }
+
+/* Icon button */
+.ib { all: unset; box-sizing: border-box; cursor: pointer; flex: none; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 6px; color: var(--ink); transition: background-color 120ms ease, color 120ms ease, transform 80ms ease; }
+.ib:hover { background: rgb(255 255 255 / 7%); color: var(--ink-hover); }
+.ib:active { transform: scale(0.95); }
+.ib.dis { opacity: 0.35; cursor: default; }
+.ib.on { color: #f5c84c; }
+.ib.sm { width: 22px; height: 22px; border-radius: 5px; }
+.ic { display: block; flex: none; }
+
+/* Chat card */
+.card { display: flex; flex-direction: column; min-height: 0; border-radius: 10px; overflow: hidden; background: var(--card); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 8%), 0 18px 40px rgb(0 0 0 / 35%); position: relative; }
+.card-head { display: flex; align-items: center; gap: 2px; height: 40px; padding: 0 6px; background: var(--header); }
+.search { flex: 1; display: flex; align-items: center; gap: 7px; height: 26px; margin: 0 10px; padding: 0 9px; border-radius: 7px; background: rgb(0 0 0 / 28%); color: var(--quiet); font-size: 12px; }
+.transcript { flex: 1; overflow: hidden; padding: 16px 22px 0; font-size: 14px; line-height: 1.65; color: var(--copy); }
+.bubble { background: var(--raised); border-radius: 6px; padding: 12px 14px; color: var(--fg); margin-bottom: 14px; }
+.transcript p { margin: 0 0 10px; }
+.transcript code { font: 12px "Geist Mono", monospace; background: #232326; border-radius: 4px; padding: 1px 5px; color: #e3e5e8; }
+.transcript a { color: #e06767; text-decoration: none; font-weight: 500; }
+.activity { display: inline-flex; align-items: center; gap: 4px; color: var(--activity); font-size: 13px; margin: 2px 0 10px; }
+.steps { border-left: 1px solid rgb(255 255 255 / 8%); margin: -4px 0 12px 2px; padding-left: 12px; display: grid; gap: 6px; font-size: 12.5px; }
+.step { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+.step .ic { color: var(--quiet); }
+.step .t-cmd { color: #a78bfa; } .step .t-edit { color: #f0b45b; } .step .t-tool { color: #7cb7f5; }
+.step .ok { color: #4ade80; margin-left: auto; }
+.step code { font: 11.5px "Geist Mono", monospace; color: #c8ccd3; background: none; padding: 0; }
+.actions { display: flex; gap: 2px; margin: -4px 0 14px -4px; }
+.shimmer { background: linear-gradient(100deg, var(--activity) 30%, #d0d3d8 50%, var(--activity) 70%); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: sh 2s linear infinite; }
+@keyframes sh { from { background-position: 150% 0 } to { background-position: -50% 0 } }
+.spin { animation: spin 1s linear infinite; } @keyframes spin { to { transform: rotate(1turn) } }
+
+.composer { margin: 0 14px 6px; display: flex; align-items: center; gap: 6px; min-height: 48px; padding: 7px; border: 1px solid #343536; border-radius: 13px; background: #141516; }
+.composer .draft { flex: 1; color: #5d6168; font-size: 14px; padding-left: 2px; }
+.send { all: unset; cursor: pointer; width: 34px; height: 34px; border-radius: 999px; display: grid; place-items: center; background: color-mix(in srgb, #f7f8f8 9%, transparent); color: color-mix(in srgb, #f7f8f8 36%, transparent); }
+.stop { all: unset; cursor: pointer; width: 34px; height: 34px; border-radius: 999px; display: grid; place-items: center; border: 1px solid rgb(229 72 77 / 40%); background: rgb(229 72 77 / 12%); box-sizing: border-box; }
+.stop i { width: 11px; height: 11px; border-radius: 3px; background: #ff6369; }
+.foot { display: flex; align-items: center; justify-content: space-between; padding: 0 18px 10px; font-size: 11.5px; color: var(--muted); }
+.chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 6px; border-radius: 6px; }
+.chip:hover { background: rgb(255 255 255 / 6%); color: var(--fg); }
+
+/* Context menu */
+.menu { position: absolute; top: 44px; left: 40px; width: 250px; padding: 5px; border-radius: 10px; background: #1c1c1f; box-shadow: inset 0 0 0 1px rgb(255 255 255 / 13%), 0 12px 32px rgb(0 0 0 / 55%); z-index: 5; font-size: 12.5px; }
+.mi { display: flex; align-items: center; gap: 10px; height: 30px; padding: 0 8px; border-radius: 6px; color: #e3e5e8; }
+.mi .ic { color: var(--muted); }
+.mi:hover, .mi.hl { background: rgb(255 255 255 / 7%); }
+.mi .sc { margin-left: auto; color: var(--quiet); font-size: 11px; }
+.mi.danger { color: #ff8a8e; } .mi.danger .ic { color: #ff8a8e; }
+.msep { height: 1px; background: rgb(255 255 255 / 8%); margin: 4px 6px; }
+
+/* Browser */
+.browser { display: flex; flex-direction: column; min-height: 0; border-radius: 10px; overflow: hidden; background: #0f1011; box-shadow: inset 0 0 0 1px rgb(255 255 255 / 8%), 0 18px 40px rgb(0 0 0 / 35%); }
+.tabs { display: flex; align-items: center; gap: 4px; height: 38px; padding: 0 6px; background: #161618; }
+.tab { display: flex; align-items: center; gap: 8px; height: 28px; width: 220px; padding: 0 6px 0 10px; border-radius: 7px; color: var(--muted); font-size: 12px; }
+.tab.active { background: #232326; color: var(--fg); }
+.tab .title { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.toolbar { display: flex; align-items: center; gap: 2px; height: 42px; padding: 0 8px; background: #1a1b1d; border-bottom: 1px solid var(--hair); }
+.omni { flex: 1; display: flex; align-items: center; gap: 8px; height: 30px; margin: 0 8px; padding: 0 10px; border-radius: 8px; background: #0e0f10; box-shadow: inset 0 0 0 1px #26272a; color: #d0d3d8; font-size: 12.5px; }
+.omni .host { color: var(--quiet); }
+.page { flex: 1; overflow: hidden; padding: 70px 80px; background: radial-gradient(1200px 500px at 70% -10%, #1d1e30 0%, #0f1011 60%); }
+.page h2 { font-size: 46px; line-height: 1.05; letter-spacing: -0.03em; margin: 0 0 16px; font-weight: 600; }
+.page p { color: var(--muted); font-size: 16px; max-width: 520px; line-height: 1.55; margin: 0 0 26px; }
+.page .cta { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 9px; background: #fff; color: #000; font-weight: 600; font-size: 13px; }
+.page .feat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 56px; }
+.page .feat div { border-radius: 12px; padding: 16px; background: rgb(255 255 255 / 3%); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 6%); color: var(--muted); font-size: 12.5px; line-height: 1.5; }
+.page .feat b { display: block; color: var(--fg); font-weight: 600; margin: 10px 0 4px; font-size: 13.5px; }
+.page .feat .ic { color: #a5adff; }
+</style>
+</head>
+<body>
+<div class="compare">
+  <b>Framework7 across the full app</b>
+  <div class="seg" role="group" aria-label="Icon set">
+    <button type="button" data-set="lucide" aria-pressed="false">Current (Lucide)</button>
+    <button type="button" data-set="f7" aria-pressed="true">Framework7</button>
+  </div>
+  <span>Press <kbd>Space</kbd> to flip between them. The layout, colours and type are copied from the live app; only the icons change.</span>
+</div>
+<div id="app"></div>
+
+<script>
+// Per-set optical sizing: Framework7 glyphs sit inside a padded 56-unit box, so they're drawn
+// ~12% larger to match Lucide's visual size. Lucide keeps its shipped default 2px stroke.
+const SETS = {
+  lucide: { scale: 1, draw: (k, s) => `<svg class="ic" width="${s}" height="${s}" viewBox="0 0 24 24" fill="${k === 'star-on' ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${LUCIDE[k]}</svg>` },
+  f7: { scale: 1.12, draw: (k, s) => { const ic = F7[k]; return `<svg class="ic" width="${s}" height="${s}" viewBox="0 0 ${ic.w} ${ic.h}">${ic.body}</svg>` } },
+}
+let set = 'f7'
+const ic = (k, size = 16, cls = '') => {
+  const s = Math.round(size * SETS[set].scale * 10) / 10
+  return SETS[set].draw(k, s).replace('class="ic"', `class="ic ${cls}"`)
+}
+const btn = (k, { size = 16, cls = '', label = k } = {}) => `<button class="ib ${cls}" aria-label="${label}">${ic(k, size)}</button>`
+
+function chatCard({ running = false, menu = false } = {}) {
+  const head = `<div class="card-head">
+    ${btn('star-on', { size: 16, cls: 'on', label: 'Pinned' })}${btn('plus', { size: 16 })}${btn('message-square-share', { size: 15 })}
+    <div class="search">${ic('search', 13)}Search chats</div>
+    ${btn('minus', { size: 14, cls: 'sm' })}${btn('square', { size: 12, cls: 'sm' })}${btn('x', { size: 14, cls: 'sm' })}</div>`
+  const body = running ? `
+    <div class="bubble">make the red slightly less washed out</div>
+    <p>I'll give the red a little more saturation while keeping it soft.</p>
+    <div class="activity">Edited 1 file, ran 3 commands ${ic('chevron-right', 13)}</div>
+    <div class="steps">
+      <div class="step">${ic('file-pen-line', 14, 't-edit')}<code>styles/chat/composer.css</code><span style="color:#4ade80">+2</span><span style="color:#ff8a8e">−2</span></div>
+      <div class="step">${ic('square-terminal', 14, 't-cmd')}<code>npx electron-vite build</code>${ic('check', 14, 'ok')}</div>
+      <div class="step">${ic('wrench', 14, 't-tool')}Application window capture${ic('check', 14, 'ok')}</div>
+    </div>
+    <p>Made the red slightly richer (<code>#e06767</code>). The build passed and the app has loaded the update.</p>
+    <div class="actions">${btn('copy', { size: 13, cls: 'sm' })}${btn('git-branch', { size: 13, cls: 'sm' })}</div>
+    <div class="bubble">Can you show me how the updated red looks in the app?</div>
+    <div class="activity">${ic('loader-circle', 13, 'spin')}<span class="shimmer">Running 2 commands</span></div>` : `
+    <div class="bubble">can you push this codebase to the github connected</div>
+    <p>I'll check the Git remote and local changes, then push to the connected GitHub repository.</p>
+    <div class="activity">Ran 4 commands ${ic('chevron-right', 13)}</div>
+    <p>The connected repository is <a>chillysbaby/closedai</a>. There are substantial uncommitted changes on <code>wip-before-pair-revert</code>; I'll commit the current snapshot and push that branch.</p>
+    <div class="activity">Ran 3 commands ${ic('chevron-right', 13)}</div>
+    <p>Pushed to <a>github.com</a>. Branch <code>wip-before-pair-revert</code>, commit <code>e512d4a1</code>. All local changes are committed and the working tree is clean.</p>
+    <div class="actions">${btn('copy', { size: 13, cls: 'sm' })}${btn('git-branch', { size: 13, cls: 'sm' })}</div>`
+  const action = running ? `<button class="stop" aria-label="Stop (Esc)"><i></i></button>` : `<button class="send" aria-label="Send">${ic('arrow-up', 16)}</button>`
+  const ctx = menu ? `<div class="menu" role="menu">
+    <div class="mi">${ic('pin-off', 15)}Unpin chat</div>
+    <div class="mi hl">${ic('pencil', 15)}Rename<span class="sc">F2</span></div>
+    <div class="mi">${ic('square-arrow-out-up-right', 15)}Open in new window</div>
+    <div class="mi">${ic('arrow-left-to-line', 15)}Dock left</div>
+    <div class="mi">${ic('layers', 15)}Stack with…${ic('chevron-right', 13)}</div>
+    <div class="msep"></div>
+    <div class="mi">${ic('pause', 15)}Pause</div>
+    <div class="mi">${ic('message-square', 15)}Copy transcript</div>
+    <div class="msep"></div>
+    <div class="mi danger">${ic('x', 15)}Close tab<span class="sc">Ctrl+W</span></div></div>` : ''
+  return `<section class="card">${head}<div class="transcript">${body}</div>
+    <div class="composer">${btn('plus', { size: 16 })}<span class="draft">${running ? 'Ask for follow-up changes' : 'Message Codex'}</span>${btn('paperclip', { size: 16 })}${action}</div>
+    <div class="foot"><span class="chip">GPT-6-Astra ${ic('chevron-down', 12)}</span><span class="chip">${ic('folder', 13)} closedai</span></div>${ctx}</section>`
+}
+
+function browser() {
+  return `<section class="browser">
+    <div class="tabs">${btn('layout-grid', { size: 15 })}
+      <div class="tab active">${ic('globe', 14)}<span class="title">Linear: Move work forward</span>${btn('x', { size: 12, cls: 'sm' })}</div>
+      <div class="tab">${ic('globe', 14)}<span class="title">GitHub · chillysbaby/closedai</span>${btn('x', { size: 12, cls: 'sm' })}</div>
+      ${btn('plus', { size: 15 })}</div>
+    <div class="toolbar">${btn('arrow-left', { size: 16 })}${btn('arrow-right', { size: 16, cls: 'dis' })}${btn('refresh-cw', { size: 15 })}
+      <div class="omni">${ic('lock', 12)}<span><span class="host">https://</span>linear.app</span></div>
+      ${btn('star', { size: 16 })}${btn('download', { size: 16 })}</div>
+    <div class="page">
+      <h2>Move work forward<br>across teams and agents</h2>
+      <p>Plan, build and ship with a system designed for modern product teams.</p>
+      <span class="cta">Get started ${ic('chevron-right', 13)}</span>
+      <div class="feat">
+        <div>${ic('layers', 20)}<b>Projects</b>Plan and track work across every team.</div>
+        <div>${ic('sparkles', 20)}<b>Agents</b>Hand off tasks and review the results.</div>
+        <div>${ic('square-terminal', 20)}<b>Integrations</b>Connect GitHub, Slack and more.</div>
+      </div></div></section>`
+}
+
+function render() {
+  queueMicrotask(() => typeof fitWin === 'function' && fitWin())
+  document.getElementById('app').innerHTML = `<div class="win">
+    <div class="titlebar"><div class="menus"><span>File</span><span>View</span><span>Agent</span><span>Developer</span></div><div class="grow"></div>
+      ${btn('minus', { size: 13, cls: 'sm' })}${btn('square', { size: 11, cls: 'sm' })}${btn('x', { size: 13, cls: 'sm' })}</div>
+    <div class="desk">${chatCard({ menu: true })}${browser()}${chatCard({ running: true })}</div></div>`
+  for (const b of document.querySelectorAll('.seg button')) b.setAttribute('aria-pressed', String(b.dataset.set === set))
+}
+document.querySelector('.seg').addEventListener('click', (e) => { const s = e.target.closest('button')?.dataset.set; if (s) { set = s; render() } })
+addEventListener('keydown', (e) => { if (e.code === 'Space') { e.preventDefault(); set = set === 'f7' ? 'lucide' : 'f7'; render() } })
+render()
+function fitWin() { const w = document.querySelector('.win'); if (w) w.style.zoom = Math.min(1, (innerWidth - 24) / 1480) }
+addEventListener('resize', fitWin)
+</script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-import { isViewTabId, paneIds, type ChatLayout } from './layout-tree.js'
+import { BROWSER_PANE_ID, isViewTabId, paneIds, removePane, type ChatLayout, type SavedChatLayout } from './layout-tree.js'
 import { pruneTabs, selectTab, tabIds, tabOwner } from './layout-tabs.js'
 import { isSingletonViewKind, oneKindPerTile, openTabInTree, viewKindOf, viewOfKind } from './layout-views.js'
 
@@ -23,14 +23,16 @@ export type WindowTreeSeed = {
 export function initialWindowTree(saved: ChatLayout | null, seed: WindowTreeSeed): ChatLayout {
   const own = new Set([...seed.available].filter((id) => !seed.elsewhere.has(id)))
   let tree = pruneTabs(oneKindPerTile(saved), own)
-  if (!tree || !paneIds(tree).length) {
+  if (!tree) {
+    // A saved desk is authoritative, including a desk whose last chat was removed.
+    if (saved) return { kind: 'pane', id: BROWSER_PANE_ID }
     const tabs = seed.detached ? seed.initialTabs.filter((id) => isViewTabId(id) || own.has(id)) : []
     if (!seed.detached && own.has(seed.selectedPaneId)) tabs.push(seed.selectedPaneId)
     return tabs.length ? { kind: 'pane', id: tabs[0]!, tabs } : { kind: 'pane', id: seed.fallbackView() }
   }
   const selected = seed.selectedPaneId
   if (seed.detached || !own.has(selected)) return tree
-  if (!tabIds(tree).includes(selected)) return openTabInTree(tree, selected, null, crypto.randomUUID())
+  if (!tabIds(tree).includes(selected)) return tree
   // Behind a sibling chat it surfaces.
   if (!paneIds(tree).includes(selected)) return selectTab(tree, tabOwner(tree, selected)!, selected)
   return tree
@@ -51,4 +53,14 @@ export function adoptTabs(tree: ChatLayout, ids: string[], anchor: string | null
     next = openTabInTree(next, id, anchor, crypto.randomUUID())
   }
   return next
+}
+
+/** Dismiss only this window; other windows retain their geometry and minimized/maximized state. */
+export function dismissWindow<T extends SavedChatLayout & { tree: ChatLayout }>(layout: T, id: string): T {
+  const owner = tabOwner(layout.tree, id)
+  if (!owner) return layout
+  const tree = removePane(layout.tree, owner) ?? { kind: 'pane' as const, id: BROWSER_PANE_ID }
+  const closesMaximized = layout.maximized === owner
+    || (layout.maximized !== undefined && tabOwner(layout.tree, layout.maximized) === owner)
+  return { ...layout, tree, ...(closesMaximized ? { maximized: undefined } : {}) }
 }

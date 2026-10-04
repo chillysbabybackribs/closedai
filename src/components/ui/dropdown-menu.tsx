@@ -38,7 +38,7 @@ function DropdownMenuGroup(props: React.ComponentProps<typeof DropdownMenuPrimit
 }
 
 const menuItemClasses = cn(
-  'relative flex h-8 cursor-default select-none items-center gap-2.5 rounded-md px-2 text-[13px] leading-none outline-none',
+  'relative flex h-6 cursor-default select-none items-center gap-2.5 rounded-[5px] px-2 text-[13px] leading-none outline-none',
   '[&_svg]:size-[15px] [&_svg]:shrink-0 [&_svg]:text-[var(--menu-glyph)]',
   'data-[highlighted]:bg-[var(--menu-highlight)] data-[highlighted]:text-[var(--menu-ink-strong)]',
   'data-[highlighted]:[&_svg]:text-[var(--menu-ink-strong)]',

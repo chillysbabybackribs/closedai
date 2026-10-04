@@ -2,6 +2,7 @@ import type { WebContents } from 'electron'
 import type { BrowserTabInfo } from '../../shared/types.js'
 import { describeMissingTab } from '../../shared/browser-tabs.js'
 import { recordOf } from '../json-coerce.js'
+import type { EmulatedSurface } from '../browser-tab.js'
 import type { CdpToolHost } from '../tools/cdp/host.js'
 import { CdpPageController } from './page-control/page-controller.js'
 import { CdpPageInput } from './page-control/page-input.js'
@@ -16,6 +17,8 @@ import {
 } from './cdp-network.js'
 import { settleFrames, TAB_SWITCH_SETTLE_MS } from '../browser-frame-settle.js'
 import { dismissOverlayWithCdp } from './overlay/overlay-dismiss-cdp.js'
+import { applyPhonePreview, clearPhonePreview } from './cdp-phone-preview.js'
+import type { PhonePreviewLayout } from '../../shared/phone-preview.js'
 import {
   armHeapSampling,
   channelsFrom as profileChannelsFrom,
@@ -62,7 +65,7 @@ export type CdpBrowserSource = {
   /** Foreground a tab for real input; null when no tab can currently receive any. */
   focusTabForInput(tabId: string): { activated: boolean } | null
   /** Resize a tab's native surface for viewport emulation; false when the tab is unknown. */
-  setEmulatedViewport?(tabId: string, size: { width: number; height: number } | null): boolean
+  setEmulatedViewport?(tabId: string, size: EmulatedSurface | null): boolean
 }
 
 export type CdpBrowserTarget = BrowserTabInfo & {
@@ -337,6 +340,21 @@ export class BrowserCdpAccess implements CdpToolHost {
       ? await applyEmulation(target, send, request)
       : await resetEmulation(target, send)
     return { tab, connectionId: session.connectionId, reset: request === null, ...outcome }
+  }
+
+  /**
+   * Phone preview metrics for a tab whose surface the browser service has placed in the drawn
+   * phone screen; null returns it to desktop metrics. See cdp-phone-preview.ts.
+   */
+  async phonePreview(tabId: string, layout: PhonePreviewLayout | null, initial: boolean): Promise<void> {
+    const { session } = this.resolve(tabId)
+    const send = (method: string, params?: Record<string, unknown>) => session.command(method, params ?? {})
+    const contents = session.contents
+    if (layout) {
+      await applyPhonePreview({ enableDeviceEmulation: (parameters) => contents.enableDeviceEmulation(parameters) }, send, layout, { initial })
+    } else {
+      await clearPhonePreview({ disableDeviceEmulation: () => contents.disableDeviceEmulation() }, send)
+    }
   }
 
   dispose(): void {

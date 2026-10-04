@@ -1,5 +1,5 @@
 import { useId, useState, type FormEvent, type JSX } from 'react'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft } from '../icons/index.js'
 
 import { Button } from '../../components/ui/button.js'
 import type { LocalUser } from '../../shared/onboarding.js'

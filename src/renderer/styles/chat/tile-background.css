@@ -50,8 +50,4 @@
   .chat-pane .chat-composer-dock {
     --composer-max-height: 44px;
   }
-
-  .chat-layout-header.chat-card-header + .chat-layout-notice {
-    font-size: 11px;
-  }
 }

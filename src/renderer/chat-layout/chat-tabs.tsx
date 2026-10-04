@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactNode, type RefObject } from 'react'
-import { X } from 'lucide-react'
+import { X } from '../icons/index.js'
 import type { ChatReviewQueue } from '../chat-history/review-queue.js'
 import type { TabActivity } from './tab-activity.js'
 import { tabCloseHint } from './layout-copy.js'

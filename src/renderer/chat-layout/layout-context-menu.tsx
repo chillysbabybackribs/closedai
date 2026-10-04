@@ -1,6 +1,6 @@
 import { createContext, useContext, type ReactNode } from 'react'
 import { ContextMenu } from 'radix-ui'
-import { ArrowLeftToLine, ArrowRightToLine, Check, ChevronRight, Layers, LayoutGrid, MessageSquare, PanelLeftClose, Pause, Pencil, Pin, PinOff, Play, SquareArrowDownLeft, SquareArrowOutUpRight, X } from 'lucide-react'
+import { ArrowLeftToLine, ArrowRightToLine, Check, ChevronRight, Layers, LayoutGrid, MessageSquare, PanelLeftClose, Pause, Pencil, Pin, PinOff, Play, SquareArrowDownLeft, SquareArrowOutUpRight, X } from '../icons/index.js'
 import type { ChatZoomCommand } from '../chat-zoom.js'
 import { CHAT_CONTEXT_MENU_COLLISION_PADDING } from '../chat-context-menu-boundary.js'
 import { ChatSurfacePrimaryMenuItems } from '../chat-surface-context-menu.js'

@@ -56,6 +56,7 @@ test('IPC invoke constants cover the typed invoke registry', () => {
     'browser:duplicateTab',
     'browser:reloadTab',
     'browser:renameTab',
+    'browser:setPhonePreview',
     'browser:selectTab',
     'browser:capture',
     'browser:openVideoHub',

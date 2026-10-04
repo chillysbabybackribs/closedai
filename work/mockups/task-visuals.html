@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Task visuals · chip row + overview</title>
+<script src="./f7-icons.js"></script>
+<style>
+@font-face {
+  font-family: "Inter Variable";
+  src: url("../../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2") format("woff2");
+  font-weight: 100 900;
+}
+:root {
+  color-scheme: dark;
+  --accent: #0a84ff; --link: #2997ff;
+  --fg: #f5f5f7; --fg2: #d2d2d7; --quiet: #86868b;
+  --card: #151515; --lift: #1d1d1f; --hair: #424245;
+  --ok: #30d158; --warn: #ffd60a; --bad: #ff453a;
+  font-family: "Inter Variable", Inter, system-ui, sans-serif;
+  font-feature-settings: "cv01", "ss03";
+}
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; background: #08090a; color: var(--fg); font-size: 13px; overflow-x: hidden; }
+header.bar { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 20px; background: rgb(8 9 10 / 88%); backdrop-filter: blur(12px); border-bottom: 1px solid rgb(255 255 255 / 7%); }
+header.bar h1 { margin: 0 12px 0 0; font-size: 13px; font-weight: 600; }
+.seg { display: flex; gap: 2px; padding: 2px; border: 1px solid rgb(255 255 255 / 8%); border-radius: 8px; background: rgb(255 255 255 / 3%); }
+.seg button { height: 26px; padding: 0 11px; border: 0; border-radius: 6px; background: none; color: var(--quiet); font: inherit; font-weight: 500; cursor: pointer; }
+.seg button:hover { color: var(--fg); }
+.seg button[aria-pressed='true'] { background: rgb(255 255 255 / 10%); color: #fff; }
+.hint { color: #6c7078; font-size: 12px; }
+.ic { display: inline-block; flex: none; vertical-align: middle; }
+
+#fit { padding: 16px 20px 40px; }
+.stage { width: 1360px; transform-origin: 0 0; display: grid; grid-template-columns: 430px 1fr; gap: 8px; padding: 10px; border-radius: 14px; background: linear-gradient(135deg, #4a3226, #2a2522 40%, #1b1f27); }
+
+/* ---------- chat card ---------- */
+.card { display: flex; flex-direction: column; height: 860px; border: 1px solid rgb(255 255 255 / 8%); border-radius: 12px; background: var(--card); overflow: hidden; }
+.card-head { display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 14px; color: var(--quiet); }
+.card-head .t { flex: 1; text-align: center; color: var(--fg2); font-size: 12px; font-weight: 600; }
+.card-body { flex: 1; padding: 14px 22px; overflow: hidden; }
+.umsg { margin: 4px 0 18px auto; max-width: 88%; padding: 11px 14px; border-radius: 14px; background: var(--lift); color: var(--fg); line-height: 1.5; font-size: 13.5px; }
+.chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-bottom: 12px; border-bottom: 1px solid rgb(255 255 255 / 7%); }
+.chips .time { display: inline-flex; align-items: center; gap: 4px; margin-right: 4px; color: var(--fg2); font-size: 14px; }
+.chip { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 9px; border: 1px solid rgb(255 255 255 / 9%); border-radius: 999px; background: rgb(255 255 255 / 4%); color: var(--fg2); font-size: 12px; font-weight: 500; cursor: pointer; }
+.chip:hover { background: rgb(255 255 255 / 8%); }
+.chip b { color: var(--quiet); font-weight: 500; font-variant-numeric: tabular-nums; }
+.chip.on { border-color: rgb(10 132 255 / 55%); background: rgb(10 132 255 / 16%); color: #fff; }
+.chip.on b { color: #9ccaff; }
+.chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px rgb(48 209 88 / 18%); }
+.narr { margin: 14px 0 10px; color: var(--fg2); line-height: 1.6; font-size: 13.5px; }
+.narr code { padding: 1px 5px; border-radius: 4px; background: var(--lift); font-size: 12px; }
+.steprow { display: flex; align-items: center; gap: 8px; color: var(--quiet); font-size: 12.5px; }
+.steprow .shimmer { color: var(--fg2); font-weight: 600; }
+.answer h4 { margin: 14px 0 6px; font-size: 13.5px; }
+.answer p, .answer li { color: var(--fg2); line-height: 1.6; font-size: 13.5px; }
+.answer ul { margin: 0; padding-left: 18px; }
+.composer { margin: 0 16px 10px; height: 52px; border: 1px solid rgb(255 255 255 / 9%); border-radius: 14px; background: var(--lift); }
+.card-foot { display: flex; justify-content: space-between; padding: 0 22px 12px; color: var(--quiet); font-size: 11.5px; }
+
+/* ---------- browser ---------- */
+.browser { display: flex; flex-direction: column; height: 860px; border: 1px solid rgb(255 255 255 / 8%); border-radius: 12px; background: #000; overflow: hidden; }
+.tb { display: flex; align-items: center; gap: 12px; height: 42px; padding: 0 12px; background: #000; color: var(--quiet); }
+.tb .field { flex: 1; max-width: 520px; margin: 0 auto; height: 28px; display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: 8px; background: #191919; color: var(--fg2); font-size: 12.5px; }
+.tabs { display: flex; height: 30px; border-bottom: 1px solid var(--hair); background: #000; }
+.tabs div { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--quiet); font-size: 12px; border-left: 1px solid rgb(255 255 255 / 6%); }
+.tabs div.act { background: #1d1d1f; color: var(--fg); }
+.page { flex: 1; overflow: auto; padding: 26px 34px 40px; background: #0b0b0c; }
+
+/* ---------- task page ---------- */
+.kicker { display: flex; align-items: center; gap: 8px; color: var(--quiet); font-size: 11.5px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+.kicker .live { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 999px; background: rgb(48 209 88 / 14%); color: var(--ok); letter-spacing: 0; text-transform: none; }
+.kicker .live.done { background: rgb(255 214 10 / 13%); color: var(--warn); }
+.headline { margin: 10px 0 6px; max-width: 760px; font-size: 24px; font-weight: 650; line-height: 1.3; letter-spacing: -0.01em; }
+.sub { max-width: 760px; margin: 0 0 26px; color: var(--fg2); font-size: 14.5px; line-height: 1.6; }
+.sect { margin: 0 0 30px; }
+.sect:not(.shown) { display: none; }
+.sect-h { display: flex; align-items: baseline; gap: 10px; margin: 0 0 12px; }
+.sect-h h3 { margin: 0; font-size: 15px; font-weight: 600; }
+.sect-h span { color: var(--quiet); font-size: 12.5px; }
+.prov { margin-top: 10px; color: #5f6369; font-size: 11px; }
+.prov i { font-style: normal; color: #7c8188; }
+
+/* Journey */
+.journey { display: grid; grid-template-columns: repeat(5, 1fr); padding: 22px 18px 18px; border: 1px solid rgb(255 255 255 / 7%); border-radius: 14px; background: linear-gradient(#161618, #121213); }
+.stn { position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
+.stn::before { content: ''; position: absolute; top: 15px; left: -50%; right: 50%; height: 2px; background: #2c2c2e; }
+.stn:first-child::before { display: none; }
+.stn.done::before, .stn.now::before { background: var(--accent); }
+.stn .n { position: relative; z-index: 1; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: #2c2c2e; color: var(--quiet); font-weight: 600; }
+.stn.done .n { background: var(--accent); color: #fff; }
+.stn.now .n { background: #0b0b0c; color: var(--accent); box-shadow: inset 0 0 0 2px var(--accent), 0 0 0 6px rgb(10 132 255 / 18%); animation: pulse 1.8s ease-in-out infinite; }
+.stn.warn .n { background: rgb(255 214 10 / 16%); color: var(--warn); box-shadow: inset 0 0 0 2px rgb(255 214 10 / 55%); }
+@keyframes pulse { 50% { box-shadow: inset 0 0 0 2px var(--accent), 0 0 0 10px rgb(10 132 255 / 6%); } }
+.stn .l { font-size: 13px; font-weight: 600; color: var(--fg); }
+.stn.todo .l { color: var(--quiet); }
+.stn .d { max-width: 150px; color: var(--quiet); font-size: 11.5px; line-height: 1.45; }
+
+/* Suspects */
+.suspects { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.sus { position: relative; padding: 14px 14px 12px; border: 1px solid rgb(255 255 255 / 7%); border-radius: 12px; background: #141416; }
+.sus .st { display: inline-flex; align-items: center; gap: 5px; margin-bottom: 8px; font-size: 11px; font-weight: 650; letter-spacing: 0.04em; text-transform: uppercase; }
+.sus h5 { margin: 0 0 5px; font-size: 13.5px; font-weight: 600; line-height: 1.35; }
+.sus p { margin: 0 0 10px; color: var(--quiet); font-size: 12px; line-height: 1.5; }
+.sus .ev { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 6px; background: rgb(255 255 255 / 5%); color: #8f949b; font-size: 11px; }
+.sus.out { opacity: 0.62; }
+.sus.out h5 { text-decoration: line-through; text-decoration-color: rgb(255 255 255 / 30%); }
+.sus.out .st { color: var(--quiet); }
+.sus.yes { border-color: rgb(10 132 255 / 50%); background: linear-gradient(rgb(10 132 255 / 12%), #141416 70%); }
+.sus.yes .st { color: #6cb6ff; }
+.sus.chk { border-style: dashed; border-color: rgb(255 255 255 / 18%); }
+.sus.chk .st { color: var(--fg2); }
+.sus.unk { border-color: rgb(255 214 10 / 40%); }
+.sus.unk .st { color: var(--warn); }
+.spin { width: 10px; height: 10px; border: 2px solid rgb(255 255 255 / 20%); border-top-color: #fff; border-radius: 50%; animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(1turn); } }
+
+/* Before / after */
+.ba { position: relative; height: 300px; border: 1px solid rgb(255 255 255 / 7%); border-radius: 14px; overflow: hidden; background: #121213; user-select: none; }
+.ba .side { position: absolute; inset: 0; display: grid; place-items: center; }
+.ba .after { clip-path: inset(0 0 0 var(--cut, 50%)); background: #121213; }
+.ba .tag { position: absolute; top: 12px; padding: 3px 9px; border-radius: 999px; background: rgb(0 0 0 / 55%); color: var(--fg2); font-size: 11.5px; font-weight: 600; }
+.ba .before .tag { left: 12px; }
+.ba .after .tag { right: 12px; }
+.ba .handle { position: absolute; top: 0; bottom: 0; left: var(--cut, 50%); width: 2px; background: #fff; box-shadow: 0 0 12px rgb(0 0 0 / 60%); cursor: ew-resize; }
+.ba .handle::after { content: '‹ ›'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: #fff; color: #111; font-size: 13px; font-weight: 700; }
+.ba input { position: absolute; inset: 0; width: 100%; opacity: 0; cursor: ew-resize; }
+/* the little exploded browser drawing */
+.layers { position: relative; width: 340px; height: 210px; perspective: 900px; }
+.layer { position: absolute; left: 30px; width: 280px; height: 160px; border-radius: 10px; transform: rotateX(52deg) rotateZ(-28deg); }
+.layer.live { top: 50px; background: linear-gradient(#24324a, #18202d); box-shadow: inset 0 0 0 1px rgb(120 170 255 / 35%); }
+.layer.live::before { content: 'live page'; position: absolute; left: 14px; bottom: 12px; color: #9cc3ff; font-size: 12px; font-weight: 600; }
+.layer.live i { position: absolute; left: 14px; right: 14px; height: 9px; border-radius: 4px; background: rgb(156 195 255 / 22%); }
+.layer.pic { top: 6px; background: rgb(200 200 210 / 14%); box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / 45%); backdrop-filter: blur(2px); }
+.layer.pic::before { content: 'frozen picture'; position: absolute; left: 14px; top: 12px; color: #fff; font-size: 12px; font-weight: 600; }
+.click { position: absolute; z-index: 3; display: flex; align-items: center; gap: 6px; color: #fff; font-size: 12px; font-weight: 600; }
+.click .x { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--bad); color: #fff; font-size: 13px; }
+.click .ok { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--ok); color: #04210d; font-size: 13px; }
+.pending { display: flex; flex-direction: column; align-items: center; gap: 10px; color: var(--quiet); font-size: 13px; }
+
+/* Proof strip */
+.proof { display: flex; gap: 10px; }
+.pf { flex: 1; display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid rgb(255 255 255 / 7%); border-radius: 12px; background: #141416; font-size: 12.5px; color: var(--fg2); }
+.pf .m { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; font-size: 12px; font-weight: 700; }
+.pf .m.ok { background: rgb(48 209 88 / 18%); color: var(--ok); }
+.pf .m.no { background: rgb(255 214 10 / 15%); color: var(--warn); }
+.pf .m.na { background: rgb(255 255 255 / 7%); color: var(--quiet); }
+.pf small { display: block; color: var(--quiet); font-size: 11px; }
+
+details.tech { margin-top: 4px; color: var(--quiet); font-size: 12.5px; }
+details.tech summary { cursor: pointer; }
+details.tech p { margin: 8px 0 0; line-height: 1.6; }
+details.tech code { padding: 1px 5px; border-radius: 4px; background: var(--lift); color: var(--fg2); font-size: 11.5px; }
+body[data-moment='running'] .fn-only, body[data-moment='finished'] .rn-only { display: none; }
+</style>
+</head>
+<body data-moment="running" data-view="all">
+<header class="bar">
+  <h1>Task visuals</h1>
+  <div class="seg" id="view">
+    <button data-v="all" aria-pressed="true">All three</button>
+    <button data-v="journey">Journey</button>
+    <button data-v="suspects">Suspects board</button>
+    <button data-v="ba">Before / After</button>
+  </div>
+  <div class="seg" id="moment">
+    <button data-m="running" aria-pressed="true">While running</button>
+    <button data-m="finished">Finished</button>
+  </div>
+  <span class="hint">Real content: the "can't click the browser" bug from today's palette chat. Drag the Before/After slider.</span>
+</header>
+
+<div id="fit"><div class="stage" id="stage">
+  <!-- chat card -->
+  <section class="card">
+    <div class="card-head"><span data-i="star"></span><span class="t">Apple-Inspired Color Palette Mockups for Chat Cards</span><span data-i="search"></span><span data-i="minus"></span><span data-i="square"></span><span data-i="x"></span></div>
+    <div class="card-body">
+      <div class="umsg">i cant click anythign in the browser page and changing tabs in the browser clicks but doesnt change the page - we need to fix this first</div>
+      <div class="chips">
+        <span class="time"><span class="rn-only">Working for 3m 04s</span><span class="fn-only">Worked for 6m 12s</span><span data-i="chevron-right" data-s="13"></span></span>
+        <span class="chip"><span data-i="check" data-s="12"></span>Plan <b class="rn-only">3/5</b><b class="fn-only">5/5</b></span>
+        <span class="chip rn-only"><span class="dot"></span>Live</span>
+        <span class="chip on"><span data-i="sparkles" data-s="12"></span>Overview</span>
+      </div>
+      <div class="rn-only">
+        <p class="narr">Confirmed: the frozen snapshot is mounted and no DOM overlay is open. So the stuck flag is the layout one: a drag, <code>browserHeld</code>, or <code>browserCovered</code>. Checking those.</p>
+        <div class="steprow"><span data-i="square-terminal" data-s="13"></span><span class="shimmer">Running</span> sed -n 136,150p src/rend…</div>
+      </div>
+      <div class="fn-only answer">
+        <p>Tab switching works again and the live page is back, but I haven't found the root cause yet, so it could come back.</p>
+        <h4>What the bug was</h4>
+        <ul><li>The browser showed a frozen screenshot instead of the live page, so clicks landed on an image.</li><li>Switching tabs did change the tab, but the screenshot stayed in front.</li></ul>
+        <h4>What cleared it</h4>
+        <p>Hiding the browser and showing it again. Your tabs and pages are fine.</p>
+      </div>
+    </div>
+    <div class="composer"></div>
+    <div class="card-foot"><span>Opus 5.5</span><span>closedai</span></div>
+  </section>
+
+  <!-- browser with the task page -->
+  <section class="browser">
+    <div class="tb"><span data-i="arrow-left"></span><span data-i="arrow-right"></span><span data-i="refresh-cw" data-s="14"></span><div class="field"><span data-i="sparkles" data-s="12"></span>Task · Browser click bug</div><span data-i="star"></span><span data-i="minus"></span><span data-i="square"></span><span data-i="x"></span></div>
+    <div class="tabs"><div>developer.apple.com</div><div>browser-color.html</div><div class="act"><span data-i="sparkles" data-s="11"></span>Browser click bug · Overview</div></div>
+    <div class="page">
+      <div class="kicker">Overview <span class="live rn-only"><span class="dot" style="width:6px;height:6px;border-radius:50%;background:currentColor"></span>Updating live · step 9</span><span class="live done fn-only">Fixed for now · cause unknown</span></div>
+      <h2 class="headline rn-only">The browser is showing a frozen picture of the page, so your clicks hit an image. Now finding what left it there.</h2>
+      <h2 class="headline fn-only">The live page is back, but what left the frozen picture there is still unknown, so it could happen again.</h2>
+      <p class="sub rn-only">The app puts a picture over the page on purpose while a menu or a dragged window sits on top. That picture should go away afterwards. Here it didn't.</p>
+      <p class="sub fn-only">Hiding and re-showing the browser removed the picture. Five possible causes were ruled out; the last one (a window drag or a workspace switch that never "finished") is the likely culprit but wasn't proven.</p>
+
+      <div class="sect" data-s="journey">
+        <div class="sect-h"><h3>Where we are</h3><span class="rn-only">Step 3 of 5</span><span class="fn-only">Done, with one open question</span></div>
+        <div class="journey">
+          <div class="stn done"><div class="n">✓</div><div class="l">See it happen</div><div class="d">Clicked tab 3. The tab changed, the page didn't.</div></div>
+          <div class="stn done"><div class="n">✓</div><div class="l">Rule things out</div><div class="d">Locks, buttons, menus and the dock are all fine.</div></div>
+          <div class="stn rn-only now"><div class="n">3</div><div class="l">Find what's stuck</div><div class="d">Checking the three "freeze the page" switches.</div></div>
+          <div class="stn fn-only warn"><div class="n">?</div><div class="l">Find what's stuck</div><div class="d">Narrowed to one area, not proven.</div></div>
+          <div class="stn rn-only todo"><div class="n">4</div><div class="l">Fix it</div><div class="d">Release the picture.</div></div>
+          <div class="stn fn-only done"><div class="n">✓</div><div class="l">Fix it</div><div class="d">Hide and re-show the browser.</div></div>
+          <div class="stn rn-only todo"><div class="n">5</div><div class="l">Check it</div><div class="d">Click and switch tabs again.</div></div>
+          <div class="stn fn-only done"><div class="n">✓</div><div class="l">Check it</div><div class="d">Seen working on screen.</div></div>
+        </div>
+        <div class="prov"><i>From the app:</i> steps, checks, screenshots · <i>From the explainer model:</i> stage names and one-line notes</div>
+      </div>
+
+      <div class="sect" data-s="suspects">
+        <div class="sect-h"><h3>What could be wrong</h3><span class="rn-only">5 ruled out · 1 confirmed · 1 checking</span><span class="fn-only">5 ruled out · 1 confirmed · 1 unproven</span></div>
+        <div class="suspects">
+          <div class="sus yes"><div class="st"><span data-i="check" data-s="11"></span>Confirmed</div><h5>A frozen picture is covering the page</h5><p>The page underneath is fine; it just can't be reached.</p><span class="ev"><span data-i="search" data-s="10"></span>Step 7 · inspected the layout</span></div>
+          <div class="sus chk rn-only"><div class="st"><span class="spin"></span>Checking now</div><h5>Something forgot to remove it</h5><p>A window drag, a workspace switch, or a window overlapping the browser.</p><span class="ev"><span data-i="square-terminal" data-s="10"></span>Step 9 · reading the layout code</span></div>
+          <div class="sus unk fn-only"><div class="st">? Likely, not proven</div><h5>Something forgot to remove it</h5><p>A window drag, a workspace switch, or an overlapping window. Couldn't reproduce which.</p><span class="ev"><span data-i="square-terminal" data-s="10"></span>Steps 9–14</span></div>
+          <div class="sus out"><div class="st">Ruled out</div><h5>My running chat locked the tab</h5><p>Your own clicks are never locked by a chat.</p><span class="ev"><span data-i="file-pen-line" data-s="10"></span>docs/application.md</span></div>
+          <div class="sus out"><div class="st">Ruled out</div><h5>The tab buttons are broken</h5><p>Clicking tab 3 did select it; the address bar changed.</p><span class="ev"><span data-i="search" data-s="10"></span>Step 4 · reproduced</span></div>
+          <div class="sus out"><div class="st">Ruled out</div><h5>A menu or dialog is in the way</h5><p>No menu, dialog, tooltip or downloads panel was open.</p><span class="ev"><span data-i="search" data-s="10"></span>Step 6 · app state</span></div>
+          <div class="sus out"><div class="st">Ruled out</div><h5>The dock is sitting over it</h5><p>The dock was hidden at the time.</p><span class="ev"><span data-i="search" data-s="10"></span>Step 6 · app state</span></div>
+        </div>
+        <details class="tech"><summary>Technical details</summary><p>The frozen snapshot replaces the <code>WebContentsView</code> while the layout flags <code>browserHeld</code> or <code>browserCovered</code> (or an active drag) are set. One of them stayed true. Toggling browser visibility reset the layout state.</p></details>
+        <div class="prov"><i>From the app:</i> which steps checked what, status of each check · <i>From the explainer model:</i> suspect titles and plain explanations</div>
+      </div>
+
+      <div class="sect" data-s="ba">
+        <div class="sect-h"><h3>What you saw vs. what's there now</h3><span>Drag to compare</span></div>
+        <div class="ba" id="ba">
+          <div class="side before"><span class="tag">Before</span>
+            <div class="layers"><div class="layer live"><i style="top:18px"></i><i style="top:36px;right:80px"></i><i style="top:54px;right:40px"></i></div><div class="layer pic"></div>
+              <div class="click" style="left:40px;top:40px"><span class="x">✕</span>Your click stops here</div></div>
+          </div>
+          <div class="side after"><span class="tag">After</span>
+            <div class="rn-only pending"><span class="spin" style="width:22px;height:22px;border-width:3px"></span>Not fixed yet</div>
+            <div class="fn-only"><div class="layers"><div class="layer live"><i style="top:18px"></i><i style="top:36px;right:80px"></i><i style="top:54px;right:40px"></i></div>
+              <div class="click" style="left:150px;top:150px"><span class="ok">✓</span>Your click reaches the page</div></div></div>
+          </div>
+          <div class="handle"></div>
+          <input type="range" min="8" max="92" value="50" aria-label="Compare before and after">
+        </div>
+        <div class="prov"><i>From the app:</i> picked the "layered page" drawing for a covered-page bug · <i>From the explainer model:</i> labels. For UI changes this slot shows real before/after screenshots instead.</div>
+      </div>
+
+      <div class="sect shown fn-only" data-s="always">
+        <div class="sect-h"><h3>How we know</h3></div>
+        <div class="proof">
+          <div class="pf"><span class="m ok">✓</span><div>Seen working<small>Clicked and switched tabs on screen</small></div></div>
+          <div class="pf"><span class="m no">?</span><div>Root cause<small>Narrowed, not proven</small></div></div>
+          <div class="pf"><span class="m na">–</span><div>Tests<small>None cover this yet</small></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div></div>
+
+<script>
+const ic = (k, s = 16) => { const i = F7[k]; const z = Math.round(s * 1.12 * 10) / 10; return `<svg class="ic" width="${z}" height="${z}" viewBox="0 0 ${i.w} ${i.h}">${i.body}</svg>` }
+document.querySelectorAll('[data-i]').forEach(el => { el.outerHTML = ic(el.dataset.i, +(el.dataset.s || 15)) })
+
+const sects = [...document.querySelectorAll('.sect[data-s]:not([data-s="always"])')]
+function setView(v) {
+  document.body.dataset.view = v
+  sects.forEach(s => s.classList.toggle('shown', v === 'all' || s.dataset.s === v))
+  document.querySelectorAll('#view button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === v))
+}
+function setMoment(m) {
+  document.body.dataset.moment = m
+  document.querySelectorAll('#moment button').forEach(b => b.setAttribute('aria-pressed', b.dataset.m === m))
+}
+document.getElementById('view').onclick = e => e.target.dataset.v && setView(e.target.dataset.v)
+document.getElementById('moment').onclick = e => e.target.dataset.m && setMoment(e.target.dataset.m)
+setView('all')
+
+const ba = document.getElementById('ba')
+ba.querySelector('input').oninput = e => ba.style.setProperty('--cut', e.target.value + '%')
+
+const stage = document.getElementById('stage'), fit = document.getElementById('fit')
+function scale() {
+  const s = Math.min(1, (fit.clientWidth - 40) / stage.offsetWidth)
+  stage.style.transform = `scale(${s})`
+  fit.style.height = stage.offsetHeight * s + 60 + 'px'
+}
+addEventListener('resize', scale); scale()
+</script>
+</body>
+</html>

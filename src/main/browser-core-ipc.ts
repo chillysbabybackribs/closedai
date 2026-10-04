@@ -32,6 +32,7 @@ export function registerBrowserCoreIpc(
   ipcMain.handle(IPC.invoke.browser.duplicateTab, (_event, id: string) => getBrowserService()?.duplicateTab(id))
   ipcMain.handle(IPC.invoke.browser.reloadTab, (_event, id: string) => getBrowserService()?.reloadTab(id))
   ipcMain.handle(IPC.invoke.browser.renameTab, (_event, id: string, title: string | null) => getBrowserService()?.renameTab(id, title))
+  ipcMain.handle(IPC.invoke.browser.setPhonePreview, (_event, enabled: boolean) => getBrowserService()?.setPhonePreview(enabled === true))
   ipcMain.handle(IPC.invoke.browser.selectTab, (_event, id: string) => getBrowserService()?.selectTab(id))
   ipcMain.handle(IPC.invoke.browser.capture, () => getBrowserService()?.capture() ?? null)
   ipcMain.handle(IPC.invoke.browser.snapshot, () => getBrowserService()?.browserSnapshot() ?? null)

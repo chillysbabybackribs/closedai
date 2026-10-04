@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 import { openLocalFile } from './open.js'
 import { isRenderableFile, isWorkspaceFileHref, localFilePath, parseLocalFileTarget, renderableFilePath } from '../../shared/local-files.js'
 import { resolveLocalFileOpenTarget } from './resolve-target.js'
@@ -47,7 +47,7 @@ test('images return preview bytes; files return path; directories reveal', async
     await mkdir(folder)
     assert.deepEqual(await openLocalFile(folder, reveal), { kind: 'revealed' })
     assert.deepEqual(revealed, [folder])
-    await assert.rejects(openLocalFile(join(root, 'missing.png'), reveal), /ENOENT/)
+    await assert.rejects(openLocalFile(join(root, 'missing.png'), reveal), { message: 'missing.png no longer exists.' })
     await assert.rejects(openLocalFile('https://example.com/a.png', reveal), /workspace/)
     const nested = join(root, 'src', 'app.ts')
     await mkdir(join(root, 'src'), { recursive: true })
@@ -73,4 +73,28 @@ test('only local HTML and SVG pages offer a page view beside their code', () => 
   assert.equal(renderableFilePath('file:///tmp/notes.md'), null)
   assert.equal(renderableFilePath('file://host/share/a.html'), null)
   assert.equal(renderableFilePath('https://example.com/a.html'), null)
+})
+
+test('a missing relative link opens the one project file whose trailing path matches it', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'closedai-local-find-'))
+  try {
+    const reveal = () => {}
+    const mock = join(root, 'work', 'mockups', 'task-visuals.html')
+    await mkdir(join(root, 'work', 'mockups'), { recursive: true })
+    await writeFile(mock, '<p>mock</p>')
+    // Generated and hidden folders never count, so their copies do not make the link ambiguous.
+    for (const skipped of ['node_modules', 'out', '.git']) {
+      await mkdir(join(root, skipped), { recursive: true })
+      await writeFile(join(root, skipped, 'task-visuals.html'), '')
+    }
+    assert.deepEqual(await openLocalFile('task-visuals.html', reveal, { cwd: root }), { kind: 'file', path: mock, cwd: root })
+    assert.deepEqual(await openLocalFile('mockups/task-visuals.html:4', reveal, { cwd: root }), { kind: 'file', path: mock, line: 4, cwd: root })
+    // Whole segments only: `visuals.html` is not a suffix match for `task-visuals.html`.
+    await assert.rejects(openLocalFile('visuals.html', reveal, { cwd: root }), { message: `Couldn't find visuals.html in ${basename(root)}.` })
+    await mkdir(join(root, 'docs'), { recursive: true })
+    await writeFile(join(root, 'docs', 'task-visuals.html'), '')
+    await assert.rejects(openLocalFile('task-visuals.html', reveal, { cwd: root }), { message: `Several files are named task-visuals.html in ${basename(root)}.` })
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
 })

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { AlertCircle, Check, Copy, FileCode, FolderOpen, Loader2 } from 'lucide-react'
+import { AlertCircle, Check, Copy, FileCode, FolderOpen, Loader2 } from '../icons/index.js'
 import { isRenderableFile, type FileTabContent } from '../../shared/local-files.js'
 import { DiffViewer, highlightTokens } from '../diff-viewer.js'
 import { LocalFileMarkdown } from '../local-file-markdown.js'
@@ -123,10 +123,6 @@ export function FileViewer({ id, source = 'tab', active, revision, line, endLine
           </span>
         ) : null}
         <div className="file-viewer-actions">
-          {source === 'tab' && !showDiff && isRenderableFile(displayPath ?? displayName) && (
-            <FileViewToggle tabId={id} view="code"
-              onError={(reason) => setError(reason instanceof Error ? reason.message : String(reason))} />
-          )}
           {!showDiff && (
             <button
               type="button"
@@ -166,6 +162,11 @@ export function FileViewer({ id, source = 'tab', active, revision, line, endLine
             <FolderOpen size={14} aria-hidden="true" />
             <span>Folder</span>
           </button>
+          {/* Last, so Page | Code sits at the header's right end in both views (browser-pane.tsx). */}
+          {source === 'tab' && !showDiff && isRenderableFile(displayPath ?? displayName) && (
+            <FileViewToggle tabId={id} view="code"
+              onError={(reason) => setError(reason instanceof Error ? reason.message : String(reason))} />
+          )}
         </div>
       </header>
 

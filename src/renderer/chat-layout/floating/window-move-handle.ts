@@ -15,3 +15,8 @@ export function pressesMoveHandle(event: { target: EventTarget }): boolean {
   if (target.closest('.chat-layout-header') && !target.closest(CHAT_MOVE_BLOCK)) return true
   return false
 }
+
+/** Window chrome acts on its card without selecting a chat that is about to disappear. */
+export function selectsWindow(target: EventTarget): boolean {
+  return isElement(target) && !target.closest('[role="tablist"], .chat-window-controls')
+}

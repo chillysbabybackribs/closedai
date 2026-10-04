@@ -23,8 +23,8 @@ all providers through the existing registry and Tools switches. There is no new 
 - `probe` attaches and executes custom Frida JavaScript. `send(payload, arrayBuffer)` provides
   structured/binary results. Custom code has native target privileges and can change memory,
   call functions, perform I/O or crash the target; it is not a sandbox or a read-only query.
-- `query operation` reads the calling chat's receipt. A repeated operation key with identical
-  arguments reuses the original promise/result; different arguments are rejected. Receipts
+- `query operation` reads receipts owned by the calling chat pane. A repeated operation key
+  with identical arguments reuses the original promise/result; different arguments are rejected. Receipts
   survive provider rotation in this app lifetime, but not app restart. A missing receipt
   after restart does not establish that an earlier probe never ran.
 
@@ -32,7 +32,8 @@ Every experiment requires an explicit target and operation key. The main process
 the calling pane's active turn, rechecks its identity during execution, rejects simultaneous
 operations on the same target, and allows at most two controllers. It retains at most 256
 operation receipts for the app lifetime and refuses further operations instead of evicting
-keys that could then accidentally execute again. Cross-chat receipts are not readable.
+keys that could then accidentally execute again. Receipts are keyed by chat pane; other panes
+cannot read them.
 
 Each operation forks the built `native-controller.js` with Electron's own executable in
 `ELECTRON_RUN_AS_NODE` mode. Only that helper imports the Frida native binding. The main process
@@ -90,7 +91,7 @@ replacement, binary messages, hook removal, duplicate receipts, event overflow, 
 agent errors, cancellation, a stuck agent, the independent controller deadline and target exit.
 It targets no browser or user app. The final Electron-runtime run passed all nine check groups,
 including ten consecutive attach/inspect/detach cycles. Stuck-agent cancellation confirmed
-script unload, session detach and device-manager closure. Typecheck, 11 targeted unit tests,
+script unload, session detach and device-manager closure. Typecheck, 6 targeted unit tests,
 the checkout production build, hygiene and workspace-index checks also passed.
 
 An early direct experiment timed out when Node both owned the fixture child and attached to

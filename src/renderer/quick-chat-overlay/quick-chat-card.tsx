@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState, type Dispatch, type JSX, type ReactNode } from 'react'
-import { AlertCircle, Check, Ellipsis, Loader2, Maximize2, Minimize2, Pause, X } from 'lucide-react'
+import { AlertCircle, Check, Ellipsis, Loader2, Maximize2, Minimize2, Pause, X } from '../icons/index.js'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger
 } from '../../components/ui/dropdown-menu.js'

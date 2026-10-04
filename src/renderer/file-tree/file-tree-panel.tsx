@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
-import { ChevronDown, ChevronRight, ChevronsDownUp, RefreshCw, X } from 'lucide-react'
+import { ChevronDown, ChevronRight, ChevronsDownUp, RefreshCw, X } from '../icons/index.js'
 import type { FileTreeEntry, FileTreeListing } from '../../shared/file-tree.js'
 import { FileIcon } from './file-icon.js'
 import { expansionKey, readExpansion, saveTreeState } from './file-tree-state.js'

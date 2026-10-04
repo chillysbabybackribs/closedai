@@ -8,6 +8,8 @@
 --------------------------------------------------------------------------- */
 
 .aui-md {
+  /* Links and file paths take the app's system-blue link ink (materials.css). */
+  --chat-link-hover: var(--antigravity-blue-hover, var(--link-ink));
   min-width: 0;
   font-size: var(--chat-fs-markdown, 15px);
   line-height: var(--chat-lh-markdown, 1.7);
@@ -42,7 +44,7 @@
   transition: color 120ms var(--ease-chrome);
 }
 
-.aui-md-local-file:hover { color: #9eccf8; }
+.aui-md-local-file:hover { color: var(--chat-link-hover); }
 
 .aui-md-local-file:disabled { cursor: wait; opacity: 0.65; }
 .aui-md-file-error { display: block; color: #fca5a5; font-size: 0.9em; }
@@ -86,13 +88,15 @@
 .aui-md strong { color: #f5f5f6; font-weight: 600; }
 
 .aui-md a {
-  color: #7eb0e0;
+  color: var(--link-ink);
+  font-weight: inherit;
   text-decoration: none;
   cursor: pointer;
   transition: color 120ms ease;
 }
 
-.aui-md a:hover { color: #9eccf8; }
+.aui-md a:hover,
+.prompt-markdown .prompt-source-trigger:hover { color: var(--chat-link-hover); }
 
 .aui-md sup > a {
   font-size: 0.75em;
@@ -114,12 +118,12 @@
 
 /* Inline code keeps a background and rounded corners; a fenced block does not,
    because its header and border already frame it. Same Cursor path-chip treatment
-   as user-message chips: borderless grey wrapper, ink in the send button's accent. */
+   as user-message chips: borderless grey wrapper, with neutral ink. */
 .aui-md .aui-md-inline-code {
   padding: 1.5px 5.5px;
   border-radius: 5px;
   background: var(--path-chip-bg, rgb(255 255 255 / 8%));
-  color: var(--tab-accent, #8ab4f8);
+  color: #ccd2da;
   font-family: var(--font-mono);
   font-size: 0.85em;
   font-weight: 500;

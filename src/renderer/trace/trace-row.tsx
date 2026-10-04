@@ -1,6 +1,6 @@
 import type { JSX } from 'react'
 import { useState } from 'react'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight } from '../icons/index.js'
 
 import { CHAT_PROVIDER_LABELS } from '../../shared/chat-providers.js'
 import type { TraceEntry } from '../../shared/trace.js'

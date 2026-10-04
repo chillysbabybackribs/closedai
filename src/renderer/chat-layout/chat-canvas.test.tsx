@@ -128,7 +128,7 @@ test('ChatCanvas renders restored chat groups as separate cards without tab cont
 
 })
 
-test('ChatCanvas names running close/hide actions and overlays a pane status notice', () => {
+test('ChatCanvas names running close/hide actions without a dismissal popup', () => {
   const tabbedTree: ChatLayout = {
     kind: 'pane',
     id: 'tab-1',
@@ -138,7 +138,6 @@ test('ChatCanvas names running close/hide actions and overlays a pane status not
     tree: separateChatCards(tabbedTree),
     selectedId: 'tab-1',
     busy: false,
-    notice: 'Window closed · Tasks continue in the background',
     browserVisible: false,
     renderBrowser: createElement('div', { id: 'browser-content' }, 'Browser'),
     onDragActive: () => {},
@@ -160,7 +159,7 @@ test('ChatCanvas names running close/hide actions and overlays a pane status not
 
   assert.doesNotMatch(html, /data-ui="layout\.tab-close"/)
   assert.match(html, /data-ui="layout\.pane-hide" data-ui-key="tab-2"[^>]*title="Dismiss chat · Tasks keep running"/)
-  assert.match(html, /class="chat-layout-notice"[^>]*>Window closed · Tasks continue in the background/)
+  assert.doesNotMatch(html, /chat-layout-notice|Chat dismissed|Window closed/)
 })
 
 test('ChatCanvas renders a view window with its kind glyph, no chat status, and no new-tab button', () => {

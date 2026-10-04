@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState, type JSX } from 'react'
-import { MessageSquareDashed, SearchX } from 'lucide-react'
+import { MessageSquareDashed, SearchX } from '../icons/index.js'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import { cursorIndex } from './header-search-dismiss.js'
 import { ChatHistoryThreadList, HISTORY_PAGE_SIZE, nextHistoryPage } from './chat-history-thread-list.js'
@@ -33,7 +33,7 @@ export function useChatSearchList(
     () => (active ? openDeskSearchHits(chats, openDeskChatIds, query) : []),
     [active, chats, openDeskChatIds, query]
   )
-  const openDeskSet = useMemo(() => new Set(openDesk.map((hit) => hit.row.paneId)), [openDesk])
+  const openDeskSet = useMemo(() => new Set(openDeskChatIds), [openDeskChatIds])
   const ranked = useMemo(
     () => rankChatsExcluding(active ? chats : NO_CHATS, query, openDeskSet),
     [active, chats, query, openDeskSet]

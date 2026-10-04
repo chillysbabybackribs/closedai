@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   FolderOpen, Maximize, Pause, Play, Repeat, SkipBack, SkipForward, Volume2, VolumeX
-} from 'lucide-react'
+} from '../icons/index.js'
 import type { VideoTabContent } from '../../shared/local-files.js'
 import { errorMessage } from '../error-message.js'
 

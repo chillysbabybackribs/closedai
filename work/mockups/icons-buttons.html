@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Icons &amp; buttons: audit and upgrade options</title>
+<script src="./lucide-icons.js"></script>
+<style>
+@font-face {
+  font-family: "Inter Variable";
+  src: url("../../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2") format("woff2");
+  font-weight: 100 900;
+}
+:root {
+  color-scheme: dark;
+  --page: #0b0c0d;
+  --card: #141516;
+  --header: #191919;
+  --edge: #2a2b2e;
+  --fg: #f7f8f8;
+  --muted: #8a8f98;
+  --quiet: #7c8087;
+  --focus: #5e6ad2;
+  font-family: "Inter Variable", Inter, system-ui, sans-serif;
+  font-size: 13px;
+  background: var(--page);
+  color: var(--fg);
+}
+body { margin: 0; padding: 32px 40px 80px; }
+h1 { font-size: 18px; font-weight: 600; letter-spacing: -0.014em; margin: 0 0 6px; }
+h2 { font-size: 14px; font-weight: 600; margin: 0; }
+.lede { color: var(--muted); margin: 0 0 22px; max-width: 900px; line-height: 1.55; }
+
+/* Audit table */
+.audit { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 30px; }
+.fact { border: 1px solid #1f2023; border-radius: 10px; padding: 12px 14px; background: #101112; }
+.fact b { display: block; font-size: 20px; font-weight: 600; margin-bottom: 2px; font-variant-numeric: tabular-nums; }
+.fact span { color: var(--muted); font-size: 12px; line-height: 1.45; display: block; }
+.fact code { font-size: 11px; color: #b3b8c1; }
+
+.opt { border: 1px solid #1f2023; border-radius: 12px; background: #0f1011; padding: 18px 20px 22px; margin-bottom: 18px; }
+.opt.current { border-style: dashed; }
+.opt header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+.tag { font-size: 11px; color: var(--quiet); }
+.tag.rec { color: #9ba3ff; }
+.opt p.note { color: var(--muted); margin: 0 0 14px; line-height: 1.5; font-size: 12px; max-width: 980px; }
+.spec { color: var(--quiet); font-size: 11px; margin: -6px 0 14px; }
+
+.surfaces { display: grid; grid-template-columns: 1.1fr 1.3fr 0.7fr 1fr; gap: 12px; }
+.surf { border: 1px solid var(--edge); border-radius: 10px; overflow: hidden; background: var(--card); }
+.surf .lbl { font-size: 10.5px; color: var(--quiet); padding: 6px 10px 0; text-transform: uppercase; letter-spacing: 0.06em; }
+.bar { display: flex; align-items: center; gap: 2px; padding: 8px 8px; min-height: 28px; }
+.bar.header { background: var(--header); }
+.grow { flex: 1; }
+.search { flex: 1; height: 26px; border-radius: 7px; background: rgb(0 0 0 / 28%); display: flex; align-items: center; gap: 6px; padding: 0 8px; color: var(--quiet); font-size: 12px; min-width: 0; }
+.url { flex: 1; height: 28px; border-radius: 8px; background: #0e0f10; border: 1px solid #26272a; display: flex; align-items: center; padding: 0 10px; color: #b3b8c1; font-size: 12px; min-width: 0; }
+.msg { color: #b3b8c1; font-size: 12px; padding: 4px 10px 0; line-height: 1.5; }
+.composer { margin: 8px; border: 1px solid #343536; border-radius: 13px; display: flex; align-items: center; gap: 6px; padding: 7px; }
+.composer .draft { flex: 1; color: #5d6168; font-size: 12px; }
+.sep { width: 1px; height: 16px; background: rgb(255 255 255 / 10%); margin: 0 4px; }
+
+/* Shared button machinery; each option sets the custom properties. */
+.ib {
+  all: unset; box-sizing: border-box; cursor: pointer; flex: none;
+  display: grid; place-items: center;
+  width: var(--b); height: var(--b); border-radius: var(--r);
+  color: var(--ink);
+  background: var(--bg, transparent);
+  box-shadow: var(--edge-shadow, none);
+  transition: background-color 120ms ease, color 120ms ease, box-shadow 120ms ease, transform 80ms ease;
+}
+.ib svg { width: var(--i); height: var(--i); fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; }
+.ib:hover, .ib.s-hover { background: var(--bg-hover); color: var(--ink-hover); box-shadow: var(--edge-hover, var(--edge-shadow, none)); }
+.ib:active, .ib.s-active { background: var(--bg-active); transform: scale(var(--press, 1)); }
+.ib.s-on { color: var(--ink-on); background: var(--bg-on, transparent); }
+.ib.s-on svg.fillable { fill: var(--fill-on, none); }
+.ib:focus-visible, .ib.s-focus { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--focus); }
+.ib.s-disabled { opacity: var(--dis, 0.4); cursor: default; }
+.ib.inline { --b: var(--b-inline); --i: var(--i-inline); }
+.ib.win { --b: var(--b-win); --i: var(--i-win); }
+.ib.primary { --b: 30px; border-radius: 999px; background: #fff; color: #000; }
+
+.group { display: flex; align-items: center; gap: var(--group-gap, 2px); padding: var(--group-pad, 0); border-radius: var(--group-r, 0); background: var(--group-bg, transparent); box-shadow: var(--group-edge, none); }
+
+.states { display: flex; gap: 22px; align-items: flex-end; margin-top: 16px; flex-wrap: wrap; }
+.state { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.state .mag { zoom: 2.5; padding: 3px; background: var(--card); border-radius: 6px; }
+.state span { font-size: 11px; color: var(--quiet); }
+</style>
+</head>
+<body>
+<h1>Icons &amp; buttons: audit and upgrade options</h1>
+<p class="lede">Every icon below is the real Lucide path from <code>node_modules</code>, drawn at the size and stroke each option specifies. The 1× strips copy four live surfaces: the chat card header, the browser toolbar, message actions and the composer. The 2.5× row uses CSS zoom, so it is re-rendered rather than stretched, and shows rest, hover, pressed, toggled on, focus and disabled. Hover the live buttons too.</p>
+
+<div class="audit">
+  <div class="fact"><b>14</b><span>distinct icon sizes in TSX (11–20px), chosen per call site. The chat header alone mixes <code>17/1.6</code>, <code>17/1.8</code> and <code>16/1.8</code>, and its window controls use <code>14</code>, <code>11</code> and <code>14</code>.</span></div>
+  <div class="fact"><b>13</b><span>stroke widths (1 to 3, plus Lucide's default 2 on most icons). Stroke scales with size, so a 13px icon is visibly lighter than a 17px one next to it.</span></div>
+  <div class="fact"><b>8</b><span>button heights in CSS (20, 22, 24, 26, 28, 30, 32 and 34px) and <b style="display:inline;font-size:inherit">12</b> corner radii (2–14px, with 4, 5, 6, 7, 8, 9 and 10 all in use).</span></div>
+  <div class="fact"><b>1</b><span>icon library (Lucide, 94 icons), which is good. The drift is in how it's used, not the source. Hover and focus recipes vary by surface: some use an outline ring, some a background, some nothing.</span></div>
+</div>
+
+<div id="options"></div>
+
+<script>
+const I = window.ICONS
+const svg = (name, stroke, fillable = false) =>
+  `<svg viewBox="0 0 24 24" stroke-width="${stroke}"${fillable ? ' class="fillable"' : ''}>${I[name]}</svg>`
+
+// Each option: CSS vars + a stroke function (size → stroke attr). absolute=true keeps a constant
+// on-screen stroke regardless of icon size (Lucide's absoluteStrokeWidth: stroke * 24 / size).
+const OPTIONS = [
+  {
+    id: 'current', name: 'Current', tag: 'as shipped', current: true,
+    note: 'Sizes and strokes are set separately at each call site. Header icons are 16–17px, message actions 13px, window controls 11–14px; strokes run from 1.6 to 2. The result is uneven weight: the header star looks heavier than the plus beside it, and the restore square is visibly smaller than minimize and close.',
+    spec: 'Copied per site from chat-layout-pane-header.tsx, window-controls.tsx, browser-pane.tsx, message-actions.css',
+    vars: { '--b': '24px', '--i': '16px', '--r': '6px', '--b-inline': '24px', '--i-inline': '13px', '--b-win': '24px', '--i-win': '14px',
+      '--ink': '#8a8f98', '--ink-hover': '#e9eaec', '--bg-hover': 'rgb(255 255 255 / 7%)', '--bg-active': 'rgb(255 255 255 / 10%)', '--ink-on': '#facc15' },
+    perIcon: { star: [17, 1.6], plus: [17, 1.8], share: [16, 1.8], minus: [14, 2], square: [11, 2], x: [14, 2],
+      left: [16, 2], right: [16, 2], reload: [16, 2], download: [16, 2], copy: [13, 1.65], branch: [13, 1.65], clip: [16, 2], up: [16, 2], search: [14, 2] },
+  },
+  {
+    id: 'a', name: 'A · Normalized', tag: 'recommended: lowest risk', rec: true,
+    note: 'Same look and feel, made consistent. Three icon sizes (14 inline, 16 toolbar, 18 hero) and one constant 1.5px stroke via absoluteStrokeWidth, so every glyph has the same line weight at any size. Three button sizes (24 inline, 28 toolbar, 34 primary), one 6px radius, and one hover, press and focus recipe everywhere. Window controls share the 14px grid. In code: a tiny <Icon> wrapper and three CSS tokens replace about 80 hand-picked size/stroke props.',
+    spec: 'icons 16 (toolbar) / 14 (inline) · stroke 1.5px absolute · buttons 28 / 24 · radius 6 · hover white 7% · press 11% + 0.96 scale · focus 2px indigo ring',
+    vars: { '--b': '28px', '--i': '16px', '--r': '6px', '--b-inline': '24px', '--i-inline': '14px', '--b-win': '28px', '--i-win': '14px',
+      '--ink': '#8a8f98', '--ink-hover': '#eceef0', '--bg-hover': 'rgb(255 255 255 / 7%)', '--bg-active': 'rgb(255 255 255 / 11%)', '--press': '0.96',
+      '--ink-on': '#facc15', '--fill-on': '#facc15' },
+    stroke: { px: 1.5, absolute: true },
+  },
+  {
+    id: 'b', name: 'B · Fine line', tag: 'airier, Linear-like',
+    note: 'A lighter, more editorial weight: a 1.25px absolute stroke at 15px, slightly brighter resting ink so thin lines don\'t vanish at 96dpi, and 8px rounded-square hovers with a faint inner edge. Toggled-on states use a filled glyph (a pinned star fills in) instead of only changing colour. This reads as more premium, but thin strokes are less forgiving on low-DPI screens.',
+    spec: 'icons 15 / 13 · stroke 1.25px absolute · buttons 28 / 24 · radius 8 · ink #a0a4ab · hover 5% + 1px inner edge · on = filled glyph',
+    vars: { '--b': '28px', '--i': '15px', '--r': '8px', '--b-inline': '24px', '--i-inline': '13px', '--b-win': '28px', '--i-win': '13px',
+      '--ink': '#a0a4ab', '--ink-hover': '#f7f8f8', '--bg-hover': 'rgb(255 255 255 / 5%)', '--edge-hover': 'inset 0 0 0 1px rgb(255 255 255 / 8%)',
+      '--bg-active': 'rgb(255 255 255 / 9%)', '--press': '0.97', '--ink-on': '#f5c84c', '--fill-on': '#f5c84c', '--bg-on': 'rgb(245 200 76 / 10%)' },
+    stroke: { px: 1.25, absolute: true },
+  },
+  {
+    id: 'c', name: 'C · Tonal controls', tag: 'most discoverable',
+    note: 'Buttons keep a visible tonal well and hairline at rest instead of being invisible until hovered. A 1.75px stroke for confident glyphs. This is the clearest affordance and good for new users, but it\'s visually heavier; best kept to toolbars rather than every inline action.',
+    spec: 'icons 16 / 14 · stroke 1.75px absolute · buttons 28 / 24 · radius 7 · rest bg #1d1e21 + hairline · hover #26272b',
+    vars: { '--b': '28px', '--i': '16px', '--r': '7px', '--b-inline': '24px', '--i-inline': '14px', '--b-win': '28px', '--i-win': '14px',
+      '--ink': '#b3b8c1', '--ink-hover': '#f7f8f8', '--bg': '#1d1e21', '--edge-shadow': 'inset 0 0 0 1px rgb(255 255 255 / 7%)',
+      '--bg-hover': '#26272b', '--edge-hover': 'inset 0 0 0 1px rgb(255 255 255 / 12%)', '--bg-active': '#2c2d31', '--press': '0.96',
+      '--ink-on': '#facc15', '--fill-on': '#facc15', '--bg-on': 'rgb(250 204 21 / 12%)' },
+    stroke: { px: 1.75, absolute: true },
+  },
+  {
+    id: 'd', name: 'D · Grouped capsules', tag: 'structural, pairs with A or B',
+    note: 'Related actions share one capsule: back, forward and reload become one segmented control, as do the header actions and window controls. It cuts visual noise in busy bars and makes the toolbar read as a few clear clusters. Shown on top of A\'s icon rules; it is a layout change, so it can be adopted surface by surface.',
+    spec: 'A\'s icons · groups: bg #1b1c1f, hairline, radius 9, 2px inner gap · buttons 26 inside groups',
+    vars: { '--b': '26px', '--i': '16px', '--r': '7px', '--b-inline': '24px', '--i-inline': '14px', '--b-win': '26px', '--i-win': '14px',
+      '--ink': '#8a8f98', '--ink-hover': '#eceef0', '--bg-hover': 'rgb(255 255 255 / 8%)', '--bg-active': 'rgb(255 255 255 / 12%)', '--press': '0.96',
+      '--ink-on': '#facc15', '--fill-on': '#facc15',
+      '--group-bg': '#1b1c1f', '--group-edge': 'inset 0 0 0 1px rgb(255 255 255 / 7%)', '--group-r': '9px', '--group-pad': '2px', '--group-gap': '2px' },
+    stroke: { px: 1.5, absolute: true },
+    grouped: true,
+  },
+]
+
+function strokeFor(o, name, size) {
+  if (o.perIcon) return o.perIcon[name][1]
+  return o.stroke.absolute ? (o.stroke.px * 24 / size).toFixed(3) : o.stroke.px
+}
+function sizeFor(o, name, kind) {
+  if (o.perIcon) return o.perIcon[name][0]
+  const v = o.vars
+  return parseFloat(kind === 'inline' ? v['--i-inline'] : kind === 'win' ? v['--i-win'] : v['--i'])
+}
+function btn(o, name, { kind = '', state = '', fillable = false, label = name } = {}) {
+  const size = sizeFor(o, name, kind)
+  const style = o.perIcon ? ` style="--i:${size}px"` : ''
+  return `<button class="ib ${kind} ${state}" aria-label="${label}"${style}>${svg(name, strokeFor(o, name, size), fillable)}</button>`
+}
+const grp = (o, html) => o.grouped ? `<div class="group">${html}</div>` : html
+
+function surfaces(o) {
+  const header = `<div class="bar header">${grp(o, btn(o, 'star', { state: 's-on', fillable: true, label: 'Pinned' }) + btn(o, 'plus') + btn(o, 'share'))}
+    <div class="search" style="margin:0 8px">${svg('search', 1.75).replace('<svg', '<svg width="13" height="13" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"')}Search chats</div>
+    ${grp(o, btn(o, 'minus', { kind: 'win' }) + btn(o, 'square', { kind: 'win' }) + btn(o, 'x', { kind: 'win' }))}</div>`
+  const browser = `<div class="bar">${grp(o, btn(o, 'left') + btn(o, 'right', { state: 's-disabled' }) + btn(o, 'reload'))}
+    <div class="url" style="margin:0 6px">linear.app</div>${grp(o, btn(o, 'star') + btn(o, 'download'))}</div>`
+  const actions = `<div class="msg">The connected repository is chillysbaby/closedai.</div><div class="bar">${btn(o, 'copy', { kind: 'inline' })}${btn(o, 'branch', { kind: 'inline' })}</div>`
+  const composer = `<div class="composer">${btn(o, 'plus')}<span class="draft">Message Codex</span>${btn(o, 'clip')}<button class="ib primary" aria-label="Send">${svg('up', 2.25)}</button></div>`
+  return `<div class="surfaces">
+    <div class="surf"><div class="lbl">Chat card header</div>${header}</div>
+    <div class="surf"><div class="lbl">Browser toolbar</div>${browser}</div>
+    <div class="surf"><div class="lbl">Message actions</div>${actions}</div>
+    <div class="surf"><div class="lbl">Composer</div>${composer}</div></div>`
+}
+function states(o) {
+  const row = [['rest', ''], ['hover', 's-hover'], ['pressed', 's-active'], ['on', 's-on'], ['focus', 's-focus'], ['disabled', 's-disabled']]
+    .map(([l, s]) => `<div class="state"><div class="mag">${btn(o, 'star', { state: s, fillable: true })}</div><span>${l}</span></div>`).join('')
+  const sizes = `<div class="state"><div class="mag" style="display:flex;gap:2px">${btn(o, 'copy', { kind: 'inline' })}${btn(o, 'reload')}${btn(o, 'x', { kind: 'win' })}</div><span>inline · toolbar · window</span></div>`
+  return `<div class="states">${row}${sizes}</div>`
+}
+
+const root = document.getElementById('options')
+for (const o of OPTIONS) {
+  const el = document.createElement('section')
+  el.className = 'opt' + (o.current ? ' current' : '')
+  for (const [k, v] of Object.entries(o.vars)) el.style.setProperty(k, v)
+  el.innerHTML = `<header><h2>${o.name}</h2><span class="tag${o.rec ? ' rec' : ''}">${o.tag}</span></header>
+    <p class="note">${o.note}</p><div class="spec">${o.spec}</div>${surfaces(o)}${states(o)}`
+  root.append(el)
+}
+</script>
+</body>
+</html>

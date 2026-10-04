@@ -1,6 +1,6 @@
 import type { JSX } from 'react'
 import { useEffect, useState } from 'react'
-import { Trash2 } from 'lucide-react'
+import { Trash2 } from '../icons/index.js'
 import type { SavedSite } from '../../shared/saved-sites.js'
 import { BrowserSiteIcon } from '../browser-site-icon.js'
 import { useSavedSitesList } from '../browser-saved-sites-controller.js'

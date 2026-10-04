@@ -10,8 +10,9 @@
 }
 
 .prompt-tool-activity-trigger {
-  display: inline-flex;
-  width: fit-content;
+  display: flex;
+  width: auto;
+  min-width: 0;
   max-width: 100%;
   min-height: 26px;
   align-items: center;
@@ -28,26 +29,49 @@
   font-size: var(--chat-fs-process, 12px);
   font-weight: 500;
   line-height: 1.4;
+  text-align: left;
   cursor: pointer;
   transition: all 110ms ease;
 }
 
-/* The trigger keeps its fit-content hover box; the edit line counts sit at the row's right end.
+/* The headline fills the card width; edit totals stay on the right edge of the column.
    Colours come from the diff headers (activity-steps.css); the digits roll via NumberTicker. */
 .prompt-tool-activity-head {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
+  width: 100%;
   min-width: 0;
+}
+
+.prompt-tool-activity-trigger > span:not(.activity-live-line) {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prompt-tool-activity-trigger .activity-live-line {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.prompt-tool-activity-trigger .activity-live-line .activity-step-meta {
+  margin-left: auto;
 }
 
 .prompt-tool-activity-lines {
   display: inline-flex;
   flex: none;
   align-items: center;
+  justify-content: flex-end;
   gap: 6px;
-  margin-left: auto;
-  padding-right: 6px;
+  min-width: 4.75rem;
+  justify-self: end;
 }
 
 .prompt-tool-activity-lines .diff-stat-add,
@@ -76,47 +100,22 @@
 
 .prompt-tool-activity-trigger > span { font-variant-numeric: tabular-nums; }
 
-/* The running row says so by moving, not by carrying an icon: a highlight sweeps along the
-   headline's own glyphs, so exactly one line in the transcript is ever in motion.
-
-   Technique from iconiqui.com/texts/shimmer-text, ported to CSS (the original drives the same
-   background-position loop through Motion, which is not worth a runtime dependency here). Two
-   layers matter: a highlight band flanked by TRANSPARENT stops, over a separate flat base layer.
-   A single gradient of base-coloured stops — the obvious first attempt — has no stable base and
-   the band never resolves against it. Only the band's position animates; the base is pinned. */
-@keyframes prompt-process-shimmer {
-  from { background-position: 100% center, 0 0; }
-  to { background-position: 0% center, 0 0; }
+/* A running group's line clips its roll-in, so a new step slides up into place. */
+.prompt-tool-activity[data-live] .prompt-tool-activity-trigger {
+  overflow: hidden;
 }
 
-.prompt-tool-activity-trigger[data-running] > span {
-  /* --shimmer-spread is set inline from the headline's length, so the band stays proportional to
-     the text instead of swamping a short label or crawling across a long one. */
-  background-image:
-    linear-gradient(
-      90deg,
-      transparent calc(50% - var(--shimmer-spread, 40px)),
-      var(--transcript-activity-hover, #f4f4f5),
-      transparent calc(50% + var(--shimmer-spread, 40px))
-    ),
-    linear-gradient(var(--transcript-activity, #9b9ba1), var(--transcript-activity, #9b9ba1));
-  background-repeat: no-repeat, repeat;
-  background-size: 250% 100%, auto;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  animation: prompt-process-shimmer 2s linear infinite;
+/* A settled group leads with the icon of what it mostly did, in the step list's kind colour. */
+.prompt-tool-activity-icon {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  stroke-width: 1.75;
 }
 
-/* Motion is the only live signal here, so when it is suppressed the row still has to read as
-   running — hold the brighter ink instead of animating it. */
-@media (prefers-reduced-motion: reduce) {
-  .prompt-tool-activity-trigger[data-running] > span {
-    animation: none;
-    background-image: none;
-    color: var(--transcript-activity-hover, #d4d4d8);
-  }
-}
+.prompt-tool-activity[data-lead='command'] .prompt-tool-activity-icon { color: var(--activity-command); }
+.prompt-tool-activity[data-lead='fileChange'] .prompt-tool-activity-icon { color: var(--activity-edit); }
+.prompt-tool-activity[data-lead='tool'] .prompt-tool-activity-icon { color: var(--activity-tool); }
 
 .prompt-process-failed {
   width: 13px;
@@ -142,4 +141,154 @@
 .prompt-tool-activity-card {
   min-width: 0;
   padding-left: 6px;
+}
+
+/* ---------------------------------------------------------------------------
+   Turn header: "Working for 12s" over a hairline while the turn runs, "Worked for 38s ›"
+   once it settles, with the turn's steps and commentary folded beneath it.
+--------------------------------------------------------------------------- */
+
+.prompt-turn-head {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0 0 10px;
+  border: 0;
+  border-bottom: 1px solid var(--hairline, rgb(255 255 255 / 7%));
+  appearance: none;
+  background: transparent;
+  color: var(--transcript-activity, #9b9ba1);
+  font-family: inherit;
+  font-size: var(--chat-fs-process, 12px);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+  text-align: left;
+}
+
+button.prompt-turn-head { cursor: pointer; }
+button.prompt-turn-head:hover,
+button.prompt-turn-head[aria-expanded='true'] { color: var(--transcript-activity-hover, #d4d4d8); }
+
+.prompt-turn-chevron {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  transition: transform 150ms ease;
+}
+
+.prompt-turn-chevron.is-open { transform: rotate(90deg); }
+
+/* ---------------------------------------------------------------------------
+   Filmstrip: captures as fixed-size thumbnails under the group that took them. The box is
+   reserved before the image decodes, so a capture never shifts the transcript.
+--------------------------------------------------------------------------- */
+
+.prompt-shot-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 6px 0 2px 29px;
+}
+
+.prompt-message-screenshot .prompt-shot-strip { margin-left: 0; }
+
+.prompt-shot {
+  flex: none;
+  width: 116px;
+  height: 72px;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 8px;
+  background: var(--chassis-well, #0d0e0f);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 9%);
+  cursor: zoom-in;
+  transition: box-shadow 120ms ease, transform 120ms ease;
+}
+
+.prompt-shot > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top left;
+}
+
+.prompt-shot:hover {
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 25%), 0 3px 8px rgb(0 0 0 / 20%);
+  transform: translateY(-1px);
+}
+
+.prompt-shot:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.prompt-shot-error {
+  align-self: center;
+  color: var(--destructive, #d28b8b);
+  font-size: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .prompt-shot,
+  .prompt-turn-chevron { transition: none; }
+  .prompt-shot:hover { transform: none; }
+}
+
+/* ---------------------------------------------------------------------------
+   Live stage (turn-stage.tsx): while a turn runs, one row under the header with two fixed
+   places, the newest text on top and the newest step group beneath it. A swap slides the old
+   content out over the top while the new one slides in, at the same place; commentary is held
+   to its last five lines, and only text after the newest step (data-open) shows in full.
+--------------------------------------------------------------------------- */
+
+.turn-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+.turn-stage-slot {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+
+.turn-stage-slot:empty { display: none; }
+
+.turn-stage-item {
+  animation: turn-stage-in 380ms cubic-bezier(0.2, 0.7, 0.2, 1) 60ms both;
+}
+
+.turn-stage-item[data-leaving] {
+  position: absolute;
+  inset: 0 0 auto;
+  pointer-events: none;
+  animation: turn-stage-out 220ms ease-in both;
+}
+
+@keyframes turn-stage-in {
+  from { transform: translateY(10px); opacity: 0; }
+}
+
+@keyframes turn-stage-out {
+  to { transform: translateY(-10px); opacity: 0; }
+}
+
+.turn-stage-text:not([data-open]) .prompt-message-assistant-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  max-height: calc(5lh + 2px);
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .turn-stage-item { animation: none; }
+  .turn-stage-item[data-leaving] { display: none; }
 }

@@ -1,5 +1,5 @@
 import { useRef, useState, type JSX, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
-import { Check, ChevronRight } from 'lucide-react'
+import { Check, ChevronRight } from './icons/index.js'
 
 import { Command, CommandItem, CommandList } from '../components/ui/command.js'
 import { Popover, PopoverAnchor, PopoverContent } from '../components/ui/popover.js'

@@ -16,6 +16,8 @@ export type WorkspacePaneActions = {
   newChatWindow: () => void
   /** Replace `paneId` with a digest-seeded chat on a fresh context window. */
   continueChat: (paneId: string) => Promise<void>
+  /** Replace `paneId` with a blank chat in the same card; the old conversation stays in history. */
+  clearChat: (paneId: string) => Promise<void>
   /** A side card in the persistent stack, or a short tile that can enter that arrangement. */
   canPromoteStackMonitorLead: (paneId: string) => boolean
   /** Swap a side card with the main card, or enter sidebar-stack; never changes pin status. */

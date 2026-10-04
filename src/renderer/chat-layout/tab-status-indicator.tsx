@@ -1,4 +1,4 @@
-import { CircleAlert, LoaderCircle, Pause } from 'lucide-react'
+import { CircleAlert, LoaderCircle, Pause } from '../icons/index.js'
 import type { TabActivity } from './tab-activity.js'
 
 export function TabStatusIndicator({ status }: { status: TabActivity | undefined }) {

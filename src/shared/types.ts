@@ -59,6 +59,8 @@ export type BrowserState = {
   canGoForward: boolean
   /** Main-frame failure shown in browser chrome; absent on older persisted snapshots. */
   navigationError?: BrowserNavigationError | null
+  /** The active web tab is shown inside the iPhone frame (see shared/phone-preview.ts). */
+  phonePreview?: boolean
 }
 
 // One entry per open tab, in display order. Emitted together as a list so the renderer

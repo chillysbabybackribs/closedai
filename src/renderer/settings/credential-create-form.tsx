@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent, type JSX } from 'react'
-import { ExternalLink, Loader2, Lock, ShieldAlert } from 'lucide-react'
+import { ExternalLink, Loader2, Lock, ShieldAlert } from '../icons/index.js'
 import { Button } from '../../components/ui/button.js'
 import { Input } from '../../components/ui/input.js'
 import { cn } from '../../lib/utils.js'
@@ -213,7 +213,7 @@ export function CredentialCreateForm({
           <button
             type="button"
             data-ui="credentials.docs"
-            className="flex min-w-0 items-center gap-1.5 truncate text-xs font-medium text-primary hover:underline"
+            className="flex min-w-0 items-center gap-1.5 truncate text-xs font-medium text-[var(--link-ink)] hover:underline"
             onClick={() => void window.closedai.browser.navigate(service.docsUrl!).catch(() => {})}
           >
             <ExternalLink className="size-3.5 shrink-0" />

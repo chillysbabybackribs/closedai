@@ -36,7 +36,6 @@
 }
 
 .trace-panel-filter { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
-.trace-panel-filter input { accent-color: var(--primary); }
 .trace-panel-filter-spacer { flex: 1 1 auto; }
 
 .trace-panel-error {

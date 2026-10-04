@@ -39,7 +39,7 @@ open protocol, so the wire format is not the fragile part — the subcommand's a
 | Interrupt | `session/cancel`; the session stays usable afterwards. |
 | Approvals | `session/request_permission` is answered automatically with the broadest allow offered. This is narrower than the CLI's blanket `--force` and keeps ClosedAI's no-approval-dialog rule. |
 | Tools | The ClosedAI registry is served over MCP by the shared HTTP bridge (`src/main/tools/mcp-http-bridge.ts`), passed to `session/new` as `mcpServers`. Each pane's endpoints carry the bridge's per-launch token and its own key (`/mcp/<token>/<key>/<namespace>`), so a served call is attributed to that pane and turn exactly; a request without the token, with a Host that is not this loopback listener, or with an Origin header is refused. |
-| Product instructions | ClosedAI adds no first-turn guide or workspace ledger. The shared per-turn runtime instructs repository development tasks to read `docs/application.md` first (opening guidance and relevant sections, when present). Clock, relevant browser/notepad context, and necessary handoffs remain. |
+| Product instructions | ClosedAI adds no first-turn guide or workspace ledger. The shared per-turn runtime instructs repository development tasks to read `docs/application.md` first (opening guidance and relevant sections, when present). Clock, runtime, prompt-matched research routing (`closedai.research.routing`), relevant browser/notepad context, and necessary handoffs remain. |
 | Session continuity | ClosedAI does not automatically rotate Cursor on idle time or transcript size, regardless of the global rotation settings. Explicit Compact still creates a handoff when seamless rotation is enabled. |
 | Archiving | ACP has no delete verb, so `cursor-archive.ts` keeps a local set of session ids the drawer stops listing. Cursor's own store is untouched. |
 | Plan usage | Monthly included, Auto, and API percentages and billing reset from the read-only dashboard RPCs behind CLI `/usage`; on-demand spend is a note. Shared one-minute account probe serves the footer and composer. |
@@ -51,7 +51,7 @@ open protocol, so the wire format is not the fragile part — the subcommand's a
 The 2026-09-30 recovery restores the native session policy and removes the shared guide and
 workspace-ledger injection from the Cursor adapter. The pre-guide path in `696d1356` (2026-09-23)
 provides the local reference for prompt assembly; it is not proof that current model behavior
-matches an earlier session. Clock facts remain, as do browser/notepad context and handoffs for
+matches an earlier session. Clock and runtime facts and research routing remain, as do browser/notepad context and handoffs for
 explicit continuation, Compact, provider switching, or a lost session. Existing conversations
 may already contain earlier injected context; a fresh chat after restarting the built app is
 needed to evaluate the restored baseline.
@@ -77,7 +77,7 @@ opportunistic — do not design as though all file IO routes through the app.
 
 | File | Responsibility |
 |---|---|
-| `cursor-cli.ts` | Binary resolution (`~/.local/bin/cursor-agent`), ACP argv, one-shot `about` for the account email and tier. |
+| `cursor-cli.ts` | Binary resolution (`CLOSEDAI_CURSOR_BIN`, then `~/.local/bin/cursor-agent`, then `PATH`), ACP argv, one-shot `about` for the account email and tier. |
 | `cursor-acp.ts` | The ACP client on the shared stdio JSON-RPC transport: handshake, session verbs, and the requests the agent makes of its client. |
 | `cursor-session.ts` | One pane's thread: the live process, the ACP session, the running turn, idle close, and `replay` for history. |
 | `cursor-service.ts` | The `ChatProviderService` surface the hub routes to. |
@@ -88,6 +88,9 @@ opportunistic — do not design as though all file IO routes through the app.
 | `cursor-mcp.ts` | The server list passed when a session opens (`session/new` and `session/load`), on the shared `McpHttpBridge`. |
 | `cursor-archive.ts` | The locally archived session ids. |
 | `cursor-ids.ts` | `cursor:` prefix arithmetic, delegating to `src/shared/chat-providers.ts`. |
+| `cursor-thread-lifecycle.ts` | Session resume, lost-session handoff, detach, and Compact rotation. |
+| `cursor-generated-image.ts` | Finds native `GenerateImage` output under `~/.cursor/projects/<cwd-slug>/assets/`. |
+| `cursor-usage.ts` | Subscription usage from the dashboard RPCs (see below). |
 
 ## Tools over MCP (`cursor-mcp.ts`)
 

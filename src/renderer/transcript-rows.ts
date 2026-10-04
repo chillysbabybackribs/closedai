@@ -6,11 +6,13 @@ import {
 export type ActivityItem = Extract<ChatTranscriptItem, { type: 'command' | 'fileChange' | 'tool' }>
 export type ReasoningItem = Extract<ChatTranscriptItem, { type: 'plan' | 'reasoning' }>
 export type StandaloneItem = Exclude<ChatTranscriptItem, ActivityItem | ReasoningItem>
+export type ScreenshotItem = Extract<ChatTranscriptItem, { type: 'screenshot' }>
 
 export type TranscriptRow =
   | { kind: 'item'; item: StandaloneItem }
   | { kind: 'background'; id: string; items: Extract<ChatTranscriptItem, { type: 'tool' }>[] }
-  | { kind: 'activity'; id: string; items: ActivityItem[] }
+  /** `shots` are captures taken during the group; they show as a filmstrip under its line. */
+  | { kind: 'activity'; id: string; items: ActivityItem[]; shots: ScreenshotItem[] }
 
 export function isActivity(item: ChatTranscriptItem): item is ActivityItem {
   return item.type === 'command' || item.type === 'fileChange' || item.type === 'tool'
@@ -139,13 +141,122 @@ export function transcriptRows(items: ChatTranscriptItem[]): TranscriptRow[] {
       if (last?.kind === 'activity' && sameTurn(last, item)) {
         last.items.push(item)
       } else {
-        rows.push({ kind: 'activity', id: turnKey, items: [item] })
+        rows.push({ kind: 'activity', id: turnKey, items: [item], shots: [] })
       }
       continue
+    }
+    // A capture joins the step group that took it instead of breaking the reel with a card.
+    if (item.type === 'screenshot' && item.surface !== 'generated_image') {
+      const last = rows.at(-1)
+      if (last?.kind === 'activity' && (!item.turnId || !last.items[0]?.turnId || item.turnId === last.items[0].turnId)) {
+        last.shots.push(item)
+        continue
+      }
     }
     rows.push({ kind: 'item', item })
   }
   return rows
+}
+
+export type TurnHead = {
+  key: string
+  /** The turn still running: its header counts up and nothing folds yet. */
+  live: boolean
+  /** Settled with an answer after its steps, or live with more than its stage: the header opens the fold. */
+  foldable: boolean
+  /** While live, what holds still under the header; null once the turn settles. */
+  stage: TurnStage | null
+  steps: number
+  /** Wall-clock bounds from item timings, when the provider or app stamped any. */
+  startedAt: number | null
+  endedAt: number | null
+}
+
+/**
+ * A live turn's fixed area: the newest text on top, the newest step group beneath it. Row
+ * indices are -1 when the turn has none yet. `textOpen` marks text written after the newest
+ * step: it may be the answer, so it shows at full height until a step follows it.
+ */
+export type TurnStage = { step: number; text: number; textOpen: boolean }
+
+export type TurnLayout = {
+  /** The header shown under each user row, keyed by that row's index. */
+  heads: Map<number, TurnHead>
+  /** Rows a settled turn folds away, mapped to that turn's key. */
+  folds: Map<number, string>
+}
+
+/**
+ * Each turn reads as a header ("Working for 12s", then "Worked for 38s") over its process:
+ * the step groups, captures, and commentary between the prompt and the answer. While the turn
+ * runs, its whole process folds into the stage, which keeps one place for the newest step and
+ * one for the newest text, so the prompt stays in view and nothing changes position. Once the
+ * turn settles, the process folds under the header and only the final answer stays in view.
+ * Only the last turn can be live.
+ */
+export function turnLayout(rows: readonly TranscriptRow[], running: boolean): TurnLayout {
+  const heads = new Map<number, TurnHead>()
+  const folds = new Map<number, string>()
+  const starts = rows.flatMap((row, index) => row.kind === 'item' && row.item.type === 'user' ? [index] : [])
+  starts.forEach((start, n) => {
+    const end = starts[n + 1] ?? rows.length
+    const user = rows[start] as Extract<TranscriptRow, { kind: 'item' }>
+    const live = running && n === starts.length - 1
+    let steps = 0
+    let first = Infinity
+    let last = -Infinity
+    let answer = -1
+    let group = -1
+    for (let index = start + 1; index < end; index += 1) {
+      const row = rows[index]!
+      if (row.kind === 'activity') {
+        group = index
+        steps += row.items.length
+        for (const item of row.items) {
+          if (item.startedAt !== undefined) first = Math.min(first, item.startedAt)
+          last = Math.max(last, item.finishedAt ?? item.startedAt ?? last)
+        }
+      } else if (row.kind === 'item' && row.item.type === 'assistant') {
+        answer = index
+        if (row.item.createdAt !== undefined) {
+          first = Math.min(first, row.item.createdAt)
+          last = Math.max(last, row.item.createdAt)
+        }
+      }
+    }
+    if (!live && steps === 0) return
+    const key = user.item.turnId ?? `user:${user.item.id}`
+    let foldable = false
+    // Text after the newest step may be the answer; it is commentary only once a step follows
+    // it, or when the provider labels it so.
+    const textRow = rows[answer]
+    const commentary = textRow?.kind === 'item' && textRow.item.type === 'assistant' && textRow.item.phase === 'commentary'
+    const stage: TurnStage | null = live ? { step: group, text: answer, textOpen: answer > group && !commentary } : null
+    const foldEnd = live ? end : answer
+    if (live || answer > start) {
+      for (let index = start + 1; index < foldEnd; index += 1) {
+        if (!isProcessRow(rows[index]!)) continue
+        folds.set(index, key)
+        if (index !== stage?.step && index !== stage?.text) foldable = true
+      }
+    }
+    heads.set(start, {
+      key,
+      live,
+      foldable,
+      stage,
+      steps,
+      startedAt: Number.isFinite(first) ? first : null,
+      endedAt: Number.isFinite(last) ? last : null
+    })
+  })
+  return { heads, folds }
+}
+
+function isProcessRow(row: TranscriptRow): boolean {
+  if (row.kind === 'activity') return true
+  if (row.kind !== 'item') return false
+  return row.item.type === 'assistant' || (row.item.type === 'screenshot' && row.item.surface !== 'generated_image')
 }
 
 /** Message completion is not turn completion: tools may run after a settled message. */

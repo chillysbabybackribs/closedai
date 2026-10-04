@@ -1,5 +1,5 @@
 import { memo, useEffect, useState, type JSX } from 'react'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw } from '../icons/index.js'
 import { Button } from '../../components/ui/button.js'
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover.js'
 import { Progress } from '../../components/ui/progress.js'

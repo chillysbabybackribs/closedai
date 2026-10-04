@@ -1,4 +1,4 @@
-import { Check } from 'lucide-react'
+import { Check } from '../icons/index.js'
 import { DropdownMenu } from 'radix-ui'
 import { useCallback, useState, type MouseEvent, type ReactNode } from 'react'
 import {

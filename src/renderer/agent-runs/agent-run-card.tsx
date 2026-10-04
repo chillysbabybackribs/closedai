@@ -1,5 +1,5 @@
 import { Fragment, type JSX } from 'react'
-import { MessageSquareText } from 'lucide-react'
+import { MessageSquareText } from '../icons/index.js'
 import { Button } from '../../components/ui/button.js'
 import { cn } from '../../lib/utils.js'
 import { useAgentRunAction } from '../agent-runs/use-agent-run-action.js'

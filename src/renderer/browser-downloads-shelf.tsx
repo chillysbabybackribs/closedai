@@ -1,5 +1,5 @@
 import type { JSX } from 'react'
-import { FolderOpen, Pause, Play, X } from 'lucide-react'
+import { FolderOpen, Pause, Play, X } from './icons/index.js'
 import type { BrowserDownload } from '../shared/types.js'
 import type { BrowserDownloadsController } from './browser-downloads-controller.js'
 import { downloadActions, downloadDetail, progressPercent } from './browser-downloads-model.js'

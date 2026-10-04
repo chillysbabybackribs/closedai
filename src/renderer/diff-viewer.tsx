@@ -1,6 +1,6 @@
 import type { JSX } from 'react'
 import { memo, useMemo, useState } from 'react'
-import { Check, ChevronDown, ChevronRight, Columns2, Copy, FileCode, Rows2 } from 'lucide-react'
+import { Check, ChevronDown, ChevronRight, Columns2, Copy, FileCode, Rows2 } from './icons/index.js'
 import { useWorkspacePaneActions } from './chat-layout/workspace-pane-actions.js'
 
 import {

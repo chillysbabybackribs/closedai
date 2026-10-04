@@ -111,7 +111,7 @@ export type AppUiHost = {
   revealChatTab(paneId: string): Promise<void>
   /** Show the browser pane; it keeps its saved position and tabs. */
   revealBrowser(): Promise<void>
-  /** Open a blank chat in its own desk window, matching File → New chat / layout.card-new-chat. */
+  /** Open a blank chat in its own desk window, matching File → New chat / chat.new-window. */
   newChatWindow(): Promise<{ paneId: string }>
   /** Run an application menu row by key through the menu's own handler and eligibility. */
   runMenu(key: string, callerPaneId: string | null): Promise<AppMenuRunResult>

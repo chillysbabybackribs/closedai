@@ -66,7 +66,7 @@
   height: 100%;
   color: var(--chrome-control-strong);
   font-size: 11px;
-  letter-spacing: var(--tracking-tight);
+  letter-spacing: var(--tracking-ui);
   -webkit-app-region: no-drag;
 }
 

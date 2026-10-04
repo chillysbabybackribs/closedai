@@ -62,7 +62,7 @@ and transcript notes were reviewed against current source on 2026-09-03, without
 
 One `query()` per live thread over a streaming input, so follow-up turns reuse the process and its prompt
 cache. A warm connection or the first turn starts the process (with `resume` when continuing a
-stored session). It stays across turns and closes after 15 idle minutes when no tracked background
+stored session). It stays across turns and closes after four times the warm-minutes setting (20 idle minutes by default) when no tracked background
 task is running; the next turn resumes in a fresh process. A cold catalog read can reuse the
 workspace's signed-in catalog/account cache for ten minutes (`claude-catalog.ts`); otherwise it
 spawns to query the SDK and retires again. Signed-out reads are not cached, and connection errors
@@ -70,7 +70,9 @@ invalidate the cache. The outer pane manager parks unselected idle panes after f
 see the lifecycle boundary below.
 
 ClosedAI uses the SDK's native `claude_code` system preset without an app-authored append.
-Project `CLAUDE.md` remains available through the SDK's project settings source. See
+Project `CLAUDE.md` remains available through the SDK's project settings source. Each turn
+carries ClosedAI's clock and runtime blocks; the session guide, workspace ledger, and automatic
+session rotation with a handoff seed apply unless Cursor baseline is on. See
 [Model context](model-context.md).
 
 Nonessential CLI traffic is left enabled on purpose: `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` also
@@ -108,8 +110,10 @@ Tool mapping: `Bash` → command; `Edit` / `MultiEdit` / `Write` / `NotebookEdit
 Context usage is the last request's prompt size (`input + cache_read + cache_creation` from
 `message_start`) over the resolved model's `contextWindow` from `result.modelUsage`. `modelUsage` has one
 entry per model the turn touched (the CLI's title generation runs on Haiku), so the window is matched by
-model id, never taken from the first entry. Compaction is the CLI's own; a `compact_boundary` shows as
-a notice. ClosedAI explicitly enables Claude's native auto-compaction and precomputes its summary; after
+model id, never taken from the first entry. A `compact_boundary` shows as a notice. With seamless
+rotation on (the default), ClosedAI rotates the session instead and passes `autoCompactEnabled: false`,
+keeping summary precompute per `chatClaudePrecomputeCompaction`; with it off, or under Cursor
+baseline, Claude's native auto-compaction and precomputed summary are enabled (`claude-options.ts`). After
 each completed turn it also asks the SDK for its lightweight context summary, using the stream result as
 a fallback for older or shutting-down runtimes.
 
@@ -118,11 +122,17 @@ a fallback for older or shutting-down runtimes.
 `claude-background-tasks.ts` is session-owned, shared across per-turn translators. SDK
 `task_started`, `task_progress`, and `task_notification` system messages upsert one task item by
 task id, retaining its originating turn and linked tool id. Ambient/skip-transcript tasks are
-hidden. Completion after `result` updates the same item; later assistant output can open an
+hidden. A task started with `is_backgrounded: false` (a long foreground command or subagent whose
+tool call blocks on it) is not background work: it stays an ordinary step and gets no item unless
+a later `task_updated` patch moves it to the background. `task_updated` status patches settle a
+running item, and `background_tasks_changed` (the SDK's level signal) settles any item still
+shown running that has left the live set, so a missed `task_notification` cannot leave a stale
+"Running" row; a late notification still replaces the outcome and summary. Completion after `result` updates the same item; later assistant output can open an
 autonomous turn. Retiring or losing the session marks tracked unfinished tasks stopped.
 
-The renderer groups background work separately and keeps running tasks visible across new user
-messages. Completed tasks stay in the current status indicator until the next user message.
+The renderer groups background work separately, set as a ledger line ("Running 3 subagents in the
+background", then "Ran 3 subagents in the background"), and keeps running tasks visible across new
+user messages; the group is not folded under a settled turn's header. Completed tasks stay in the current status indicator until the next user message.
 This is distinct from peer-pane control. The session's idle close respects running tasks, but
 the outer pane manager's parking, retirement, and project-switch checks use `activeTurnId`, so
 they can still stop work that outlives its turn. See [known boundaries](application.md#known-boundaries-from-this-source-review).

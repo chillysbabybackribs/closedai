@@ -1,6 +1,6 @@
 import type { JSX } from 'react'
 import { useEffect, useMemo, useState } from 'react'
-import { Search } from 'lucide-react'
+import { Search } from './icons/index.js'
 
 import { Button } from '../components/ui/button.js'
 import { Loader } from '../components/ui/loader.js'

@@ -40,3 +40,32 @@ test('translator emits updates instead of notices and replay does not invent tim
     assert.equal(end.item.finishedAt, undefined)
   }
 })
+
+test('a foreground task stays a step unless it moves to the background', () => {
+  const tasks = new ClaudeBackgroundTasks()
+  assert.equal(tasks.handle({ subtype: 'task_started', task_id: 'b1', tool_use_id: 'bash', task_type: 'local_bash', is_backgrounded: false, description: 'grep' }, 't'), null)
+  assert.equal(tasks.handle({ subtype: 'task_notification', task_id: 'b1', status: 'completed' }, 't'), null)
+  assert.equal(tasks.running, false)
+  tasks.handle({ subtype: 'task_started', task_id: 'a1', tool_use_id: 'agent', task_type: 'local_agent', is_backgrounded: false, description: 'Audit' }, 'turn-a')
+  assert.equal(tasks.handle({ subtype: 'task_updated', task_id: 'a1', patch: { status: 'running' } }, 'turn-a'), null)
+  const moved = tasks.handle({ subtype: 'task_updated', task_id: 'a1', patch: { is_backgrounded: true } }, 'turn-b')!
+  assert.equal(moved.label, 'Audit')
+  assert.equal(moved.turnId, 'turn-a')
+  assert.equal(moved.background?.linkedToolId, 'agent')
+  assert.equal(tasks.running, true)
+})
+
+test('a running task settles from a status patch or from leaving the live set', () => {
+  const tasks = new ClaudeBackgroundTasks()
+  tasks.handle({ subtype: 'task_started', task_id: 'a', description: 'One' }, 't')
+  tasks.handle({ subtype: 'task_started', task_id: 'b', description: 'Two' }, 't')
+  assert.equal(tasks.handle({ subtype: 'task_updated', task_id: 'a', patch: { status: 'killed' } }, 't')?.status, 'stopped')
+  assert.deepEqual(tasks.sync(['b']), [])
+  const settled = tasks.sync([])
+  assert.deepEqual(settled.map((item) => [item.background?.taskId, item.status]), [['b', 'completed']])
+  assert.equal(tasks.running, false)
+  // The real notification still lands with its outcome and summary.
+  const late = tasks.handle({ subtype: 'task_notification', task_id: 'b', status: 'failed', summary: 'Broke' }, 't')!
+  assert.equal(late.status, 'failed')
+  assert.equal(late.output, 'Broke')
+})

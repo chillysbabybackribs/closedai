@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type JSX } from 'react'
-import { MessageSquareMore } from 'lucide-react'
+import { MessageSquareMore } from '../icons/index.js'
 import { chatRunning } from '../chat-state.js'
 import { useWorkspacePaneSlice } from '../chat-layout/workspace-pane-subscription.js'
 import { QuickChatCard, type QuickChatMode, type QuickChatRequest } from '../quick-chat-overlay/quick-chat-card.js'

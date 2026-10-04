@@ -79,7 +79,7 @@ export function researchTools(service: ResearchService, queryTool: ToolDefinitio
           }
         },
         {
-          action: 'extend', description: 'Add queries or URLs to an active run (or start fresh if completed).',
+          action: 'extend', description: 'Add queries or URLs to an active run; a finished run refuses — start a new one.',
           inputSchema: schema({ run_id: runId, queries, urls }, ['run_id']),
           async run(input, context) { return result(service.extend(stringArg(input, 'run_id')!, parseQueries(input), (input.urls ?? []) as string[], context)) }
         },

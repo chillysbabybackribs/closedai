@@ -1,8 +1,10 @@
 import { open, stat } from 'node:fs/promises'
+import type { Stats } from 'node:fs'
 import { basename, extname, isAbsolute } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import type { LocalFileOpenOptions, LocalFilePreview } from '../../shared/local-files.js'
-import { isVideoFile } from '../../shared/local-files.js'
+import { isVideoFile, splitLocalFileHref } from '../../shared/local-files.js'
+import { findInWorkspace } from './find-in-workspace.js'
 import { resolveLocalFileOpenTarget } from './resolve-target.js'
 
 const IMAGE_TYPES: Record<string, string> = {
@@ -18,8 +20,8 @@ export async function openLocalFile(href: string, reveal: (path: string) => void
       ? isAbsolute(href) && !href.includes('\0') ? { path: href } : null
       : resolveLocalFileOpenTarget(href, options?.cwd)
   if (!target) throw new Error('This is not a local file link in the workspace.')
-  const { path, line, endLine } = target
-  const info = await stat(path)
+  const { line, endLine } = target
+  const { path, info } = await locate(href, target.path, options)
   if (!info.isFile() && !info.isDirectory()) throw new Error('This file type cannot be opened.')
   const mime = IMAGE_TYPES[extname(path).toLowerCase()]
   if (info.isFile() && mime) {
@@ -53,4 +55,25 @@ export async function openLocalFile(href: string, reveal: (path: string) => void
   }
   reveal(path)
   return { kind: 'revealed' }
+}
+
+/**
+ * Stats the resolved target. A missing workspace-relative link falls back to the one project file
+ * whose trailing path matches it; otherwise the error names the file in words a user can act on.
+ */
+async function locate(href: string, resolved: string, options?: LocalFileOpenOptions): Promise<{ path: string; info: Stats }> {
+  try {
+    return { path: resolved, info: await stat(resolved) }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+  }
+  const relative = options?.literalPath === true ? null : splitLocalFileHref(href)?.pathPart
+  const root = options?.cwd?.trim()
+  if (relative && root && !isAbsolute(relative)) {
+    const match = await findInWorkspace(root, relative)
+    if (match.kind === 'one') return { path: match.path, info: await stat(match.path) }
+    if (match.kind === 'many') throw new Error(`Several files are named ${relative} in ${basename(root)}.`)
+    throw new Error(`Couldn't find ${relative} in ${basename(root)}.`)
+  }
+  throw new Error(`${basename(resolved)} no longer exists.`)
 }

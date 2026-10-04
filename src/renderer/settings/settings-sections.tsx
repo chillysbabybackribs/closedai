@@ -1,7 +1,7 @@
 import { PerformancePanel } from './performance-panel.js'
 import type { ElementType, JSX, ReactNode } from 'react'
 import { Tabs } from 'radix-ui'
-import { Cpu, KeyRound, ShieldCheck, Type } from 'lucide-react'
+import { Cpu, KeyRound, ShieldCheck, Type } from '../icons/index.js'
 import { AppearancePanel } from './appearance-panel.js'
 import { CredentialVaultPanel } from './credential-vault-panel.js'
 import { SecurityPanel } from './security-panel.js'

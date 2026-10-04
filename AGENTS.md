@@ -13,8 +13,8 @@ Dated research and QA documents retain observations and proposals, not automatic
 instructions or proof of current behavior.
 
 When behavior or contracts change, update the relevant current guide and any model-facing
-description that promises that behavior. Provider lanes attach `closedai.clock` every turn. Codex, Claude, and Antigravity attach the
-session guide (`closedai.guide`) on a new provider thread or handoff; Cursor keeps its native
+description that promises that behavior. Provider lanes attach `closedai.clock` and `closedai.runtime` every turn. Codex, Claude, and Antigravity attach the
+session guide (`closedai.guide`) on a new provider thread or handoff unless Cursor baseline is on; Cursor keeps its native
 session policy without guide/ledger injection or automatic rotation — see `docs/model-context.md`.
 Keep application facts in the current guides and capability details in the tools that expose them;
 extend the guide outline when cold-start orientation changes.

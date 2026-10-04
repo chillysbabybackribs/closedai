@@ -12,6 +12,7 @@ const actions = {
   newChat: () => {},
   newChatWindow: () => {},
   continueChat: async () => {},
+  clearChat: async () => {},
   canPromoteStackMonitorLead: () => false,
   promoteStackMonitorIfCompact: () => {},
   openAgentsView: () => {},

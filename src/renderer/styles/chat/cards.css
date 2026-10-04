@@ -1,22 +1,24 @@
-/* The charcoal chat card: one conversation, quiet edge, and a model-only header. */
+/* The chat card: one conversation, quiet edge, and a model-only header. The plane is Apple's
+   neutral #151515 (developer.apple.com's content band), with its text ramp. */
 :root:root .chat-layout-tile:has(.chat-card-header) {
-  --chat-header-surface: #141516;
-  --surface-chat: #141516;
-  --chat-reading-surface: #141516;
-  --foreground: #e9eaec;
-  --transcript-copy: #e9eaec;
-  --transcript-strong: #e9eaec;
+  --chat-header-surface: #151515;
+  --surface-chat: #151515;
+  --chat-reading-surface: #151515;
+  --foreground: #f5f5f7;
+  --transcript-copy: #d2d2d7;
+  --transcript-strong: #f5f5f7;
   /* One inset on all four sides: header glyphs, transcript and composer share its edges. */
   --card-inset: clamp(16px, 5cqw, 32px);
   --card-column: 960px;
   border: 0;
   border-radius: 16px;
-  background: #141516;
-  box-shadow: 0 8px 24px -14px rgb(0 0 0 / 60%);
+  background: #151515;
+  /* Quiet finish: depth stays outside the flat surface. */
+  box-shadow: 0 2px 5px -2px rgb(0 0 0 / 32%), 0 10px 24px -14px rgb(0 0 0 / 55%);
 }
 :root:root .chat-layout-tile:has(.chat-card-header) > .chat-layout-tile-body {
   border-radius: 16px;
-  background: #141516;
+  background: #151515;
   overflow: hidden;
 }
 :root:root .chat-layout-tile:has(.chat-card-header)::after {
@@ -26,7 +28,7 @@
   z-index: 5;
   border-radius: 16px;
   pointer-events: none;
-  box-shadow: inset 0 0 0 1px rgb(235 240 245 / 7.5%), inset 0 2px 3px -2px rgb(235 240 245 / 3.5%);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 6%), inset 0 1px 0 rgb(255 255 255 / 5%);
 }
 :root:root .chat-layout-tile .chat-layout-header.chat-card-header {
   /* Inset, then the 28px control row (its 20px glyph centred, drawn 2px inside its box), then
@@ -44,10 +46,6 @@
   box-shadow: none;
 }
 .chat-layout-header.chat-card-header { container-type: inline-size; container-name: card-header; }
-/* Fresh context drops out first so the centred search keeps room on narrow cards. */
-@container card-header (max-width: 380px) {
-  .chat-card-action[data-ui='layout.card-continue'] { display: none; }
-}
 .chat-card-header .chat-window-controls {
   flex: none;
   margin-left: auto;
@@ -55,14 +53,14 @@
 }
 .chat-card-thread-search {
   /* Centred on the card. Each side reserves ~130px for the left buttons and window controls, so
-     the field grows with the card up to 300px and never reaches either cluster. */
+     the field grows with the card up to 480px and never reaches either cluster. */
   position: absolute;
   left: 50%;
   top: calc(var(--card-inset) - 5px);
   transform: translateX(-50%);
   display: flex;
   justify-content: center;
-  width: clamp(96px, calc(100cqw - 260px), 300px);
+  width: clamp(96px, calc(100cqw - 260px), 480px);
   pointer-events: none;
   z-index: 2;
 }
@@ -70,7 +68,7 @@
   .chat-card-thread-search { width: clamp(72px, calc(100cqw - 220px), 300px); }
 }
 .chat-card-thread-search > * { pointer-events: auto; }
-/* Header row: pin star, new chat and fresh-context buttons on the left, thread search centred on the card, window buttons on the right. */
+/* Header row: pin star on the left, thread search centred on the card, window buttons on the right. */
 .chat-card-pin {
   flex-shrink: 0;
   display: grid;
@@ -82,28 +80,42 @@
   color: #7c7f85;
   cursor: pointer;
 }
-.chat-card-action {
-  flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: #7c7f85;
-  cursor: pointer;
-}
-.chat-card-action:hover:not(:disabled) { background: rgb(255 255 255 / 7%); color: #e9eaec; }
-.chat-card-action:disabled { opacity: 0.4; cursor: default; }
 .chat-card-pin[aria-pressed='true'],
 .chat-card-pin[aria-pressed='true']:hover { color: #facc15; }
+/* Calm header: the chat title leads. Window controls appear while the card is hovered or the header
+   holds keyboard focus (opacity only, so nothing shifts), and the title and search icon open chat history together. */
+.chat-card-title {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--card-inset) - 6px);
+  transform: translateX(-50%);
+  max-width: calc(100% - 2 * var(--card-inset) - 210px);
+  overflow: hidden;
+  color: #c9ccd1;
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 28px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  transition: opacity 140ms var(--ease-chrome);
+}
+@container card-header (max-width: 320px) {
+  .chat-card-title { display: none; }
+}
+.chat-card-header .chat-window-controls {
+  opacity: 0;
+  transition: opacity 160ms var(--ease-chrome);
+}
+.chat-layout-tile:hover .chat-card-header .chat-window-controls,
+.chat-card-header:focus-within .chat-window-controls { opacity: 1; }
+
 :root:root .chat-layout-tile:has(.chat-card-header) .chat-pane {
-  --chat-pane-fill: var(--surface-chat, #141516);
+  --chat-pane-fill: var(--surface-chat, #151515);
   background: transparent;
-  --capsule-fill: #141516;
-  --capsule-edge: #343536;
+  /* A filled #1d1d1f field with no outline, like the address field in Apple's dark chrome. */
+  --capsule-fill: #1d1d1f;
+  --capsule-edge: transparent;
   --capsule-wash: linear-gradient(transparent, transparent);
   --capsule-sheen: transparent;
   --capsule-shadow: none;
@@ -123,21 +135,23 @@
 :root:root .chat-layout-tile:has(.chat-card-header) .chat-composer-meta {
   width: min(var(--chat-column-width), calc(100% - var(--chat-column-gutter, 16px) * 2));
 }
+/* Your turn: a rounder, lighter bubble set in from the left, so the assistant's reply reads as
+   the main text and your messages as the conversational side. The inset comes out of the
+   bubble's width, so a narrow card keeps the bubble inside its right edge. */
 :root:root .chat-layout-tile:has(.chat-card-header) .prompt-message-user-content {
+  width: calc(100% - min(12%, 64px));
+  margin-left: min(12%, 64px);
   border: 0;
-  border-radius: 6px;
-  background: #1e1f20;
-  box-shadow: none;
-  padding: 14px 16px;
+  border-radius: 14px;
+  background: #1d1d1f;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 3.5%), 0 2px 4px -2px rgb(0 0 0 / 24%);
+  padding: 10px 14px;
 }
 :root:root .chat-layout-tile:has(.chat-card-header) .prompt-chat-composer-centered .chat-composer-dock {
   top: auto;
   bottom: 0;
   transform: none;
 }
-/* Pause while a turn runs: a red octagon with a thin pale edge. */
-.composer-stop { color: #ecedef; }
-.composer-stop svg { fill: #e5484d; }
 /* With the model in the header, even a narrow card has room for a single draft row. */
 :root:root .chat-layout-tile:has(.chat-card-header) .composer-stack:not([data-expanded]) .composer-input-wrap {
   order: 0;

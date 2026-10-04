@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ArrowUpRight, Film, FolderOpen, Play, Search, Upload } from 'lucide-react'
+import { ArrowUpRight, Film, FolderOpen, Play, Search, Upload } from '../icons/index.js'
 import type { VideoLibraryEntry } from '../../shared/video-library.js'
 
 function formatBytes(bytes: number): string {

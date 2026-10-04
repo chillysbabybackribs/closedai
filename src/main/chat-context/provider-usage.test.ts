@@ -17,6 +17,8 @@ test('startup probes deduplicate concurrent readers and reuse readings for a min
   now += 60_000
   await read('codex')
   assert.equal(calls, 2)
+  await read('codex', true)
+  assert.equal(calls, 3)
 })
 
 test('failure preserves a dated reading and backs off retries independently per provider', async () => {

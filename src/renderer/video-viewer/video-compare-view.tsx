@@ -1,5 +1,5 @@
 import { useCallback, useRef } from 'react'
-import { Link2, Volume2, X } from 'lucide-react'
+import { Link2, Volume2, X } from '../icons/index.js'
 import type { VideoCompareState } from '../../shared/types.js'
 import type { BrowserTabInfo } from '../../shared/types.js'
 import { VideoPlayer, type VideoPlaybackEvent } from './video-player.js'

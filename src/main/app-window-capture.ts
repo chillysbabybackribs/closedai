@@ -27,7 +27,7 @@ export function compositeOverlay(
 
 /**
  * Full application window for models: renderer chrome via capturePage, plus the embedded web tab
- * composited at the pane bounds. Avoids desktopCapturer / OS screencast portals on Linux.
+ * composited where its surface sits (the pane, or the emulated or phone box). Avoids desktopCapturer / OS screencast portals on Linux.
  */
 export async function captureComposedAppWindow(
   window: BrowserWindow,
@@ -45,5 +45,5 @@ export async function captureComposedAppWindow(
   if (!overlay || overlay.isEmpty()) return base
 
   const [contentWidth, contentHeight] = window.getContentSize()
-  return compositeOverlay(base, contentWidth, contentHeight, overlay, bounds)
+  return compositeOverlay(base, contentWidth, contentHeight, overlay, browser.activeWebTabSurfaceBounds())
 }

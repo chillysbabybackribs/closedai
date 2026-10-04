@@ -29,9 +29,12 @@
 /* ---- Rails ---------------------------------------------------------------
    The title bar is a flat menu strip. Search belongs to each chat card; only the
    bottom dock has a shaped tab around its controls. */
-:root[data-backdrop] .shell-titlebar {
+/* The 32px rail owns the glass. Keep the remaining header gap clear, including
+   the dark-theme material's blur and bottom seam on the taller shell container. */
+:root:root[data-backdrop] .shell-titlebar {
   background: transparent;
   box-shadow: none;
+  backdrop-filter: none;
 }
 
 .titlebar-rail { display: none; }

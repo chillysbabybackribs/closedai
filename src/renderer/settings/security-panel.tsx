@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useSyncExternalStore, type JSX, type ReactNode } from 'react'
 import { RadioGroup } from 'radix-ui'
-import { Download } from 'lucide-react'
+import { Download } from '../icons/index.js'
 import { Button } from '../../components/ui/button.js'
 import { Switch } from '../../components/ui/switch.js'
 import type { SecuritySettings, WebPermissionPolicy } from '../../shared/security.js'
@@ -59,7 +59,7 @@ export function SecurityPanel({ active }: SecurityPanelProps): JSX.Element {
         <SecuritySection title="Browser">
           <div className="security-row security-row-stacked">
             <span className="security-row-label" id="security-web-permissions-label">
-              When a website asks for camera, microphone, screen, or location
+              When a website asks for camera, microphone, screen, location, or notifications
             </span>
             <RadioGroup.Root
               className="security-segmented"

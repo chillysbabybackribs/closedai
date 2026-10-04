@@ -80,6 +80,7 @@ export type IpcInvokeChannels = {
   'browser:duplicateTab': { args: [string]; result: void }
   'browser:reloadTab': { args: [string]; result: void }
   'browser:renameTab': { args: [string, string | null]; result: void }
+  'browser:setPhonePreview': { args: [boolean]; result: void }
   'browser:selectTab': { args: [string]; result: void }
   'browser:capture': { args: []; result: BrowserShot | null }
   'browser:openVideoHub': { args: []; result: string }
@@ -111,7 +112,7 @@ export type IpcInvokeChannels = {
   'chat:setVisiblePanes': { args: [string, ChatPaneId[], ChatPaneId[]?]; result: void }
   'chat:selectModel': { args: [ChatPaneId, string]; result: void }
   'chat:selectReasoningEffort': { args: [ChatPaneId, string]; result: void }
-  'chat:readProviderUsage': { args: [ChatProvider]; result: import('./chat.js').ProviderUsageSnapshot }
+  'chat:readProviderUsage': { args: [ChatProvider, boolean?]; result: import('./chat.js').ProviderUsageSnapshot }
   'chat:refreshPlanUsage': { args: [ChatPaneId, boolean?]; result: void }
   'chat:login': { args: []; result: void }
   'chat:listChats': { args: []; result: ChatRowSummary[] }
@@ -270,6 +271,7 @@ export const IPC = {
       duplicateTab: 'browser:duplicateTab',
       reloadTab: 'browser:reloadTab',
       renameTab: 'browser:renameTab',
+      setPhonePreview: 'browser:setPhonePreview',
       selectTab: 'browser:selectTab',
       capture: 'browser:capture',
       openVideoHub: 'browser:openVideoHub',

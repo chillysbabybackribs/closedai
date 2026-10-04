@@ -1,5 +1,5 @@
 import { appendSideChat } from './sidebar-stack.js'
-import { BROWSER_PANE_ID, DIVIDER_SIZE, dockPane, layoutGeometry, minimumSize, removePane, type ChatLayout, type DockEdge, type Rect } from './layout-tree.js'
+import { BROWSER_PANE_ID, DIVIDER_SIZE, dockPane, evenShare, layoutGeometry, minimumSize, removePane, type ChatLayout, type DockEdge, type Rect } from './layout-tree.js'
 import { tiledTree } from './layout-docking.js'
 import { windowMinimum } from './floating/window-layout.js'
 
@@ -7,7 +7,8 @@ import { windowMinimum } from './floating/window-layout.js'
 // user already has, by halving the roomiest tile, so every open-from-dock keeps the arrangement
 // even and readable. Two full-height chats beside the browser become top and bottom halves one at
 // a time; once every tile is a half, the next one splits a half side by side, and so on until no
-// tile can be halved above its minimum size. The browser is never split. The result is an
+// tile can be halved above its minimum size. A side-by-side split then evens out its row
+// (evenShare), so the newcomer is not left half the size of its neighbours. The browser is never split. The result is an
 // ordinary tree, so drags, resizes and presets treat the new tile like any other.
 
 export type AutoPlaceCanvas = { width: number; height: number; browserVisible: boolean }
@@ -62,5 +63,5 @@ export function autoPlace(tree: ChatLayout | null, added: string, canvas: AutoPl
   const side = tree && appendSideChat(tree, added, () => crypto.randomUUID())
   if (side) return side
   const placement = autoPlacement(tree, added, canvas, prefer)
-  return placement && tree ? dockPane(tree, added, placement.target, placement.edge, splitId) : null
+  return placement && tree ? evenShare(dockPane(tree, added, placement.target, placement.edge, splitId), added) : null
 }
