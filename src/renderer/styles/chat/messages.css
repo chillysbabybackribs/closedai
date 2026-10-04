@@ -1,12 +1,13 @@
-/* Cursor's tighter transcript scale: 13px body. Vertical rhythm is NOT set
+/* Transcript body scale. Vertical rhythm is NOT set
    here — see the scroller-item adjacency rules above for why a margin on this
    element cannot survive. */
 .message {
   max-width: 100%;
   margin: 0;
   color: var(--transcript-copy);
-  font-size: var(--chat-fs-body, 14px);
+  font-size: var(--chat-fs-body, 15px);
   line-height: var(--chat-lh-body, 1.68);
+  letter-spacing: normal;
 }
 
 .message [data-slot="message-content"] {
@@ -34,7 +35,7 @@
   background: var(--capsule-wash, none), var(--capsule-fill, var(--surface-raised));
   box-shadow: inset 0 1px 0 var(--capsule-sheen, transparent), 0 1px 2px rgb(0 0 0 / 18%);
   color: var(--foreground);
-  font-size: var(--chat-fs-body, 14px);
+  font-size: var(--chat-fs-body, 15px);
   line-height: 1.6;
   white-space: pre-wrap;
   overflow-wrap: anywhere;

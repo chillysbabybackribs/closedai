@@ -1,9 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { BROWSER_PANE_ID } from './layout-tree.ts'
-import { isChatCardPane, replaceChatCardPane, separateChatCards } from './chat-cards.ts'
+import { adoptContinuedChat, isChatCardPane, replaceChatCardPane, separateChatCards } from './chat-cards.ts'
 import { chatTabIds } from './layout-tabs.ts'
-import { getFloatingPair } from './floating/floating-pair.ts'
 import { windowPanes } from './floating/window-layout.ts'
 import type { ChatLayout } from './layout-tree.ts'
 
@@ -19,17 +17,20 @@ test('legacy grouped chats become separate cards without losing history identiti
   assert.equal(separateChatCards(result), result, 'normalization is stable')
 })
 
-test('replaceChatCardPane keeps float geometry and browser pair linkage', () => {
-  const tree: ChatLayout = {
-    kind: 'split', id: 'pair', axis: 'horizontal', ratio: 0.3,
-    first: { kind: 'pane', id: 'old', float: { x: 100, y: 40, width: 400, height: 600, z: 2 }, floatPair: 'old' },
-    second: { kind: 'pane', id: BROWSER_PANE_ID, float: { x: 500, y: 40, width: 900, height: 600, z: 3 }, floatPair: 'old' }
-  }
+test('adoptContinuedChat replaces the source card and drops it from the layout', () => {
+  const tree: ChatLayout = { kind: 'pane', id: 'old', float: { x: 5, y: 5, width: 400, height: 500, z: 1 } }
+  const next = adoptContinuedChat(tree, 'old', 'fresh')
+  assert.deepEqual(chatTabIds(next), ['fresh'])
+  assert.equal(windowPanes(next)[0]?.id, 'fresh')
+  assert.doesNotMatch(JSON.stringify(next), /"old"/)
+})
+
+test('replaceChatCardPane keeps float geometry', () => {
+  const tree: ChatLayout = { kind: 'pane', id: 'old', float: { x: 100, y: 40, width: 400, height: 600, z: 2 } }
   assert.ok(isChatCardPane(tree, 'old'))
   const next = replaceChatCardPane(tree, 'old', 'fresh')
-  assert.deepEqual(getFloatingPair(next)?.chatId, 'fresh')
   const card = windowPanes(next).find((pane) => pane.id === 'fresh')
-  assert.deepEqual(card?.float, tree.first.float)
+  assert.deepEqual(card?.float, tree.float)
 })
 
 test('view tab groups and single chat cards remain untouched', () => {

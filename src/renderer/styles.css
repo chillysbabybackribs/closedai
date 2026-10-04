@@ -26,6 +26,8 @@
 @import "./styles/notepad/notepad.css";
 @import "./styles/onboarding/onboarding.css";
 @import "./styles/workspace.css";
+/* Base History rows first: the header dropdown (history-search.css) overrides them. */
+@import "./styles/chat-history.css";
 @import "./styles/chat/history-search.css";
 @import "./styles/texture.css";
 @import "./styles/control-tokens.css";
@@ -40,7 +42,6 @@
 @import "./styles/chat/sources.css";
 @import "./styles/chat/attachments.css";
 @import "./styles/chat/screenshots.css";
-@import "./styles/chat-history.css";
 @import "./styles/tools/panel.css";
 @import "./styles/trace/panel.css";
 @import "./styles/settings/dialog.css";
@@ -48,10 +49,12 @@
 @import "./styles/settings/credentials.css";
 @import "./styles/settings/security.css";
 @import "./styles/settings/models.css";
+@import "./styles/settings/performance.css";
 @import "./styles/backdrop/glass.css";
 @import "./styles/backdrop/wallpaper-dialog.css";
 @import "./styles/materials.css";
 @import "./styles/chat/cards.css";
+@import "./styles/chat/tile-background.css";
 @source "../components";
 
 /* Antigravity accent: the card design's signature blue, used for the focused composer

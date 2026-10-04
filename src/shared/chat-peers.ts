@@ -93,6 +93,8 @@ export type ChatWorkspaceSnapshot = {
   workspace?: {
     cwd: string
     projectPath: string | null
+    /** Electron app checkout (`app.getAppPath()`): ClosedAI self-development tree. */
+    appCheckoutPath?: string | null
     /** Previously used project folders, newest first, excluding the active project. */
     recentProjects?: Array<{ cwd: string; projectPath: string }>
   }

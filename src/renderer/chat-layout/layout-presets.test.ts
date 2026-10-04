@@ -2,7 +2,8 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { BROWSER_PANE_ID, layoutGeometry, paneIds, readLayout, withBrowser, type ChatLayout } from './layout-tree.ts'
 import { addTab, tabIds } from './layout-tabs.ts'
-import { GRID_CHAT_CAP, assignGroups, browserBetweenLayout, browserCentreLayout, browserSideLayout, presetLayout, chooseGrid, clampGridCount, gridCapacity, gridLayout, singleGroup } from './layout-presets.ts'
+import { tileWindows } from './floating/window-arrange.ts'
+import { GRID_CHAT_CAP, assignExpandedGroups, assignGroups, browserBetweenLayout, browserCentreLayout, browserSideLayout, chatStripLayout, fitExpandedWindowsTree, fitLayoutVariants, presetLayout, chooseGrid, clampGridCount, gridCapacity, gridLayout, sidebarStackForLead, sidebarStackLayout, singleGroup } from './layout-presets.ts'
 
 const HD = { width: 1920, height: 1014 }
 const QHD = { width: 2560, height: 1400 }
@@ -118,3 +119,85 @@ test('groups keep their tabs in tile order, overflow merges into the last slot, 
 function pick(grid: ReturnType<typeof chooseGrid>): [number, number] | null {
   return grid && [grid.cols, grid.rows]
 }
+
+test('fit expanded windows tiles floats, skips minimized groups, and grids two chats without the browser', () => {
+  const tree: ChatLayout = withBrowser({ kind: 'split', id: 's', axis: 'horizontal', ratio: 0.5,
+    first: { kind: 'pane', id: 'a', float: { x: 0, y: 0, width: 400, height: 400, z: 1 } },
+    second: { kind: 'pane', id: 'b', docked: true, dockNumber: 1 } })
+  assert.deepEqual(assignExpandedGroups(tree).map((group) => group.active), ['a'])
+  assert.equal(fitExpandedWindowsTree(tileWindows(tree), HD, false, 'a', ids()), null)
+  const twoChats: ChatLayout = withBrowser({ kind: 'split', id: 's', axis: 'horizontal', ratio: 0.5,
+    first: { kind: 'pane', id: 'left' }, second: { kind: 'pane', id: 'right', float: { x: 200, y: 200, width: 500, height: 500, z: 2 } } })
+  const grid = fitExpandedWindowsTree(tileWindows(twoChats), HD, false, 'right', ids())!
+  assert.deepEqual(paneIds(grid), ['right', 'left'])
+  const geometry = layoutGeometry(grid, HD.width, HD.height)
+  assert.equal(geometry.panes.length, 2)
+})
+
+test('fit expanded windows uses browser-between as the first two-window variant when the browser is visible', () => {
+  const two: ChatLayout = withBrowser({ kind: 'split', id: 's', axis: 'horizontal', ratio: 0.5,
+    first: { kind: 'pane', id: 'a' }, second: { kind: 'pane', id: 'b' } })
+  const between = fitExpandedWindowsTree(two, HD, true, 'b', ids())!
+  assert.deepEqual(geometryIds(between, HD), ['b', BROWSER_PANE_ID, 'a'])
+})
+
+test('fit expanded windows uses browser-three and browser-centre for three and four windows', () => {
+  const threeTree: ChatLayout = withBrowser({ kind: 'split', id: 's', axis: 'horizontal', ratio: 0.5,
+    first: { kind: 'pane', id: 'a' }, second: { kind: 'split', id: 't', axis: 'vertical', ratio: 0.5,
+      first: { kind: 'pane', id: 'b' }, second: { kind: 'pane', id: 'c' } } })
+  const three = fitExpandedWindowsTree(threeTree, HD, true, 'c', ids())!
+  assert.deepEqual(geometryIds(three, HD), ['c', BROWSER_PANE_ID, 'a', 'b'])
+  const fourTree: ChatLayout = withBrowser({ kind: 'split', id: 's', axis: 'horizontal', ratio: 0.5,
+    first: { kind: 'split', id: 't', axis: 'vertical', ratio: 0.5,
+      first: { kind: 'pane', id: 'a' }, second: { kind: 'pane', id: 'b' } },
+    second: { kind: 'split', id: 'u', axis: 'vertical', ratio: 0.5,
+      first: { kind: 'pane', id: 'c' }, second: { kind: 'pane', id: 'd' } } })
+  const centre = fitExpandedWindowsTree(fourTree, HD, true, 'd', ids())!
+  assert.deepEqual(geometryIds(centre, HD), ['d', 'a', BROWSER_PANE_ID, 'b', 'c'])
+})
+
+function geometryIds(tree: ChatLayout, size: typeof HD): string[] {
+  return layoutGeometry(tree, size.width, size.height).panes.map((pane) => pane.id)
+}
+
+test('sidebarStackForLead puts the focus chat in the tall tile', () => {
+  const four = groups(4)
+  const tree = sidebarStackForLead(four, HD, 'c2', ids())!
+  const lead = layoutGeometry(tree, HD.width, HD.height).panes.find((pane) => pane.id === 'c2')!.rect
+  const stacked = layoutGeometry(tree, HD.width, HD.height).panes.find((pane) => pane.id === 'c0')!.rect
+  assert.ok(lead.height > stacked.height)
+  assert.ok(stacked.width > lead.width)
+})
+
+test('four chats without browser cycle grid, sidebar stack, and horizontal strip', () => {
+  const four = groups(4)
+  const variants = fitLayoutVariants(four, HD, false)
+  assert.equal(variants.length, 3)
+  const shapes = variants.map((build) => {
+    const geometry = layoutGeometry(build(four, HD, ids()), HD.width, HD.height)
+    const first = geometry.panes[0]!.rect
+    return Math.round((first.width / first.height) * 100)
+  })
+  assert.equal(new Set(shapes).size, 3)
+  const side = layoutGeometry(sidebarStackLayout(four, HD, ids()), HD.width, HD.height)
+  const lead = side.panes.find((pane) => pane.id === 'c0')!.rect
+  const stacked = side.panes.find((pane) => pane.id === 'c1')!.rect
+  assert.ok(lead.height > stacked.height)
+  assert.ok(stacked.width > lead.width)
+  const row = layoutGeometry(chatStripLayout(four, HD, 'horizontal', ids()), HD.width, HD.height)
+  assert.ok(row.panes.every((pane) => Math.abs(pane.rect.height - HD.height) <= 2))
+})
+
+test('fit layout variants alternate pair orientation and browser layouts', () => {
+  const pair = groups(2)
+  const noBrowser = fitLayoutVariants(pair, HD, false)
+  assert.equal(noBrowser.length, 2)
+  const h = layoutGeometry(noBrowser[0]!(pair, HD, ids()), HD.width, HD.height)
+  const v = layoutGeometry(noBrowser[1]!(pair, HD, ids()), HD.width, HD.height)
+  assert.ok(h.panes[0]!.rect.width < h.panes[0]!.rect.height)
+  assert.ok(v.panes[0]!.rect.width > v.panes[0]!.rect.height)
+  const withBrowser = fitLayoutVariants(pair, HD, true)
+  assert.equal(withBrowser.length, 2)
+  assert.notEqual(geometryIds(withBrowser[0]!(pair, HD, ids()), HD).join(),
+    geometryIds(withBrowser[1]!(pair, HD, ids()), HD).join())
+})

@@ -23,7 +23,7 @@ export type WindowGesture = { id: string; kind: 'move' | ResizeEdge; target: Win
 
 const START_DISTANCE = 5
 
-export function useWindowDrag({ canvas, frame, onActive, onPainted, onFloat, onPairFloat, pairPartner, onSnap, onGroup, onMaximize, dockSource }: {
+export function useWindowDrag({ canvas, frame, onActive, onPainted, onFloat, onSnap, onGroup, onMaximize, dockSource }: {
   canvas: RefObject<HTMLElement | null>
   frame: () => WindowFrame
   /** A gesture started: occlude the native browser and let the release glide. */
@@ -32,9 +32,6 @@ export function useWindowDrag({ canvas, frame, onActive, onPainted, onFloat, onP
   onPainted: (element: HTMLElement) => void
   /** `tornOff`: the window left the tiled layer, so the windows it leaves keep their places too. */
   onFloat: (id: string, rect: Rect, tornOff: boolean) => void
-  /** Both panes of a linked floating pair move together. */
-  onPairFloat?: (id: string, rect: Rect, partnerId: string, partnerRect: Rect) => void
-  pairPartner?: (id: string) => { id: string; start: Rect } | null
   onSnap: (id: string, target: WindowTarget & { kind: 'split' }) => void
   onGroup: (id: string, target: string) => void
   onMaximize: (id: string) => void
@@ -49,8 +46,11 @@ export function useWindowDrag({ canvas, frame, onActive, onPainted, onFloat, onP
   const write = (id: string, rect: Rect): HTMLElement | null => {
     const element = tile(id)
     if (!element) return null
-    element.style.left = `${rect.x}px`
-    element.style.top = `${rect.y}px`
+    const side = element.closest<HTMLElement>('[data-side-scroll]')
+    const origin = side?.getBoundingClientRect()
+    const bounds = canvas.current?.getBoundingClientRect()
+    element.style.left = `${rect.x - (origin && bounds ? origin.left - bounds.left : 0)}px`
+    element.style.top = `${rect.y - (origin && bounds ? origin.top - bounds.top : 0) + (side?.scrollTop ?? 0)}px`
     element.style.width = `${rect.width}px`
     element.style.height = `${rect.height}px`
     return element
@@ -131,7 +131,6 @@ export function useWindowDrag({ canvas, frame, onActive, onPainted, onFloat, onP
     const start = floating ?? tiled
     if (!start) return
     const minimum = windowMinimum(id)
-    const partner = pairPartner?.(id) ?? null
     let base: Rect | null = floating ?? null
     let rect = start
     let target: WindowTarget = { kind: 'free' }
@@ -178,11 +177,6 @@ export function useWindowDrag({ canvas, frame, onActive, onPainted, onFloat, onP
       }
       rect = clampWindow({ ...base, x: base.x + dx, y: base.y + dy }, now.size, minimum)
       paint(id, rect)
-      if (partner) {
-        const partnerRect = clampWindow({ ...partner.start, x: partner.start.x + dx, y: partner.start.y + dy },
-          now.size, windowMinimum(partner.id))
-        paint(partner.id, partnerRect)
-      }
       if (crossDock) {
         queued = { pointer, screen, now }
         route()
@@ -197,10 +191,6 @@ export function useWindowDrag({ canvas, frame, onActive, onPainted, onFloat, onP
         else if (target.kind === 'maximize') {
           paint(id, start)
           onMaximize(id)
-        }         else if (partner && onPairFloat) {
-          const partnerRect = clampWindow({ ...partner.start, x: partner.start.x + (rect.x - start.x), y: partner.start.y + (rect.y - start.y) },
-            frame().size, windowMinimum(partner.id))
-          onPairFloat(id, rect, partner.id, partnerRect)
         } else onFloat(id, rect, !floating)
       }
       if (!crossDock) { finishLocal(); return }
@@ -220,7 +210,7 @@ export function useWindowDrag({ canvas, frame, onActive, onPainted, onFloat, onP
         finishLocal()
       }, finishLocal)
     })
-  }, [frame, onFloat, onPairFloat, pairPartner, onSnap, onGroup, onMaximize, dockSource])
+  }, [frame, onFloat, onSnap, onGroup, onMaximize, dockSource])
 
   /** Resize a floating window from one of its edges or corners. */
   const startResize = useCallback((event: ReactPointerEvent, id: string, edge: ResizeEdge): void => {

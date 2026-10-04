@@ -2,8 +2,13 @@ import type { JSX } from 'react'
 import '@fontsource-variable/inter/wght.css'
 import '@fontsource-variable/inter/wght-italic.css'
 import '@fontsource-variable/geist-mono/wght.css'
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { APP_REVEAL_CHAT_TAB_EVENT, type AppRevealChatTabDetail } from '../shared/app-ui-events.js'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
+import {
+  APP_NEW_CHAT_WINDOW_EVENT,
+  APP_REVEAL_CHAT_TAB_EVENT,
+  type AppNewChatWindowDetail,
+  type AppRevealChatTabDetail
+} from '../shared/app-ui-events.js'
 import { useHistoryController } from './chat-history/history-controller.js'
 import { AppWindowControls } from './app-window-controls.js'
 import { appWindow } from './app-windows/app-window-store.js'
@@ -24,6 +29,8 @@ import { ChatRenameDialog } from './chat-rename-dialog.js'
 import { SpacesStage, type SpacesDockNav, type SpacesHandle } from './spaces/spaces-stage.js'
 import { AppDock } from './dock/app-dock.js'
 import { TitlebarRail } from './rail/titlebar-rail.js'
+import { useTitlebarFitPointer } from './rail/titlebar-fit-pointer.js'
+import { handleShellTitlebarDoubleClickFit } from './chat-layout/header-double-click-fit.js'
 import { DockOpenContext } from './dock/dock-open.js'
 import { readDockPrefs, saveDockPrefs, type DockPrefs } from './dock/dock-model.js'
 import type { LayoutPreset } from './chat-layout/layout-presets.js'
@@ -72,6 +79,25 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
     window.addEventListener(APP_REVEAL_CHAT_TAB_EVENT, onReveal)
     return () => window.removeEventListener(APP_REVEAL_CHAT_TAB_EVENT, onReveal)
   }, [openHistoryChat])
+  useEffect(() => {
+    const onNewChatWindow = (event: Event): void => {
+      const detail = (event as CustomEvent<AppNewChatWindowDetail>).detail
+      const settle = detail?.settle
+      if (!settle) return
+      detail.started = true
+      void (async (): Promise<void> => {
+        try {
+          if (workspaceRef.current) await workspaceRef.current.newChatWindow()
+          else await chatRef.current.newThread()
+          settle({ paneId: chatRef.current.selectedPaneId })
+        } catch (reason) {
+          settle(reason instanceof Error ? reason : new Error(String(reason)))
+        }
+      })()
+    }
+    window.addEventListener(APP_NEW_CHAT_WINDOW_EVENT, onNewChatWindow)
+    return () => window.removeEventListener(APP_NEW_CHAT_WINDOW_EVENT, onNewChatWindow)
+  }, [])
   const history = useHistoryController(chat.sidebar, openHistoryChat)
   const searchRef = useRef<HTMLInputElement>(null)
   const focusSearch = useCallback(() => {
@@ -85,8 +111,9 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
   const threadSearch = useMemo(() => ({
     chats: chat.chats,
     controller: history,
+    activeChatId: chat.selectedPaneId,
     inputRef: searchRef
-  }), [chat.chats, history])
+  }), [chat.chats, chat.selectedPaneId, history])
   const [appearance, setAppearance] = useState(() => readAppearanceSettings(window.localStorage))
   const backdropStatus = useWorkspaceBackdrop(appearance.backdrop)
   const legacyOnboardingBypass = chat.chats.length > 0
@@ -125,6 +152,13 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
   // A shortcut or menu action main refused; shown under the title bar until dismissed.
   const [shellError, setShellError] = useState<string | null>(null)
   const report = useCallback((fallback: string) => (error: unknown) => setShellError(errorMessage(error, fallback)), [])
+  const startNewChatWindow = useCallback((): void => {
+    if (workspaceRef.current) {
+      workspaceRef.current.newChatWindow().catch(report('Could not start a new chat'))
+      return
+    }
+    history.newChat()
+  }, [history.newChat, report])
   const updateAppearance = useCallback((patch: Partial<AppearanceSettings>): void => {
     setAppearance((current) => {
       const next = normalizeAppearanceSettings({ ...current, ...patch })
@@ -155,9 +189,6 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
       } else if (shortcut === 'overview') {
         event.preventDefault()
         spacesRef.current?.toggleOverview()
-      } else if (shortcut === 'restore-floating-pair') {
-        event.preventDefault()
-        workspaceRef.current?.restoreFloatingPair()
       } else if (shortcut === 'tile-windows') {
         event.preventDefault()
         workspaceRef.current?.tileWindows()
@@ -178,7 +209,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
         focusSearch()
       } else if (shortcut === 'new-chat') {
         event.preventDefault()
-        history.newChat()
+        startNewChatWindow()
       } else if (shortcut === 'close-tab') {
         event.preventDefault()
         workspaceRef.current?.closeFocused().catch(report('Could not close the chat'))
@@ -220,7 +251,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
     }
     window.addEventListener('keydown', handleKeyDown, { capture: true })
     return () => window.removeEventListener('keydown', handleKeyDown, { capture: true })
-  }, [changeChatZoom, history.newChat, focusSearch, report])
+  }, [changeChatZoom, startNewChatWindow, focusSearch, report])
 
   // Syntax grammars cost the same whenever they are compiled; paid here they are off every
   // chat switch, because the first transcript that holds a code block already finds them ready.
@@ -255,7 +286,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
   }, [onboarding.signOut])
   const menuAction = useCallback((action: Exclude<MenuAction, 'search-chats'>): void => {
     switch (action) {
-      case 'new-chat': history.newChat(); break
+      case 'new-chat': startNewChatWindow(); break
       case 'settings': setSettingsTab('appearance'); setSettingsOpen(true); break
       case 'connect-providers': onboarding.reopenProviderSetup(); break
       case 'sign-out':
@@ -265,7 +296,6 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
       case 'history': workspaceRef.current?.toggleView('history').catch(report('Could not open chat history')); break
       case 'toggle-browser': workspaceRef.current?.toggleBrowser(); break
       case 'overview': spacesRef.current?.toggleOverview(); break
-      case 'restore-floating-pair': workspaceRef.current?.restoreFloatingPair(); break
       case 'tile-windows': workspaceRef.current?.tileWindows(); break
       case 'layout': workspaceRef.current?.openLayoutPresets(); break
       case 'toggle-fullscreen': window.closedai.window.toggleFullscreen().catch(report('Could not toggle fullscreen')); break
@@ -279,7 +309,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
       case 'reload': window.location.reload(); break
       case 'devtools': window.closedai.window.toggleDevTools().catch(report('Could not open developer tools')); break
     }
-  }, [endLocalSession, history.newChat, onboarding.reopenProviderSetup, report])
+  }, [endLocalSession, startNewChatWindow, onboarding.reopenProviderSetup, report])
 
   // Everything the title bar and dock receive is keyed on the few fields that change at turn
   // boundaries, never on the controller itself: it is rebuilt for every streamed chunk, and the
@@ -320,11 +350,30 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
   const savedSitesError = useMemo(() => report('Could not update saved sites'), [report])
   const notepadError = useMemo(() => report('Could not update the note'), [report])
   useMenuRunBridge(applicationMenu, chat.selectedPaneId, () => workspaceRef.current?.focusedCloseTarget() ?? chat.selectedPaneId)
+  const titlebarFitPointer = useTitlebarFitPointer()
+  const runShellTitlebarFit = useCallback(() => {
+    const focusId = workspaceRef.current?.focusedCloseTarget() ?? chat.selectedPaneId
+    if (!focusId) return
+    workspaceRef.current?.fitVisibleWindows(focusId)
+  }, [chat.selectedPaneId])
+  const onShellTitlebarFitDoubleClick = useCallback((event: MouseEvent) => {
+    handleShellTitlebarDoubleClickFit(event, runShellTitlebarFit)
+  }, [runShellTitlebarFit])
 
   return (
     <div className="shell" data-ui-surface="shell">
-      <header className="shell-titlebar" aria-label="Window title bar">
+      <header
+        className="shell-titlebar"
+        aria-label="Window title bar"
+        onDoubleClickCapture={onShellTitlebarFitDoubleClick}
+      >
         <TitlebarRail />
+        <div
+          className="titlebar-fit-hit"
+          data-ui="titlebar.fit-hit"
+          aria-hidden="true"
+          {...titlebarFitPointer}
+        />
         <div className="titlebar-start">
           <TitlebarMenu {...applicationMenu} />
         </div>
@@ -362,6 +411,7 @@ export function App({ initialSettingsOpen = false }: { initialSettingsOpen?: boo
             onMinimizedChange={setMinimizedWindows}
             onFloatingChange={setWindowsFloating}
             onBackdropChange={onBackdropChange}
+            onChatZoomChange={changeChatZoom}
             onOpenWallpaper={openWallpaper}
             archiveChat={history.deleteRow}
             onChatTabClosed={history.dismissReview}

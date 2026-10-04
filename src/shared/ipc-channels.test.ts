@@ -15,6 +15,7 @@ test('IPC invoke constants cover the typed invoke registry', () => {
   const channels = new Set(leafValues(IPC.invoke))
   const typed: IpcInvokeChannel[] = [
     'window:minimize',
+    'window:moveBy',
     'window:maximize',
     'window:close',
     'window:toggleFullscreen',
@@ -103,6 +104,8 @@ test('IPC invoke constants cover the typed invoke registry', () => {
     'agentLibrary:save',
     'agentLibrary:update',
     'agentLibrary:remove',
+    'agentLibrary:optimize',
+    'agentLibrary:cancelOptimize',
     'chat:snapshot',
     'chat:historyPage',
     'chat:send',
@@ -147,8 +150,13 @@ test('IPC invoke constants cover the typed invoke registry', () => {
     'tools:telemetry',
     'tools:clearTelemetry',
     'tools:setEnabled',
+    'tools:setChatCursorBaselineEnabled',
     'tools:setChatToolSliceEnabled',
     'tools:setChatWorkspaceLedgerEnabled',
+    'performance:settings',
+    'performance:update',
+    'performance:summary',
+    'performance:paint',
     'trace:setActive',
     'trace:snapshot',
     'trace:clear',
@@ -181,6 +189,7 @@ test('IPC event constants cover the typed event registry', () => {
     'agentLibrary:changed',
     'security:credentialApprovals',
     'tools:event',
+    'performance:settingsChanged',
     'trace:event',
     'models:event',
     'windows:event'

@@ -5,8 +5,11 @@ import { requireCaptureHost } from './host.js'
 import type { CaptureDedup } from './dedup.js'
 import { imageResult } from './result.js'
 import type { ScreenshotStore, StoredScreenshot } from './screenshot-store.js'
+import type { AppTargetBounds } from '../app/host.js'
 
 const MAX_ZOOM = 4
+/** CSS px kept around a control crop so its border and focus ring stay in frame. */
+const CONTROL_PADDING = 8
 
 export function cropAction(capture: UiCaptureHostProvider, store: ScreenshotStore, dedup: CaptureDedup): ToolAction {
   return {
@@ -68,4 +71,16 @@ function displayCrop(source: StoredScreenshot, region: ImageCrop): ImageCrop {
   const right = Math.min(source.width, Math.ceil((region.x + region.width) * scaleX))
   const bottom = Math.min(source.height, Math.ceil((region.y + region.height) * scaleY))
   return { x, y, width: Math.max(1, right - x), height: Math.max(1, bottom - y) }
+}
+
+/** A control's viewport CSS box mapped onto the captured window bitmap, padded and clamped; null when nothing is left. */
+export function controlCrop(image: { width: number; height: number }, located: AppTargetBounds): ImageCrop | null {
+  const scaleX = located.viewport.width > 0 ? image.width / located.viewport.width : 1
+  const scaleY = located.viewport.height > 0 ? image.height / located.viewport.height : 1
+  const { bounds } = located
+  const x = Math.max(0, Math.floor((bounds.x - CONTROL_PADDING) * scaleX))
+  const y = Math.max(0, Math.floor((bounds.y - CONTROL_PADDING) * scaleY))
+  const right = Math.min(image.width, Math.ceil((bounds.x + bounds.width + CONTROL_PADDING) * scaleX))
+  const bottom = Math.min(image.height, Math.ceil((bounds.y + bounds.height + CONTROL_PADDING) * scaleY))
+  return right - x >= 1 && bottom - y >= 1 ? { x, y, width: right - x, height: bottom - y } : null
 }

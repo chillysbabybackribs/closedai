@@ -2,6 +2,26 @@
   "version": 1,
   "codexEagerWireCap": 7800,
   "slices": {
+    "selfdev": {
+      "label": "Host app repo work",
+      "description": "Self-development in the ClosedAI checkout: eager app, batch, and search helpers; native file tools for edits.",
+      "resetEager": true,
+      "cursorNamespaces": [
+        "closedai_app",
+        "search",
+        "peer_chats",
+        "tool_batch",
+        "closedai_ui"
+      ],
+      "promotePriority": [
+        "closedai_app.state",
+        "tool_batch.run",
+        "search.query",
+        "closedai_ui.capture",
+        "closedai_app.command",
+        "peer_chats.recall"
+      ]
+    },
     "core": {
       "label": "Default workspace",
       "description": "Operate the app, recall context, single-shot search — no browser/CDP/native.",
@@ -80,6 +100,7 @@
   "signals": {
     "browser": { "slice": "browser", "when": "turn_has_browser_subject_or_active_tab" },
     "research": { "slice": "research", "when": "user_intent_research_heuristic" },
+    "selfdev": { "slice": "selfdev", "when": "self_development_repo_work" },
     "default": { "slice": "core" }
   }
 }

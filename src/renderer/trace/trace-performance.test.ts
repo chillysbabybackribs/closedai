@@ -101,3 +101,13 @@ test('no-text turns and truncated or invalid timing detail do not fabricate late
     entry('turn', 'response.first_text', { detail: JSON.stringify({ elapsedMs: -1, preparationMs: 0, compactionWaitMs: 0, afterDispatchMs: 0 }) })
   ]) assert.equal(summarizeTracePerformance([event], null).response, null)
 })
+
+
+test('renderer timing is separate from main receipt timing', () => {
+  const value = summarizeTracePerformance([
+    entry('turn', 'response.first_text', { detail: JSON.stringify({ elapsedMs: 300, preparationMs: 10, compactionWaitMs: 0, afterDispatchMs: 290 }) }),
+    entry('turn', 'response.renderer', { detail: JSON.stringify({ rendererMs: 24 }) })
+  ], 800)
+  assert.equal(value.response?.firstTextMs, 300)
+  assert.equal(value.rendererMs, 24)
+})

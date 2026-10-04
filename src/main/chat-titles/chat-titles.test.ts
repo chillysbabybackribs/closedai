@@ -4,7 +4,6 @@ import { ChatStore } from '../chat-store/chat-store.js'
 import { FakeSurface } from '../chat-peers/peer-manager-harness.js'
 import { ChatTitles } from './chat-titles.js'
 import { cleanGeneratedTitle, titleRequest } from './title-policy.js'
-import { antigravityTitleArgs, codexTitleArgs, codexTitleOutput, cursorTitleArgs } from './title-provider.js'
 
 function harness() {
   const store = ChatStore.inMemory()
@@ -98,54 +97,15 @@ test('request includes bounded first user request and optional response', () => 
   assert.equal(cleanGeneratedTitle('new chat'), null)
 })
 
-test('Antigravity and Cursor title args are properly constructed', () => {
-  const agyArgs = antigravityTitleArgs('agy:gemini-flash', 'Test prompt')
-  assert.ok(agyArgs.includes('--print=Test prompt'))
-  assert.ok(agyArgs.includes('--output-format'))
-  assert.equal(agyArgs[agyArgs.indexOf('--model') + 1], 'gemini-flash')
-
-  const cursorArgs = cursorTitleArgs('cursor:cursor-fast', 'Test prompt')
-  assert.ok(cursorArgs.includes('--trust'))
-  assert.ok(cursorArgs.includes('--print'))
-  assert.equal(cursorArgs[cursorArgs.indexOf('--model') + 1], 'cursor-fast')
-  assert.equal(cursorArgs.at(-1), 'Test prompt')
-})
-
-test('Codex request is ephemeral, selected-model, isolated from user config and accepts only completed output', () => {
-  const args = codexTitleArgs('selected-model', '/tmp/instructions.txt')
-  assert.ok(args.includes('--ephemeral'))
-  assert.ok(args.includes('--ignore-user-config'))
-  assert.equal(args[args.indexOf('--model') + 1], 'selected-model')
-  assert.ok(args.includes('features.shell_tool=false'))
-  const item = JSON.stringify({ type: 'item.completed', item: { type: 'agent_message', text: 'File Preview Support' } })
-  assert.equal(codexTitleOutput(item + '\n{"type":"turn.completed"}'), 'File Preview Support')
-  assert.throws(() => codexTitleOutput(item))
-  assert.throws(() => codexTitleOutput(item + '\n{"type":"turn.failed"}'))
-})
-
-test('rename sets manual title or resets to null fallback and notifies listeners', () => {
+test('automatic titles can be disabled without blocking explicit retry', async () => {
   const h = harness()
-  h.titles.rename(h.record.id, 'Renamed Chat')
-  assert.equal(h.store.require(h.record.id).title, 'Renamed Chat')
-  assert.equal(h.store.require(h.record.id).titleSource, 'manual')
-  assert.deepEqual(h.changes, [h.record.id])
-
-  h.titles.rename(h.record.id, '  ')
-  assert.equal(h.store.require(h.record.id).title, null)
-  assert.equal(h.store.require(h.record.id).titleSource, null)
-  assert.deepEqual(h.changes, [h.record.id, h.record.id])
-})
-
-test('retry resets attempted flag and generates a fresh title', async () => {
-  const h = harness()
-  h.store.update(h.record.id, { titleGenerationAttempted: true, title: 'Old Title', titleSource: 'generated' })
+  const titles = new ChatTitles(h.store, () => {}, () => false)
   let calls = 0
-  const generate = async () => {
-    calls++
-    return 'Retried Title'
-  }
-  await h.titles.retry(h.record.id, h.snapshot, generate)
+  const generate = async () => { calls++; return 'User Requested Title' }
+  await titles.generate(h.record.id, h.snapshot, generate)
+  assert.equal(calls, 0)
+  assert.equal(h.store.require(h.record.id).titleGenerationAttempted, false)
+  await titles.retry(h.record.id, h.snapshot, generate)
   assert.equal(calls, 1)
-  assert.equal(h.store.require(h.record.id).title, 'Retried Title')
-  assert.equal(h.store.require(h.record.id).titleSource, 'generated')
+  assert.equal(h.store.require(h.record.id).title, 'User Requested Title')
 })

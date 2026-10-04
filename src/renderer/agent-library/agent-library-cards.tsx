@@ -5,7 +5,7 @@ import { Button } from '../../components/ui/button.js'
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '../../components/ui/card.js'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from '../../components/ui/empty.js'
 import { cn } from '../../lib/utils.js'
-import { describeAgentUse, type SavedAgent } from '../../shared/agent-library.js'
+import { describeAgentLimits, describeAgentUse, savedAgentStartOptions, type SavedAgent } from '../../shared/agent-library.js'
 import type { AgentRun, AgentRunStartOptions } from '../../shared/agent-runs.js'
 import { DOCK_STATE_LABEL, dockSummary, type DockTile, type DockTileState } from '../agent-runs/agent-run-overview-model.js'
 import { useAgentRunAction } from '../agent-runs/use-agent-run-action.js'
@@ -50,6 +50,7 @@ const LIVE_TONE: Record<DockTileState, string> = {
   paused: 'text-muted-foreground',
   finished: 'text-(--link-ink)',
   approval: 'text-(--link-ink)',
+  review: 'text-(--link-ink)',
   failed: 'text-destructive'
 }
 
@@ -108,17 +109,18 @@ function AgentCard({ agent, live, now, startEnabled, onEdit, onStart }: {
   onStart: (options: AgentRunStartOptions) => Promise<void>
 }): JSX.Element {
   const { busy, error, act } = useAgentRunAction()
+  const limits = [describeAgentLimits(agent), agent.autonomous ? '' : 'supervised'].filter(Boolean).join(' · ')
   const status = live
-    ? `${DOCK_STATE_LABEL[live.state]} · ${live.cycleLabel}`
-    : `${describeAgentUse(agent, now)}${agent.maxCycles !== null ? ` · ${agent.maxCycles} max` : ''}`
+    ? [DOCK_STATE_LABEL[live.state], live.cycleLabel, live.timeLabel].filter(Boolean).join(' · ')
+    : `${describeAgentUse(agent, now)}${limits ? ` · ${limits}` : ''}`
   const tone = error ? 'text-destructive' : live ? LIVE_TONE[live.state] : 'text-muted-foreground'
-  const start = (): Promise<void> => act(() => onStart({ prompt: agent.prompt, maxCycles: agent.maxCycles, agentId: agent.id, name: agent.name }))
+  const start = (): Promise<void> => act(() => onStart(savedAgentStartOptions(agent)))
   return (
     <Card role="listitem" data-ui="agents.card" data-ui-key={agent.id} data-live={live?.state}
       className="agent-card gap-3 rounded-lg py-3 shadow-none">
       <CardHeader className="gap-1 px-4">
         <CardTitle className="agent-card-title" title={agent.name}>{agent.name}</CardTitle>
-        <CardDescription className="agent-card-description line-clamp-2 text-xs">{agent.prompt}</CardDescription>
+        <CardDescription className="agent-card-description line-clamp-2 text-xs">{agent.description || agent.prompt}</CardDescription>
       </CardHeader>
       <CardFooter className="agent-card-footer gap-1.5 px-4">
         <span className={cn('agent-card-status', tone)} title={error || status} role={error ? 'alert' : undefined}>{error || status}</span>

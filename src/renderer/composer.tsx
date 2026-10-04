@@ -1,6 +1,6 @@
 import type { ClipboardEvent, DragEvent, FormEvent, JSX, KeyboardEvent, Ref } from 'react'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { ArrowUp, Play, Octagon, Paperclip, MessageSquareShare, Plus } from 'lucide-react'
+import { ArrowUp, Play, Octagon, Paperclip } from 'lucide-react'
 
 import { Button } from '../components/ui/button.js'
 import { PromptInput, PromptInputAction, PromptInputTextarea } from '../components/ui/prompt-input.js'
@@ -47,16 +47,11 @@ export type ComposerProps = {
   onCompactConversation?: () => Promise<void>
   compactConversationEnabled?: boolean
   paneId?: string | null
-  /** Latest response that can hand off to a new tab; shown as a composer pill when set. */
-  continueMessageId?: string | null
-  onContinueInNewChat?: () => Promise<void>
-  /** New chat tab in this tile (composer + menu); same as the header + control. */
-  onNewChat?: () => void
   /** Lets the pane's connection guidance open the setup panel on its model list. */
   setupMenuRef?: Ref<ComposerSetupHandle>
 }
 
-/** Composer with an attachment/handoff menu and a model picker portaled into its card header. */
+/** Composer with an attachment/handoff menu; the model picker portals into `#chat-model-{paneId}` above the capsule. */
 export function Composer({
   enabled,
   running,
@@ -75,8 +70,7 @@ export function Composer({
   onStop,
   paused,
   onResume,
-  onCompactConversation, compactConversationEnabled = false, paneId, setupMenuRef,
-  continueMessageId, onContinueInNewChat, onNewChat
+  onCompactConversation, compactConversationEnabled = false, paneId, setupMenuRef
 }: ComposerProps): JSX.Element {
   const { input, setInput, attachments, setAttachments, clearDraft } = useComposerDraft(paneId)
   // One alert row for whatever the composer's own controls could not do: attach, pause, pick.
@@ -84,7 +78,6 @@ export function Composer({
   const [dismissedSuggestion, setDismissedSuggestion] = useState<string | null>(null)
   const providerLabel = CHAT_PROVIDER_LABELS[provider]
   const [sending, setSending] = useState(false)
-  const [continuing, setContinuing] = useState(false)
   const visibleSuggestion = !input && !running && !sending && promptSuggestion && dismissedSuggestion !== promptSuggestion
     ? promptSuggestion
     : null
@@ -272,25 +265,6 @@ export function Composer({
             <input ref={fileInputRef} className="prompt-attachment-input" type="file" multiple
               onChange={(event) => { if (event.target.files) void addFiles(event.target.files); event.target.value = '' }} />
             <ComposerSpeedDial actions={[
-              {
-                id: 'composer.new-chat', label: 'New chat tab',
-                icon: <Plus size={19} strokeWidth={1.9} aria-hidden="true" />,
-                disabled: !onNewChat || running || sending,
-                run: () => onNewChat?.()
-              },
-              {
-                id: 'composer.continue', item: continueMessageId ?? undefined,
-                label: 'Continue in new chat with fresh context',
-                icon: <MessageSquareShare size={17} strokeWidth={1.9} aria-hidden="true" />,
-                disabled: !continueMessageId || !onContinueInNewChat || running || sending || continuing,
-                run: () => {
-                  if (!onContinueInNewChat) return
-                  setContinuing(true)
-                  void onContinueInNewChat()
-                    .catch((cause) => setComposerError(errorMessage(cause, 'Could not continue in a new chat.')))
-                    .finally(() => setContinuing(false))
-                }
-              },
               {
                 id: 'composer.upload', label: 'Attach file',
                 icon: <Paperclip size={17} strokeWidth={1.9} aria-hidden="true" />,

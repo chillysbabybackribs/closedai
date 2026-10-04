@@ -29,7 +29,7 @@ export type AntigravitySessionDeps = {
   onTokenUsage?: (usage: { inputTokens: number; cacheReadTokens?: number; cacheAnomaly: boolean }) => void
   /** When set, every stream-json line in either direction is recorded in the turn trace. */
   traceScope?: () => TraceScope
-  idleMs?: number
+  idleMs?: number | (() => number)
   childEnv?: () => NodeJS.ProcessEnv
 }
 

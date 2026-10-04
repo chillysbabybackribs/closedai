@@ -82,3 +82,23 @@ test('idle parking stops surface and parks when completely idle', async () => {
   assert.equal(peer.parked, false)
   assert.deepEqual(surface._started, ['start'])
 })
+
+test('selected chats get four times the current dynamic warm-time', (context) => {
+  context.mock.timers.enable({ apis: ['setTimeout'] })
+  const surface = fakeSurface()
+  const peer: ParkablePeer = { surface, idleTimer: null, parked: false }
+  let delay = 100
+  const parking = new PeerIdleParking(() => peer, () => 'p', () => delay)
+  parking.schedule('p')
+  context.mock.timers.tick(399)
+  assert.equal(peer.parked, false)
+  context.mock.timers.tick(1)
+  assert.equal(peer.parked, true)
+  peer.parked = false
+  delay = 200
+  parking.schedule('p')
+  context.mock.timers.tick(799)
+  assert.equal(peer.parked, false)
+  context.mock.timers.tick(1)
+  assert.equal(surface._stopped.length, 2)
+})

@@ -1,6 +1,7 @@
 /* Agents view (agent-library/agent-library-view.tsx): three stacked screens under a one-line
    header. Library cards and empty states are shadcn primitives (components/ui/card.tsx,
-   empty.tsx) styled through tokens; the Build editor and Runs table keep hairline chrome. */
+   empty.tsx) styled through tokens; the Runs table keeps hairline chrome. The Build screen's
+   rules live in builder.css. */
 
 .agent-library-view {
   display: flex;
@@ -234,62 +235,6 @@
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 1;
   font-style: italic;
-}
-
-/* Build (agent-library-panel.tsx): the editor fills the screen; the footer stays at the bottom. */
-.agent-library-editor {
-  display: flex;
-  min-width: 0;
-  min-height: 0;
-  flex: 1;
-  flex-direction: column;
-  gap: 12px;
-  padding: 14px 16px 16px;
-}
-
-.agent-library-editor label {
-  display: flex;
-  min-height: 0;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--muted-foreground);
-}
-
-.agent-library-editor > .flex {
-  gap: 12px;
-}
-
-.agent-library-field {
-  border-color: var(--hairline) !important;
-  box-shadow: none !important;
-  background: transparent;
-}
-
-.agent-library-field:focus-visible {
-  border-color: color-mix(in srgb, var(--ring) 55%, var(--hairline)) !important;
-  box-shadow: none !important;
-}
-
-.agent-library-prompt {
-  font-size: 12.5px;
-  line-height: 1.5;
-}
-
-.agent-library-footer {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: auto;
-  padding-top: 4px;
-  font-size: 13px;
-}
-
-.agent-library-footer .text-muted-foreground {
-  min-width: 0;
-  flex: 1;
-  font-size: 11px;
 }
 
 /* Agents opens as a modal (agent-library/agents-dialog.tsx): a large fixed frame, the header's

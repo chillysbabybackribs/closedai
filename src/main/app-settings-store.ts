@@ -1,3 +1,4 @@
+import { DEFAULT_PERFORMANCE_SETTINGS, normalizePerformanceSettings } from '../shared/performance.js'
 import { randomUUID } from 'node:crypto'
 import { writeAtomic } from './atomic-write.js'
 import { readStoreFile } from './store-recovery.js'
@@ -58,6 +59,8 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   chatRotateAtItems: 100,
   chatClaudePrecomputeCompaction: true,
   chatWorkLockEnabled: true,
+  performance: { ...DEFAULT_PERFORMANCE_SETTINGS },
+  chatCursorBaselineEnabled: false,
   chatToolSliceEnabled: true,
   chatWorkspaceLedgerEnabled: true,
   chatMemoryIndexEnabled: true,
@@ -130,6 +133,8 @@ function normalize(parsed: unknown): AppSettings {
     ...normalizeRotationPressure(record),
     chatHandoffTargetChars: normalizeRotationThreshold(record.chatHandoffTargetChars, DEFAULT_APP_SETTINGS.chatHandoffTargetChars, Number.MAX_SAFE_INTEGER),
     chatWorkLockEnabled: record.chatWorkLockEnabled !== false,
+    performance: normalizePerformanceSettings(record.performance),
+    chatCursorBaselineEnabled: record.chatCursorBaselineEnabled === true,
     chatToolSliceEnabled: record.chatToolSliceEnabled !== false,
     chatWorkspaceLedgerEnabled: record.chatWorkspaceLedgerEnabled !== false,
     chatMemoryIndexEnabled: record.chatMemoryIndexEnabled !== false,

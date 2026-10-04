@@ -9,7 +9,7 @@
 
 .aui-md {
   min-width: 0;
-  font-size: var(--chat-fs-markdown, 14px);
+  font-size: var(--chat-fs-markdown, 15px);
   line-height: var(--chat-lh-markdown, 1.7);
   overflow-wrap: anywhere;
 }

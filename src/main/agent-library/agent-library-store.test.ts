@@ -3,7 +3,7 @@ import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
-import { BUILT_IN_AGENTS, LEGACY_BUILT_IN_KEYS } from '../../shared/agent-library.js'
+import { BUILT_IN_AGENTS, LEGACY_BUILT_IN_KEYS, SAVED_AGENT_DESCRIPTION_MAX } from '../../shared/agent-library.js'
 import { AgentLibraryStore } from './agent-library-store.js'
 
 async function scratch(): Promise<string> {
@@ -86,4 +86,24 @@ test('a malformed file starts clean, and broken entries are dropped on read', as
   await writeFile(file, '{not json')
   const clean = await AgentLibraryStore.open(file)
   assert.deepEqual(clean.list().map((agent) => agent.name).sort(), BUILT_IN_AGENTS.map((agent) => agent.name).sort(), 'unreadable counts as first open')
+})
+
+test('the description and run settings are kept; entries from before they existed load with today\'s behavior', async () => {
+  const file = await scratch()
+  await writeFile(file, JSON.stringify({ version: 1, offered: BUILT_IN_AGENTS.map((agent) => agent.key), agents: [
+    { id: 'old', name: 'Old', prompt: 'Go.', maxCycles: 3, createdAt: 5 }
+  ] }))
+  const store = await AgentLibraryStore.open(file)
+  const old = store.get('old')!
+  assert.deepEqual([old.description, old.maxMinutes, old.autonomous, old.maxCycles], ['', null, true, 3])
+  const saved = store.save({ name: 'Docs', description: '  keep docs/ in step with src/  ', prompt: 'Each cycle…', maxMinutes: 90, autonomous: false })
+  assert.deepEqual([saved.description, saved.maxMinutes, saved.autonomous], ['keep docs/ in step with src/', 90, false])
+  const edited = store.update(saved.id, { prompt: 'Each cycle, read the ledger…' })!
+  assert.equal(edited.description, 'keep docs/ in step with src/', 'editing the instructions never drops the description')
+  assert.equal(edited.autonomous, false)
+  assert.equal(store.update(saved.id, { maxMinutes: null, autonomous: true })!.maxMinutes, null)
+  assert.throws(() => store.update(saved.id, { description: 'x'.repeat(SAVED_AGENT_DESCRIPTION_MAX + 1) }), /descriptions are limited/)
+  await store.flush()
+  const reopened = await AgentLibraryStore.open(file)
+  assert.equal(reopened.get(saved.id)!.description, 'keep docs/ in step with src/')
 })

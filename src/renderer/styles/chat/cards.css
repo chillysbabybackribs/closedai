@@ -32,27 +32,45 @@
   /* Inset, then the 28px control row (its 20px glyph centred, drawn 2px inside its box), then
      a blank 28px strip as the scroll cutoff. */
   position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 8px;
   height: calc(var(--card-inset) + 50px);
   box-sizing: border-box;
   flex: 0 0 calc(var(--card-inset) + 50px);
-  padding: calc(var(--card-inset) - 6px) max(var(--card-inset), calc((100% - var(--card-column)) / 2)) 28px;
+  padding: calc(var(--card-inset) - 6px) var(--card-inset) 28px;
   background: transparent;
   box-shadow: none;
 }
+.chat-layout-header.chat-card-header { container-type: inline-size; container-name: card-header; }
+/* Fresh context drops out first so the centred search keeps room on narrow cards. */
+@container card-header (max-width: 380px) {
+  .chat-card-action[data-ui='layout.card-continue'] { display: none; }
+}
+.chat-card-header .chat-window-controls {
+  flex: none;
+  margin-left: auto;
+  align-self: flex-start;
+}
 .chat-card-thread-search {
+  /* Centred on the card. Each side reserves ~130px for the left buttons and window controls, so
+     the field grows with the card up to 300px and never reaches either cluster. */
   position: absolute;
   left: 50%;
-  top: calc(var(--card-inset) - 6px);
+  top: calc(var(--card-inset) - 5px);
   transform: translateX(-50%);
   display: flex;
   justify-content: center;
-  width: min(320px, calc(100% - 140px));
-  max-width: 100%;
+  width: clamp(96px, calc(100cqw - 260px), 300px);
   pointer-events: none;
   z-index: 2;
 }
+@container card-header (max-width: 380px) {
+  .chat-card-thread-search { width: clamp(72px, calc(100cqw - 220px), 300px); }
+}
 .chat-card-thread-search > * { pointer-events: auto; }
-/* Header row: pin star on the left, model picker at the right column edge. */
+/* Header row: pin star, new chat and fresh-context buttons on the left, thread search centred on the card, window buttons on the right. */
 .chat-card-pin {
   flex-shrink: 0;
   display: grid;
@@ -64,29 +82,25 @@
   color: #7c7f85;
   cursor: pointer;
 }
+.chat-card-action {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #7c7f85;
+  cursor: pointer;
+}
+.chat-card-action:hover:not(:disabled) { background: rgb(255 255 255 / 7%); color: #e9eaec; }
+.chat-card-action:disabled { opacity: 0.4; cursor: default; }
 .chat-card-pin[aria-pressed='true'],
 .chat-card-pin[aria-pressed='true']:hover { color: #facc15; }
-.chat-card-model {
-  display: flex;
-  align-items: center;
-  margin-left: auto;
-  min-width: 0;
-}
-:root:root .chat-card-header .composer-chip-model-trigger {
-  height: 28px;
-  max-width: 100%;
-  flex-shrink: 1;
-  padding: 0;
-  color: #d9dadd;
-  background: transparent;
-  border: 0;
-  box-shadow: none;
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 1;
-}
-.chat-card-header .composer-chip-chevron { display: none; }
 :root:root .chat-layout-tile:has(.chat-card-header) .chat-pane {
+  --chat-pane-fill: var(--surface-chat, #141516);
   background: transparent;
   --capsule-fill: #141516;
   --capsule-edge: #343536;
@@ -95,14 +109,19 @@
   --capsule-shadow: none;
   --capsule-radius: 13px;
 }
-:root:root .chat-layout-tile:has(.chat-card-header) .chat-zoom-surface {
+:root:root .chat-layout-tile:has(.chat-card-header) .chat-pane-stack {
   /* Resolve against the card body, before the composer's own inline container. */
   --chat-column-gutter: var(--card-inset);
   --chat-column-width: var(--card-column);
-  --composer-max-height: clamp(34px, calc(24cqh * var(--chat-zoom-inverse)), 240px);
+}
+:root:root .chat-layout-tile:has(.chat-card-header) .chat-composer-dock {
+  --composer-max-height: clamp(34px, 24cqh, 240px);
 }
 :root:root .chat-layout-tile:has(.chat-card-header) .composer-stack {
   max-width: var(--chat-column-width);
+}
+:root:root .chat-layout-tile:has(.chat-card-header) .chat-composer-meta {
+  width: min(var(--chat-column-width), calc(100% - var(--chat-column-gutter, 16px) * 2));
 }
 :root:root .chat-layout-tile:has(.chat-card-header) .prompt-message-user-content {
   border: 0;
@@ -146,7 +165,6 @@
   min-height: 56px;
   padding-block: 11px;
 }
-.chat-card-model { flex: 0 1 auto; }
 .chat-card-header .chat-layout-preset { flex-shrink: 0; }
 
 /* Media may keep its aspect ratio, but never force a message wider than the card. */
@@ -163,7 +181,7 @@
     column-gap: 4px;
     padding-inline: 6px;
   }
-  :root:root .chat-card-header .composer-chip-model-trigger { font-size: 12px; }
+  :root:root .chat-pane-model-slot .composer-chip-model-trigger { font-size: 11px; }
 }
 
 /* A highly zoomed or exceptionally narrow draft gets a full line above its controls. */

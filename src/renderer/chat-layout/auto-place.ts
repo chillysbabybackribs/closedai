@@ -1,3 +1,4 @@
+import { appendSideChat } from './sidebar-stack.js'
 import { BROWSER_PANE_ID, DIVIDER_SIZE, dockPane, layoutGeometry, minimumSize, removePane, type ChatLayout, type DockEdge, type Rect } from './layout-tree.js'
 import { tiledTree } from './layout-docking.js'
 import { windowMinimum } from './floating/window-layout.js'
@@ -58,6 +59,8 @@ export function autoPlacement(tree: ChatLayout | null, added: string, canvas: Au
 
 /** `added` tiled into the best slot (see autoPlacement), or null when it should float instead. */
 export function autoPlace(tree: ChatLayout | null, added: string, canvas: AutoPlaceCanvas, splitId: string, prefer?: string | null): ChatLayout | null {
+  const side = tree && appendSideChat(tree, added, () => crypto.randomUUID())
+  if (side) return side
   const placement = autoPlacement(tree, added, canvas, prefer)
   return placement && tree ? dockPane(tree, added, placement.target, placement.edge, splitId) : null
 }

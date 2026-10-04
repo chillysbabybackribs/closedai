@@ -7,7 +7,7 @@ import { ChatCanvas } from './chat-canvas.tsx'
 import type { ChatLayout } from './layout-tree.ts'
 
 const windows = { change: () => {}, group: () => {}, raise: () => {}, minimize: () => {}, keepOnTop: () => {} }
-const backdropProps = { backdrop: 'off' as const, onBackdropChange: () => {}, onOpenWallpaper: () => {}, maximized: [null, () => {}] as [string | null, () => void] }
+const backdropProps = { backdrop: 'off' as const, onBackdropChange: () => {}, onOpenWallpaper: () => {}, maximized: [null, () => {}] as [string | null, () => void], onFitVisibleWindows: () => {}, chatZoom: 100, onChatZoomChange: () => {} }
 
 const multiPaneTree: ChatLayout = {
   kind: 'split',
@@ -50,12 +50,13 @@ test('ChatCanvas renders multi-pane split with context menu trigger and dividers
   assert.doesNotMatch(html, /data-ui="layout\.pane-drag"/, "chat cards drag from empty header space")
   assert.doesNotMatch(html, /class="chat-layout-(header|drag)"[^>]*draggable="true"/, 'windows move with the pointer, not native drag')
   assert.match(html, /data-pane-id="pane-a" data-window="tiled"/)
-  // Context menu trigger wrapped around header
-  assert.match(html, /class="chat-layout-header chat-card-header"[^>]*data-state="closed"/)
+  // Context menu trigger wraps the whole tile body (header + transcript)
+  assert.match(html, /class="chat-layout-tile-body"[^>]*data-state="closed"/)
   // Divider rendered in split mode
   assert.match(html, /data-ui="layout\.divider" data-ui-key="split-1"/)
   // Pane hide buttons are enabled when multiple panes exist
-  assert.doesNotMatch(html, /data-ui="layout\.pane-hide"/, 'dismissal lives in the header context menu')
+  assert.match(html, /data-ui="layout\.pane-hide" data-ui-key="pane-a"/, 'dismiss is a header close button')
+  assert.match(html, /data-ui="layout\.window-minimize"/)
   assert.doesNotMatch(html, /data-ui="layout\.pane-hide" data-ui-key="pane-a"[^>]*disabled/)
 })
 
@@ -81,8 +82,7 @@ test('ChatCanvas renders a single card with a context menu and no dividers', () 
   }))
 
   assert.match(html, /data-pane-id="pane-single"/)
-  // Context menu trigger installed on header
-  assert.match(html, /class="chat-layout-header chat-card-header"[^>]*data-state="closed"/)
+  assert.match(html, /class="chat-layout-tile-body"[^>]*data-state="closed"/)
   // In single chat mode without browser, hide button is disabled
   assert.doesNotMatch(html, /data-ui="layout\.pane-hide" data-ui-key="pane-single"[^>]*disabled/)
   // No dividers in single pane
@@ -120,10 +120,8 @@ test('ChatCanvas renders restored chat groups as separate cards without tab cont
   assert.equal(html.match(/class="chat-layout-header chat-card-header"/g)?.length, 2)
   assert.doesNotMatch(html, /data-ui="layout\.tab"/)
   assert.doesNotMatch(html, /data-ui="layout\.(new-chat|card-continue)"/)
-  assert.match(html, /id="chat-model-tab-1"/)
-  assert.match(html, /id="chat-model-tab-2"/)
   assert.doesNotMatch(html, /chat-card-icon/)
-  assert.match(html, /<div class="chat-card-model" id="chat-model-tab-1"/)
+  assert.doesNotMatch(html, /chat-card-model/)
   assert.doesNotMatch(html, /data-ui="layout\.card-more"/)
   assert.doesNotMatch(html, /data-ui="layout\.card-pin"/, 'the star needs a pin handler')
   assert.doesNotMatch(html, /id="chat-panel-tab-[12]"[^>]*hidden/)
@@ -161,7 +159,7 @@ test('ChatCanvas names running close/hide actions and overlays a pane status not
   }))
 
   assert.doesNotMatch(html, /data-ui="layout\.tab-close"/)
-  assert.doesNotMatch(html, /data-ui="layout\.pane-hide"/)
+  assert.match(html, /data-ui="layout\.pane-hide" data-ui-key="tab-2"[^>]*title="Dismiss chat · Tasks keep running"/)
   assert.match(html, /class="chat-layout-notice"[^>]*>Window closed · Tasks continue in the background/)
 })
 
@@ -213,7 +211,7 @@ test('ChatCanvas lifts a floating window above the tiles, with resize grips, and
   assert.match(html, /style="left:40px;top:30px;width:320px;height:300px;z-index:12" data-pane-id="pane-b" data-window="floating"/)
   assert.equal(html.match(/data-ui="layout\.window-resize"/g)?.length, 8)
   assert.doesNotMatch(html, /data-ui="layout\.divider"/, 'a floating window leaves no split')
-  assert.doesNotMatch(html, /data-ui="layout\.window-minimize"/, 'card headers have no window buttons')
+  assert.match(html, /data-ui="layout\.window-minimize" data-ui-key="pane-b"/, 'floating chat cards keep window buttons')
   const minimized: ChatLayout = { ...multiPaneTree, second: { kind: 'pane', id: 'pane-b', docked: true, dockNumber: 1 } }
   const hidden = renderToStaticMarkup(createElement(ChatCanvas, { ...props, tree: minimized }))
   assert.match(hidden, /data-pane-id="pane-b" data-window="hidden"[^>]*hidden=""/)

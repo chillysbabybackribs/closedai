@@ -1,3 +1,4 @@
+import { appendSideChat, findSidebarStack, migrateSidebarStack, swapSidebarLead } from './sidebar-stack.js'
 import { ensureExpandedGroup, layoutGroups } from './layout-docking.js'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type SetStateAction } from 'react'
 import type { ChatWorkspaceSnapshot } from '../../shared/chat-peers.js'
@@ -13,11 +14,10 @@ import { tabInNewWindow, floatBeside, groupWindow, minimizeWindow, raiseWindow, 
 import { setWindowOnTop, tileWindows } from './floating/window-arrange.js'
 import { absorbCrossDockAtPointer } from './floating/cross-window-dock-target.js'
 import { crossWindowDockCanvasSize } from '../app-windows/cross-window-dock-store.js'
-import { assignGroups, presetLayout, presetSlots, singleGroup, type CanvasSize, type LayoutPreset } from './layout-presets.js'
+import { assignExpandedGroups, assignGroups, fitDeskSignature, fitLayoutVariants, presetLayout, presetSlots, rotateGroupsToFront, sidebarStackForLead, singleGroup, type CanvasSize, type LayoutPreset } from './layout-presets.js'
+import { canPromoteStackMonitorLead } from './stack-monitor-layout.js'
 import { autoPlace, type WindowOpen } from './auto-place.js'
-import { applyWorkspaceDefaultFloat, restoreFloatingChatBrowserPair } from './floating/workspace-default-float.js'
-import { separateChatCards } from './chat-cards.js'
-import { clearFloatingPair } from './floating/floating-pair.js'
+import { adoptContinuedChat, separateChatCards } from './chat-cards.js'
 const ERROR_TTL_MS = 8000
 /** Main announces a selection within one workspace event; past this the layout resyncs instead of staying locked. */
 const CONFIRM_TIMEOUT_MS = 5000
@@ -47,7 +47,7 @@ export function useChatLayout(
       selectedPaneId: snapshot.selectedPaneId, detached: !self.main, initialTabs: self.initialTabs,
       fallbackView: () => viewTabId('history', crypto.randomUUID())
     })
-    return { ...saved, tree: separateChatCards(withBrowser(tree)) }
+    return { ...saved, tree: migrateSidebarStack(separateChatCards(withBrowser(tree))) }
   })
   // Normalize every entry path: restore, new chat, handoff, presets, and cross-window adoption.
   const setLayout = useCallback((update: SetStateAction<typeof layout>) => {
@@ -89,6 +89,8 @@ export function useChatLayout(
   // The chat whose last window the user closed: main still selects it, but it stays out of the
   // layout until something (History, a new chat) asks for a chat again.
   const closedLast = useRef<string | null>(null)
+  /** Chats the user dismissed with window close; do not re-open while main selection catches up. */
+  const heldOutOfLayout = useRef<Set<string>>(new Set())
   const current = useRef(layout)
   current.current = layout
   // Main hears about chats only: a tile showing a view has no visible chat, its chats are retained.
@@ -164,7 +166,7 @@ export function useChatLayout(
     const next = getSnapshot().selectedPaneId
     // Opening Notes or another view does not request the closed chat back. Only an explicit
     // activation (which clears closedLast) or a different main selection does that.
-    if (next === closedLast.current) return
+    if (next === closedLast.current || heldOutOfLayout.current.has(next)) return
     closedLast.current = null
     // Another window's chat is never opened twice. A chat no window holds yet (a new chat, one a
     // tool opened) goes to the window in front; the main window takes it when none is.
@@ -252,7 +254,7 @@ export function useChatLayout(
         // Split beside a floating window, the new window floats too, cascaded from it.
         return { ...value, views, tree: edge
           ? floatBeside(dockPane(tree, added, target, edge, crypto.randomUUID()), added, target)
-          : addTab(tree, target, added) }
+          : appendSideChat(tree, added, () => crypto.randomUUID()) ?? addTab(tree, target, added) }
       })
       if (view) release()
       else setSelectionToConfirm(added)
@@ -266,15 +268,17 @@ export function useChatLayout(
 
   // The tiled canvas's last measured size: where a window opened from the dock fits (auto-place.ts).
   const canvasSize = useRef<CanvasSize>({ width: 0, height: 0 })
-  const defaultFloatChecked = useRef(false)
-  const setCanvasSize = useCallback((size: CanvasSize) => {
-    canvasSize.current = size
-    if (defaultFloatChecked.current || size.width <= 0 || size.height <= 0) return
-    setLayout((value) => {
-      defaultFloatChecked.current = true
-      const tree = applyWorkspaceDefaultFloat(value.tree, size)
-      return tree === value.tree ? value : { ...value, tree }
-    })
+  const setCanvasSize = useCallback((size: CanvasSize) => { canvasSize.current = size }, [])
+  /** Double-click layout cycle for the current expanded desk. */
+  const fitCycleKey = useRef<string | null>(null)
+  const fitCycleIndex = useRef(0)
+  const lastFitTree = useRef<ChatLayout | null>(null)
+  /** Set after `fitVisibleWindows` is defined; history/search opens refit through this. */
+  const fitVisibleWindowsRef = useRef<(focusId: string) => void>(() => {})
+  const clearFitCycle = useCallback((): void => {
+    fitCycleKey.current = null
+    fitCycleIndex.current = 0
+    lastFitTree.current = null
   }, [])
   /**
    * Open a new window (a dock chat, the notepad). `change` gets `tile`, which halves the roomiest
@@ -318,24 +322,64 @@ export function useChatLayout(
     }
   }, [clearError, fail, release])
 
-  // "Continue in new chat": the digest-seeded chat opens as a tab in the source's own tile, so the
-  // old conversation stays one click away while the new one starts. Main's refusal (for example a
-  // turn still running) surfaces through the same error line as any other layout operation.
-  const continueChat = useCallback((sourceId: string, threadId: string | null, modelId: string | null) => {
-    const target = tabOwner(current.current.tree, sourceId) ?? sourceId
-    return dock(null, target, null, false, () => window.closedai.chat.continueInNewPeer({ paneId: sourceId, threadId }, modelId))
-  }, [dock])
+  // "Continue in new chat": the digest-seeded chat replaces the source in the layout (same card or
+  // tile); the old conversation stays in history, dismissed like a closed card. Main's refusal
+  // (for example a turn still running) surfaces through the same error line as any other layout op.
+  const continueChat = useCallback(async (sourceId: string, threadId: string | null, modelId: string | null): Promise<void> => {
+    if (pending.current) return
+    const treeBefore = current.current.tree
+    const owner = tabOwner(treeBefore, sourceId) ?? sourceId
+    pending.current = true
+    setBusy(true)
+    clearError()
+    try {
+      const added = await window.closedai.chat.continueInNewPeer({ paneId: sourceId, threadId }, modelId)
+      selected.current = added
+      onChatTabClosed?.(sourceId)
+      setLayout((value) => {
+        const replaced = adoptContinuedChat(value.tree, sourceId, added)
+        const tree = ensureExpandedGroup(replaced) ?? replaced
+        const solo = value.maximized
+        const maximized = solo === owner || solo === sourceId ? added : solo
+        return tree === value.tree && maximized === value.maximized ? value : { ...value, tree, maximized: maximized ?? undefined }
+      })
+      reportRemoval([sourceId], 'Chat dismissed')
+      setSelectionToConfirm(added)
+    } catch (reason) {
+      fail(reason)
+      release()
+    }
+  }, [clearError, fail, onChatTabClosed, release, reportRemoval])
 
-  /** Show a tab; a chat not yet open joins `anchor`'s tile when that holds chats, else another chat window. A view also focuses its tile. */
+  /** Show a tab. A chat already open is focused; with `anchor`, a new one joins that tile; without
+   * `anchor` (header search, history) it opens in its own window, then visible windows refit to the
+   * canvas like a header double-click fit. Views focus their tile. */
   const activateTab = useCallback(async (id: string, anchor?: string): Promise<void> => {
     if (pending.current || await revealedElsewhere(current.current.tree, id)) return
+    const alreadyOnDesk = tabIds(current.current.tree).includes(id)
     const view = isViewTabId(id)
     if (!view) selected.current = id
     closedLast.current = null
+    heldOutOfLayout.current.delete(id)
     const focusTab = (): void => {
       setLayout((value) => {
         if (!paneIds(value.tree).length) return { ...value, tree: withBrowser({ kind: 'pane', id }) }
         return { ...value, tree: openTabInTree(value.tree, id, anchor ?? null, crypto.randomUUID()) }
+      })
+    }
+    const showChat = (): void => {
+      setLayout((value) => {
+        if (!paneIds(value.tree).length) return { ...value, tree: withBrowser({ kind: 'pane', id }) }
+        const tree = value.tree
+        if (tabIds(tree).includes(id)) {
+          return { ...value, tree: openTabInTree(tree, id, anchor ?? null, crypto.randomUUID()) }
+        }
+        if (anchor) {
+          return { ...value, tree: openTabInTree(tree, id, anchor, crypto.randomUUID()) }
+        }
+        const chats = chatTabIds(tree)
+        const near = chats.includes(selected.current) ? selected.current : chats[0]
+        return openWindowIn(value, (next, tile) => openTabInTree(next, id, near ?? null, crypto.randomUUID(), true, tile))
       })
     }
     try {
@@ -346,7 +390,8 @@ export function useChatLayout(
         // Load the saved transcript before the tab panel unhides so the pane does not flash empty
         // and jump when cached messages land.
         await window.closedai.chat.openChat(id)
-        focusTab()
+        showChat()
+        if (!anchor && !alreadyOnDesk && !findSidebarStack(current.current.tree)) fitVisibleWindowsRef.current(id)
       }
       clearError()
     } catch (reason) {
@@ -437,12 +482,18 @@ export function useChatLayout(
     const remaining = removePane(tree, paneId)
     if (!remaining || pending.current) return
     const dismissed = tabIds(tree).filter((tab) => tabOwner(tree, tab) === paneId && !isViewTabId(tab))
-    for (const chatId of dismissed) onChatTabClosed?.(chatId)
+    for (const chatId of dismissed) {
+      onChatTabClosed?.(chatId)
+      heldOutOfLayout.current.add(chatId)
+    }
     const closesSelection = tabOwner(tree, selected.current) === paneId
     const nextChat = closesSelection ? chatPaneIds(remaining)[0] : undefined
     // A view id is never a chat-service selection. With no remaining visible chat, retain the
     // backend selection but suppress its automatic adoption, even when Notes remains open.
-    if (closesSelection && !nextChat) closedLast.current = selected.current
+    if (closesSelection && !nextChat) {
+      closedLast.current = selected.current
+      if (!isViewTabId(selected.current)) heldOutOfLayout.current.add(selected.current)
+    }
     const label = dismissed.length && !isViewTabId(paneId) ? 'Chat dismissed' : 'Window closed'
     pending.current = true
     try {
@@ -451,9 +502,8 @@ export function useChatLayout(
         selected.current = nextChat
       }
       setLayout((value) => {
-        let removed = removePane(value.tree, paneId)
+        const removed = removePane(value.tree, paneId)
         if (!removed) return value
-        for (const chatId of dismissed) removed = clearFloatingPair(removed, chatId)
         const next = ensureExpandedGroup(removed) ?? removed
         return next === value.tree ? value : { ...value, tree: next }
       })
@@ -465,8 +515,9 @@ export function useChatLayout(
 
   const resize = useCallback((id: string, ratio: number, phase: SplitResizePhase = 'commit') => {
     if (phase === 'cancel') return
+    if (phase === 'commit') clearFitCycle()
     setLayout((value) => ({ ...value, tree: resizeSplit(value.tree, id, ratio) }))
-  }, [])
+  }, [clearFitCycle])
   // Ctrl+W acts on what the selected tile shows: a view in front closes before the chat behind it.
   const focusedCloseTarget = useCallback((): string => {
     const owner = tabOwner(current.current.tree, selected.current)
@@ -495,6 +546,7 @@ export function useChatLayout(
     pending.current = true
     setBusy(true)
     clearError()
+    clearFitCycle()
     try {
       const { groups, missing } = assignGroups(current.current.tree, presetSlots(preset))
       const visible = chatPaneIds(current.current.tree)
@@ -525,7 +577,7 @@ export function useChatLayout(
       fail(reason)
       release()
     }
-  }, [cwd, clearError, fail, release])
+  }, [cwd, clearError, clearFitCycle, fail, release])
   // Move a tab into a new window of its own; the last tab stays, so this window is never empty.
   const detachTab = useCallback(async (id: string): Promise<void> => {
     const remaining = removeTab(current.current.tree, id)
@@ -594,9 +646,11 @@ export function useChatLayout(
     if (pending.current) return
     setLayout((value) => {
       const tree = change(value.tree)
-      return tree === value.tree ? value : { ...value, tree }
+      if (tree === value.tree) return value
+      clearFitCycle()
+      return { ...value, tree }
     })
-  }, [])
+  }, [clearFitCycle])
   const windowActions = useMemo(() => ({
     change: windowTree,
     /** Tile windows: every floating window back into its slot of the last tiled layout. */
@@ -622,6 +676,75 @@ export function useChatLayout(
     return maximized === current ? value : { ...value, maximized: maximized ?? undefined }
   }), [])
   const toggleBrowser = useCallback(() => setLayout((value) => ({ ...value, browserVisible: !value.browserVisible })), [])
+  const fitVisibleWindows = useCallback((focusId: string): void => {
+    const size = canvasSize.current
+    if (size.width <= 0 || size.height <= 0) return
+    setLayout((value) => {
+      const tiled = tileWindows(value.tree)
+      const groups = rotateGroupsToFront(assignExpandedGroups(tiled), focusId)
+      const browserOnly = groups.length === 0 && focusId === BROWSER_PANE_ID && self.main && value.browserVisible
+      if (groups.length <= 1) {
+        clearFitCycle()
+        if (groups.length === 0 && !browserOnly) return { ...value, tree: tiled }
+        const target = focusId === BROWSER_PANE_ID ? BROWSER_PANE_ID : (tabOwner(tiled, focusId) ?? groups[0]?.active ?? focusId)
+        const solo = value.maximized === target
+          || (value.maximized !== undefined && groups[0]?.tabs.includes(value.maximized))
+        if (solo) return { ...value, tree: tiled, maximized: undefined }
+        return { ...value, tree: tiled, maximized: target }
+      }
+      const browserVisible = self.main && value.browserVisible
+      const variants = fitLayoutVariants(groups, size, browserVisible)
+      if (!variants.length) return value
+      const key = fitDeskSignature(groups, browserVisible)
+      let index = 0
+      if (key === fitCycleKey.current && value.tree === lastFitTree.current) {
+        index = (fitCycleIndex.current + 1) % variants.length
+      } else if (key !== fitCycleKey.current) {
+        fitCycleKey.current = key
+        index = 0
+      }
+      fitCycleIndex.current = index
+      const fitted = variants[index]!(groups, size, () => crypto.randomUUID())
+      const nextTree = withBrowser(fitted)
+      lastFitTree.current = nextTree
+      const { maximized: _cleared, ...rest } = value
+      return { ...rest, tree: nextTree }
+    })
+  }, [clearFitCycle])
+  fitVisibleWindowsRef.current = fitVisibleWindows
+  const promoteSidebarLead = useCallback((focusId: string): void => {
+    const size = canvasSize.current
+    if (size.width <= 0 || size.height <= 0) return
+    setLayout((value) => {
+      const swapped = swapSidebarLead(value.tree, focusId)
+      if (swapped) {
+        clearFitCycle()
+        return { ...value, tree: swapped, maximized: undefined }
+      }
+      const tiled = tileWindows(value.tree)
+      const groups = assignExpandedGroups(tiled)
+      const fitted = sidebarStackForLead(groups, size, focusId, () => crypto.randomUUID())
+      if (!fitted) return value
+      clearFitCycle()
+      const nextTree = self.main && value.browserVisible && !layoutIdsIncludeBrowser(fitted)
+        ? withBrowser(fitted)
+        : fitted
+      const { maximized: _cleared, ...rest } = value
+      return { ...rest, tree: nextTree }
+    })
+    void focusPane(focusId)
+  }, [clearFitCycle, focusPane])
+  const stackMonitorLeadPromotable = useCallback((paneId: string): boolean => {
+    if (findSidebarStack(current.current.tree)) return swapSidebarLead(current.current.tree, paneId) !== null
+    const size = canvasSize.current
+    const tiled = tileWindows(current.current.tree)
+    const groups = assignExpandedGroups(tiled)
+    return canPromoteStackMonitorLead(tiled, size, paneId, groups.length)
+  }, [])
+  const maybePromoteStackMonitorLead = useCallback((paneId: string): void => {
+    if (!stackMonitorLeadPromotable(paneId)) return
+    promoteSidebarLead(paneId)
+  }, [promoteSidebarLead, stackMonitorLeadPromotable])
   // A notepad window's chat: created unselected and reported visible at once, before main could
   // discard it as a blank unselected chat.
   const newSideChat = useCallback(async (modelId: string | null, quickChatSurface?: import('../../shared/quick-chat-overlay.js').QuickChatSurface): Promise<string> => {
@@ -636,27 +759,19 @@ export function useChatLayout(
     return id
   }, [cwd])
   const showBrowser = useCallback(() => setLayout((value) => value.browserVisible ? value : { ...value, browserVisible: true }), [])
-  /** Main window: selected chat and browser back into the default floating pair. */
-  const restoreFloatingPair = useCallback(() => {
-    if (!self.main || pending.current) return
-    const chats = chatPaneIds(current.current.tree)
-    const chatId = chats.includes(selected.current) ? selected.current : chats[0]
-    if (!chatId) return
-    setLayout((value) => {
-      const tree = restoreFloatingChatBrowserPair(value.tree, canvasSize.current, chatId)
-      if (!tree) return value
-      if (tree === value.tree && value.browserVisible && !value.maximized) return value
-      return { ...value, tree, browserVisible: true, maximized: null }
-    })
-  }, [self.main])
   return {
     ...layout, browserVisible: self.main && layout.browserVisible, detached: !self.main,
     error: error?.text ?? '', notice: notice?.text ?? '', busy, dock, newChat, newChatWindow, openWindow, setCanvasSize, continueChat, focusPane,
     activateTab, openView, toggleView, pinView, moveTabToTile, closeTab, hide, closeFocused, focusedCloseTarget, resize, arrange,
-    toggleBrowser, showBrowser, restoreFloatingPair, detachTab, returnTab, windows: windowActions,
+    toggleBrowser, showBrowser, fitVisibleWindows, stackMonitorLeadPromotable, maybePromoteStackMonitorLead, detachTab, returnTab, windows: windowActions,
     maximized: layout.maximized ?? null, setMaximized,
     newSideChat
   }
+}
+
+function layoutIdsIncludeBrowser(tree: ChatLayout): boolean {
+  return tree.kind === 'pane' ? tree.id === BROWSER_PANE_ID
+    : layoutIdsIncludeBrowser(tree.first) || layoutIdsIncludeBrowser(tree.second)
 }
 
 /** A tab another window holds is brought forward there instead of being opened twice. */

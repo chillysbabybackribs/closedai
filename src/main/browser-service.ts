@@ -1,4 +1,4 @@
-import { app, BrowserWindow, desktopCapturer, session, type LoadURLOptions, type WebContents, type WebContentsViewConstructorOptions } from 'electron'
+import { app, BrowserWindow, desktopCapturer, session, type LoadURLOptions, type NativeImage, type WebContents, type WebContentsViewConstructorOptions } from 'electron'
 import { EventEmitter } from 'node:events'
 import { join } from 'node:path'
 import type { BrowserHistory } from './browser-history-store.js'
@@ -677,6 +677,34 @@ export class BrowserService extends EventEmitter {
   // above the DOM, so a shelf, dialog or layout drag shows this image while the live pixels are
   // parked). One capture runs at a time; a caller arriving mid-capture shares its result and the
   // renderer re-requests once the latest size is known.
+  /** Renderer-reported browser pane box in window coordinates (DIP). */
+  paneBounds(): BrowserBounds {
+    return { ...this.bounds }
+  }
+
+  /** Active web tab pixels for composited app-window capture; null for non-web tabs. */
+  async activeWebTabNativeFrame(): Promise<NativeImage | null> {
+    const tab = this.active
+    if (!(tab instanceof BrowserTab)) return null
+    const release = this.rendering.pin(tab.id)
+    if (!release) return null
+    try {
+      await settleFrames(tab.view.webContents, CAPTURE_SETTLE_MS)
+      const image = await tab.view.webContents.capturePage()
+      if (image.isEmpty()) return null
+      const cssWidth = tab.view.getBounds().width
+      const size = image.getSize()
+      if (cssWidth > 0 && size.width > cssWidth) {
+        return image.resize({ width: cssWidth, quality: 'best' })
+      }
+      return image
+    } catch {
+      return null
+    } finally {
+      release()
+    }
+  }
+
   async capture(): Promise<BrowserShot | null> {
     if (this.overlayCapture) return this.overlayCapture
     const tab = this.active

@@ -19,18 +19,21 @@ import { BrowserDownloadService } from './browser-download-service.js'
 import { maintainBrowserCache, scheduleBrowserCacheMaintenance } from './browser-cache-maintenance.js'
 import { setAppCheckoutPath } from './app-checkout.js'
 import { scheduleVerifyJanitor } from './verify-janitor.js'
-import { watchRendererBuilds } from './renderer-build-reload.js'
-import { builtRendererIndex, reloadBuiltRenderers } from './main-window.js'
+import { createBuildFreshness, watchRendererBuilds, type BuildFreshnessProbe } from './renderer-build-reload.js'
+import { appConsole, builtRendererIndex, reloadBuiltRenderers } from './main-window.js'
 import { importDefaultBrowserCookies } from './browser-cookie-import.js'
 import { CodexWorkspaceRuntime } from './codex-workspace-runtime.js'
 import { ChatPeerManager } from './chat-peers/peer-manager.js'
 import { AgentRunService } from './agent-runs/agent-run-service.js'
+import { AgentPromptOptimizer } from './agent-library/prompt-optimizer.js'
 import { AgentLibraryStore } from './agent-library/agent-library-store.js'
 import { ChatStore } from './chat-store/chat-store.js'
 import { ChatTranscriptCache } from './chat-store/chat-transcript-cache.js'
 import { ChatMemoryIndex } from './chat-store/chat-memory-index.js'
 import { ChatPaneLexicalIndex } from './chat-store/chat-pane-lexical-index.js'
 import { migrateChatPeersIntoStore } from './chat-store/chat-store-migration.js'
+import { applyRetiredHostCheckoutMigration } from './project-path-migration.js'
+import { rewriteRetiredHostCheckoutPath } from '../shared/project-paths.js'
 import { ProviderCatalogCache } from './chat-context/provider-catalog-cache.js'
 import { stopAllProcessGroups } from './process-tree.js'
 import { CursorToolBridge } from './cursor/cursor-mcp.js'
@@ -114,6 +117,7 @@ let providerCatalogs: ProviderCatalogCache | null = null
 let chatService: ChatPeerManager | null = null
 let agentRuns: AgentRunService | null = null
 let agentLibrary: AgentLibraryStore | null = null
+let agentOptimizer: AgentPromptOptimizer | null = null
 let credentialVault: CredentialVault | null = null
 let securitySettings: SecuritySettingsStore | null = null
 // Pending user decisions (credential reads, page permissions); empty unless Settings → Security asks for them.
@@ -136,6 +140,7 @@ let appCommandAccess: AppCommandAccess | null = null
 let stopBrowserCacheMaintenance: (() => void) | null = null
 let stopVerifyJanitor: (() => void) | null = null
 let stopRendererBuildWatch: (() => void) | null = null
+let buildFreshness: BuildFreshnessProbe | null = null
 let browserReadyToLoad: Promise<unknown> | null = null
 /** A cookie import this slow is a broken one; the first page loads without it. */
 const COOKIE_IMPORT_LOAD_GATE_MS = 5000
@@ -177,7 +182,8 @@ if (!claimProfileInstance(app, { profile: userData(), checkout: app.getAppPath()
 }
 
 async function main(): Promise<void> {
-  setAppCheckoutPath(app.getAppPath())
+  const liveCheckout = app.getAppPath()
+  setAppCheckoutPath(liveCheckout)
   logGpuFeatureStatus()
   await mkdir(userData(), { recursive: true })
   ;[browserHistory, savedSites, browserTabSession, settings, chatStore, securitySettings, agentLibrary, windowStore, notes] = await Promise.all([
@@ -211,6 +217,8 @@ async function main(): Promise<void> {
     : isFirstLaunch
       ? chatWorkspace
       : savedSettings.chatProjectPath
+  chatWorkspace = rewriteRetiredHostCheckoutPath(chatWorkspace, liveCheckout) ?? chatWorkspace
+  projectPath = rewriteRetiredHostCheckoutPath(projectPath, liveCheckout)
   // Bootstrap is a handful of small, unrelated disk reads, and the window cannot paint until
   // the last of them returns. Start them together here and await each where it is first
   // needed: the cookie import alone walks the user's real browser profile.
@@ -273,6 +281,12 @@ async function main(): Promise<void> {
   })
   // Pane records that settings used to hold become chat records once; ids are preserved.
   await migrateChatPeersIntoStore(settings, chatStore, { cwd: chatWorkspace, projectPath })
+  await applyRetiredHostCheckoutMigration(liveCheckout, settings!, chatStore!)
+  {
+    const afterMigration = settings!.get()
+    chatWorkspace = afterMigration.chatWorkspacePath ?? liveCheckout
+    projectPath = afterMigration.chatProjectPath
+  }
   const workspaceSelector = createChatWorkspaceSelector({
     app,
     settings: settings!,
@@ -291,10 +305,21 @@ async function main(): Promise<void> {
   const pageAccess = new BrowserPageAccess(() => browserService)
   cdpAccess = new BrowserCdpAccess(() => browserService)
   const networkAccess = new BrowserNetworkAccess(() => browserService)
-  appAutomationAccess = new AppAutomationAccess(() => mainWindow)
+  // Taken now, before any rebuild can replace the bundles this process is running.
+  buildFreshness = createBuildFreshness({
+    mode: app.isPackaged ? 'packaged' : process.env.ELECTRON_RENDERER_URL ? 'dev' : 'checkout',
+    mainDir: import.meta.dirname,
+    preloadDir: join(import.meta.dirname, '../preload'),
+    rendererIndex: builtRendererIndex(),
+    mainSources: ['src/main', 'src/shared'].map((dir) => join(app.getAppPath(), dir)),
+    preloadSources: [join(app.getAppPath(), 'src/preload')],
+    launchedAt: performance.timeOrigin
+  })
+  appAutomationAccess = new AppAutomationAccess(() => mainWindow, appConsole)
   appCommandAccess = new AppCommandAccess({
     chat: () => chatService, browser: () => browserService, downloads: () => browserDownloads, window: () => mainWindow,
     windows: () => windows, ui: () => appAutomationAccess, browserCoordination, agentRuns: () => agentRuns, agentLibrary: () => agentLibrary,
+    build: () => buildFreshness!.check(),
     facts: () => {
       const saved = settings!.get()
       return { appVersion: app.getVersion(), chatMemoryIndexEnabled: saved.chatMemoryIndexEnabled !== false }
@@ -393,6 +418,8 @@ async function main(): Promise<void> {
   agentRuns.on('change', (event: AgentRunsEvent) => sendToWindows(IPC.event.agentRunsEvent, event))
   // A run started from a library entry counts as that agent's use, whichever surface started it.
   agentRuns.on('started', (run: AgentRun) => { if (run.agentId) agentLibrary?.recordRun(run.agentId) })
+  // The builder's Optimize writes instructions with the model of the chat the dialog was opened from.
+  agentOptimizer = new AgentPromptOptimizer({ modelFor: (paneId) => chatService?.paneSnapshot(paneId)?.selectedModel ?? null })
   liveVerifyHandle.toolRegistry = toolRegistry
   liveVerifyHandle.researchService = researchService
   registerMainProcessIpc(mainIpcRegistration())
@@ -420,7 +447,9 @@ async function main(): Promise<void> {
   stopVerifyJanitor = scheduleVerifyJanitor(() => chatService!.runningPaneIds())
   // A checkout launch shows a rebuilt renderer without a restart, whoever ran the build.
   if (!app.isPackaged && !process.env.ELECTRON_RENDERER_URL) {
-    stopRendererBuildWatch = watchRendererBuilds({ rendererIndex: builtRendererIndex(), mainDir: import.meta.dirname, reload: reloadBuiltRenderers })
+    stopRendererBuildWatch = watchRendererBuilds({
+      rendererIndex: builtRendererIndex(), mainDir: import.meta.dirname, reload: reloadBuiltRenderers, launched: buildFreshness?.launchedMain ?? undefined
+    })
   }
   const liveVerifyMode = process.env.CLOSEDAI_LIVE_VERIFY?.trim() || liveVerifyFromArgv()
   if (liveVerifyMode) requestLiveVerify(liveVerifyHandle, app, liveVerifyMode, true)
@@ -472,6 +501,7 @@ function mainIpcRegistration() {
     chatService: () => chatService,
     agentRuns: () => agentRuns,
     agentLibrary: () => agentLibrary,
+    agentOptimizer: () => agentOptimizer,
     credentialVault: () => credentialVault,
     securitySettings: () => securitySettings,
     settings: () => settings,
@@ -496,7 +526,10 @@ function mainWindowHost(): MainWindowHost {
     browserReadyToLoad,
     toolRegistry,
     toolTelemetry,
-    setMainWindow: (window) => { mainWindow = window },
+    setMainWindow: (window) => {
+      mainWindow = window
+      window?.webContents.on('did-finish-load', () => buildFreshness?.rendererLoaded())
+    },
     setBrowserService: (service) => { browserService = service },
     setBrowserDownloads: (service) => { browserDownloads = service },
     setBrowserSessionFlush: (flush) => { browserSessionFlush = flush },
@@ -537,6 +570,7 @@ app.on('before-quit', (event) => {
   stopRendererBuildWatch?.()
   stopRendererBuildWatch = null
   agentRuns?.stop()
+  agentOptimizer?.cancelAll()
   chatService?.stop()
   for (const runtime of codexRuntimes.values()) runtime.stop()
   codexRuntimes.clear()

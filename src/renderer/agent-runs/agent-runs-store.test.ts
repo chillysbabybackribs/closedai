@@ -4,7 +4,7 @@ import { emptyAgentRunStats, type AgentRun, type AgentRunsEvent } from '../../sh
 import { createAgentRunsStore } from './agent-runs-store.ts'
 
 function run(chatId: string, cycle: number): AgentRun {
-  return { chatId, prompt: 'Go.', status: 'running', cycle, maxCycles: null, startedAt: 1, updatedAt: 1,
+  return { chatId, prompt: 'Go.', status: 'running', cycle, maxCycles: null, maxMinutes: null, activeMs: 0, activeSince: null, autonomous: true, startedAt: 1, updatedAt: 1,
     lastTurnEndedAt: null, reason: null, failures: 0, threadId: null, agentId: null, name: null, stats: emptyAgentRunStats() }
 }
 

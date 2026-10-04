@@ -17,6 +17,7 @@ import {
 import {
   buildTurnSendContext,
   markSessionGuideDelivered,
+  providerTurnProfile,
   sessionGuideThreadKey,
   type SessionGuideDeliveryState
 } from '../chat-context/session-guide.js'
@@ -183,11 +184,14 @@ export class AntigravityChatService extends EventEmitter {
         session.conversationId,
         this.paneId ?? 'pane'
       )
-      const workspaceLedgerContext = await workspaceLedgerContextForTurn({
-        settings: this.settings.get(),
-        prompt,
-        cwd: this.cwd
-      })
+      const antigravityProfile = providerTurnProfile('antigravity', this.settings.get())
+      const workspaceLedgerContext = antigravityProfile.workspaceLedger
+        ? await workspaceLedgerContextForTurn({
+            settings: this.settings.get(),
+            prompt,
+            cwd: this.cwd
+          })
+        : undefined
       const settings = this.settings.get()
       const { context: guided, attachGuide } = buildTurnSendContext({
         prompt: text,
@@ -195,12 +199,14 @@ export class AntigravityChatService extends EventEmitter {
         state: this.sessionGuideState,
         transcriptWasEmpty,
         pendingHandoff,
+        profile: antigravityProfile,
         runtime: {
           paneId: this.paneId,
           provider: 'antigravity',
           cwd: this.cwd,
           chatMemoryIndexEnabled: settings.chatMemoryIndexEnabled !== false,
-          sessionGuideOnTurn: false
+          sessionGuideOnTurn: false,
+          chatCursorBaselineEnabled: settings.chatCursorBaselineEnabled
         },
         workspaceLedgerContext,
         browserContext: this.turnAdditionalContext(text)
@@ -432,6 +438,7 @@ export class AntigravityChatService extends EventEmitter {
       settings: this.settings.get(),
       prompt,
       surface: this.surfaceContext(),
+      chatProjectPath: this.cwd,
       state: this.toolSliceState,
       cacheKeyOf: slicedToolRegistryKey,
       onApplied: async (bundle) => {
@@ -444,6 +451,7 @@ export class AntigravityChatService extends EventEmitter {
 
   private createSession(): AntigravitySession {
     return new AntigravitySession({
+      idleMs: () => (this.settings.get().performance?.warmMinutes ?? 5) * 4 * 60_000,
       cwd: this.cwd,
       binary: () => antigravityBinary(),
       spawnArgs: (resume) => antigravityChatArgs({

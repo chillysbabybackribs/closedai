@@ -2,7 +2,7 @@ import { useCallback, useLayoutEffect, useMemo, useRef, useState, type RefObject
 import { errorMessage } from '../error-message.js'
 import type { Rect } from '../chat-layout/layout-tree.js'
 import {
-  IDENTITY_CAMERA, dropMissingStops, focusCamera, overviewSlots, stepStop, visitStop,
+  IDENTITY_CAMERA, closeSpace, dropMissingStops, focusCamera, overviewSlots, stepStop, visitStop,
   type Camera, type Size, type Space, type SpaceHistory
 } from './spaces-model.js'
 
@@ -40,7 +40,7 @@ async function browserStillReady(root: HTMLElement | null): Promise<void> {
   }
 }
 
-export function useSpaceNavigation({ enabled, current, spaces, size, stageRef, capture, prepare, create, commit }: {
+export function useSpaceNavigation({ enabled, current, spaces, size, stageRef, capture, prepare, create, commit, remove }: {
   enabled: boolean
   current: string
   spaces: readonly Space[]
@@ -54,6 +54,8 @@ export function useSpaceNavigation({ enabled, current, spaces, size, stageRef, c
   create: () => Promise<Space>
   /** Make a prepared space the one shown. */
   commit: (id: string) => void
+  /** Remove a workspace only after its replacement is ready. */
+  remove: (id: string) => void
 }) {
   const [phase, setPhaseState] = useState<SpacePhase>('space')
   const [camera, setCamera] = useState<Camera>(IDENTITY_CAMERA)
@@ -172,6 +174,26 @@ export function useSpaceNavigation({ enabled, current, spaces, size, stageRef, c
     await switchTo(slot, async () => (await create()).id, 'Could not add a workspace')
   }, [create, switchTo])
 
+  const close = useCallback(async (id: string): Promise<void> => {
+    if (phaseRef.current !== 'overview') return
+    const state = { spaces: [...live.current.spaces], current: live.current.current }
+    const next = closeSpace(state, id)
+    if (next === state) return
+    if (id !== state.current) { remove(id); return }
+    const replacement = next.spaces.find((space) => space.id === next.current)!
+    const slot = slotOf(replacement.id)
+    if (!slot) return
+    await switchTo(slot, async () => {
+      await prepare(replacement)
+      remove(id)
+      return replacement.id
+    }, 'Could not close that workspace')
+  }, [prepare, remove, slotOf, switchTo])
+
+  useLayoutEffect(() => {
+    setHistory(dropMissingStops(history.current, new Set(spaces.map((space) => space.id))))
+  }, [spaces, setHistory])
+
   // The shown space changed outside the overview's own switches (a model's project switch). It
   // becomes the stop; seen from the overview, the camera glides into it.
   const previous = useRef(current)
@@ -209,5 +231,5 @@ export function useSpaceNavigation({ enabled, current, spaces, size, stageRef, c
     await enter(stop.id, false)
   }, [zoomOut, enter])
 
-  return { phase, camera, animate, slots, error, edges, zoomOut, enter, add, toggle, step }
+  return { phase, camera, animate, slots, error, edges, zoomOut, enter, add, close, toggle, step }
 }

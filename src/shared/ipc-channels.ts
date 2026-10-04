@@ -1,5 +1,7 @@
+import type { PerformanceSettings, ResponsePerformanceSummary, ResponsePaint } from './performance.js'
 import type { AgentRun, AgentRunStartOptions, AgentRunsEvent } from './agent-runs.js'
 import type { SavedAgent, SavedAgentDraft, SavedAgentPatch } from './agent-library.js'
+import type { AgentOptimizeRequest, AgentOptimizeResult } from './agent-optimizer.js'
 import type { BrowserHistoryMatch } from './browser-history.js'
 import type { BrowserBounds, BrowserDownload, BrowserShot, BrowserState, BrowserTabInfo } from './types.js'
 import type { SavedSite, SavedSiteDraft, SavedSitePatch } from './saved-sites.js'
@@ -38,6 +40,7 @@ export type IpcInvokeChannels = {
   'localFiles:videoRecents': { args: []; result: import('./video-library.js').VideoLibraryEntry[] }
   'localFiles:pickVideo': { args: []; result: string | null }
   'window:minimize': { args: []; result: void }
+  'window:moveBy': { args: [{ dx: number; dy: number }]; result: void }
   'window:maximize': { args: []; result: void }
   'window:toggleFullscreen': { args: []; result: void }
   'window:close': { args: []; result: void }
@@ -138,6 +141,8 @@ export type IpcInvokeChannels = {
   'agentLibrary:save': { args: [SavedAgentDraft]; result: SavedAgent }
   'agentLibrary:update': { args: [string, SavedAgentPatch]; result: SavedAgent | null }
   'agentLibrary:remove': { args: [string]; result: void }
+  'agentLibrary:optimize': { args: [AgentOptimizeRequest]; result: AgentOptimizeResult }
+  'agentLibrary:cancelOptimize': { args: [string]; result: void }
   'credentials:status': { args: []; result: CredentialVaultStatus }
   'credentials:list': { args: []; result: CredentialSummary[] }
   'credentials:save': { args: [CredentialDraft]; result: CredentialSummary }
@@ -154,11 +159,16 @@ export type IpcInvokeChannels = {
   'tools:clearTelemetry': { args: []; result: void }
   'tools:setEnabled': { args: [string, boolean]; result: void }
   'tools:setEnabledMany': { args: [ToolSwitch[]]; result: void }
+  'tools:setChatCursorBaselineEnabled': { args: [boolean]; result: void }
   'tools:setChatToolSliceEnabled': { args: [boolean]; result: void }
   'tools:setChatWorkspaceLedgerEnabled': { args: [boolean]; result: void }
   'models:manifest': { args: []; result: ModelManifest }
   'models:setEnabled': { args: [string, boolean]; result: void }
   'models:setEnabledMany': { args: [ModelSwitch[]]; result: void }
+  'performance:settings': { args: []; result: PerformanceSettings }
+  'performance:update': { args: [Partial<PerformanceSettings>]; result: PerformanceSettings }
+  'performance:summary': { args: []; result: ResponsePerformanceSummary }
+  'performance:paint': { args: [ResponsePaint]; result: void }
   'trace:setActive': { args: [boolean]; result: void }
   'trace:snapshot': { args: [TraceSnapshotOptions?]; result: TraceSnapshot }
   'trace:clear': { args: []; result: void }
@@ -188,6 +198,7 @@ export type IpcEventChannels = {
   'security:credentialApprovals': CredentialApprovalRequest[]
   'tools:event': ToolsEvent
   'models:event': ModelsEvent
+  'performance:settingsChanged': PerformanceSettings
   'trace:event': TraceEvent
   'windows:event': AppWindowsEvent
 }
@@ -211,6 +222,7 @@ export const IPC = {
     },
     window: {
       minimize: 'window:minimize',
+      moveBy: 'window:moveBy',
       maximize: 'window:maximize',
       toggleFullscreen: 'window:toggleFullscreen',
       close: 'window:close',
@@ -330,7 +342,9 @@ export const IPC = {
       list: 'agentLibrary:list',
       save: 'agentLibrary:save',
       update: 'agentLibrary:update',
-      remove: 'agentLibrary:remove'
+      remove: 'agentLibrary:remove',
+      optimize: 'agentLibrary:optimize',
+      cancelOptimize: 'agentLibrary:cancelOptimize'
     },
     credentials: {
       status: 'credentials:status',
@@ -353,6 +367,7 @@ export const IPC = {
       clearTelemetry: 'tools:clearTelemetry',
       setEnabled: 'tools:setEnabled',
       setEnabledMany: 'tools:setEnabledMany',
+      setChatCursorBaselineEnabled: 'tools:setChatCursorBaselineEnabled',
       setChatToolSliceEnabled: 'tools:setChatToolSliceEnabled',
       setChatWorkspaceLedgerEnabled: 'tools:setChatWorkspaceLedgerEnabled'
     },
@@ -360,6 +375,10 @@ export const IPC = {
       manifest: 'models:manifest',
       setEnabled: 'models:setEnabled',
       setEnabledMany: 'models:setEnabledMany'
+    },
+    performance: {
+      settings: 'performance:settings', update: 'performance:update',
+      summary: 'performance:summary', paint: 'performance:paint'
     },
     trace: {
       setActive: 'trace:setActive',
@@ -386,6 +405,7 @@ export const IPC = {
     securityCredentialApprovals: 'security:credentialApprovals',
     toolsEvent: 'tools:event',
     modelsEvent: 'models:event',
+    performanceSettingsChanged: 'performance:settingsChanged',
     traceEvent: 'trace:event',
     windowsEvent: 'windows:event'
   }

@@ -12,8 +12,8 @@
   background: var(--background, #181818);
   --chat-column-width: 720px;
   --chat-column-gutter: clamp(18px, 4vw, 32px);
-  --chat-fs-body: 14px;
-  --chat-fs-markdown: 14px;
+  --chat-fs-body: 15px;
+  --chat-fs-markdown: 15px;
   /* Code — fenced blocks and tool/diff cards — sits one step below UI text. */
   --chat-fs-code: 12px;
   --chat-lh-markdown: 1.7;
@@ -45,6 +45,7 @@
   min-width: 0;
   font-size: var(--chat-fs-body);
   line-height: var(--chat-lh-body);
+  letter-spacing: normal;
 }
 
 /* User turn: the card itself is styled with the capsule material in chat/messages.css. */

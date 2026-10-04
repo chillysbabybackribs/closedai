@@ -2,10 +2,10 @@ import { EventEmitter } from 'node:events'
 import { readFile } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
 import {
-  BUILT_IN_AGENTS, LEGACY_BUILT_IN_KEYS, cleanAgentName, cleanMaxCycles, normalizeSavedAgent,
-  type SavedAgent, type SavedAgentDraft, type SavedAgentPatch
+  BUILT_IN_AGENTS, LEGACY_BUILT_IN_KEYS, SAVED_AGENT_DESCRIPTION_MAX, cleanAgentDescription, cleanAgentName, cleanMaxCycles,
+  normalizeSavedAgent, type SavedAgent, type SavedAgentDraft, type SavedAgentPatch
 } from '../../shared/agent-library.js'
-import { AGENT_RUN_MAX_PROMPT_CHARS } from '../../shared/agent-runs.js'
+import { AGENT_RUN_MAX_PROMPT_CHARS, cleanMaxMinutes } from '../../shared/agent-runs.js'
 import { writeAtomic } from '../atomic-write.js'
 
 // The agents the user built and kept, one small file beside the other user stores. A missing
@@ -72,7 +72,10 @@ export class AgentLibraryStore extends EventEmitter {
     if (!agent) return null
     if (patch.name !== undefined) agent.name = requireName(patch.name)
     if (patch.prompt !== undefined) agent.prompt = requirePrompt(patch.prompt)
+    if (patch.description !== undefined) agent.description = requireDescription(patch.description)
     if (patch.maxCycles !== undefined) agent.maxCycles = cleanMaxCycles(patch.maxCycles)
+    if (patch.maxMinutes !== undefined) agent.maxMinutes = cleanMaxMinutes(patch.maxMinutes)
+    if (patch.autonomous !== undefined) agent.autonomous = patch.autonomous !== false
     agent.updatedAt = this.now()
     this.changed()
     return { ...agent }
@@ -108,8 +111,11 @@ export class AgentLibraryStore extends EventEmitter {
     const agent: SavedAgent = {
       id: randomUUID(),
       name: requireName(draft.name),
+      description: requireDescription(draft.description),
       prompt: requirePrompt(draft.prompt),
       maxCycles: cleanMaxCycles(draft.maxCycles),
+      maxMinutes: cleanMaxMinutes(draft.maxMinutes),
+      autonomous: draft.autonomous !== false,
       createdAt: at,
       updatedAt: at,
       lastRunAt: null,
@@ -143,6 +149,12 @@ function requirePrompt(prompt: unknown): string {
   const clean = typeof prompt === 'string' ? prompt.trim() : ''
   if (!clean) throw new Error('Give the agent standing instructions before saving it')
   if (clean.length > AGENT_RUN_MAX_PROMPT_CHARS) throw new Error(`Agent instructions are limited to ${AGENT_RUN_MAX_PROMPT_CHARS} characters`)
+  return clean
+}
+
+function requireDescription(description: unknown): string {
+  const clean = cleanAgentDescription(description)
+  if (clean.length > SAVED_AGENT_DESCRIPTION_MAX) throw new Error(`Agent descriptions are limited to ${SAVED_AGENT_DESCRIPTION_MAX} characters`)
   return clean
 }
 

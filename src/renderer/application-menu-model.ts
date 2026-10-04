@@ -1,9 +1,4 @@
-import {
-  CHAT_ZOOM_DEFAULT,
-  CHAT_ZOOM_MAX,
-  CHAT_ZOOM_MIN,
-  type ChatZoomCommand
-} from './chat-zoom.js'
+import { type ChatZoomCommand, chatZoomCommandDisabled } from './chat-zoom.js'
 import { QUICK_LAYOUT_PRESETS, type LayoutPreset } from './chat-layout/layout-presets.js'
 import { MENU_KEYS_ON_SELECTED_CHAT, type AppMenuKey, type AppMenuRunResult } from '../shared/app-menu-run.js'
 
@@ -12,7 +7,7 @@ export type MenuAction =
   | 'new-chat' | 'history' | 'settings' | 'connect-providers' | 'sign-out' | 'close-tab' | 'close-window' | 'search-chats'
   | 'toggle-browser' | 'saved-sites' | 'layout' | 'toggle-fullscreen'
   | 'agents' | 'tools' | 'compact' | 'stop-turn'
-  | 'trace' | 'reload' | 'devtools' | 'overview' | 'restore-floating-pair' | 'tile-windows' | 'notepad'
+  | 'trace' | 'reload' | 'devtools' | 'overview' | 'tile-windows' | 'notepad'
 
 type MenuControlUi = { control: 'layout.dock-preset' | 'layout.preset-menu-custom'; item?: string }
 
@@ -28,12 +23,6 @@ export type MenuRow =
 type Menu = { key: string; label: string; rows: MenuRow[] }
 
 const SEP: MenuRow = { kind: 'separator' }
-
-function zoomCommandIsDisabled(command: ChatZoomCommand, chatZoom: number): boolean {
-  if (command === 'in') return chatZoom >= CHAT_ZOOM_MAX
-  if (command === 'out') return chatZoom <= CHAT_ZOOM_MIN
-  return chatZoom === CHAT_ZOOM_DEFAULT
-}
 
 /**
  * Row keys are explicit so a relabel never changes a control id that automation depends on.
@@ -75,7 +64,6 @@ export const MENUS: Menu[] = [
       { key: 'toggle-browser-pane', label: 'Toggle browser pane', action: 'toggle-browser' },
       { key: 'notepad', label: 'Notepad', shortcut: 'Ctrl+Shift+N', action: 'notepad' },
       { key: 'overview', label: 'Workspace overview', shortcut: 'Ctrl+Shift+O', action: 'overview' },
-      { key: 'restore-floating-pair', label: 'Restore chat & browser pair', shortcut: 'Ctrl+Shift+B', action: 'restore-floating-pair' },
       { key: 'tile-windows', label: 'Tile windows (full workspace)', shortcut: 'Ctrl+Shift+L', action: 'tile-windows' },
       SEP,
       ...VIEW_LAYOUT_ROWS,
@@ -133,9 +121,8 @@ export type MenuItem = Extract<MenuRow, { key: string }>
 
 export function menuItemDisabled(row: MenuItem, state: Pick<TitlebarMenuProps,
   'chatZoom' | 'tileEnabled' | 'layoutEnabled' | 'compactEnabled' | 'stopEnabled'>): boolean {
-  if (row.command) return zoomCommandIsDisabled(row.command, state.chatZoom)
+  if (row.command) return chatZoomCommandDisabled(row.command, state.chatZoom)
   if (row.action === 'tile-windows') return !state.tileEnabled
-  if (row.action === 'restore-floating-pair') return !state.layoutEnabled
   if (row.layoutPreset || row.action === 'toggle-browser' || row.action === 'layout' || row.action === 'overview') return !state.layoutEnabled
   if (row.action === 'compact') return !state.compactEnabled
   if (row.action === 'stop-turn') return !state.stopEnabled

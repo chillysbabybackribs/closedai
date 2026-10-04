@@ -14,3 +14,8 @@ test('zero leaves Codex to its own near-limit compaction', () => {
 test('seamless rotation skips mid-turn native compact overrides', () => {
   assert.deepEqual(appServerConfigArgs({ chatMidTurnCompactTokens: 100_000, chatSeamlessRotation: true }), [])
 })
+
+test('Cursor baseline suppresses the app-authored mid-turn compact override', () => {
+  assert.deepEqual(appServerConfigArgs({ chatCursorBaselineEnabled: true,
+    chatMidTurnCompactTokens: 100_000, chatSeamlessRotation: false }), [])
+})

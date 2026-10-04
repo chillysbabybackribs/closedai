@@ -1,4 +1,5 @@
 import type { App } from 'electron'
+import { appCheckoutPathOrNull } from './app-checkout.js'
 import type { AppSettingsStore } from './app-settings-store.js'
 import type { ChatStore } from './chat-store/chat-store.js'
 
@@ -13,6 +14,7 @@ export type ChatWorkspaceSelector = {
   current: () => {
     cwd: string
     projectPath: string | null
+    appCheckoutPath: string
     recentProjects: Array<{ cwd: string; projectPath: string }>
   }
   select: (
@@ -34,6 +36,7 @@ export function createChatWorkspaceSelector(deps: {
       return {
         cwd,
         projectPath,
+        appCheckoutPath: appCheckoutPathOrNull() ?? deps.app.getAppPath(),
         recentProjects: [...deps.settings.get().chatWorkspaces]
           .reverse()
           .filter((workspace) => workspace.projectPath && !sameChatWorkspace(workspace, { cwd, projectPath }))

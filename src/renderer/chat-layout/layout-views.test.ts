@@ -49,6 +49,13 @@ test('a view opens in a window of its kind, else a new window, never beside chat
   assert.deepEqual(paneIds(chat).sort(), ['a', 'c', fileB].sort())
 })
 
+test('a chat can open in a new tiled window instead of joining an existing chat strip', () => {
+  const chats: ChatLayout = { kind: 'pane', id: 'a', tabs: ['a', 'b'] }
+  const opened = openTabInTree(chats, 'c', 'a', 'split-5', true, (tree, tabId) => dockPane(tree, tabId, 'a', 'right', 'split-5'))
+  assert.deepEqual(paneIds(opened), ['a', 'c'])
+  assert.deepEqual(chatTabIds(opened), ['a', 'b', 'c'])
+})
+
 test('saved layouts that mixed kinds keep their chats and drop the strays', () => {
   const mixed: ChatLayout = dockPane({ kind: 'pane', id: trace, tabs: ['a', trace, 'closedai:view:agents:x'] }, tools, trace, 'right', 'split')
   const cleaned = oneKindPerTile(mixed)

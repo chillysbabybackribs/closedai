@@ -18,6 +18,24 @@ function harness(window: BrowserWindow | null) {
   }
 }
 
+test('moveBy IPC shifts the current window', async () => {
+  let x = 10
+  let y = 20
+  const window = {
+    getPosition: () => [x, y] as [number, number],
+    setPosition: (nextX: number, nextY: number) => { x = nextX; y = nextY }
+  } as unknown as BrowserWindow
+  const handlers = new Map<string, Handler>()
+  const ipcMain = {
+    handle: (channel: string, handler: Handler) => { handlers.set(channel, handler) }
+  } as unknown as Pick<IpcMain, 'handle'>
+  registerWindowIpc(ipcMain, () => window)
+  const handler = handlers.get('window:moveBy')
+  assert.ok(handler)
+  await handler!({} as IpcMainInvokeEvent, { dx: 3.6, dy: -2.2 })
+  assert.deepEqual([x, y], [14, 18])
+})
+
 test('fullscreen IPC toggles the current window state', async () => {
   let fullScreen = false
   const window = {

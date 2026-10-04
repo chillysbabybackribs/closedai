@@ -1,9 +1,12 @@
+import { promptLooksLikeRepoWork } from '../chat-context/workspace-ledger-pilot/needs-workspace-context.js'
 import { needsActiveBrowserContext, type TurnSurfaceContext } from '../chat-context/turn-context.js'
 import type { ToolSliceCatalog } from '../../shared/tool-slices.js'
 
 export type ToolSliceTurnInput = {
   prompt: string | null
   surface: TurnSurfaceContext | null
+  /** Host-app checkout (see `closedai.runtime.selfDevelopment`). */
+  selfDevelopment?: boolean
 }
 
 const RESEARCH_CONTEXT_CUES = [
@@ -38,12 +41,23 @@ export function selectToolSliceId(catalog: ToolSliceCatalog, turn: ToolSliceTurn
   if (needsResearchToolSlice(turn)) {
     return catalog.signals?.research?.slice ?? 'research'
   }
+  if (needsSelfDevToolSlice(turn)) {
+    return catalog.signals?.selfdev?.slice ?? 'selfdev'
+  }
   return catalog.signals?.default?.slice ?? 'core'
+}
+
+export function needsSelfDevToolSlice(turn: ToolSliceTurnInput): boolean {
+  if (!turn.selfDevelopment) return false
+  const prompt = turn.prompt?.trim() ?? ''
+  if (!prompt) return false
+  return promptLooksLikeRepoWork(prompt)
 }
 
 export function needsBrowserToolSlice(turn: ToolSliceTurnInput): boolean {
   const prompt = turn.prompt?.trim() ?? ''
   if (prompt && needsActiveBrowserContext(prompt)) return true
+  if (prompt && promptLooksLikeRepoWork(prompt)) return false
   const browser = activeBrowserTab(turn.surface)
   return Boolean(browser?.url && browser.url !== 'about:blank')
 }

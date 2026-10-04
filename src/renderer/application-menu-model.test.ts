@@ -20,7 +20,7 @@ test('each existing action is reachable in its category and through command sear
 test('launcher preserves context eligibility and zoom limits', () => {
   const disabled = (key: string, patch = {}) => menuItemDisabled(items.find(row => row.key === key)!, { ...state, ...patch })
   assert.equal(disabled('new-chat'), false)
-  for (const key of ['restore-floating-pair', 'tile-windows', 'workspace-layout', 'toggle-browser-pane', 'compact-context', 'stop-turn']) {
+  for (const key of ['tile-windows', 'workspace-layout', 'toggle-browser-pane', 'compact-context', 'stop-turn']) {
     assert.equal(disabled(key), true, key)
   }
   assert.equal(disabled('stop-turn', { stopEnabled: true }), false)

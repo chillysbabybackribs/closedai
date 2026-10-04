@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type CSSProperties, type ReactElement, type ReactNode, type Ref } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, X } from 'lucide-react'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import { chatTabIds } from '../chat-layout/layout-tabs.js'
 import { readLayout } from '../chat-layout/layout-tree.js'
 import { SpaceMiniature } from './space-miniature.js'
 import { useSpaceStills } from './space-stills.js'
 import {
-  LABEL_HEIGHT, anchorChat, cameraTransform, createZoomGesture, liveTransform, newSpace, readSpaces, resolveCurrent,
+  LABEL_HEIGHT, anchorChat, cameraTransform, closeSpace, createZoomGesture, liveTransform, newSpace, readSpaces, resolveCurrent,
   saveSpaces, slotAt, type SavedSpaces, type Size, type Space, type Workspace
 } from './spaces-model.js'
 import { GLIDE_MS, useSpaceNavigation } from './use-space-navigation.js'
@@ -104,9 +104,10 @@ export function SpacesStage({ enabled, workspace, chats, selectedPaneId, childre
     return space
   }, [setSaved])
   const commit = useCallback((id: string) => setSaved((value) => ({ ...value, current: id })), [setSaved])
+  const remove = useCallback((id: string) => setSaved((value) => closeSpace(value, id)), [setSaved])
 
   const { still, capture } = useSpaceStills(stageRef)
-  const nav = useSpaceNavigation({ enabled, current: current.id, spaces, size, stageRef, capture, prepare, create, commit })
+  const nav = useSpaceNavigation({ enabled, current: current.id, spaces, size, stageRef, capture, prepare, create, commit, remove })
   const { phase, camera, animate, slots, edges, step, toggle, enter, zoomOut } = nav
   useImperativeHandle(ref, () => ({ toggleOverview: toggle }), [toggle])
 
@@ -222,6 +223,12 @@ export function SpacesStage({ enabled, workspace, chats, selectedPaneId, childre
           <div className="spaces-slot-label" style={{ left: slot.x, top: slot.y - LABEL_HEIGHT, width: slot.width, height: LABEL_HEIGHT }}>
             <span className="spaces-slot-name">{space.name}</span>
             {count > 0 && <span className="spaces-slot-running">{count} running</span>}
+            <button type="button" className="spaces-close" data-ui="spaces.close" data-ui-key={space.id}
+              aria-label={`Close workspace ${space.name}`}
+              title={spaces.length <= 1 ? 'Keep at least one workspace open' : `Close workspace ${space.name} (chats stay in history)`}
+              disabled={phase !== 'overview' || spaces.length <= 1} onClick={() => { void nav.close(space.id) }}>
+              <X size={14} aria-hidden="true" />
+            </button>
           </div>
           <button type="button" className="spaces-slot" data-ui="spaces.slot" data-ui-key={space.id} data-current={here}
             style={{ left: slot.x, top: slot.y, width: slot.width, height: slot.height }}

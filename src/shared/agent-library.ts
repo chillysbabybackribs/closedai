@@ -1,15 +1,24 @@
-// Agents the user built and kept: a name, standing instructions, and a cycle cap. Starting one
-// attaches the agent-run loop (src/shared/agent-runs.ts) to a new chat with these instructions
-// as cycle 1, and the run records which library entry it came from so the library can show
-// when each agent last ran. The library is small, user-owned, and never pruned.
+// Agents the user built and kept: a name, the description they wrote, the standing instructions
+// made from it, and the run settings. Starting one attaches the agent-run loop
+// (src/shared/agent-runs.ts) to a new chat with the instructions as cycle 1, and the run records
+// which library entry it came from so the library can show when each agent last ran. The library
+// is small, user-owned, and never pruned.
+
+import { cleanMaxMinutes, formatAgentMinutes, type AgentRunStartOptions } from './agent-runs.js'
 
 export type SavedAgent = {
   id: string
   name: string
+  /** What the user asked for in their own words; the optimizer's input, kept so it can be revised. Empty for an agent written directly. */
+  description: string
   /** Standing instructions: sent as cycle 1 and again after every provider thread change. */
   prompt: string
   /** Pause after this many cycles; null runs until paused. */
   maxCycles: number | null
+  /** Pause after this many minutes of running time; null runs without a time limit. */
+  maxMinutes: number | null
+  /** False runs supervised: the run pauses after every cycle until the user resumes it. */
+  autonomous: boolean
   createdAt: number
   updatedAt: number
   /** When a run was last started from this entry; null until one is. */
@@ -20,17 +29,18 @@ export type SavedAgent = {
 export type SavedAgentDraft = {
   name: string
   prompt: string
+  description?: string
   maxCycles?: number | null
+  maxMinutes?: number | null
+  autonomous?: boolean
 }
 
 /** Fields the editor changes after saving; the id is the identity. */
-export type SavedAgentPatch = {
-  name?: string
-  prompt?: string
-  maxCycles?: number | null
-}
+export type SavedAgentPatch = Partial<SavedAgentDraft>
 
 export const SAVED_AGENT_NAME_MAX = 80
+/** A description longer than this is refused rather than clipped, so the user's words are never cut silently. */
+export const SAVED_AGENT_DESCRIPTION_MAX = 8_000
 
 /** A shipped agent; `key` records that a library was offered it, so a deleted one stays deleted. */
 export type BuiltInAgent = SavedAgentDraft & { key: string }
@@ -99,6 +109,27 @@ export function cleanMaxCycles(value: unknown): number | null {
   return Number.isInteger(value) && Number(value) > 0 ? Number(value) : null
 }
 
+/** The description as stored: trimmed, and never anything but a string. */
+export function cleanAgentDescription(description: unknown): string {
+  return typeof description === 'string' ? description.trim() : ''
+}
+
+/** What starting a saved agent passes to the run service: its instructions and every run setting. */
+export function savedAgentStartOptions(agent: SavedAgent): AgentRunStartOptions {
+  return {
+    prompt: agent.prompt, maxCycles: agent.maxCycles, maxMinutes: agent.maxMinutes, autonomous: agent.autonomous,
+    agentId: agent.id, name: agent.name
+  }
+}
+
+/** The limits as one phrase for a card or a list: "40 cycles · 2 h", or empty with none. */
+export function describeAgentLimits(agent: Pick<SavedAgent, 'maxCycles' | 'maxMinutes'>): string {
+  return [
+    agent.maxCycles !== null ? `${agent.maxCycles} max` : '',
+    agent.maxMinutes !== null ? formatAgentMinutes(agent.maxMinutes) : ''
+  ].filter(Boolean).join(' · ')
+}
+
 /** Shape check for an entry read back from disk; a record without a name or prompt is dropped. */
 export function normalizeSavedAgent(candidate: unknown): SavedAgent | null {
   if (!candidate || typeof candidate !== 'object') return null
@@ -110,8 +141,12 @@ export function normalizeSavedAgent(candidate: unknown): SavedAgent | null {
   return {
     id: record.id,
     name,
+    // Entries saved before these fields existed load as they behaved: no description, no time limit, autonomous.
+    description: cleanAgentDescription(record.description),
     prompt,
     maxCycles: cleanMaxCycles(record.maxCycles),
+    maxMinutes: cleanMaxMinutes(record.maxMinutes),
+    autonomous: record.autonomous !== false,
     createdAt,
     updatedAt: positiveTime(record.updatedAt) ?? createdAt,
     lastRunAt: positiveTime(record.lastRunAt),

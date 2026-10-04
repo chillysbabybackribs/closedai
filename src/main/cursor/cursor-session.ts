@@ -49,7 +49,7 @@ export type CursorSessionDeps = {
   takeCallId?: (namespace: string, tool: string) => string | null
   /** When set, every JSON-RPC line in either direction is recorded in the turn trace. */
   traceScope?: () => TraceScope
-  idleMs?: number
+  idleMs?: number | (() => number)
   childEnv?: () => NodeJS.ProcessEnv
 }
 

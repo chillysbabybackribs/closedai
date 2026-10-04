@@ -34,7 +34,12 @@ function harness(overrides: { ui?: Partial<AppUiHost>; app?: Partial<AppCommandH
     },
     revealChatTab: async (paneId) => { calls.push(['revealChatTab', paneId]) },
     revealBrowser: async () => { calls.push(['revealBrowser']) },
+    newChatWindow: async () => { calls.push(['newChatWindow']); return { paneId: 'pane-new' } },
     runMenu: async (key, callerPaneId) => { calls.push(['runMenu', key, callerPaneId]); return { key, ran: true } },
+    consoleMessages: (filter) => {
+      calls.push(['consoleMessages', filter])
+      return { matched: 0, returned: 0, nextCursor: 0, lastNavigationAt: null, entries: [] }
+    },
     ...overrides.ui
   }
   const app: AppCommandHost = {
@@ -42,6 +47,9 @@ function harness(overrides: { ui?: Partial<AppUiHost>; app?: Partial<AppCommandH
       calls.push(['state', sections, paneId, callerPaneId])
       return Object.fromEntries(sections.map((section) => [section, { section }]))
     },
+    buildFreshness: async () => ({
+      mode: 'checkout', basis: 'bundle-digest', mainStale: true, preloadStale: false, rendererStale: false, rendererLoadedAt: null
+    }),
     selectedPaneId: () => 'pane-selected',
     queueProjectSwitch: async (request) => { calls.push(['queueProjectSwitch', request]); return { ...request, status: 'pending' } },
     cancelProjectSwitch: (paneId) => { calls.push(['cancelProjectSwitch', paneId]); return null },
@@ -57,6 +65,8 @@ function harness(overrides: { ui?: Partial<AppUiHost>; app?: Partial<AppCommandH
       return {
         chatId: request.paneId, prompt: request.op === 'start' ? request.options.prompt ?? 'saved' : 'standing', status: request.op === 'pause' || request.op === 'finish' ? 'paused' : 'running',
         cycle: 1, maxCycles: request.op === 'start' ? request.options.maxCycles ?? null : null,
+        maxMinutes: request.op === 'start' ? request.options.maxMinutes ?? null : null, activeMs: 0, activeSince: null,
+        autonomous: request.op === 'start' ? request.options.autonomous !== false : true,
         startedAt: 1, updatedAt: 1, lastTurnEndedAt: null, reason: request.op === 'finish' ? `Finished: ${request.summary}` : null, failures: 0, threadId: null,
         agentId: request.op === 'start' ? request.agentId : null, name: null, stats: emptyAgentRunStats()
       }
@@ -107,7 +117,7 @@ test('namespace advertises state, deterministic commands, and control-level ui a
   ])
   assert.deepEqual(agent!.actions?.map((action) => action.name), ['start', 'pause', 'resume', 'finish', 'stop'])
   assert.deepEqual(ui!.actions?.map((action) => action.name), [
-    'controls', 'click', 'type', 'press_key', 'scroll', 'wait_for'
+    'controls', 'click', 'type', 'press_key', 'scroll', 'wait_for', 'console'
   ])
   assert.match(ui!.description, new RegExp(`families: ${uiControlFamilies().join(', ').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`))
 })
@@ -121,6 +131,22 @@ test('state returns every section by default and only the requested ones otherwi
   const narrow = await call('state', { include: ['chat'], pane_id: 'pane-2' })
   assert.doesNotMatch(textOf(narrow), /chatSearchOpen/)
   assert.deepEqual(calls, [['state', ['chat'], 'pane-2', 'pane-caller']])
+})
+
+test('state reports build freshness under workspace only', async () => {
+  const { call } = harness()
+  assert.match(textOf(await call('state', { include: ['workspace'] })), /"build": \{[^}]*"mainStale": true/)
+  assert.doesNotMatch(textOf(await call('state', { include: ['chat'] })), /mainStale/)
+})
+
+test('console reads the main window by default and passes filters through', async () => {
+  const { calls, call } = harness()
+  await call('ui', { action: 'console' })
+  await call('ui', { action: 'console', window: 'win-2', min_level: 'error', since_navigation: true, after_cursor: 4, max_entries: 5 })
+  assert.deepEqual(calls, [
+    ['consoleMessages', { tabId: 'main', minLevel: undefined, contains: undefined, sinceNavigation: false, afterCursor: undefined, limit: 50 }],
+    ['consoleMessages', { tabId: 'win-2', minLevel: 'error', contains: undefined, sinceNavigation: true, afterCursor: 4, limit: 5 }]
+  ])
 })
 
 test('project switch binds to caller identity and cancellation needs no live turn', async () => {
@@ -390,6 +416,7 @@ test('preview_html without a path names the missing argument', async () => {
 test('ui actions resolve controls by id, item, match, selector, or coordinates', async () => {
   const { calls, call } = harness()
   await call('ui', { action: 'controls', surface: 'shell', query: 'row' })
+  await call('ui', { action: 'controls', query: 'composer', layout: true })
   await call('ui', { action: 'click', control: 'titlebar.chat-search-result', item: 'row-1', fallback_reason: 'Testing the rendered control itself.' })
   await call('ui', { action: 'click', x: 100, y: 200, fallback_reason: 'No manifest control exists at this test point.' })
   await call('ui', { action: 'type', control: 'composer.input', text: 'hello', fallback_reason: 'Testing real composer input.' })
@@ -397,7 +424,8 @@ test('ui actions resolve controls by id, item, match, selector, or coordinates',
   await call('ui', { action: 'scroll', delta_y: 400 })
   await call('ui', { action: 'wait_for', control: 'composer.stop', condition: 'enabled' })
   assert.deepEqual(calls, [
-    ['controls', { surface: 'shell', query: 'row', maxControls: 60 }],
+    ['controls', { surface: 'shell', query: 'row', maxControls: 60, layout: false }],
+    ['controls', { surface: undefined, query: 'composer', maxControls: 60, layout: true }],
     ['click', { control: 'titlebar.chat-search-result', item: 'row-1', match: undefined, selector: undefined, x: undefined, y: undefined }],
     ['click', { control: undefined, item: undefined, match: undefined, selector: undefined, x: 100, y: 200 }],
     ['typeText', { control: 'composer.input', item: undefined, match: undefined, selector: undefined, text: 'hello', clear: true }],

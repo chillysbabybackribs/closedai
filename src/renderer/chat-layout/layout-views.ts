@@ -1,3 +1,4 @@
+import { appendSideChat } from './sidebar-stack.js'
 import { layoutGroups } from './layout-docking.js'
 import { VIEW_TAB_PREFIX, isViewTabId, paneIds, type ChatLayout, type ViewScopes } from './layout-tree.js'
 import { addTab, removeTab, selectTab, tabIds, tabOwner } from './layout-tabs.js'
@@ -68,6 +69,8 @@ export function openTabInTree(tree: ChatLayout, id: string, near: string | null,
   place?: (tree: ChatLayout, id: string) => ChatLayout | null): ChatLayout {
   const holder = tabOwner(tree, id)
   if (holder) return selectTab(tree, holder, id)
+  const side = appendSideChat(tree, id, () => crypto.randomUUID())
+  if (side) return side
   const tile = newWindow ? null : tileForTab(tree, id, near)
   if (tile) return addTab(tree, tile, id)
   return place?.(tree, id) ?? tabInNewWindow(tree, id, near ?? undefined, splitId)

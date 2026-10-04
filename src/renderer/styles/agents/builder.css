@@ -1,0 +1,362 @@
+/* Build screen (agent-library/agent-library-panel.tsx): the agent builder. Two columns under the
+   screen header: what the user decides on the left (name, description, run settings), the
+   standing instructions on the right. The footer keeps Delete / Save / Start at the bottom.
+   Same hairline chrome and quiet controls as the rest of the Agents dialog. */
+
+.agent-builder {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  grid-template-columns: minmax(300px, 400px) minmax(0, 1fr);
+}
+
+.agent-builder-side {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px 16px 16px;
+  overflow-y: auto;
+  border-right: 1px solid var(--hairline);
+}
+
+.agent-builder-main {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  padding: 14px 16px 12px;
+}
+
+/* A narrow window stacks the columns and scrolls the screen as one. */
+.agent-library-view[data-screen='build'] {
+  container-type: inline-size;
+}
+
+@container (max-width: 720px) {
+  .agent-builder {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .agent-builder-side {
+    overflow-y: visible;
+    border-right: 0;
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .agent-builder-main {
+    min-height: 320px;
+  }
+}
+
+.agent-builder-label {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* Fields sit inside their labels; the label's weight and tint are not the field's. */
+.agent-library-field {
+  border-color: var(--hairline) !important;
+  box-shadow: none !important;
+  background: transparent;
+  color: var(--foreground);
+  font-weight: 400;
+}
+
+.agent-library-field:focus-visible {
+  border-color: color-mix(in srgb, var(--ring) 55%, var(--hairline)) !important;
+  box-shadow: none !important;
+}
+
+/* Description (agent-describe-section.tsx): the field takes the height the column has left, so a
+   long description is readable once the ideas under it have gone. */
+.agent-describe {
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.agent-describe > .agent-builder-label {
+  flex: 1 0 auto;
+}
+
+.agent-describe-field {
+  flex: 1 0 112px;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.agent-optimize-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+  font-size: 12px;
+}
+
+.agent-optimize-status {
+  display: inline-flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  color: var(--foreground);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.agent-optimize-hint {
+  flex: 1;
+  min-width: 0;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.agent-optimize-hint[data-tone='error'],
+.agent-setting-note[data-tone='error'] {
+  color: var(--destructive);
+}
+
+/* Ideas under an empty description (agent-suggestion-cards.tsx): compact cards, two across. */
+.agent-suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.agent-suggestions-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+
+.agent-suggestion-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.agent-suggestion {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--foreground);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.agent-suggestion:hover:not(:disabled),
+.agent-suggestion:focus-visible {
+  border-color: color-mix(in srgb, var(--ring) 55%, var(--hairline-strong));
+  background: color-mix(in srgb, var(--foreground) 4%, transparent);
+  outline: none;
+}
+
+.agent-suggestion:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.agent-suggestion-category {
+  color: var(--muted-foreground);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.agent-suggestion-title {
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-suggestion-blurb {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* Run settings (agent-run-settings.tsx): one row per setting, name, control, then what the app does. */
+.agent-settings {
+  display: flex;
+  flex: none;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.agent-settings > legend {
+  display: block;
+  margin-bottom: 8px;
+  padding: 0;
+}
+
+.agent-setting {
+  display: flex;
+  min-height: 28px;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  font-size: 12px;
+}
+
+.agent-setting-name {
+  width: 84px;
+  flex: none;
+  color: var(--foreground);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.agent-setting-number {
+  width: 68px;
+  height: 28px;
+  flex: none;
+  padding: 0 8px;
+  font-size: 12px;
+}
+
+.agent-setting-unit {
+  flex: none;
+  font-size: 11.5px;
+}
+
+.agent-setting-note {
+  flex: 1 1 120px;
+  min-width: 0;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.agent-setting-suggested {
+  min-height: 24px;
+  padding-left: 92px;
+}
+
+/* Instructions (agent-instructions-section.tsx): the text fills the column. */
+.agent-instructions {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.agent-instructions-head {
+  display: flex;
+  min-height: 24px;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.agent-instructions-head .agent-builder-label {
+  flex: 1;
+}
+
+.agent-instructions-note {
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+
+.agent-library-prompt {
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.agent-library-prompt[readonly] {
+  border-color: color-mix(in srgb, var(--link-ink) 40%, var(--hairline)) !important;
+}
+
+/* A proposed version waiting for the user's choice. */
+.agent-proposal {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px 6px 10px;
+  border: 1px solid color-mix(in srgb, var(--link-ink) 40%, var(--hairline));
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.agent-proposal-text {
+  flex: 1;
+  min-width: 0;
+  color: var(--foreground);
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+
+.agent-assumptions {
+  flex: none;
+  max-height: 132px;
+  padding: 8px 10px;
+  overflow-y: auto;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.agent-assumptions-head {
+  margin: 0 0 4px;
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+.agent-assumptions ul {
+  margin: 0;
+  padding-left: 16px;
+  list-style: disc;
+}
+
+.agent-assumptions li + li {
+  margin-top: 2px;
+}
+
+/* Footer: Delete, the status line, Save, Start. */
+.agent-library-footer {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--hairline);
+  font-size: 13px;
+}
+
+.agent-library-footer .text-muted-foreground {
+  min-width: 0;
+  flex: 1;
+  font-size: 11px;
+}

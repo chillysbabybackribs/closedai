@@ -47,6 +47,7 @@ import {
 import {
   buildTurnSendContext,
   markSessionGuideDelivered,
+  providerTurnProfile,
   sessionGuideThreadKey,
   type SessionGuideDeliveryState
 } from './chat-context/session-guide.js'
@@ -119,8 +120,8 @@ export class ChatService extends EventEmitter {
     )
     this.toolCalls = new AppServerToolCalls(this.tools, this.client, this.paneId)
     this.compactor = new ContextCompactor({
-      thresholdPercent: () => this.settings.get().chatCompactAtPercent,
-      thresholdTokens: () => this.settings.get().chatCompactAtTokens,
+      thresholdPercent: () => this.settings.get().chatCursorBaselineEnabled ? 0 : this.settings.get().chatCompactAtPercent,
+      thresholdTokens: () => this.settings.get().chatCursorBaselineEnabled ? 0 : this.settings.get().chatCompactAtTokens,
       threadId: () => this.threadId,
       turnActive: () => this.activeTurnId !== null,
       request: (method, params) => this.client.request(method, params),
@@ -217,11 +218,14 @@ export class ChatService extends EventEmitter {
       const threadId = await this.ensureThread(clientUserMessageId)
       const pendingHandoff = this.settings.get().chatContinuation?.handoff ?? null
       const guideThreadKey = sessionGuideThreadKey(this.settings.get().chatThreadId, threadId, this.paneId ?? 'pane')
-      const workspaceLedgerContext = await workspaceLedgerContextForTurn({
-        settings: this.settings.get(),
-        prompt,
-        cwd: this.cwd
-      })
+      const codexProfile = providerTurnProfile('codex', this.settings.get())
+      const workspaceLedgerContext = codexProfile.workspaceLedger
+        ? await workspaceLedgerContextForTurn({
+            settings: this.settings.get(),
+            prompt,
+            cwd: this.cwd
+          })
+        : undefined
       const settings = this.settings.get()
       const { context: additionalContext, attachGuide } = buildTurnSendContext({
         prompt,
@@ -229,12 +233,14 @@ export class ChatService extends EventEmitter {
         state: this.sessionGuideState,
         transcriptWasEmpty,
         pendingHandoff,
+        profile: codexProfile,
         runtime: {
           paneId: this.paneId,
           provider: 'codex',
           cwd: this.cwd,
           chatMemoryIndexEnabled: settings.chatMemoryIndexEnabled !== false,
-          sessionGuideOnTurn: false
+          sessionGuideOnTurn: false,
+          chatCursorBaselineEnabled: settings.chatCursorBaselineEnabled
         },
         workspaceLedgerContext,
         browserContext: this.turnAdditionalContext(prompt)
@@ -455,7 +461,7 @@ export class ChatService extends EventEmitter {
   }
 
   private contextManager(): ContextCompactor | SessionRotator {
-    return this.seamlessRotation() ? this.rotator : this.compactor
+    return this.settings.get().chatCursorBaselineEnabled || this.seamlessRotation() ? this.rotator : this.compactor
   }
 
   private async ensureReady(): Promise<void> {

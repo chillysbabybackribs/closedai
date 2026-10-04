@@ -95,8 +95,7 @@ export const QuickChatCard = memo(function QuickChatCard({
         <QuickChatStatus feed={feed} site={site} seconds={seconds} surface={surface} onExpand={() => setMode('full')} onClose={close} />
       )}
       <div className="quick-chat-body">
-        <WorkspaceChat paneId={paneId} dispatch={dispatch} appearance={appearance} panelVisible={whole}
-          onNewChat={() => onRequest('new')} />
+        <WorkspaceChat paneId={paneId} dispatch={dispatch} appearance={appearance} panelVisible={whole} />
       </div>
     </div>
   )

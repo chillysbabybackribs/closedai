@@ -53,6 +53,14 @@ export function newSpace(spaces: readonly Space[], workspace: Workspace, id: str
   return { id, cwd: workspace.cwd, projectPath: workspace.projectPath, name }
 }
 
+/** Keep one workspace, choosing a neighbour when the current workspace closes. */
+export function closeSpace(saved: SavedSpaces, id: string): SavedSpaces {
+  const index = saved.spaces.findIndex((space) => space.id === id)
+  if (index < 0 || saved.spaces.length <= 1) return saved
+  const spaces = saved.spaces.filter((space) => space.id !== id)
+  return { spaces, current: saved.current === id ? spaces[Math.min(index, spaces.length - 1)]!.id : saved.current }
+}
+
 /**
  * The chat to select before a space is shown: a chat in front of one of its tiles, else any of its
  * chat tabs. The shown layout adopts the selected chat, so selecting one of its own keeps another

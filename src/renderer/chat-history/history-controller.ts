@@ -115,19 +115,20 @@ export function useHistoryController(
   // Keyed on the controller fields used, not the controller: it is rebuilt for every streamed
   // chunk, and a new controller here would hand the title bar and dock new callbacks each time.
   const { selectedPaneId, openChat, newThread, archiveChat, interruptPane: pauseRow, resumePane: resumeRow } = chat
-  const openRow = useCallback(async (chatId: string) => {
-    if (chatId === selectedPaneId) return
-    if (openInWorkspace) await openInWorkspace(chatId)
-    else await openChat(chatId)
-  }, [selectedPaneId, openChat, openInWorkspace])
-
-  const newChat = useCallback(() => {
-    newThread().catch(reportError)
-  }, [newThread, reportError])
 
   const dismissReview = useCallback((chatId: string) => {
     setReviewQueue((current) => markChatReviewViewed(current, chatId))
   }, [])
+
+  const openRow = useCallback(async (chatId: string) => {
+    dismissReview(chatId)
+    if (openInWorkspace) await openInWorkspace(chatId)
+    else if (chatId !== selectedPaneId) await openChat(chatId)
+  }, [selectedPaneId, openChat, openInWorkspace, dismissReview])
+
+  const newChat = useCallback(() => {
+    newThread().catch(reportError)
+  }, [newThread, reportError])
 
   const deleteRow = useCallback(async (chatId: string) => {
     dismissReview(chatId)

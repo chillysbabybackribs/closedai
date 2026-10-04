@@ -11,6 +11,12 @@ export function registerWindowIpc(
   registerInvoke(ipcMain, IPC.invoke.window.minimize, (event) => {
     windowOf(event)?.minimize()
   })
+  registerInvoke(ipcMain, IPC.invoke.window.moveBy, (event, delta) => {
+    const window = windowOf(event)
+    if (!window) return
+    const [x, y] = window.getPosition()
+    window.setPosition(x + Math.round(delta.dx), y + Math.round(delta.dy))
+  })
   registerInvoke(ipcMain, IPC.invoke.window.maximize, (event) => {
     const window = windowOf(event)
     if (!window) return

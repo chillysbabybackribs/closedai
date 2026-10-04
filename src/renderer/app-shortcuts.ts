@@ -1,6 +1,6 @@
 export type AppShortcut =
   | 'settings' | 'history' | 'new-chat' | 'close-tab' | 'close-window' | 'toggle-fullscreen' | 'pause-task'
-  | 'tools' | 'trace' | 'reload' | 'toggle-devtools' | 'overview' | 'restore-floating-pair' | 'tile-windows' | 'notepad'
+  | 'tools' | 'trace' | 'reload' | 'toggle-devtools' | 'overview' | 'tile-windows' | 'notepad'
 
 /**
  * Window-level chords the shell owns, matched the same way for every platform key modifier.
@@ -22,7 +22,6 @@ export function appShortcutForKey(
     if (key === 't') return 'tools'
     if (key === 'i') return 'trace'
     if (key === 'o') return 'overview'
-    if (key === 'b') return 'restore-floating-pair'
     if (key === 'l') return 'tile-windows'
     if (key === 'n') return 'notepad'
     return null

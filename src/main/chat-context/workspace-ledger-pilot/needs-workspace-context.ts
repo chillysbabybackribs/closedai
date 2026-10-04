@@ -18,9 +18,18 @@ const WORKSPACE_CONTEXT_CUES = [
 
 const REPO_WORK_CUES = [
   /\b(?:repo|repository|codebase|code|module|helper|component|tests?|typecheck)\b/i,
-  /\bsrc\/[\w./-]+\.(?:ts|tsx|js|mjs)\b/i,
+  /\b(?:implement|refactor|debug|patch|fix|add|update|remove|migrate)\b/i,
+  /\b(?:renderer|stylesheet|css|tsx|jsx|dropdown|scroll|overflow)\b/i,
+  /\bsrc\/[\w./-]+\.(?:ts|tsx|js|mjs|css)\b/i,
   /\b(?:docs|scripts|harness)\/[\w./-]+\./i
 ] as const
+
+/** Repo-style user intent; used to avoid browser-first tool slices on an open tab alone. */
+export function promptLooksLikeRepoWork(text: string): boolean {
+  const trimmed = text.trim()
+  if (!trimmed) return false
+  return REPO_WORK_CUES.some((cue) => cue.test(trimmed))
+}
 
 /** True when attaching a bounded workspace ledger is likely worth the tokens. */
 export function needsWorkspaceContext(text: string): boolean {

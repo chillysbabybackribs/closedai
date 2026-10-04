@@ -24,9 +24,18 @@ export function layoutTileElement(canvas: HTMLElement, paneId: string): HTMLElem
 
 /** Paint computed layout rects without a React commit — used while a split divider is dragged. */
 export function applyLayoutGeometryDom(canvas: HTMLElement, geometry: Geometry): void {
+  for (const area of geometry.scrollAreas) {
+    const host = canvas.querySelector(`[data-side-scroll="${escapeSelector(area.id)}"]`) as HTMLElement | null
+    if (host) {
+      applyRect(host, area.rect)
+      const content = host.firstElementChild as HTMLElement | null
+      if (content) content.style.height = `${area.contentHeight}px`
+    }
+  }
   for (const { id, rect } of geometry.panes) {
     const tile = layoutTileElement(canvas, id)
-    if (tile) applyRect(tile, rect)
+    const area = geometry.scrollAreas.find((area) => area.paneIds.includes(id))
+    if (tile) applyRect(tile, area ? { ...rect, x: rect.x - area.rect.x, y: rect.y - area.rect.y } : rect)
   }
   for (const { id, rect } of geometry.dividers) {
     const divider = canvas.querySelector(

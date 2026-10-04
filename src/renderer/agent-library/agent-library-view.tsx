@@ -9,19 +9,23 @@ import { AgentRunOverview } from '../agent-runs/agent-run-overview.js'
 import { dockSummary, dockTiles, type DockChatActivity } from '../agent-runs/agent-run-overview-model.js'
 import { useAgentRuns } from '../agent-runs/agent-runs-store.js'
 import { AgentLibraryCards, liveTilesByAgent } from './agent-library-cards.js'
-import { AgentLibraryPanel, type AgentDraft } from './agent-library-panel.js'
+import type { HeldAgentDraft } from './agent-draft.js'
+import { AgentLibraryPanel } from './agent-library-panel.js'
 import { useAgentLibrary } from './agent-library-store.js'
 import { AgentScreenHeader } from './agent-screen-header.js'
 import { takeAgentsViewIntent } from './agents-view-intent.js'
 
 // The Agents view: three stacked screens. The Library (saved-agent cards) is the root; Build
-// (one agent's editor) and Runs (every run) are pushed screens with a back control. A draft the
-// user backs out of is held for the session so a mis-click does not lose the instructions.
+// (the agent builder) and Runs (every run) are pushed screens with a back control. A draft the
+// user backs out of is held for the session so a mis-click does not lose the description or the
+// instructions.
 
 export type AgentLibraryViewProps = {
   /** The view tab is in front; relative times refresh when it returns. */
   active: boolean
   startEnabled: boolean
+  /** The chat the view was opened from; its model writes optimized instructions. */
+  launchPaneId: string | null
   /** Docks a new chat beside this tab's tile and starts the run on it. */
   onStart: (options: AgentRunStartOptions) => Promise<void>
   chats: readonly DockChatActivity[]
@@ -48,13 +52,13 @@ const LIBRARY: Screen = { kind: 'library' }
 const NEW_DRAFT = 'new'
 
 /** The Agents view: opened from the title-bar icon, the tile + menu, or Agent → Agents…. */
-export function AgentLibraryView({ active, startEnabled, onStart, chats, onOpenChat }: AgentLibraryViewProps): JSX.Element {
+export function AgentLibraryView({ active, startEnabled, launchPaneId, onStart, chats, onOpenChat }: AgentLibraryViewProps): JSX.Element {
   const agents = useAgentLibrary()
   const runs = useAgentRuns()
   const [approvals, setApprovals] = useState<CredentialApprovalRequest[]>([])
   useEffect(() => securityRequests().credentials.subscribe(setApprovals), [])
   const [screen, setScreen] = useState<Screen>(LIBRARY)
-  const held = useRef(new Map<string, AgentDraft>())
+  const held = useRef(new Map<string, HeldAgentDraft>())
   useEffect(() => {
     if (!active) return
     const intent = takeAgentsViewIntent()
@@ -74,7 +78,7 @@ export function AgentLibraryView({ active, startEnabled, onStart, chats, onOpenC
   if (screen.kind === 'build') {
     const key = screen.agentId ?? NEW_DRAFT
     body = <AgentLibraryPanel key={key} agents={agents} initialAgentId={screen.agentId} initialDraft={held.current.get(key)}
-      startEnabled={startEnabled} onSave={save} onRemove={(id) => window.closedai.agentLibrary.remove(id)} onStart={onStart}
+      startEnabled={startEnabled} launchPaneId={launchPaneId} onSave={save} onRemove={(id) => window.closedai.agentLibrary.remove(id)} onStart={onStart}
       onBack={(draft, agentId) => {
         held.current.delete(key)
         if (draft) held.current.set(agentId ?? NEW_DRAFT, draft)

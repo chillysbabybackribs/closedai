@@ -125,3 +125,17 @@ function manyChats(count: number): ChatRecord[] {
     updatedAt: index + 1
   }))
 }
+
+
+test('the configurable awake budget parks idle chats while protecting running turns', async () => {
+  const { manager, settings, surfaces } = harness()
+  await settings.set({ performance: { ...settings.get().performance, warmIdleChats: 0 } })
+  await manager.send('pane-a', 'first', [])
+  await manager.newPeer()
+  assert.equal(surfaces[0]!.calls.includes('stop'), false, 'active turn is protected even at zero')
+  surfaces[0]!.state.activeTurnId = null
+  surfaces[0]!.emit('event', { type: 'turn', turnId: null })
+  await manager.newPeer()
+  assert.equal(surfaces[0]!.calls.includes('stop'), true, 'idle runtime now parks at zero')
+  manager.stop()
+})

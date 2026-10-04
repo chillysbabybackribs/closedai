@@ -9,13 +9,15 @@
 
 .shell-titlebar {
   --titlebar-search-width: min(clamp(240px, calc(36vw + 44px), 564px), calc(100% - 420px));
+  --titlebar-shell-controls-width: 132px;
   position: relative;
   z-index: 5;
   height: 44px;
   background: transparent;
   box-shadow: none;
   user-select: none;
-  -webkit-app-region: drag;
+  /* Children opt into drag or no-drag; a drag parent blocks double-click on Linux frameless chrome. */
+  -webkit-app-region: no-drag;
 }
 
 .shell-titlebar-divider {
@@ -27,9 +29,18 @@
   position: absolute;
   top: 0;
   left: 0;
+  z-index: 2;
   display: flex;
   align-items: center;
   height: 100%;
+  -webkit-app-region: no-drag;
+}
+
+/* Application title bar: the band between menus and minimize/maximize/close (and under empty left padding). */
+.titlebar-fit-hit {
+  position: absolute;
+  inset: 0 var(--titlebar-shell-controls-width) 0 0;
+  z-index: 1;
   -webkit-app-region: no-drag;
 }
 
@@ -220,6 +231,7 @@
   position: absolute;
   top: 0;
   right: 0;
+  z-index: 2;
   display: flex;
   height: 100%;
   -webkit-app-region: no-drag;

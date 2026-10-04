@@ -54,6 +54,8 @@
 
 .chat-pane {
   --chat-radius: 8px;
+  /* Flat fill behind transcript and the composer dock shield; cards and materials override. */
+  --chat-pane-fill: var(--surface-card, #19191a);
   position: relative;
   display: flex;
   flex-direction: column;
@@ -62,21 +64,42 @@
   min-height: 0;
   overflow: hidden;
   border-right: 1px solid var(--hairline, rgb(255 255 255 / 8%));
-  background: var(--surface-card, #19191a);
+  background: var(--chat-pane-fill);
 }
 
-/* Chat zoom is deliberately inside the fixed split-panel box. Giving the scaled
-   surface the inverse layout size makes text and controls reflow at the chosen
-   scale while the chat/browser divider and the browser pane stay put. */
+/* Transcript zoom lives inside the fixed split-panel box. The scaled surface gets the
+   inverse layout size so messages reflow at the chosen scale while the composer, dividers,
+   and browser pane stay at layout scale. */
+.chat-pane-stack {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
 .chat-zoom-surface {
   display: flex;
   flex-direction: column;
-  width: calc(100% * var(--chat-zoom-inverse));
-  height: calc(100% * var(--chat-zoom-inverse));
+  flex: 1 1 0;
+  /* Lay out in pre-scale space above the composer band, then scale back to the slot so
+     transcript pixels never paint under the floating dock (high zoom included). */
+  width: calc(100% * var(--chat-zoom-inverse, 1));
+  height: calc((100% - var(--composer-dock-height, 0px)) * var(--chat-zoom-inverse, 1));
+  max-height: calc((100% - var(--composer-dock-height, 0px)) * var(--chat-zoom-inverse, 1));
   min-width: 0;
   min-height: 0;
-  transform: scale(var(--chat-zoom));
+  overflow: hidden;
+  transform: scale(var(--chat-zoom, 1));
   transform-origin: top left;
+}
+
+.prompt-chat-composer-centered .chat-zoom-surface {
+  height: calc(100% * var(--chat-zoom-inverse, 1));
+  max-height: calc(100% * var(--chat-zoom-inverse, 1));
 }
 
 /* Chat message scroller */
@@ -108,16 +131,21 @@
   overflow-anchor: none;
   overscroll-behavior: contain;
   scrollbar-width: none;
-  scroll-padding-bottom: calc(var(--composer-dock-height, 0px) + 16px);
-  /* The composer floats over the foot of the scroller (composer.css): text fades as it slides
-     under the capsule, so nothing sharp shows in the gap beneath it. */
-  mask-image: linear-gradient(to bottom, #000 calc(100% - var(--composer-dock-height, 0px) + 22px), transparent calc(100% - 8px));
+  scroll-padding-bottom: 16px;
 }
 
-.prompt-chat-composer-centered .chat-scroll { mask-image: none; }
+.prompt-chat-composer-centered .chat-scroll {
+  /* Empty chat: the dock sits mid-pane; keep a soft fade under the centered capsule. */
+  scroll-padding-bottom: calc(var(--composer-dock-height, 0px) * var(--chat-zoom-inverse, 1) + 16px);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - var(--composer-dock-height, 0px) * var(--chat-zoom-inverse, 1) + 22px), transparent calc(100% - 8px));
+}
 
 .chat-scroll-root [data-slot="message-scroller-button"][data-direction="end"] {
-  bottom: calc(var(--composer-dock-height, 0px) + 6px);
+  bottom: 6px;
+}
+
+.prompt-chat-composer-centered .chat-scroll-root [data-slot="message-scroller-button"][data-direction="end"] {
+  bottom: calc(var(--composer-dock-height, 0px) * var(--chat-zoom-inverse, 1) + 6px);
 }
 
 .chat-scroll-content {
@@ -128,7 +156,11 @@
   gap: 0;
   /* Bottom padding clears the floating composer dock plus breathing room above the capsule. It
      sits inside the scroll content so it survives being scrolled to the bottom. */
-  padding: 12px 0 calc(var(--composer-dock-height, 0px) + 18px);
+  padding: 12px 0 18px;
+}
+
+.prompt-chat-composer-centered .chat-scroll-content {
+  padding: 12px 0 calc(var(--composer-dock-height, 0px) * var(--chat-zoom-inverse, 1) + 18px);
 }
 
 .chat-scroll-content > [data-slot="message-scroller-item"] {

@@ -1,5 +1,6 @@
 import type { ChatProvider } from '../../shared/chat.js'
 import type { AppSettings } from '../../shared/types.js'
+import { toolSliceTurnInput } from '../chat-context/chat-self-development.js'
 import type { TurnSurfaceContext } from '../chat-context/turn-context.js'
 import { traceLog } from '../trace/trace-log.js'
 import type { ToolRegistry } from './registry.js'
@@ -20,18 +21,20 @@ export async function attachToolSliceForTurn(deps: {
   paneId: string | null
   activeTurnId: string | null
   registry: ToolRegistry
-  settings: Pick<AppSettings, 'chatToolSliceEnabled'>
+  settings: Pick<AppSettings, 'chatToolSliceEnabled'> & Partial<Pick<AppSettings, 'chatCursorBaselineEnabled'>>
   prompt: string
   surface: TurnSurfaceContext | null
+  chatProjectPath: string
   state: ToolSliceTurnAttachState
   cacheKeyOf: (bundle: SlicedToolRegistryBundle) => string
   onApplied: (bundle: SlicedToolRegistryBundle) => Promise<void>
 }): Promise<void> {
-  const bundle = await resolveSlicedToolRegistry(deps.registry, deps.settings, {
-    prompt: deps.prompt,
-    surface: deps.surface
-  })
-  const key = deps.cacheKeyOf(bundle)
+  const bundle = await resolveSlicedToolRegistry(
+    deps.registry,
+    deps.settings,
+    toolSliceTurnInput(deps.prompt, deps.surface, deps.chatProjectPath)
+  )
+  const key = `${deps.settings.chatCursorBaselineEnabled === true ? 'cursor-baseline' : 'standard'}\0${deps.cacheKeyOf(bundle)}`
   if (deps.state.cacheKey === key) return
   deps.state.cacheKey = key
   await deps.onApplied(bundle)

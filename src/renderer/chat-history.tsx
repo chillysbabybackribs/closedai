@@ -1,14 +1,13 @@
 import type { JSX } from 'react'
 import { useEffect, useMemo, useState } from 'react'
-import { Archive, Search } from 'lucide-react'
+import { Search } from 'lucide-react'
 
 import { Button } from '../components/ui/button.js'
 import { Loader } from '../components/ui/loader.js'
 import { errorMessage } from './error-message.js'
 import type { ChatRowSummary } from '../shared/chat-peers.js'
-import { formatChatTime } from './chat-history/history-format.js'
-import { chatHistorySurfaceLabel, ChatHistorySurfaceMark } from './chat-history/chat-history-surface-mark.js'
-import { activityAt, rankChats, segmentTitle } from './chat-history/history-search.js'
+import { rankChats } from './chat-history/history-search.js'
+import { ChatHistoryThreadList, HISTORY_PAGE_SIZE, nextHistoryPage } from './chat-history/chat-history-thread-list.js'
 
 export type ChatHistoryProps = {
   /** The selected chat's id; the same id names it in the store and as a pane. */
@@ -26,13 +25,7 @@ export type ChatHistoryProps = {
   onOpened?: () => void
 }
 
-/** Rows painted per page; a workspace can hold a thousand chats and painting them all was slow. */
-export const HISTORY_PAGE_SIZE = 50
-
-/** How many rows to show after asking for more: one more page, never past the end. */
-export function nextHistoryPage(shown: number, total: number, pageSize = HISTORY_PAGE_SIZE): number {
-  return Math.min(total, shown + pageSize)
-}
+export { HISTORY_PAGE_SIZE, nextHistoryPage } from './chat-history/chat-history-page.js'
 
 type LoadState =
   | { status: 'loading' }
@@ -74,8 +67,6 @@ export function ChatHistory({ activeChatId, busy, listChats, chats, openChat, ar
   }, [live, listChats, reloadKey])
 
   const ranked = useMemo(() => load.status === 'ready' ? rankChats(load.threads, query) : [], [load, query])
-  const visible = useMemo(() => ranked.slice(0, shown), [ranked, shown])
-  const remaining = ranked.length - visible.length
 
   async function open(chatId: string): Promise<void> {
     if (busy || pendingId) return
@@ -152,68 +143,17 @@ export function ChatHistory({ activeChatId, busy, listChats, chats, openChat, ar
         </div>
       )}
 
-      {load.status === 'ready' && visible.length > 0 && (
-        <ul className="chat-history-list">
-          {visible.map((hit) => {
-            const thread = hit.row
-            const current = thread.paneId === activeChatId
-            return (
-              <li
-                key={thread.paneId}
-                className="chat-history-row"
-                data-current={current || undefined}
-                data-pending={pendingId === thread.paneId || undefined}
-              >
-                <button
-                  type="button"
-                  className="chat-history-open"
-                  data-ui="chat.history-open"
-                  data-ui-key={thread.paneId}
-                  onClick={() => void open(thread.paneId)}
-                  disabled={busy || pendingId !== null}
-                  aria-current={current ? 'true' : undefined}
-                  title={chatHistorySurfaceLabel(thread.quickChatSurface) ?? undefined}
-                >
-                  <span className="chat-history-leading" aria-hidden="true">
-                    <ChatHistorySurfaceMark surface={thread.quickChatSurface} size={16} className="chat-history-surface" />
-                  </span>
-                  <span className="chat-history-body">
-                    <span className="chat-history-title">
-                      {segmentTitle(thread.title, hit.titleRanges).map((segment, position) => segment.matched
-                        ? <mark key={position}>{segment.text}</mark> : <span key={position}>{segment.text}</span>)}
-                    </span>
-                    <span className="chat-history-meta">
-                      {hit.folder && <span className="chat-history-folder">{hit.folder}</span>}
-                      <span>{current ? 'Current' : formatChatTime(activityAt(thread))}</span>
-                    </span>
-                  </span>
-                </button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-xs"
-                  className="chat-history-archive"
-                  data-ui="chat.history-archive"
-                  data-ui-key={thread.paneId}
-                  aria-label={`Archive “${thread.title}”`}
-                  title="Archive"
-                  disabled={pendingId !== null || (current && busy)}
-                  onClick={() => void archive(thread.paneId)}
-                >
-                  <Archive aria-hidden="true" />
-                </Button>
-              </li>
-            )
-          })}
-          {remaining > 0 && (
-            <li className="chat-history-more">
-              <Button type="button" variant="ghost" size="sm" data-ui="chat.history-more"
-                onClick={() => setShown((current) => nextHistoryPage(current, ranked.length))}>
-                Show {Math.min(HISTORY_PAGE_SIZE, remaining)} more · {remaining} older
-              </Button>
-            </li>
-          )}
-        </ul>
+      {load.status === 'ready' && ranked.length > 0 && (
+        <ChatHistoryThreadList
+          hits={ranked}
+          activeChatId={activeChatId}
+          busy={busy}
+          pendingId={pendingId}
+          shown={shown}
+          onShowMore={() => setShown((current) => nextHistoryPage(current, ranked.length))}
+          onOpen={(chatId) => { void open(chatId) }}
+          onArchive={(chatId) => { void archive(chatId) }}
+        />
       )}
     </section>
   )

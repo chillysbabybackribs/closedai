@@ -1,6 +1,7 @@
 import type { PageReadiness, PageReadyResult } from '../../browser-page-ready.js'
 import type { CaptureCoherence } from '../../capture-coherence.js'
 import type { BrowserTabInfo } from '../../../shared/types.js'
+import type { AppUiTarget } from '../app/host.js'
 
 export type ModelImage = {
   /** A data URL (image/jpeg or image/png) small enough to sit in thread history. */
@@ -42,7 +43,8 @@ export type ImageCrop = {
 export type UiCaptureHost = {
   /** The open tabs, for naming them when a requested tab is not there. */
   listTabs(): BrowserTabInfo[]
-  captureAppWindow(): Promise<CapturedImage | null>
+  /** The composed window, or only the box of one renderer control when `target` names it. */
+  captureAppWindow(target?: AppUiTarget): Promise<CapturedImage | null>
   captureBrowserPage(tabId: string | undefined, ready: PageReadiness): Promise<BrowserPageCapture | null>
   cropImage(dataUrl: string, crop: ImageCrop, zoom: number): Promise<CapturedImage | null>
 }

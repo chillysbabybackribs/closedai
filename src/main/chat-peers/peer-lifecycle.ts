@@ -64,7 +64,7 @@ export class PeerLifecycle {
         const title = this.store.get(id)?.title ?? entry.display.current.title
         this.onEvent(entry, { type: 'title', title })
       }
-    })
+    }, () => this.settings.get().performance?.autoTitles !== false)
   }
 
   rename(chatId: ChatPaneId, title: string | null): void {
@@ -257,7 +257,7 @@ export class PeerLifecycle {
    * A running turn, an operation in flight, or an already parked chat is left alone. Returns the
    * ids that were parked.
    */
-  parkExcessIdle(selected: ChatPaneId, max = MAX_AWAKE_IDLE_CHATS): ChatPaneId[] {
+  parkExcessIdle(selected: ChatPaneId, max = this.settings.get().performance?.warmIdleChats ?? MAX_AWAKE_IDLE_CHATS): ChatPaneId[] {
     const idle = [...this.peers.values()].filter((entry) =>
       entry.chatId !== selected && !entry.parked && entry.busy === 0 && !this.isRunning(entry.chatId))
     if (idle.length <= max) return []

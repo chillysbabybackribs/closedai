@@ -44,6 +44,24 @@
 }
 .spaces-slot-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .spaces-slot-running { flex: none; color: #cfe6d7; font-weight: 500; }
+.spaces-close {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  color: #eeeae4;
+  background: rgb(0 0 0 / 20%);
+  pointer-events: auto;
+  cursor: pointer;
+}
+.spaces-close:hover:not(:disabled) { background: #a63838; color: #fff; }
+.spaces-close:focus-visible { outline: 2px solid #eeeae4; outline-offset: 2px; }
+.spaces-close:disabled { opacity: 0.35; cursor: default; }
 .spaces-slot-group[data-current='true'] .spaces-slot-name::after { content: ' · here'; font-weight: 400; color: #cfcac2; }
 
 /* The last slot in the grid: an empty workspace-shaped outline that adds a folder. */

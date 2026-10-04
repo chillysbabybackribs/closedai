@@ -5,6 +5,7 @@ import {
   conditionProbeExpression,
   controlsExpression,
   escapeWouldPauseTaskExpression,
+  targetBoundsExpression,
   targetClickExpression,
   targetSelector,
   targetTypeExpression,
@@ -299,6 +300,20 @@ test('control resolution diagnoses elements belonging to unselected panes', asyn
     assert.rejects(run(targetClickExpression({ control: 'composer.stop' })), /belongs to unselected pane pane-other/))
 })
 
+test('pane selection is read from the layout tile, not the chat-pane aside nested inside it', async () => {
+  // The aside carries data-pane-id without data-selected; only the tile says whether the pane is selected.
+  const aside = { getAttribute: (attr: string) => attr === 'data-pane-id' ? 'pane-a' : null }
+  const tile = { getAttribute: (attr: string) => attr === 'data-selected' ? 'true' : attr === 'data-pane-id' ? 'pane-a' : null }
+  const input = fakeElement({
+    attributes: { 'data-ui': 'composer.input' },
+    closest: (selector: string) => selector.includes('[data-selected]') ? tile : selector.includes('data-pane-id') ? aside : null
+  })
+  await withDom([input], async () => {
+    const located = await new Function(`return ${targetBoundsExpression({ control: 'composer.input' })}`)() as { bounds: unknown }
+    assert.deepEqual(located.bounds, { x: 10, y: 10, width: 80, height: 30 })
+  })
+})
+
 test('click preparation falls back to an uncovered child when a sibling floats over the centre', async () => {
   const run = (expression: string) => (new Function(`return ${expression}`) as () => Promise<{ point: { x: number; y: number } }>)()
   const label = fakeElement({ tagName: 'SPAN', getBoundingClientRect: () => ({ width: 30, height: 20, left: 12, top: 15, right: 42, bottom: 35 }) })
@@ -365,5 +380,26 @@ test('click preparation reports covering elements', async () => {
     ).finally(() => {
       globalThis.document.elementFromPoint = originalFromPoint
     })
+  })
+})
+
+test('controls with layout report bounds, overflow, and offscreen; bounds resolve one target', () => {
+  const tab = fakeElement({
+    attributes: { 'data-ui': 'layout.tab', 'data-ui-key': 'tab-1' },
+    closest: () => null,
+    clientWidth: 80, scrollWidth: 140.5, clientHeight: 30, scrollHeight: 30,
+    getBoundingClientRect: () => ({ width: 80.4, height: 30, left: 960.2, top: 10, right: 1040.6, bottom: 40 })
+  })
+  return withDom([tab], async () => {
+    const plain = new Function(`return ${controlsExpression({ maxControls: 5 })}`)() as { controls: Array<Record<string, unknown>> }
+    assert.equal(plain.controls[0]?.bounds, undefined)
+    const laid = new Function(`return ${controlsExpression({ maxControls: 5, layout: true })}`)() as { controls: Array<Record<string, unknown>> }
+    assert.deepEqual(laid.controls[0]?.bounds, { x: 960, y: 10, width: 80, height: 30 })
+    assert.deepEqual(laid.controls[0]?.overflow, { x: 60.5, y: 0 })
+    assert.equal(laid.controls[0]?.partlyOffscreen, true)
+    const located = await new Function(`return ${targetBoundsExpression({ control: 'layout.tab' })}`)()
+    assert.deepEqual(located, { bounds: { x: 960, y: 10, width: 80, height: 30 }, viewport: { width: 1000, height: 800 } })
+    // A failed lookup must reject with its reason, not Electron's generic "Script failed to execute".
+    await assert.rejects(new Function(`return ${targetBoundsExpression({})}`)(), /Pass control/)
   })
 })

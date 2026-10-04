@@ -7,13 +7,14 @@ import { useBrowserController } from '../browser-controller.js'
  * The shared browser, mounted only in the main window: its native page is laid out there, and a
  * detached window's renderer must never report bounds for it.
  */
-export function WorkspaceBrowser({ layoutKey, visible, occluded, savedSites, dragHandle, windowControls, onReveal, onShow }: {
+export function WorkspaceBrowser({ layoutKey, visible, occluded, savedSites, dragHandle, windowControls, onHeaderDoubleClick, onReveal, onShow }: {
   layoutKey: string
   visible: boolean
   occluded: boolean
   savedSites: BrowserSavedSitesController
   dragHandle: ReactNode
   windowControls: ReactNode
+  onHeaderDoubleClick?: () => void
   /** An image or local file opened in the browser brings it forward with a reveal. */
   onReveal: () => void
   /** A tab showing an image keeps the browser shown. */
@@ -29,7 +30,8 @@ export function WorkspaceBrowser({ layoutKey, visible, occluded, savedSites, dra
   }, [imageTabId, onShow])
   return <div className="workspace-right" data-mode="browser" data-with-browser={visible ? 'yes' : 'no'}>
     <div className={`workspace-surface workspace-surface-browser${visible ? '' : ' is-collapsed'}`}>
-      <BrowserPane controller={browser} savedSites={savedSites} dragHandle={dragHandle} windowControls={windowControls} />
+      <BrowserPane controller={browser} savedSites={savedSites} dragHandle={dragHandle} windowControls={windowControls}
+        onHeaderDoubleClick={onHeaderDoubleClick} />
     </div>
   </div>
 }

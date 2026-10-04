@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  DEFAULT_DOCK_PREFS, DOCK_REACH, DOCK_REST, DOCK_HEIGHT, HOLD_BAND, REVEAL_EDGE, dockLocation, dockLocationLabel, pointerReveal, readDockPrefs,
+  DEFAULT_DOCK_PREFS, DOCK_REST, DOCK_HEIGHT, dockLocation, dockLocationLabel, pointerInDockBounds, pointerReveal, readDockPrefs,
   saveDockPrefs, trayApps, canPinTrayApp, isTrayAppPinned, setTrayAppPinned, pinnedTrayApps,
   DOCK_ICON_OPTIONS, dockIconPinPatch, isDockIconPinned, type TrayInput
 } from './dock-model.js'
@@ -93,26 +93,27 @@ describe('dock prefs', () => {
     assert.deepEqual(readDockPrefs(storage).pinnedControls, ['library', 'settings'])
   })
 
-  it('uses a flat footer bar for pointer bands', () => {
+  it('reserves the footer overlay height for layout math', () => {
     assert.equal(DOCK_REST, DOCK_HEIGHT)
-    assert.ok(DOCK_REACH >= DOCK_REST)
   })
 })
 
 describe('pointerReveal', () => {
-  const height = 900
-  it('shows across exactly the full dock-height band', () => {
-    assert.equal(REVEAL_EDGE, DOCK_HEIGHT)
-    assert.equal(pointerReveal(height - 1, height, false), 'show')
-    assert.equal(pointerReveal(height - REVEAL_EDGE, height, false), 'show')
-    assert.equal(pointerReveal(height - REVEAL_EDGE - 1, height, false), 'leave')
+  const bounds = { left: 400, top: 820, right: 800, bottom: 900 }
+
+  it('reveals only inside the control cluster box', () => {
+    assert.equal(pointerReveal(600, 850, bounds, false), 'show')
+    assert.equal(pointerReveal(399, 850, bounds, false), 'leave')
+    assert.equal(pointerReveal(600, 819, bounds, false), 'leave')
+    assert.equal(pointerReveal(600, 901, bounds, false), 'leave')
+    assert.equal(pointerInDockBounds(400, 820, bounds), true)
+    assert.equal(pointerInDockBounds(400, 819, bounds), false)
   })
 
-  it('holds a shown dock while the pointer is over or just above it', () => {
-    assert.equal(pointerReveal(height - 30, height, true), 'show')
-    assert.equal(pointerReveal(height - HOLD_BAND, height, true), 'hold')
-    assert.equal(pointerReveal(height - HOLD_BAND - 1, height, true), 'leave')
-    assert.equal(pointerReveal(height - HOLD_BAND, height, false), 'leave')
+  it('holds an open dock only while the pointer stays inside the box', () => {
+    assert.equal(pointerReveal(600, 850, bounds, true), 'hold')
+    assert.equal(pointerReveal(900, 850, bounds, true), 'leave')
+    assert.equal(pointerReveal(600, 700, bounds, true), 'leave')
   })
 })
 

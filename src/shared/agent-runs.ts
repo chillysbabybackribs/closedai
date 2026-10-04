@@ -45,6 +45,14 @@ export type AgentRun = {
   cycle: number
   /** Stop and pause with a reason when this many cycles have run; null means no limit. */
   maxCycles: number | null
+  /** Pause once the run has been running this long, after any turn in flight ends; null means no time limit. */
+  maxMinutes: number | null
+  /** Running time banked by earlier running spans. Paused time is never counted. */
+  activeMs: number
+  /** When the current running span began; null while paused. */
+  activeSince: number | null
+  /** False for a supervised run: main pauses it after every cycle until the user resumes it. */
+  autonomous: boolean
   startedAt: number
   updatedAt: number
   lastTurnEndedAt: number | null
@@ -64,6 +72,10 @@ export type AgentRun = {
 export type AgentRunStartOptions = {
   prompt: string
   maxCycles?: number | null
+  /** Running-time limit in whole minutes; omitted or null runs without one. */
+  maxMinutes?: number | null
+  /** False starts a supervised run; omitted means autonomous, as every run was before the option existed. */
+  autonomous?: boolean
   agentId?: string | null
   name?: string | null
 }
@@ -83,6 +95,10 @@ export const AGENT_RUN_TURN_START_TIMEOUT_MS = 60_000
 export const AGENT_RUN_MAX_PROMPT_CHARS = 20_000
 /** Reply and error excerpts kept on the run record; the tab clips further for display. */
 export const AGENT_RUN_EXCERPT_CHARS = 240
+/** The longest time limit a run accepts: one week of running time. */
+export const AGENT_RUN_MAX_MINUTES = 7 * 24 * 60
+/** Why a supervised run is paused between cycles; the Runs screen reads it as "needs you". */
+export const AGENT_RUN_REVIEW_REASON = 'Waiting for your review'
 
 export function emptyAgentRunStats(): AgentRunStats {
   return { steps: 0, errors: 0, edits: 0, rotations: 0, turnMs: 0, turnStartedAt: null, lastError: null, lastMessage: null, context: null, plan: null }
@@ -107,14 +123,95 @@ export function agentRunRetryDelay(failures: number): number {
   return AGENT_RUN_RETRY_DELAYS_MS[index]!
 }
 
-/** What the runtime sends to start the next cycle; the full prompt returns after a thread change. */
-export function agentCycleMessage(run: Pick<AgentRun, 'prompt' | 'cycle'>, threadChanged: boolean): string {
-  const next = run.cycle + 1
-  if (next === 1) return run.prompt
-  if (threadChanged) {
-    return `Cycle ${next}. This chat's context was rotated, so here are your standing instructions again:\n\n${run.prompt}\n\nStart cycle ${next} now.`
+/** A whole number of minutes from 1 to the cap, or null for no time limit; anything else is no limit. */
+export function cleanMaxMinutes(value: unknown): number | null {
+  return Number.isInteger(value) && Number(value) > 0 ? Math.min(Number(value), AGENT_RUN_MAX_MINUTES) : null
+}
+
+/** "45 min", "2 h", "1 h 30 min": how a time limit reads on the strip, in a pause reason, and in the prompt. */
+export function formatAgentMinutes(minutes: number): string {
+  const whole = Math.max(0, Math.round(minutes))
+  const hours = Math.floor(whole / 60)
+  const rest = whole % 60
+  if (hours === 0) return `${rest} min`
+  return rest === 0 ? `${hours} h` : `${hours} h ${rest} min`
+}
+
+/** Why a run paused at its cycle cap or its time limit; both start with "Reached". */
+export function agentRunCycleCapReason(maxCycles: number): string {
+  return `Reached ${maxCycles} ${maxCycles === 1 ? 'cycle' : 'cycles'}`
+}
+
+export function agentRunTimeLimitReason(maxMinutes: number): string {
+  return `Reached ${formatAgentMinutes(maxMinutes)}`
+}
+
+type AgentRunClock = Pick<AgentRun, 'maxMinutes' | 'activeMs' | 'activeSince'>
+
+/** Time the run has spent running: the banked spans plus the live one. */
+export function agentRunActiveMs(run: Pick<AgentRun, 'activeMs' | 'activeSince'>, now: number): number {
+  return run.activeMs + (run.activeSince === null ? 0 : Math.max(0, now - run.activeSince))
+}
+
+/** Running time left under the run's limit, never below zero; null when it has no time limit. */
+export function agentRunRemainingMs(run: AgentRunClock, now: number): number | null {
+  if (run.maxMinutes === null) return null
+  return Math.max(0, run.maxMinutes * 60_000 - agentRunActiveMs(run, now))
+}
+
+/** "1 h 12 min left", rounded up so the last minute never reads as none; null with no time limit. */
+export function describeAgentRunRemaining(run: AgentRunClock, now: number): string | null {
+  const remaining = agentRunRemainingMs(run, now)
+  if (remaining === null) return null
+  return remaining === 0 ? 'time limit reached' : `${formatAgentMinutes(Math.ceil(remaining / 60_000))} left`
+}
+
+/** Paused because a limit ran out, as opposed to a pause someone asked for. */
+export function agentRunLimitReached(run: Pick<AgentRun, 'status' | 'reason' | 'cycle' | 'maxCycles'> & AgentRunClock): boolean {
+  if (run.status !== 'paused' || !run.reason?.startsWith('Reached ')) return false
+  const cycles = run.maxCycles !== null && run.cycle >= run.maxCycles
+  return cycles || agentRunRemainingMs(run, 0) === 0
+}
+
+type AgentRunSettings = Pick<AgentRun, 'maxCycles' | 'maxMinutes' | 'activeMs' | 'activeSince' | 'autonomous'>
+
+/**
+ * The run's settings as the agent reads them, appended to the standing instructions so the text
+ * can never disagree with what main applies. Empty for a run with no limits and full autonomy,
+ * which is every run that predates the settings.
+ */
+export function agentRunSettingsNote(run: AgentRunSettings, now: number): string {
+  if (run.maxCycles === null && run.maxMinutes === null && run.autonomous) return ''
+  const lines = ['Run settings (chosen by the user and applied by the app; you cannot change them):']
+  if (run.maxCycles !== null) lines.push(`- Cycle limit: the app pauses this run when cycle ${run.maxCycles} ends.`)
+  if (run.maxMinutes !== null) {
+    lines.push(`- Time limit: once this run has been running for ${formatAgentMinutes(run.maxMinutes)}, the app lets the turn in flight finish, then pauses the run and sends no further cycle; ${describeAgentRunRemaining(run, now)}. Do not start long work near the limit, and keep your progress record current so a pause loses nothing.`)
   }
-  return `Cycle ${next}. Start the next cycle now under the same standing instructions. Do not sign off or ask whether to continue.`
+  if (run.maxCycles === null && run.maxMinutes === null) lines.push('- Limits: none; the run continues until it is finished, paused, or stopped.')
+  lines.push(run.autonomous
+    ? '- Autonomy: autonomous; the app sends the next cycle as soon as a turn ends.'
+    : '- Autonomy: supervised; the app pauses this run after every cycle until the user resumes it, so end each cycle at a point that is safe to review.')
+  return lines.join('\n')
+}
+
+type AgentRunCycle = Pick<AgentRun, 'prompt' | 'cycle'> & Partial<AgentRunSettings>
+
+/** What the runtime sends to start the next cycle; the full prompt returns after a thread change. */
+export function agentCycleMessage(run: AgentRunCycle, threadChanged: boolean, now: number = Date.now()): string {
+  const next = run.cycle + 1
+  const settings: AgentRunSettings = {
+    maxCycles: run.maxCycles ?? null, maxMinutes: run.maxMinutes ?? null,
+    activeMs: run.activeMs ?? 0, activeSince: run.activeSince ?? null, autonomous: run.autonomous !== false
+  }
+  const note = agentRunSettingsNote(settings, now)
+  const standing = note ? `${run.prompt}\n\n${note}` : run.prompt
+  if (next === 1) return standing
+  if (threadChanged) {
+    return `Cycle ${next}. This chat's context was rotated, so here are your standing instructions again:\n\n${standing}\n\nStart cycle ${next} now.`
+  }
+  const remaining = describeAgentRunRemaining(settings, now)
+  const clock = remaining && remaining !== 'time limit reached' ? ` The time limit has ${remaining}.` : ''
+  return `Cycle ${next}. Start the next cycle now under the same standing instructions. Do not sign off or ask whether to continue.${clock}`
 }
 
 /** One-line status for tab hints, tooltips, and the closedai_app state projection. */
@@ -137,6 +234,12 @@ export function normalizeAgentRun(candidate: unknown, chatId: string): AgentRun 
     status,
     cycle: nonNegativeInt(record.cycle) ?? 0,
     maxCycles: positiveInt(record.maxCycles),
+    maxMinutes: cleanMaxMinutes(record.maxMinutes),
+    activeMs: nonNegativeInt(record.activeMs) ?? 0,
+    // A record from before the clock existed starts counting from its last update.
+    activeSince: status === 'running' ? positiveTime(record.activeSince) ?? positiveTime(record.updatedAt) ?? startedAt : null,
+    // Only an explicit false is supervised: every run saved before the setting existed was autonomous.
+    autonomous: record.autonomous !== false,
     startedAt,
     updatedAt: positiveTime(record.updatedAt) ?? startedAt,
     lastTurnEndedAt: positiveTime(record.lastTurnEndedAt),

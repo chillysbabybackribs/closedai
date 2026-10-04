@@ -21,6 +21,7 @@
 .settings-heading {
   flex-shrink: 0;
   padding-right: 44px;
+  flex-wrap: wrap;
 }
 
 .settings-heading-copy { min-width: 0; flex: 1; }
@@ -33,6 +34,12 @@
   border: 1px solid var(--hairline-strong);
   border-radius: 7px;
   background: var(--surface-control);
+}
+
+.settings-heading .settings-tabs {
+  flex-basis: 100%;
+  min-width: 0;
+  overflow-x: auto;
 }
 
 .settings-tab {

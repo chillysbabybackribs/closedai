@@ -17,6 +17,13 @@ when orientation changes; `guide:check` guards drift. Product behavior lives in
 | Antigravity | The app-private `closedai` agent profile supplies the native tool grant and MCP inheritance required by this CLI. Its `agent.md` has no instruction body. The first send on a new conversation thread (and after a handoff) may include `closedai.guide` as tagged text ahead of the message. |
 | Cursor | The ACP session receives enabled MCP server endpoints. Its adapter does not pass ClosedAI's `deferLoading` flag; Cursor controls discovery from the connected MCP servers. No session guide or workspace ledger is injected, including after a handoff. Automatic session rotation is disabled for this lane; explicit Compact remains available. |
 
+Per-provider turn-context policy (guide, workspace ledger, research routing, tool-catalog attach)
+lives in `src/shared/provider-turn-profile.ts`. Every send builds context through
+`buildTurnSendContext()` in `session-guide.ts`, which applies that profile before each adapter
+serializes blocks. Change one lane's flags there without altering the other providers' profiles.
+Cursor keeps `toolCatalogAttach: full_mcp` (task slices are telemetry only); Codex, Claude, and
+Antigravity use `task_slice` eager promotion from `scripts/tool-slices.json`.
+
 These provider runtimes have their own native behavior and may load project policy through their
 own mechanisms. Codex can load `AGENTS.md` natively. ClosedAI does not copy the selected
 workspace's `AGENTS.md` into Claude, Antigravity, or Cursor prompts. Tool switches affect the
@@ -33,18 +40,40 @@ existing conversation handoff before the next send. This preserves the visible t
 For a clean native baseline, use a new chat after loading the new build; an existing provider
 thread can retain instructions from an earlier version.
 
+## Cursor baseline experiment
+
+**Tools & capabilities → Cursor baseline** sets `chatCursorBaselineEnabled` (default false,
+profile-wide). For Codex, Claude Code, and Antigravity it overrides guide/ledger attachment,
+task-slice eager promotion, and automatic ClosedAI rotation without rewriting their saved
+settings. Codex also suppresses app-triggered between-turn compaction and the app's mid-turn
+compact override; Claude restores SDK-native automatic/precomputed compaction. Tool advertisements
+use the full enabled registry with stable default eager/deferred flags; this does not force all
+schemas into every prompt. Cursor's existing policy is unchanged.
+
+Clock, runtime, research routing, relevant surface context, explicit handoffs, native repository
+tools, tool switches, and approval enforcement remain. `closedai.runtime.cursorBaselineEnabled`
+reports the experiment on non-Cursor sends. Explicit Compact remains available under the existing
+seamless-rotation setting. Changing modes can refresh a catalog/process once; ordinary task changes
+do not cause slice-driven churn in baseline mode. Restart the built app and start a new chat for
+an A/B run: a toggle cannot remove instructions already delivered or recover context already
+omitted by rotation. Turning it off restores the previous saved preferences.
+
 ## Turn data
 
 Every user turn includes **`closedai.clock`** (`kind: application`) and **`closedai.runtime`**
-(`kind: application`): host facts (ClosedAI pane id, provider lane, project path, chat memory
-index toggle, whether `closedai.guide` ships on this send) plus a single verify line pointing
-models at `closedai_app.state` and tool results rather than trusting descriptions blindly.
-The runtime's `developmentFirstRead` instruction tells all four providers to read the opening
-guidance and task-relevant sections of `docs/application.md` in the selected project before
-searching implementation code or making changes on a repository development task. If that file
-is absent, they follow the project's own instructions. Unrelated chat, web research, and browser
-tasks are excluded. This is a model instruction, not an enforced file-read gate. It ships on
-every turn, including existing threads; rebuild and restart the app to load a changed instruction.
+(`kind: application`): host facts (ClosedAI pane id, provider lane, **`appCheckoutPath`** for the
+host app checkout, **`chatProjectPath`** for this pane's working folder — `projectPath` mirrors
+`chatProjectPath` for compatibility — **`selfDevelopment`** when they match, chat memory index
+toggle, whether `closedai.guide` ships on this send) plus a single verify line pointing models
+at `closedai_app.state` and tool results rather than trusting descriptions blindly.
+The runtime's `userCollaboration` line tells all four providers to treat exploratory user messages as
+hypotheses, recommend options before implementing, and validate uncertain facts with docs, tools, or
+targeted search. The runtime's `developmentFirstRead` instruction tells all four providers to read `docs/application.md`
+under **`appCheckoutPath`** for ClosedAI self-development and under **`chatProjectPath`** for other
+checkouts (or that project's own instructions when the guide is absent). When the two paths differ,
+the chat folder is not the host app. Unrelated chat, web research, and browser tasks are excluded.
+This is a model instruction, not an enforced file-read gate. It ships on every turn, including
+existing threads; rebuild and restart the app to load a changed instruction.
 When the prompt matches official web / pricing / doc work (same heuristic as the research task
 tool slice, including “web tools only” and single-vendor doc fetches), **`closedai.research.routing`**
 (`kind: application`) may also attach on that turn for every provider, including Cursor, with a
@@ -52,8 +81,9 @@ short fast-path hint (session `fetch` / `fetch_many`, `capture_spa` for SPA XHR 
 discovery when the origin is unfamiliar). It steers away from repo or on-disk MCP schema reads
 and long page+network+script chains when composites suffice. It does not disable native web
 search or `search.query`.
-`closedai_app.state` exposes the same probe-time facts where they matter: `workspace.appVersion`
-and `chat.memory.chatMemoryIndexEnabled` align with the runtime envelope on the same turn.
+`closedai_app.state` exposes the same probe-time facts where they matter: `workspace.appCheckoutPath`,
+`workspace.project` (overview selection), pane cwd in the chat section, `workspace.appVersion`, and
+`chat.memory.chatMemoryIndexEnabled` align with the runtime envelope on the same turn.
 Cursor receives runtime on every turn but never the session guide or workspace ledger.
 
 `buildChatInput` validates user text and attachments, which provider adapters translate into

@@ -1,4 +1,5 @@
-import { desktopCapturer, nativeImage, type BrowserWindow, type NativeImage } from 'electron'
+import { nativeImage, type BrowserWindow, type NativeImage } from 'electron'
+import { captureComposedAppWindow } from './app-window-capture.js'
 import type { BrowserService } from './browser-service.js'
 import { waitForPageReady, type PageReadiness, type PageReadyResult } from './browser-page-ready.js'
 import { settleFrames } from './browser-frame-settle.js'
@@ -9,6 +10,9 @@ import {
 } from './capture-coherence.js'
 import type { BrowserPageCapture, CapturedImage, ImageCrop, UiCaptureHost } from './tools/capture/index.js'
 import type { BrowserTabInfo } from '../shared/types.js'
+import { targetBoundsExpression } from './app-automation-dom.js'
+import type { AppTargetBounds, AppUiTarget } from './tools/app/host.js'
+import { controlCrop } from './tools/capture/crop.js'
 
 const MAX_IMAGE_WIDTH = 1_920
 const MAX_IMAGE_HEIGHT = 1_440
@@ -30,17 +34,18 @@ export class UiCaptureAccess implements UiCaptureHost {
     return this.browser()?.tabList() ?? []
   }
 
-  async captureAppWindow(): Promise<CapturedImage | null> {
+  async captureAppWindow(target?: AppUiTarget): Promise<CapturedImage | null> {
     const window = this.window()
     if (!window || window.isDestroyed() || !window.isVisible() || window.isMinimized()) return null
-    const sourceId = window.getMediaSourceId()
-    const [width, height] = window.getSize()
-    const sources = await desktopCapturer.getSources({
-      types: ['window'],
-      thumbnailSize: fitWithin(width, height, MAX_IMAGE_WIDTH, MAX_IMAGE_HEIGHT)
-    })
-    const image = sources.find((source) => source.id === sourceId)?.thumbnail
-    return image ? this.payload(image) : null
+    // Resolve first: a missing or ambiguous control fails with the renderer's reason, not a wrong crop.
+    const located = target
+      ? await window.webContents.executeJavaScript(targetBoundsExpression(target), true) as AppTargetBounds
+      : null
+    const image = await captureComposedAppWindow(window, this.browser())
+    if (!image) return null
+    if (!located) return this.payload(image)
+    const crop = controlCrop(image.getSize(), located)
+    return crop ? this.payload(image.crop(crop)) : null
   }
 
   async captureBrowserPage(tabId: string | undefined, ready: PageReadiness): Promise<BrowserPageCapture | null> {

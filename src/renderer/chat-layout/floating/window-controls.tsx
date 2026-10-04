@@ -27,7 +27,7 @@ export function WindowControls({ id, busy, maximized, floating = false, canMinim
       <Minus size={14} aria-hidden="true" />
     </button>
     <button type="button" data-ui="layout.window-maximize" data-ui-key={id} disabled={!canMaximize && !maximized}
-      title={floating ? maximizeLabel : `${maximizeLabel} · double-click the header`} aria-label={maximizeLabel} aria-pressed={maximized}
+      title={floating ? maximizeLabel : `${maximizeLabel} · double-click maximizes alone or cycles layouts`} aria-label={maximizeLabel} aria-pressed={maximized}
       onClick={onToggleMaximize}>
       {maximized ? <Copy size={12} aria-hidden="true" /> : <Square size={11} aria-hidden="true" />}
     </button>

@@ -3,71 +3,86 @@ import { useEffect, useRef, useState } from 'react'
 
 import { Button } from '../../components/ui/button.js'
 import { Input } from '../../components/ui/input.js'
-import { Textarea } from '../../components/ui/textarea.js'
 import { cn } from '../../lib/utils.js'
-import { cleanAgentName, type SavedAgent, type SavedAgentDraft } from '../../shared/agent-library.js'
+import { SAVED_AGENT_DESCRIPTION_MAX, cleanAgentName, savedAgentStartOptions, type SavedAgent, type SavedAgentDraft } from '../../shared/agent-library.js'
 import { AGENT_RUN_MAX_PROMPT_CHARS, type AgentRunStartOptions } from '../../shared/agent-runs.js'
 import { errorMessage } from '../error-message.js'
+import { AgentDescribeSection } from './agent-describe-section.js'
+import {
+  EMPTY_DRAFT, EMPTY_NOTES, describeSuggestedLimits, draftMaxMinutes, draftOf, oneOffStartOptions, parseMaxCycles, sameDraft, savedDraftOf,
+  timeLimitError, withAcceptedProposal, withOptimizeResult, withSuggestedLimits, withUndoneOptimize,
+  type AgentBuilderState, type AgentDraft, type HeldAgentDraft, type SuggestedLimits
+} from './agent-draft.js'
+import { AgentInstructionsSection } from './agent-instructions-section.js'
+import { AgentRunSettings } from './agent-run-settings.js'
 import { AgentScreenHeader } from './agent-screen-header.js'
+import type { AgentSuggestion } from './agent-suggestions.js'
+import { usePromptOptimizer, type PromptOptimizerApi } from './use-prompt-optimizer.js'
 
-// The Agents tab's Build screen: one editor for a new draft or one saved agent. Start runs
-// whatever the editor shows, saving a named agent first so the run and the library never
-// disagree; a nameless draft starts as a one-off. Start and Delete return to the Library.
-
-export type AgentDraft = { name: string; prompt: string; maxCycles: string }
+// The Agents dialog's Build screen: the agent builder. The left column is what the user decides
+// (a name, their description, how long the run goes and how much it does unattended); the right
+// column is the standing instructions a run starts with, typed directly or written by Optimize
+// from the description. This component owns the draft and the save/start/delete actions; the
+// sections own their own layout. Start runs whatever the editor shows, saving a named agent
+// first so the run and the library never disagree; a nameless draft starts as a one-off.
 
 export type AgentLibraryPanelProps = {
   agents: readonly SavedAgent[]
   /** The saved agent being edited, or null for a new draft. */
   initialAgentId: string | null
   /** A draft the user backed out of earlier this session, restored instead of the saved text. */
-  initialDraft?: AgentDraft
+  initialDraft?: HeldAgentDraft
   /** False while the launching pane cannot start a run (provider unavailable). */
   startEnabled: boolean
+  /** The chat the dialog was opened from: a run docks beside it, and its model writes optimized instructions. */
+  launchPaneId: string | null
   /** Create (id null) or update a saved agent; resolves with the stored record. */
   onSave: (draft: SavedAgentDraft, id: string | null) => Promise<SavedAgent>
   onRemove: (id: string) => Promise<void>
   onStart: (options: AgentRunStartOptions) => Promise<void>
-  /** Back: `draft` is the unsaved text to keep for the session, or null when nothing changed. */
-  onBack: (draft: AgentDraft | null, agentId: string | null) => void
+  /** Back: `held` is the unsaved state to keep for the session, or null when nothing changed. */
+  onBack: (held: HeldAgentDraft | null, agentId: string | null) => void
   /** Start or Delete finished; the view returns to the Library. */
   onDone: () => void
+  /** Test seams: the optimize bridge and the first set of ideas. */
+  optimizerApi?: () => PromptOptimizerApi | null
+  initialSuggestions?: readonly AgentSuggestion[]
 }
 
 type Busy = 'save' | 'start' | 'delete' | null
 
-export const EMPTY_DRAFT: AgentDraft = { name: '', prompt: '', maxCycles: '' }
-
-export function draftOf(agent: SavedAgent): AgentDraft {
-  return { name: agent.name, prompt: agent.prompt, maxCycles: agent.maxCycles === null ? '' : String(agent.maxCycles) }
-}
-
-function parseMaxCycles(value: string): number | null {
-  const parsed = Number.parseInt(value.trim(), 10)
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : null
-}
-
-function sameDraft(a: AgentDraft, b: AgentDraft): boolean {
-  return a.name.trim() === b.name.trim() && a.prompt.trim() === b.prompt.trim() && parseMaxCycles(a.maxCycles) === parseMaxCycles(b.maxCycles)
-}
-
-export function AgentLibraryPanel({ agents, initialAgentId, initialDraft, startEnabled, onSave, onRemove, onStart, onBack, onDone }: AgentLibraryPanelProps): JSX.Element {
+export function AgentLibraryPanel({
+  agents, initialAgentId, initialDraft, startEnabled, launchPaneId, onSave, onRemove, onStart, onBack, onDone, optimizerApi, initialSuggestions
+}: AgentLibraryPanelProps): JSX.Element {
   const [savedId, setSavedId] = useState(initialAgentId)
   const selected = agents.find((agent) => agent.id === savedId) ?? null
-  const [draft, setDraft] = useState<AgentDraft>(() => initialDraft ?? (selected ? draftOf(selected) : EMPTY_DRAFT))
+  // The draft, where its instructions came from, and any proposed version move together (agent-draft.ts).
+  const [builder, setBuilder] = useState<AgentBuilderState>(() => ({
+    draft: initialDraft?.draft ?? (selected ? draftOf(selected) : EMPTY_DRAFT), notes: initialDraft?.notes ?? EMPTY_NOTES, proposal: null
+  }))
+  const { draft, notes, proposal } = builder
+  const setDraft = (next: AgentDraft): void => setBuilder((current) => ({ ...current, draft: next }))
+  const [suggested, setSuggested] = useState<SuggestedLimits | null>(null)
   const [busy, setBusy] = useState<Busy>(null)
   const [error, setError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
-  const nameRef = useRef<HTMLInputElement>(null)
+  const optimizer = usePromptOptimizer(optimizerApi)
+  const descriptionRef = useRef<HTMLDivElement>(null)
   const baseline = selected ? draftOf(selected) : EMPTY_DRAFT
   const dirty = !sameDraft(draft, baseline)
   const name = cleanAgentName(draft.name)
   const prompt = draft.prompt.trim()
-  const tooLong = prompt.length > AGENT_RUN_MAX_PROMPT_CHARS
-  const canSave = Boolean(name) && Boolean(prompt) && !tooLong && dirty && busy === null
-  const canStart = startEnabled && Boolean(prompt) && !tooLong && busy === null
+  const locked = busy !== null || optimizer.running
+  const problem = prompt.length > AGENT_RUN_MAX_PROMPT_CHARS ? `Instructions are limited to ${AGENT_RUN_MAX_PROMPT_CHARS} characters`
+    : draft.description.trim().length > SAVED_AGENT_DESCRIPTION_MAX ? `Descriptions are limited to ${SAVED_AGENT_DESCRIPTION_MAX} characters`
+    : timeLimitError(draft) ?? ''
+  const ready = Boolean(prompt) && !problem && !locked
+  const canSave = Boolean(name) && ready && dirty
+  const canStart = startEnabled && ready
 
-  useEffect(() => { if (initialAgentId === null) nameRef.current?.focus() }, [initialAgentId])
+  useEffect(() => {
+    if (initialAgentId === null) descriptionRef.current?.querySelector('textarea')?.focus()
+  }, [initialAgentId])
 
   // An entry edited elsewhere refreshes an untouched editor; one deleted elsewhere keeps its
   // text as a new draft.
@@ -94,7 +109,7 @@ export function AgentLibraryPanel({ agents, initialAgentId, initialDraft, startE
   }
 
   const saveDraft = async (): Promise<SavedAgent> => {
-    const saved = await onSave({ name, prompt, maxCycles: parseMaxCycles(draft.maxCycles) }, savedId)
+    const saved = await onSave(savedDraftOf(draft), savedId)
     setSavedId(saved.id)
     setDraft(draftOf(saved))
     return saved
@@ -104,10 +119,10 @@ export function AgentLibraryPanel({ agents, initialAgentId, initialDraft, startE
 
   const start = (): Promise<void> => act('start', async () => {
     if (!name) {
-      await onStart({ prompt, maxCycles: parseMaxCycles(draft.maxCycles), agentId: null, name: null })
+      await onStart(oneOffStartOptions(draft))
     } else {
       const agent = dirty || !selected ? await saveDraft() : selected
-      await onStart({ prompt: agent.prompt, maxCycles: agent.maxCycles, agentId: agent.id, name: agent.name })
+      await onStart(savedAgentStartOptions(agent))
     }
     onDone()
   }, 'Could not start the agent')
@@ -119,48 +134,66 @@ export function AgentLibraryPanel({ agents, initialAgentId, initialDraft, startE
     onDone()
   }, 'Could not delete the agent')
 
+  const optimize = async (): Promise<void> => {
+    if (!launchPaneId) return
+    setError('')
+    const result = await optimizer.run({
+      description: draft.description.trim(), paneId: launchPaneId, name,
+      maxCycles: parseMaxCycles(draft.maxCycles), maxMinutes: draftMaxMinutes(draft), autonomous: draft.autonomous
+    })
+    if (!result) return
+    // Suggested limits wait for Apply, and autonomy is never the optimizer's to set.
+    setSuggested({ maxCycles: result.maxCycles, maxMinutes: result.maxMinutes })
+    setBuilder((current) => withOptimizeResult(current, result))
+  }
+
+  const held = (): HeldAgentDraft | null => (dirty ? { draft, notes } : null)
+  const status = error || problem || (proposal ? 'A new version of the instructions is waiting for your choice' : dirty && selected ? 'Unsaved changes' : '')
+
   return (
     <div className="agent-screen">
-      <AgentScreenHeader title={selected ? selected.name : 'New agent'} onBack={() => onBack(dirty ? draft : null, savedId)} />
-      <section className="agent-library-editor" aria-label="Agent editor">
-        <div className="flex gap-3">
-          <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs font-medium">
+      <AgentScreenHeader title={selected ? selected.name : 'New agent'} onBack={() => onBack(held(), savedId)} />
+      <section className="agent-builder" aria-label="Agent builder">
+        <div className="agent-builder-side" ref={descriptionRef}>
+          <label className="agent-builder-label">
             Name
-            <Input ref={nameRef} className="agent-library-field" data-ui="agents.name" value={draft.name} placeholder="Optional — blank runs once without saving"
-              disabled={busy !== null} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
+            <Input className="agent-library-field" data-ui="agents.name" value={draft.name} placeholder="Optional — blank runs once without saving"
+              disabled={locked} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
           </label>
-          <label className="flex w-32 shrink-0 flex-col gap-1 text-xs font-medium">
-            Cycle limit
-            <Input className="agent-library-field" data-ui="agents.max-cycles" type="number" min={1} inputMode="numeric" value={draft.maxCycles} placeholder="None"
-              disabled={busy !== null} onChange={(event) => setDraft({ ...draft, maxCycles: event.target.value })} />
-          </label>
+          <AgentDescribeSection description={draft.description} disabled={busy !== null} modelAvailable={startEnabled && launchPaneId !== null}
+            hasInstructions={Boolean(prompt)} optimizer={optimizer} initialSuggestions={initialSuggestions}
+            onChange={(description) => setDraft({ ...draft, description })} onOptimize={() => void optimize()} />
+          <AgentRunSettings draft={draft} disabled={locked} onChange={setDraft}
+            suggestedLimits={suggested ? describeSuggestedLimits(draft, suggested) : null}
+            onApplySuggested={() => { if (suggested) setDraft(withSuggestedLimits(draft, suggested)) }} />
         </div>
-        <label className="flex min-h-0 flex-1 flex-col gap-1 text-xs font-medium">
-          Instructions
-          <Textarea data-ui="agents.prompt" value={draft.prompt} spellCheck={false} disabled={busy !== null}
-            placeholder="Example: Each cycle, read closedai_app.state, pick one workflow to exercise, fix any bug you find, and report one line: cycle — workflow — result."
-            className="agent-library-prompt agent-library-field min-h-0 flex-1 resize-none font-normal"
-            onChange={(event) => setDraft({ ...draft, prompt: event.target.value })} />
-        </label>
-        <footer className="agent-library-footer">
-          {selected && (
-            <Button type="button" variant="ghost" size="sm" data-ui="agents.delete" disabled={busy !== null}
-              className={cn(confirmDelete && 'text-destructive')}
-              onClick={() => (confirmDelete ? void remove() : setConfirmDelete(true))}>
-              {confirmDelete ? 'Confirm delete' : 'Delete'}
-            </Button>
-          )}
-          <span className="text-muted-foreground min-w-0 flex-1 truncate text-xs" role={error ? 'alert' : undefined}>
-            {error || (tooLong ? `Instructions are limited to ${AGENT_RUN_MAX_PROMPT_CHARS} characters` : dirty && selected ? 'Unsaved changes' : '')}
-          </span>
-          <Button type="button" variant="ghost" size="sm" data-ui="agents.save" disabled={!canSave} onClick={() => void save()}>
-            {busy === 'save' ? 'Saving…' : 'Save'}
-          </Button>
-          <Button type="button" size="sm" data-ui="agents.start" disabled={!canStart} onClick={() => void start()}>
-            {busy === 'start' ? 'Starting…' : 'Start'}
-          </Button>
-        </footer>
+        <div className="agent-builder-main">
+          <AgentInstructionsSection prompt={draft.prompt} disabled={locked} proposal={proposal} assumptions={notes.assumptions}
+            canUndo={notes.replaced !== null}
+            onChange={(next) => setDraft({ ...draft, prompt: next })} onUndo={() => setBuilder(withUndoneOptimize)}
+            onProposalView={(view) => setBuilder((current) => ({ ...current, proposal: current.proposal && { ...current.proposal, view } }))}
+            onAcceptProposal={() => setBuilder(withAcceptedProposal)}
+            onDismissProposal={() => setBuilder((current) => ({ ...current, proposal: null }))} />
+        </div>
       </section>
+      <footer className="agent-library-footer">
+        {selected && (
+          <Button type="button" variant="ghost" size="sm" data-ui="agents.delete" disabled={locked}
+            className={cn(confirmDelete && 'text-destructive')}
+            onClick={() => (confirmDelete ? void remove() : setConfirmDelete(true))}>
+            {confirmDelete ? 'Confirm delete' : 'Delete'}
+          </Button>
+        )}
+        <span className="text-muted-foreground min-w-0 flex-1 truncate text-xs" role={error || problem ? 'alert' : undefined} title={status}>
+          {status}
+        </span>
+        <Button type="button" variant="ghost" size="sm" data-ui="agents.save" disabled={!canSave} onClick={() => void save()}>
+          {busy === 'save' ? 'Saving…' : 'Save'}
+        </Button>
+        <Button type="button" size="sm" data-ui="agents.start" disabled={!canStart} onClick={() => void start()}>
+          {busy === 'start' ? 'Starting…' : 'Start'}
+        </Button>
+      </footer>
     </div>
   )
 }

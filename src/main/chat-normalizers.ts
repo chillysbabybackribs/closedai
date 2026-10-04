@@ -305,6 +305,7 @@ export function dynamicToolLabel(item: Record<string, unknown>): string {
     if (action === 'wait_for') return 'Wait for app'
     if (action === 'scroll') return 'Scroll app'
     if (action === 'press_key') return 'Press app key'
+    if (action === 'console') return 'Read app console'
     return 'Use app'
   }
   if (namespace === 'closedai_workspace' || tool === 'inspect') {

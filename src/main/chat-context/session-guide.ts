@@ -1,8 +1,12 @@
+import { providerTurnProfile, type ProviderTurnProfile } from '../../shared/provider-turn-profile.js'
 import { AGENT_GUIDE_TEXT } from './agent-guide.generated.js'
 import { handoffAdditionalContext } from './thread-handoff.js'
 import { buildRuntimeAdditionalContext, type TurnRuntimeFacts } from './runtime-context.js'
 import { buildClockAdditionalContext, mergeTurnAdditionalContext, type AdditionalContext } from './turn-context.js'
 import { buildResearchRoutingAdditionalContext } from './research-routing.js'
+
+export type { ProviderTurnProfile } from '../../shared/provider-turn-profile.js'
+export { providerTurnProfile } from '../../shared/provider-turn-profile.js'
 
 export const SESSION_GUIDE_CONTEXT = 'closedai.guide'
 export const SESSION_GUIDE_MAX_CHARS = 9_000
@@ -56,8 +60,11 @@ export function buildTurnSendContext(input: {
   runtime: TurnRuntimeFacts
   workspaceLedgerContext?: AdditionalContext | undefined
   browserContext: AdditionalContext | undefined
+  /** Defaults from `providerTurnProfile(runtime.provider)`; override for tests or future settings. */
+  profile?: ProviderTurnProfile
 }): { context: AdditionalContext | undefined; attachGuide: boolean } {
-  const attachGuide = shouldAttachSessionGuide({
+  const profile = input.profile ?? providerTurnProfile(input.runtime.provider, input.runtime)
+  const attachGuide = profile.sessionGuide && shouldAttachSessionGuide({
     threadKey: input.threadKey,
     state: input.state,
     transcriptWasEmpty: input.transcriptWasEmpty,
@@ -66,10 +73,10 @@ export function buildTurnSendContext(input: {
   const context = mergeTurnAdditionalContext(
     buildClockAdditionalContext(),
     buildRuntimeAdditionalContext({ ...input.runtime, sessionGuideOnTurn: attachGuide }),
-    buildResearchRoutingAdditionalContext(input.prompt),
+    profile.researchRouting ? buildResearchRoutingAdditionalContext(input.prompt) : undefined,
     attachGuide ? agentGuideAdditionalContext() : undefined,
     input.pendingHandoff ? handoffAdditionalContext(input.pendingHandoff) : undefined,
-    input.workspaceLedgerContext,
+    profile.workspaceLedger ? input.workspaceLedgerContext : undefined,
     input.browserContext
   )
   return { context, attachGuide }

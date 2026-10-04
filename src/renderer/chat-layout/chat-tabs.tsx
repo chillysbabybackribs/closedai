@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactNode, type RefObject } from 'react'
-import { CircleAlert, LoaderCircle, Pause, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import type { ChatReviewQueue } from '../chat-history/review-queue.js'
 import type { TabActivity } from './tab-activity.js'
 import { tabCloseHint } from './layout-copy.js'
@@ -8,6 +8,7 @@ import { CHAT_TAB_DRAG_TYPE } from './layout-tabs.js'
 import { viewKindOf, type ViewKind } from './layout-views.js'
 import { usePaneTabActivity } from './chat-pane-tab-activity.js'
 import { AppIconMark } from '../app-icons.js'
+import { TabStatusIndicator } from './tab-status-indicator.js'
 
 export function ChatTabs({ ids, activeId, busy, canClose, title, activity, reviewQueue, onSelect, onClose, onDrag, trailing, variant = 'default' }: {
   ids: string[]
@@ -64,16 +65,6 @@ export function ChatTabs({ ids, activeId, busy, canClose, title, activity, revie
 /** A view tab shows its kind where a chat tab shows status: never a spinner, never unread. */
 function ViewTabGlyph({ kind }: { kind: ViewKind }) {
   return <span className="chat-tab-indicator" aria-hidden="true"><AppIconMark id={kind} size={13} /></span>
-}
-
-function TabStatusIndicator({ status }: { status: TabActivity | undefined }) {
-  if (!status || status.state === 'idle') return null
-  return <span className="chat-tab-indicator" aria-hidden="true">
-    {status.state === 'working' ? <LoaderCircle className="chat-tab-spinner" size={16} />
-      : status.state === 'paused' ? <Pause size={16} />
-        : status.state === 'failed' ? <CircleAlert size={16} />
-          : <i className="chat-tab-unread" />}
-  </span>
 }
 
 function ChatTabRowLive(props: Omit<ChatTabRowProps, 'activity'> & { reviewQueue: ChatReviewQueue }) {

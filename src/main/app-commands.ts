@@ -1,8 +1,8 @@
 import type { ChatPeerSummary, ChatWorkspaceEvent } from '../shared/chat-peers.js'
 import type { ProjectSwitchRequest, ProjectSwitchStatus } from '../shared/chat-peers.js'
 import type { ChatSnapshot, ChatTranscriptItem } from '../shared/chat.js'
-import { describeAgentRun, type AgentRun, type AgentRunStartOptions } from '../shared/agent-runs.js'
-import type { SavedAgent } from '../shared/agent-library.js'
+import { agentRunRemainingMs, describeAgentRun, type AgentRun, type AgentRunStartOptions } from '../shared/agent-runs.js'
+import { savedAgentStartOptions, type SavedAgent } from '../shared/agent-library.js'
 import type { BrowserCoordination } from './tools/browser/coordination.js'
 import type { AppWindowDescription } from './windows/app-window-registry.js'
 import type {
@@ -19,6 +19,8 @@ import type {
   AppUiHost,
   AppWindowInfo
 } from './tools/app/host.js'
+import { appCheckoutPathOrNull } from './app-checkout.js'
+import type { BuildFreshness } from './renderer-build-reload.js'
 
 // Deterministic app state and commands for models, built on the same main-process services
 // the renderer's IPC handlers call. Nothing here touches the DOM: a command either changes
@@ -37,6 +39,8 @@ export type AppCommandDeps = {
   window: () => AppWindowInfo | null
   /** Settings/version snapshot for state probes (optional in tests). */
   facts?: () => AppStateFacts | null
+  /** Launch-vs-disk build comparison for state.workspace.build. */
+  build?: () => Promise<BuildFreshness>
   /** Every app window; detached ones hold chats moved out of the main window. */
   windows?: () => { describe(): AppWindowDescription[] } | null
   ui?: () => AppUiHost | null
@@ -68,6 +72,10 @@ const DOWNLOAD_LIMIT = 8
 
 export class AppCommandAccess implements AppCommandHost {
   constructor(private readonly deps: AppCommandDeps) {}
+
+  async buildFreshness(): Promise<BuildFreshness | null> {
+    return await this.deps.build?.() ?? null
+  }
 
   state(sections: readonly AppStateSection[], paneId: string | undefined, callerPaneId: string | null): Record<string, unknown> {
     const result: Record<string, unknown> = {}
@@ -124,6 +132,8 @@ export class AppCommandAccess implements AppCommandHost {
   }
 
   async newChat(): Promise<{ paneId: string }> {
+    const ui = this.deps.ui?.() ?? null
+    if (ui) return await ui.newChatWindow()
     return { paneId: await this.chat().newPeer() }
   }
 
@@ -164,19 +174,26 @@ export class AppCommandAccess implements AppCommandHost {
     await this.chat().interrupt(paneId)
   }
 
-  /** A saved agent supplies prompt, cap, and name; explicit fields override the cap only. */
+  /**
+   * A saved agent supplies prompt, limits, autonomy, and name; explicit fields override the limits.
+   * A caller may ask for supervision, never lift it: a supervised agent stays supervised.
+   */
   private startOptions(agentId: string | null, options: Partial<AgentRunStartOptions>): AgentRunStartOptions {
     if (!agentId) {
       if (!options.prompt) throw new Error('agent start needs prompt (standing instructions) or agent_id of a saved agent from state.workspace.savedAgents')
-      return { prompt: options.prompt, maxCycles: options.maxCycles ?? null, agentId: null, name: null }
+      return {
+        prompt: options.prompt, maxCycles: options.maxCycles ?? null, maxMinutes: options.maxMinutes ?? null,
+        autonomous: options.autonomous !== false, agentId: null, name: null
+      }
     }
     const saved = this.deps.agentLibrary?.()?.get(agentId)
     if (!saved) throw new Error(`No saved agent ${agentId}; ids are listed under state.workspace.savedAgents`)
     return {
+      ...savedAgentStartOptions(saved),
       prompt: options.prompt ?? saved.prompt,
       maxCycles: options.maxCycles === undefined ? saved.maxCycles : options.maxCycles,
-      agentId: saved.id,
-      name: saved.name
+      maxMinutes: options.maxMinutes === undefined ? saved.maxMinutes : options.maxMinutes,
+      autonomous: saved.autonomous && options.autonomous !== false
     }
   }
 
@@ -332,9 +349,11 @@ function projectWorkspace(chat: AppChatWorkspace, callerPaneId: string | null): 
   const panes = snapshot.chats.filter((chat) => chat.attached)
   const ranked = [...panes].sort((a, b) => rank(b) - rank(a) || b.updatedAt - a.updatedAt)
   const shown = ranked.slice(0, PEER_LIMIT)
+  const appCheckoutPath = snapshot.workspace?.appCheckoutPath ?? appCheckoutPathOrNull()
   return {
     selectedPaneId: snapshot.selectedPaneId,
     callerPaneId,
+    appCheckoutPath,
     project: snapshot.workspace ?? null,
     projectSwitch: chat.projectSwitch.state(),
     paneCount: panes.length,
@@ -373,6 +392,8 @@ export function projectChat(paneId: string, snapshot: ChatSnapshot, agentRun: Ag
     // Present only for a chat the app is driving; the loop restarts this pane after every turn.
     ...(agentRun ? { agentRun: {
       status: agentRun.status, cycle: agentRun.cycle, maxCycles: agentRun.maxCycles, failures: agentRun.failures,
+      // Running time left under the time limit (paused time is not counted); both null without one.
+      maxMinutes: agentRun.maxMinutes, remainingMs: agentRunRemainingMs(agentRun, Date.now()), autonomous: agentRun.autonomous,
       reason: agentRun.reason, agentId: agentRun.agentId, name: agentRun.name, summary: describeAgentRun(agentRun),
       stats: { steps: agentRun.stats.steps, errors: agentRun.stats.errors, edits: agentRun.stats.edits, rotations: agentRun.stats.rotations,
         turnMs: agentRun.stats.turnMs, lastError: agentRun.stats.lastError, contextPercent: agentRun.stats.context?.percent ?? null }
@@ -472,6 +493,7 @@ async function raceTimeout(done: Promise<void>, timeoutMs: number, signal: Abort
 /** Enough for a model to pick an agent by id; the full prompt stays in the library. */
 export function projectSavedAgents(agents: SavedAgent[]): Array<Record<string, unknown>> {
   return agents.map((agent) => ({
-    id: agent.id, name: agent.name, maxCycles: agent.maxCycles, runCount: agent.runCount, lastRunAt: agent.lastRunAt
+    id: agent.id, name: agent.name, maxCycles: agent.maxCycles, maxMinutes: agent.maxMinutes, autonomous: agent.autonomous,
+    runCount: agent.runCount, lastRunAt: agent.lastRunAt
   }))
 }

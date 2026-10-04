@@ -1,0 +1,57 @@
+/* Short chat tiles (stacked monitors): tighter chrome only — transcript stays full and scrollable. */
+
+@container chat-tile (max-height: 400px) {
+  .chat-layout-header.chat-card-header {
+    height: calc(var(--card-inset, 16px) + 32px);
+    flex: 0 0 calc(var(--card-inset, 16px) + 32px);
+    padding-bottom: 8px;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .chat-pane .tool-activity-collapsible-trigger {
+    padding-block: 4px;
+    font-size: 11px;
+  }
+
+  .chat-pane .agent-run-strip {
+    padding-block: 4px 2px;
+    font-size: 11px;
+  }
+
+  .chat-pane .agent-run-strip-actions {
+    display: none;
+  }
+
+  .chat-pane .composer-tools,
+  .chat-pane .composer-suggestion {
+    display: none;
+  }
+
+  .chat-pane .composer-row {
+    min-height: 40px;
+    padding-block: 6px;
+    border-radius: 999px;
+  }
+
+  .chat-pane .composer-stack:not([data-expanded]) .composer-input-wrap {
+    order: 0;
+  }
+
+  .chat-pane .chat-composer-meta .chat-pane-folder-bar {
+    display: none;
+  }
+
+  .chat-pane .chat-composer-meta {
+    margin-top: 4px;
+  }
+
+  .chat-pane .chat-composer-dock {
+    --composer-max-height: 44px;
+  }
+
+  .chat-layout-header.chat-card-header + .chat-layout-notice {
+    font-size: 11px;
+  }
+}

@@ -135,6 +135,10 @@
 :root:root .chat-layout-tile :is(.chat-layout-header, .chat-layout-tab-strip, .chat-pane, .chat-turn-user) {
   background: transparent;
 }
+:root:root .chat-layout-tile[data-pane-id] .chat-pane {
+  /* Let the tile material show through; the dock shield stays transparent so it matches. */
+  --chat-pane-fill: transparent;
+}
 /* View bodies are clear too, so the tile's material carries through the browser chrome, the
    notepad and the workspace views instead of stopping at a flat inner panel. */
 :root:root .chat-layout-tile :is(.browser-pane, .browser-shell, .notepad-view, .workspace-view) {
@@ -230,6 +234,7 @@
   [data-slot='command-item'],
   .titlebar-menu-item,
   .header-chat-search-row,
+  .header-chat-search-history-row,
   .chat-history-row
 ) {
   border-radius: 6px;
@@ -244,6 +249,7 @@
 :root:root [data-slot='command-item'][data-selected='true'],
 :root:root [data-slot='command-item'][data-state='open'],
 :root:root .header-chat-search-row[aria-selected='true'],
+:root:root .header-chat-search-history-row[aria-selected='true'],
 :root:root .chat-history-row:is(:hover, :focus-within) {
   background: rgb(255 255 255 / 5%);
   color: var(--foreground);

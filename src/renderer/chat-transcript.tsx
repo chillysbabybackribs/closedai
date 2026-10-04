@@ -1,3 +1,5 @@
+import { usePerformanceSettings } from './performance/performance-settings.js'
+import { useResponsePaint } from './performance/use-response-paint.js'
 import { BackgroundTasks } from './background-tasks.js'
 import type { CSSProperties, JSX } from 'react'
 import { memo, useLayoutEffect, useMemo, useRef, useState } from 'react'
@@ -35,9 +37,9 @@ import {
   type StandaloneItem,
   type TranscriptRow
 } from './transcript-rows.js'
-
 export const ChatTranscript = memo(function ChatTranscript({
   items,
+  paneId,
   activeTurnId,
   actions,
   hasEarlier = false,
@@ -46,6 +48,7 @@ export const ChatTranscript = memo(function ChatTranscript({
   cwd
 }: {
   items: ChatTranscriptItem[]
+  paneId?: string
   actions?: MessageActionContext
   activeTurnId?: string | null
   hasEarlier?: boolean
@@ -146,7 +149,7 @@ export const ChatTranscript = memo(function ChatTranscript({
             scrollAnchor={row.item.type === 'user'}
             className={row.item.type === 'user' ? 'chat-turn-user' : undefined}
           >
-            <TranscriptItem item={row.item} cwd={cwd} actions={actionMessageIds.has(row.item.id) ? actions : undefined} />
+            <TranscriptItem paneId={paneId} item={row.item} cwd={cwd} actions={actionMessageIds.has(row.item.id) ? actions : undefined} />
           </MessageScrollerItem>
         )
       })}
@@ -193,10 +196,12 @@ function sameGroup<T extends { items: readonly unknown[] }>(previous: T, next: T
 const TranscriptItem = memo(function TranscriptItem({
   item,
   actions,
-  cwd
+  cwd,
+  paneId
 }: {
   actions?: MessageActionContext
   item: StandaloneItem
+  paneId?: string
   cwd?: string
 }): JSX.Element | null {
   if (item.type === 'user') {
@@ -218,7 +223,7 @@ const TranscriptItem = memo(function TranscriptItem({
   }
   if (item.type === 'assistant') {
     if (!item.text) return null
-    return <AssistantMessage item={item} actions={actions} cwd={cwd} />
+    return <AssistantMessage paneId={paneId} item={item} actions={actions} cwd={cwd} />
   }
   if (item.type === 'notice') {
     if (hiddenTranscriptNotice(item)) return null
@@ -299,19 +304,22 @@ const ToolActivity = memo(function ToolActivity({
   )
 }, (prev, next) => sameGroup(prev, next) && prev.isRunning === next.isRunning && prev.cwd === next.cwd)
 
-const AssistantMessage = memo(function AssistantMessage({ item, actions, cwd }: {
+const AssistantMessage = memo(function AssistantMessage({ item, actions, cwd, paneId }: {
   item: Extract<ChatTranscriptItem, { type: 'assistant' }>
+  paneId?: string
   actions?: MessageActionContext
   cwd?: string
 }): JSX.Element | null {
   // The displayed text trails what has streamed in by a bounded catch-up window, so one-token,
   // sentence-burst, and whole-message chunk cadences all paint as the same typewriter. Settled
   // items render in full immediately; the drain also finishes turns that never settle their item.
-  const text = usePacedText(item.text, !item.streaming)
+  const { settings } = usePerformanceSettings()
+  const text = usePacedText(item.text, !item.streaming, settings.instantStreaming)
+  const paintRef = useResponsePaint(paneId, item.turnId, Boolean(text.trim()))
   const streaming = Boolean(item.streaming) || text.length < item.text.length
   if (!text) return null
   return (
-    <Message className="message message-assistant prompt-message prompt-message-assistant" data-phase={item.phase ?? 'unknown'}>
+    <Message ref={paintRef} className="message message-assistant prompt-message prompt-message-assistant" data-phase={item.phase ?? 'unknown'}>
       <MessageContent>
         <Bubble variant="ghost">
           <BubbleContent className="prompt-message-assistant-content prose max-w-none dark:prose-invert">

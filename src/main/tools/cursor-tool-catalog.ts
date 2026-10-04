@@ -1,3 +1,4 @@
+import { providerTurnProfile } from '../../shared/provider-turn-profile.js'
 import type { AppSettings } from '../../shared/types.js'
 import type { ToolRegistry } from './registry.js'
 import { loadToolSliceCatalog } from './tool-slice.js'
@@ -19,8 +20,11 @@ export async function resolveCursorToolCatalog(
   }
   const catalog = await loadToolSliceCatalog()
   const sliceId = selectToolSliceId(catalog, turn)
-  // ACP exposes only attached MCP servers; omitted namespaces have no discovery path.
-  // Keep the selected slice for telemetry, but preserve every enabled capability until
-  // Cursor supports deferred attachment. Heuristics must not become access control.
-  return { sliceId, namespaces: null }
+  const attach = providerTurnProfile('cursor').toolCatalogAttach
+  if (attach === 'full_mcp') {
+    // ACP exposes only attached MCP servers; omitted namespaces have no discovery path.
+    return { sliceId, namespaces: null }
+  }
+  const slice = catalog.slices[sliceId]
+  return { sliceId, namespaces: slice?.cursorNamespaces ?? null }
 }

@@ -9,6 +9,7 @@ import {
   type JsonObject
 } from '../tool.js'
 import { UI_SURFACES } from '../../../shared/ui-controls.js'
+import type { ConsoleLevel } from '../../browser-network/console-log.js'
 import { requireHost, type AppUiHost, type AppUiTarget, type AppWaitCondition } from './host.js'
 
 const targetFields: Record<string, JsonObject> = {
@@ -31,17 +32,20 @@ export function appUiActions(ui: () => AppUiHost | null): ToolAction[] {
       action: 'controls',
       description:
         'List rendered manifest controls: id, item, name, role, surface, pane (for chat-pane controls), and state ' +
-        '(disabled, checked, selected, expanded, pressed, current, value). Scope by surface and/or query; no bounds or ' +
-        'refs are returned because actions resolve controls by id at click time, in the selected pane when ids repeat.',
+        '(disabled, checked, selected, expanded, pressed, current, value). Scope by surface and/or query; actions resolve ' +
+        'controls by id at click time, in the selected pane when ids repeat. layout true adds viewport CSS-pixel bounds, ' +
+        'overflow (content larger than its box: truncated, clipped, or scrolling), and partlyOffscreen for fit and layout checks.',
       inputSchema: objectSchema({
         surface: { type: 'string', enum: [...UI_SURFACES], description: 'Only controls inside this surface; overlay means dialogs and menus.' },
         query: { type: 'string', minLength: 1, maxLength: 200, description: 'Case-insensitive filter over id, item, name, and value.' },
-        max_controls: { type: 'integer', minimum: 1, maximum: 200, description: 'Default 60.' }
+        max_controls: { type: 'integer', minimum: 1, maximum: 200, description: 'Default 60.' },
+        layout: { type: 'boolean', description: 'Add bounds, overflow, and partlyOffscreen per control. Default false.' }
       }),
       run: async (input) => jsonResult(await requireHost(ui, 'app automation').controls({
         surface: stringArg(input, 'surface'),
         query: stringArg(input, 'query'),
-        maxControls: numberArg(input, 'max_controls', 60)
+        maxControls: numberArg(input, 'max_controls', 60),
+        layout: booleanArg(input, 'layout', false)
       }))
     },
     {
@@ -137,6 +141,28 @@ export function appUiActions(ui: () => AppUiHost | null): ToolAction[] {
         }
         return output
       }
+    },
+    {
+      action: 'console',
+      description:
+        'The app renderer\'s own console for one app window: React errors, uncaught exceptions, warnings, and preload ' +
+        'failures, with reload markers. After a rebuild reload, since_navigation true shows only what the new renderer logged.',
+      inputSchema: objectSchema({
+        window: { type: 'string', minLength: 1, maxLength: 80, description: 'App window id: main (default) or a state.window.detached id.' },
+        min_level: { type: 'string', enum: ['debug', 'info', 'warning', 'error'], description: 'Lowest level to include; default debug (everything).' },
+        contains: { type: 'string', minLength: 1, maxLength: 200, description: 'Case-insensitive substring the message must contain.' },
+        since_navigation: { type: 'boolean', description: 'Only entries since the window\'s most recent load or reload. Default false.' },
+        after_cursor: { type: 'integer', minimum: 0, description: 'Only entries after this cursor; use nextCursor from a previous call.' },
+        max_entries: { type: 'integer', minimum: 1, maximum: 300, description: 'Maximum entries returned; default 50.' }
+      }),
+      run: async (input) => jsonResult(requireHost(ui, 'app automation').consoleMessages({
+        tabId: stringArg(input, 'window', 'main')!,
+        minLevel: stringArg(input, 'min_level') as ConsoleLevel | undefined,
+        contains: stringArg(input, 'contains'),
+        sinceNavigation: booleanArg(input, 'since_navigation', false),
+        afterCursor: input.after_cursor === undefined ? undefined : numberArg(input, 'after_cursor', 0),
+        limit: numberArg(input, 'max_entries', 50)
+      }))
     }
   ]
 }

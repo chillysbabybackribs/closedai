@@ -22,6 +22,11 @@ const PROMPTED: Partial<Record<string, WebPermissionKind>> = {
   media: 'media', 'display-capture': 'display-capture', geolocation: 'geolocation', notifications: 'notifications'
 }
 
+/** Linux screencast portals block on every desktopCapturer call; embedded pages use closedai_ui.capture instead. */
+export function autoGrantEmbeddedDisplayMedia(): boolean {
+  return process.platform !== 'linux'
+}
+
 /** The four kinds Chrome prompts for; anything else is never gated. */
 export function promptedPermission(permission: string): WebPermissionKind | null {
   return PROMPTED[permission] ?? null
@@ -42,6 +47,7 @@ export function installPermissionPolicy(browserSession: Session, deps: Permissio
   browserSession.setDevicePermissionHandler(() => !blocked())
   browserSession.setDisplayMediaRequestHandler((request, callback) => {
     if (blocked()) { callback({}); return }
+    if (!autoGrantEmbeddedDisplayMedia()) { callback({}); return }
     void deps.captureSources().then((sources) => {
       const source = sources[0]
       if (!source || !request.videoRequested) {

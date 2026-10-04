@@ -4,7 +4,7 @@ import type { SavedAgent } from '../../shared/agent-library.js'
 import { createAgentLibraryStore } from './agent-library-store.ts'
 
 function agent(id: string, name: string): SavedAgent {
-  return { id, name, prompt: 'Go.', maxCycles: null, createdAt: 1, updatedAt: 1, lastRunAt: null, runCount: 0 }
+  return { id, name, description: '', maxMinutes: null, autonomous: true, prompt: 'Go.', maxCycles: null, createdAt: 1, updatedAt: 1, lastRunAt: null, runCount: 0 }
 }
 
 test('the first subscriber primes from the list and later change events replace it', async () => {

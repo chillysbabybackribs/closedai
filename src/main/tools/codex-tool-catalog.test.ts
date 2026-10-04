@@ -77,10 +77,35 @@ test('resolveCodexToolCatalog promotes recall-first core slice for ordinary work
   assert.equal(pageSpec?.deferLoading, true)
 })
 
+test('resolveCodexToolCatalog selects selfdev slice for host checkout repo work', async () => {
+  const registry = fullRegistry()
+  const selfdev = await resolveCodexToolCatalog(registry, { chatToolSliceEnabled: true }, {
+    prompt: 'Fix the failing test',
+    surface: null,
+    selfDevelopment: true
+  })
+  assert.equal(selfdev.sliceId, 'selfdev')
+  assert.ok(selfdev.promotedIds.includes('tool_batch.run'))
+})
+
 test('resolveCodexToolCatalog selects browser slice for page intent', async () => {
   const registry = fullRegistry()
   const browser = await resolveCodexToolCatalog(registry, { chatToolSliceEnabled: true }, { prompt: 'Summarize this page', surface: null })
   assert.equal(browser.sliceId, 'browser')
   const pageSpec = browser.dynamicTools.find((ns) => ns.name === 'embedded_browser')?.tools.find((tool) => tool.name === 'page')
   assert.notEqual(pageSpec?.deferLoading, true)
+})
+
+test('Cursor baseline keeps Codex catalog stable across tasks and respects disabled tools', async () => {
+  const registry = fullRegistry()
+  registry.setEnabled('search.query', false)
+  const settings = { chatToolSliceEnabled: true, chatCursorBaselineEnabled: true }
+  const code = await resolveCodexToolCatalog(registry, settings, { prompt: 'Fix tests', surface: null, selfDevelopment: true })
+  const browser = await resolveCodexToolCatalog(registry, settings, { prompt: 'Summarize this page', surface: null })
+  const research = await resolveCodexToolCatalog(registry, settings, { prompt: 'Research the latest browser release', surface: null })
+  assert.deepEqual(browser, code)
+  assert.deepEqual(research, code)
+  assert.equal(code.sliceId, null)
+  assert.equal(code.dynamicTools.find((ns) => ns.name === 'search')?.tools.some((tool) => tool.name === 'query') ?? false, false)
+  assert.ok(code.dynamicTools.some((ns) => ns.tools.some((tool) => tool.deferLoading)), 'native deferred discovery is retained')
 })

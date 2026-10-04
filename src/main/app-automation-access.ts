@@ -13,6 +13,7 @@ import type {
   AppWaitResult
 } from './tools/app/host.js'
 import type { AppMenuRunResult } from '../shared/app-menu-run.js'
+import type { ConsoleFilter, ConsoleListing, ConsoleLog } from './browser-network/console-log.js'
 import { dispatchAppClick } from './app-automation-input.js'
 import {
   conditionProbeExpression,
@@ -26,6 +27,7 @@ import {
   uiStateExpression,
   revealChatTabExpression,
   revealBrowserExpression,
+  newChatWindowExpression,
   menuRunExpression,
   type AppPreparedClick
 } from './app-automation-dom.js'
@@ -47,7 +49,16 @@ const POLL_MS = 75
 export class AppAutomationAccess implements AppUiHost {
   private connection: Connection | null = null
 
-  constructor(private readonly getWindow: () => BrowserWindow | null) {}
+  constructor(
+    private readonly getWindow: () => BrowserWindow | null,
+    /** The app shell console every app window logs into (main-window.ts appConsole). */
+    private readonly console: Pick<ConsoleLog, 'list'> | null = null
+  ) {}
+
+  consoleMessages(filter: ConsoleFilter): ConsoleListing {
+    if (!this.console) throw new Error('App console capture is not available in this process')
+    return this.console.list(filter)
+  }
 
   async controls(filter: AppControlFilter): Promise<AppControlsResult> {
     const { contents } = this.resolve()
@@ -112,6 +123,11 @@ export class AppAutomationAccess implements AppUiHost {
   async revealBrowser(): Promise<void> {
     const { contents } = this.resolve()
     await contents.executeJavaScript(revealBrowserExpression(), true)
+  }
+
+  async newChatWindow(): Promise<{ paneId: string }> {
+    const { contents } = this.resolve()
+    return await contents.executeJavaScript(newChatWindowExpression(), true) as { paneId: string }
   }
 
   async runMenu(key: string, callerPaneId: string | null): Promise<AppMenuRunResult> {

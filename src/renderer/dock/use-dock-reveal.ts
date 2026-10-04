@@ -1,5 +1,13 @@
 import { useEffect, useRef, useState, type RefObject } from 'react'
-import { HIDE_DELAY_MS, pointerReveal } from './dock-model.js'
+import { HIDE_DELAY_MS, pointerReveal, type DockBounds } from './dock-model.js'
+
+export function readDockControlBounds(root: HTMLElement | null): DockBounds | null {
+  const cluster = root?.querySelector('[data-slot="dock-control-cluster"]')
+  if (!(cluster instanceof HTMLElement)) return null
+  const rect = cluster.getBoundingClientRect()
+  if (rect.width <= 0 || rect.height <= 0) return null
+  return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom }
+}
 
 /** Pointer intent and menu/focus holds share one cancellable hide delay. */
 export function createDockReveal(
@@ -11,7 +19,7 @@ export function createDockReveal(
 ) {
   let shown = false
   let held = false
-  let pointer: { y: number; height: number } | null = null
+  let pointer: { x: number; y: number; bounds: DockBounds | null } | null = null
   let cancelHide: (() => void) | null = null
   const cancel = (): void => { cancelHide?.(); cancelHide = null }
   const change = (next: boolean): void => {
@@ -19,7 +27,7 @@ export function createDockReveal(
     shown = next
     publish(next)
   }
-  const keepOpen = (): boolean => held || (pointer !== null && pointerReveal(pointer.y, pointer.height, shown) !== 'leave')
+  const keepOpen = (): boolean => held || (pointer !== null && pointerReveal(pointer.x, pointer.y, pointer.bounds, shown) !== 'leave')
   const sync = (): void => {
     if (keepOpen()) { cancel(); change(true) }
     else if (shown && !cancelHide) cancelHide = scheduleHide(() => {
@@ -28,14 +36,14 @@ export function createDockReveal(
     })
   }
   return {
-    pointer(y: number, height: number) { pointer = { y, height }; sync() },
+    pointer(x: number, y: number, bounds: DockBounds | null) { pointer = { x, y, bounds }; sync() },
     leave() { pointer = null; sync() },
     hold(next: boolean) { held = next; sync() },
     dispose: cancel
   }
 }
 
-/** Observe the empty bottom band without an invisible element stealing workspace clicks. */
+/** Reveal only when the pointer is over the dock control cluster; no full-width hit band. */
 export function useDockReveal(root: RefObject<HTMLDivElement | null>, heldOpen: boolean): boolean {
   const [shown, setShown] = useState(false)
   const controller = useRef<ReturnType<typeof createDockReveal> | null>(null)
@@ -49,7 +57,9 @@ export function useDockReveal(root: RefObject<HTMLDivElement | null>, heldOpen: 
     let keyboard = true
     const syncHold = (): void => reveal.hold(panelsOpen.current || keyboardFocus.current)
     const inDock = (target: EventTarget | null): boolean => target instanceof Node && Boolean(root.current?.contains(target))
-    const pointerMove = (event: PointerEvent): void => reveal.pointer(event.clientY, window.innerHeight)
+    const pointerMove = (event: PointerEvent): void => {
+      reveal.pointer(event.clientX, event.clientY, readDockControlBounds(root.current))
+    }
     const pointerDown = (event: PointerEvent): void => {
       keyboard = false
       keyboardFocus.current = false

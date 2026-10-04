@@ -3,7 +3,12 @@ import test from 'node:test'
 import type { DesktopCapturerSource, Session, WebContents } from 'electron'
 
 import type { WebPermissionPolicy, WebPermissionRequest } from '../shared/security.ts'
-import { installContentsPermissionPolicy, installPermissionPolicy, type PermissionPolicyDeps } from './browser-permissions.ts'
+import {
+  autoGrantEmbeddedDisplayMedia,
+  installContentsPermissionPolicy,
+  installPermissionPolicy,
+  type PermissionPolicyDeps
+} from './browser-permissions.ts'
 
 type AnyFn = (...args: never[]) => unknown
 type Handlers = {
@@ -68,7 +73,10 @@ test('allow: every handler grants and pickers choose the first candidate, exactl
   }
   assert.equal(handlers.device(), true)
   assert.deepEqual(pickers(handlers), { hid: 'hid-a', serial: 'port-a', usb: 'usb-a', prevented: [true, true, true] })
-  assert.deepEqual(await display(handlers, true), { video: sources[0] })
+  assert.deepEqual(
+    await display(handlers, true),
+    autoGrantEmbeddedDisplayMedia() ? { video: sources[0] } : {}
+  )
   assert.deepEqual(await display(handlers, false), {})
   assert.deepEqual(asked, [], 'nothing reaches the chrome')
 })
@@ -98,7 +106,10 @@ test('ask: the four prompted kinds go to the chrome with tab and origin; everyth
   assert.equal(handlers.check(contents, 'notifications'), true)
   assert.equal(handlers.device(), true)
   assert.deepEqual(pickers(handlers).hid, 'hid-a')
-  assert.deepEqual(await display(handlers, true), { video: sources[0] })
+  assert.deepEqual(
+    await display(handlers, true),
+    autoGrantEmbeddedDisplayMedia() ? { video: sources[0] } : {}
+  )
 
   const denied = fakeSession('ask', async () => false)
   assert.equal(await request(denied.handlers, 'media'), false)

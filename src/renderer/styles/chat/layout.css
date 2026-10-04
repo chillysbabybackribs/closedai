@@ -470,14 +470,14 @@ body[data-layout-resize='vertical'] * { cursor: row-resize !important; }
 
 .chat-layout-error { padding: 5px 10px; color: #ffb4ab; font-size: 12px; }
 
-/* Bound draft growth to the tile in every layout, compensating for chat zoom. */
-.chat-layout-content .chat-zoom-surface {
-  --composer-max-height: max(38px, min(calc(26cqh * var(--chat-zoom-inverse, 1)), 160px));
+/* Bound draft growth to the tile in every layout. */
+.chat-layout-content .chat-composer-dock {
+  --composer-max-height: max(38px, min(26cqh, 160px));
 }
 
 /* Short and narrow tiles also tighten transcript spacing. */
 @container chat-tile (max-width: 680px) or (max-height: 640px) {
-  .chat-layout-content .chat-zoom-surface {
+  .chat-layout-content .chat-pane-stack {
     --chat-column-gutter: 12px;
   }
   .chat-layout-content .prompt-chat-content { padding: 12px 12px 8px; }
@@ -485,15 +485,17 @@ body[data-layout-resize='vertical'] * { cursor: row-resize !important; }
 }
 
 @container chat-tile (max-width: 560px) or (max-height: 520px) {
-  .chat-layout-content .chat-zoom-surface {
+  .chat-layout-content .chat-pane-stack {
     --chat-column-gutter: 10px;
-    --composer-max-height: max(34px, min(calc(22cqh * var(--chat-zoom-inverse, 1)), 120px));
+  }
+  .chat-layout-content .chat-composer-dock {
+    --composer-max-height: max(34px, min(22cqh, 120px));
   }
   .chat-layout-content .prompt-chat-content { padding: 10px 10px 6px; }
 }
 
 @container chat-tile (max-width: 480px) {
-  .chat-layout-content .chat-zoom-surface { --chat-column-gutter: 12px; }
+  .chat-layout-content .chat-pane-stack { --chat-column-gutter: 12px; }
   .chat-layout-content .composer-row { gap: 6px; padding-inline: 10px 8px; }
   .chat-layout-content .composer-chip-model-trigger,
   .chat-layout-content .composer-chip-folder-trigger { padding-inline: 6px; }
@@ -662,3 +664,16 @@ body[data-layout-resize='vertical'] * { cursor: row-resize !important; }
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Only the side cards scroll; the main pane and its divider stay full height. */
+.chat-layout-side-scroll {
+  position: absolute;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+.chat-layout-side-scroll[hidden] { display: none; }
+.chat-layout-side-scroll:focus-visible { outline: 1px solid var(--focus-ink); outline-offset: -1px; }
+.chat-layout-side-content { position: relative; width: 100%; }
+.chat-layout-side-content > .chat-layout-tile { max-width: 100%; }

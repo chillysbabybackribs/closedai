@@ -1,7 +1,5 @@
-import { linkFloatingPair } from './floating/floating-pair.js'
-import { findWindow } from './floating/window-layout.js'
-import { tabIds, tabOwner } from './layout-tabs.js'
-import { isReservedPaneId, isViewTabId, type ChatLayout } from './layout-tree.js'
+import { addTab, removeTab, selectTab, tabIds, tabOwner } from './layout-tabs.js'
+import { isReservedPaneId, isViewTabId, paneIds, type ChatLayout } from './layout-tree.js'
 
 /** One conversation per window: a single chat tab and no sibling chat tabs in the tile. */
 export function isChatCardPane(tree: ChatLayout, paneId: string): boolean {
@@ -10,16 +8,25 @@ export function isChatCardPane(tree: ChatLayout, paneId: string): boolean {
   return chats.length === 1
 }
 
-/** Swap a card's conversation while keeping float, dock, and browser pair geometry. */
+/** Swap a card's conversation while keeping its float and dock geometry. */
+/** Swap the source chat out of the layout for its continuation, keeping the same window when possible. */
+export function adoptContinuedChat(tree: ChatLayout, sourceId: string, addedId: string): ChatLayout {
+  const owner = tabOwner(tree, sourceId) ?? sourceId
+  if (isChatCardPane(tree, owner)) return replaceChatCardPane(tree, owner, addedId)
+  const stripped = removeTab(tree, sourceId)
+  if (!stripped) return { kind: 'pane', id: addedId }
+  const tile = paneIds(stripped).includes(owner) ? owner : paneIds(stripped)[0]
+  if (!tile) return stripped
+  return selectTab(addTab(stripped, tile, addedId), tile, addedId)
+}
+
 export function replaceChatCardPane(tree: ChatLayout, paneId: string, chatId: string): ChatLayout {
   const visit = (node: ChatLayout): ChatLayout => {
     if (node.kind === 'split') return { ...node, first: visit(node.first), second: visit(node.second) }
     if (node.id !== paneId) return node
     return { ...node, id: chatId, tabs: [chatId] }
   }
-  let next = visit(tree)
-  if (findWindow(tree, paneId)?.floatPair === paneId) next = linkFloatingPair(next, chatId)
-  return next
+  return visit(tree)
 }
 
 /** Keep every conversation visible in its own card, including legacy saved tab groups. */

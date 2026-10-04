@@ -1,3 +1,4 @@
+import { registerPerformanceIpc } from './performance/ipc.js'
 import type { IpcMain } from 'electron'
 import { join } from 'node:path'
 import { app, BrowserWindow, session, shell } from 'electron'
@@ -36,6 +37,7 @@ import type { NotesStore } from './notes/notes-store.js'
 import type { NotepadBindings } from './notes/notepad-bindings.js'
 import type { ChatPeerManager } from './chat-peers/peer-manager.js'
 import type { AgentRunService } from './agent-runs/agent-run-service.js'
+import type { AgentPromptOptimizer } from './agent-library/prompt-optimizer.js'
 import type { AgentLibraryStore } from './agent-library/agent-library-store.js'
 import type { CredentialVault } from './credential-vault.js'
 import type { SecuritySettingsStore } from './security-settings-store.js'
@@ -60,6 +62,7 @@ export type MainIpcRegistration = {
   chatService: () => ChatPeerManager | null
   agentRuns: () => AgentRunService | null
   agentLibrary: () => AgentLibraryStore | null
+  agentOptimizer: () => AgentPromptOptimizer | null
   credentialVault: () => CredentialVault | null
   securitySettings: () => SecuritySettingsStore | null
   settings: () => AppSettingsStore | null
@@ -97,8 +100,12 @@ export function registerMainProcessIpc(reg: MainIpcRegistration): void {
   registerLocalFilesIpc(reg.ipcMain, reg.browserService)
   registerChatIpc(reg.ipcMain, reg.chatService, reg.windows)
   registerAgentRunsIpc(reg.ipcMain, reg.agentRuns)
-  registerAgentLibraryIpc(reg.ipcMain, reg.agentLibrary)
+  registerAgentLibraryIpc(reg.ipcMain, reg.agentLibrary, reg.agentOptimizer)
   registerTraceIpc(reg.ipcMain, traceLog)
+  registerPerformanceIpc(reg.ipcMain, {
+    settings: reg.settings, responses: traceLog.responses,
+    changed: (settings) => reg.sendToWindows(IPC.event.performanceSettingsChanged, settings)
+  })
   registerCredentialVaultIpc(reg.ipcMain, reg.credentialVault)
   registerSecurityIpc(reg.ipcMain, {
     settings: reg.securitySettings,

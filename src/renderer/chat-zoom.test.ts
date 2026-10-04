@@ -5,6 +5,7 @@ import {
   CHAT_ZOOM_DEFAULT,
   CHAT_ZOOM_MAX,
   CHAT_ZOOM_MIN,
+  chatZoomCommandDisabled,
   chatZoomCommandForKey,
   clampChatZoom
 } from './chat-zoom.js'
@@ -26,6 +27,13 @@ test('chat zoom normalizes arbitrary and invalid values', () => {
 test('chat zoom commands recover non-finite current values to the default', () => {
   assert.equal(applyChatZoomCommand(Number.NaN, 'in'), CHAT_ZOOM_DEFAULT)
   assert.equal(applyChatZoomCommand(Number.POSITIVE_INFINITY, 'out'), CHAT_ZOOM_DEFAULT)
+})
+
+test('chat zoom menu disables at limits and default', () => {
+  assert.equal(chatZoomCommandDisabled('in', 250), true)
+  assert.equal(chatZoomCommandDisabled('out', 50), true)
+  assert.equal(chatZoomCommandDisabled('reset', 100), true)
+  assert.equal(chatZoomCommandDisabled('reset', 110), false)
 })
 
 test('chat zoom keyboard commands accept Ctrl or Cmd without Alt', () => {

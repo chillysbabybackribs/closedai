@@ -13,6 +13,7 @@ export function TracePerformanceSummary({ value }: { value: TracePerformance }):
       { label: 'After dispatch', value: duration(value.response.afterDispatchMs), title: 'Provider dispatch → first assistant text; can include queueing, input processing, reasoning, and tools' }
     )
   }
+  if (value.rendererMs !== null) metrics.push({ label: 'Renderer', value: duration(value.rendererMs), title: 'First text received in this renderer → two animation frames after visible text commit. Includes streaming pacing; estimate, not display hardware timing.' })
   if (value.modelPasses > 0) metrics.push({ label: 'Model passes', value: String(value.modelPasses) })
   if (value.tokens) {
     const cachePercent = value.tokens.input > 0 ? (value.tokens.cachedInput / value.tokens.input) * 100 : 0

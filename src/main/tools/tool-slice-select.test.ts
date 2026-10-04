@@ -10,12 +10,14 @@ const catalog = parseToolSliceCatalog({
   codexEagerWireCap: 3600,
   slices: {
     core: { label: 'Core', description: 'x', promotePriority: [] },
+    selfdev: { label: 'Selfdev', description: 'x', promotePriority: [] },
     browser: { label: 'Browser', description: 'x', promotePriority: [] },
     research: { label: 'Research', description: 'x', promotePriority: [] }
   },
   signals: {
     browser: { slice: 'browser' },
     research: { slice: 'research' },
+    selfdev: { slice: 'selfdev' },
     default: { slice: 'core' }
   }
 })
@@ -25,7 +27,11 @@ test('browser slice wins on browser phrasing or a live non-blank tab', () => {
   assert.ok(needsActiveBrowserContext('Read the current page'))
   assert.equal(
     selectToolSliceId(catalog, { prompt: 'Fix the unit test', surface: { tabId: 't', url: 'https://example.com', title: 'Ex', isLoading: false } }),
-    'browser'
+    'core'
+  )
+  assert.equal(
+    selectToolSliceId(catalog, { prompt: 'Add scroll to the chat history dropdown in renderer CSS', surface: { tabId: 't', url: 'https://example.com', title: 'Ex', isLoading: false } }),
+    'core'
   )
   assert.equal(
     selectToolSliceId(catalog, { prompt: 'Fix the unit test', surface: { tabId: 't', url: 'about:blank', title: '', isLoading: false } }),
@@ -48,6 +54,21 @@ test('browser intent outranks research cues in the same message', () => {
   assert.equal(
     selectToolSliceId(catalog, { prompt: 'Research this page in the browser tab', surface: null }),
     'browser'
+  )
+})
+
+test('selfdev slice wins on host checkout repo work but not generic chats', () => {
+  assert.equal(
+    selectToolSliceId(catalog, { prompt: 'Fix the unit test', surface: null, selfDevelopment: true }),
+    'selfdev'
+  )
+  assert.equal(
+    selectToolSliceId(catalog, { prompt: 'Fix the unit test', surface: null, selfDevelopment: false }),
+    'core'
+  )
+  assert.equal(
+    selectToolSliceId(catalog, { prompt: 'What is 2+2?', surface: null, selfDevelopment: true }),
+    'core'
   )
 })
 

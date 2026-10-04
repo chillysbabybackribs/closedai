@@ -4,7 +4,17 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { installAppContextMenu } from './app-context-menu.js'
 import { installRendererRecovery } from './main-window-recovery.js'
+import { ConsoleLog } from './browser-network/console-log.js'
 import { APP_WINDOW_QUERY } from '../shared/app-windows.js'
+
+/**
+ * The app shell's own console, the same log browser tabs use, keyed by app window id (`main` or a
+ * detached window's id). Read through closedai_app.ui console so a model can see what its renderer
+ * change threw without a screenshot.
+ */
+export const appConsole = new ConsoleLog((message) =>
+  message.startsWith('[vite]') || message.includes('Download the React DevTools') || message.includes('Electron Security Warning'))
+
 export type MainWindowActions = {
   openLinkInNewTab: (url: string) => void
 }
@@ -79,6 +89,12 @@ export function createAppWindow(actions: MainWindowActions, { activate = true, .
     else window.showInactive()
   })
 
+  // Window names are `main` and `detached-<id>`; the console is keyed by the id state.window reports.
+  const consoleId = frame.name.replace(/^detached-/, '')
+  appConsole.attach(consoleId, window.webContents)
+  // A preload that fails to load never reaches the console, yet leaves the renderer without its bridge.
+  window.webContents.on('preload-error', (_event, preloadPath, error) =>
+    appConsole.message(consoleId, { level: 'error', message: `preload ${preloadPath} failed: ${error.message}` }))
   installAppContextMenu(window.webContents, Menu, actions)
   installRendererRecovery(window, { showErrorBox: (title, content) => dialog.showErrorBox(title, content) })
   return window

@@ -59,3 +59,26 @@ test('the provider rotator uses the saved boundary when evaluating a retained tr
   assert.equal(rotator.scheduledForIdle, true)
   rotator.reset()
 })
+
+test('Cursor baseline overrides all automatic rotation triggers and can be disabled again', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  let rotations = 0
+  const saved = { ...DEFAULT_APP_SETTINGS, chatCursorBaselineEnabled: false,
+    chatCompactAtPercent: 1, chatCompactAtTokens: 1, chatRotateAtItems: 1 }
+  const rotator = createSessionRotator({
+    settings: { get: () => saved, set: async () => saved }, transcriptItems: () => [user('u')],
+    threadId: () => 'thread', turnActive: () => false, rotate: async () => { rotations++; rotator.complete() }
+  })
+  rotator.noteUsage({ usedTokens: 100, contextWindow: 100 })
+  rotator.turnFinished()
+  assert.equal(rotator.scheduledForIdle, true)
+  saved.chatCursorBaselineEnabled = true
+  t.mock.timers.tick(60_000)
+  assert.equal(rotations, 0, 'enabling baseline also prevents an already queued rotation')
+  rotator.turnFinished()
+  assert.equal(rotator.scheduledForIdle, false)
+  saved.chatCursorBaselineEnabled = false
+  rotator.turnFinished()
+  assert.equal(rotator.scheduledForIdle, true)
+  rotator.reset()
+})

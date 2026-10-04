@@ -24,7 +24,7 @@ export function AgentsDialog({ anchor, chats, onClose, onOpenChat, onStart }: {
     <DialogContent className="agents-dialog" data-ui="view.agents" aria-describedby={undefined}>
       <DialogTitle className="sr-only">Agents</DialogTitle>
       <Suspense fallback={null}>
-        {anchor !== null && <AgentLibraryView active startEnabled={chats.some((row) => row.paneId === anchor)} chats={chats}
+        {anchor !== null && <AgentLibraryView active startEnabled={chats.some((row) => row.paneId === anchor)} launchPaneId={anchor} chats={chats}
           onOpenChat={(chatId) => { onClose(); onOpenChat(chatId) }}
           onStart={async (options) => { await onStart(anchor, options); onClose() }} />}
       </Suspense>

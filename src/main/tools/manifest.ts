@@ -19,6 +19,7 @@ export function toolManifest(registry: ToolRegistry, providers: string[]): ToolM
     groups: [...TOOL_GROUPS],
     advertisedTokens,
     readOnlyIds: [...READ_ONLY_TOOL_IDS],
+    chatCursorBaselineEnabled: false,
     chatToolSliceEnabled: true,
     chatWorkspaceLedgerEnabled: true
   }

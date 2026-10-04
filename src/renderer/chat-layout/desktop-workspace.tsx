@@ -8,11 +8,12 @@ import type { AgentRunStartOptions } from '../../shared/agent-runs.js'
 import type { ChatRowSummary } from '../../shared/chat-peers.js'
 import { type useChatController } from '../chat-controller.js'
 import { injectComposerDraft } from '../composer-drafts.js'
+import type { ChatZoomCommand } from '../chat-zoom.js'
 import type { AppearanceSettings, WorkspaceBackdrop } from '../settings/appearance-settings.js'
 import { ChatCanvas } from './chat-canvas.js'
 import { ChatLayoutActions } from './layout-context-menu.js'
 import { useChatLayout } from './layout-controller.js'
-import { paneIds } from './layout-tree.js'
+import { BROWSER_PANE_ID, paneIds } from './layout-tree.js'
 import { BrowserWindowControls } from './floating/window-controls.js'
 import { minimizedWindows, type MinimizedWindow } from './floating/minimized-windows.js'
 import { hasFloatingWindows } from './floating/window-arrange.js'
@@ -23,6 +24,7 @@ import { AgentsDialog } from '../agent-library/agents-dialog.js'
 import type { CanvasSize, LayoutPreset } from './layout-presets.js'
 import type { ChatReviewQueue } from '../chat-history/review-queue.js'
 import type { HistoryController } from '../chat-history/history-controller.js'
+import { useDeskOpenOrder } from '../chat-history/use-desk-open-order.js'
 import { WorkspaceChat } from './workspace-chat.js'
 import { WorkspacePaneActionsContext, type WorkspacePaneActions } from './workspace-pane-actions.js'
 import { WorkspaceViewContext, WorkspaceViewHost, type WorkspaceViewContextValue } from './workspace-view-host.js'
@@ -65,8 +67,8 @@ export type ChatLayoutHandle = {
   restoreWindow: (id: string) => void
   /** Tile windows: every floating window back into the last tiled layout (dock, View menu, Ctrl+Shift+L). */
   tileWindows: () => void
-  /** Selected chat and browser back into the compact floating pair (View menu, Ctrl+Shift+B). */
-  restoreFloatingPair: () => void
+  /** Fit every expanded window and cycle desk layouts (shell title bar and window header double-click). */
+  fitVisibleWindows: (focusId: string) => void
   /** Put text in a chat's composer and bring that chat forward (Start's Tools view). */
   sendToChat: (chatId: string, text: string) => void
   /** Start a run in a new chat beside `chatId`'s tile (Start's Agents view). */
@@ -76,11 +78,12 @@ export type ChatLayoutHandle = {
   newChatWindow: () => Promise<void>
 }
 
-export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, onBackdropChange, onOpenWallpaper, toolsPreset = null, browserHeld = false, spaceId, onRenameChat, onSavedSitesError, onNotepadError, onFilesVisibleChange, onBrowserVisibleChange, onMinimizedChange, onFloatingChange, archiveChat, onChatTabClosed, threadSearch, ref }: {
+export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, onChatZoomChange, onBackdropChange, onOpenWallpaper, toolsPreset = null, browserHeld = false, spaceId, onRenameChat, onSavedSitesError, onNotepadError, onFilesVisibleChange, onBrowserVisibleChange, onMinimizedChange, onFloatingChange, archiveChat, onChatTabClosed, threadSearch, ref }: {
   chat: ReturnType<typeof useChatController>
   savedSites: BrowserSavedSitesController
   reviewQueue: ChatReviewQueue
   appearance: AppearanceSettings
+  onChatZoomChange: (command: ChatZoomCommand) => void
   onBackdropChange: (mode: WorkspaceBackdrop) => void
   /** Open the wallpaper picker from the canvas background menu. */
   onOpenWallpaper: () => void
@@ -106,7 +109,10 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, on
   threadSearch?: {
     chats: ChatRowSummary[]
     controller: HistoryController
+    activeChatId: string | null
     inputRef: RefObject<HTMLInputElement | null>
+    openDeskChatIds?: readonly string[]
+    reviewQueue?: ChatReviewQueue
   }
   ref?: Ref<ChatLayoutHandle>
 }) {
@@ -120,6 +126,11 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, on
   workspaceSnapshotRef.current = chat.snapshot
   const layoutRevision = chatLayoutRevision(chat.snapshot)
   const layout = useChatLayout(() => workspaceSnapshotRef.current, layoutRevision, spaceId, onChatTabClosed)
+  const openDeskChatIds = useDeskOpenOrder(layout.tree)
+  const cardThreadSearch = useMemo(
+    () => threadSearch ? { ...threadSearch, openDeskChatIds, reviewQueue } : undefined,
+    [threadSearch, openDeskChatIds, reviewQueue]
+  )
   const maximized = useMemo((): [string | null, typeof layout.setMaximized] => [layout.maximized, layout.setMaximized], [layout.maximized, layout.setMaximized])
   // The canvas moves the browser window from a press on this grip, as it does a chat's.
   const browserDragHandle = useMemo(() => <button type="button"
@@ -154,9 +165,7 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, on
     if (view?.kind === 'note') return <NotepadView tabId={view.id} active={visible} />
     if (view?.kind === 'file') return <FileView tabId={view.id} active={visible} />
     if (view) return <WorkspaceViewHost viewId={view.id} kind={view.kind} />
-    return <WorkspaceChat paneId={id} dispatch={dispatch} appearance={appearance} panelVisible={visible}
-      onContinueInNewChat={() => continueChatRef.current(id)}
-      onNewChat={() => { void layout.newChat(id) }} />
+    return <WorkspaceChat paneId={id} dispatch={dispatch} appearance={appearance} panelVisible={visible} />
   }
   const renderPane = useCallback((id: string, visible: boolean) => renderPaneRef.current(id, visible), [])
   const continueChatRef = useRef<(id: string) => Promise<void>>(async () => {})
@@ -192,13 +201,15 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, on
     [layout.busy, layout.toggleBrowser])
   const reportNotepadError = useCallback((reason: unknown) => { onNotepadError?.(reason) }, [onNotepadError])
   const notepad = useNotepadHost({ layout, chats: chat.chats, dispatch, appearance, onError: reportNotepadError })
+  const onBrowserHeaderDoubleClick = useCallback(() => { layout.fitVisibleWindows(BROWSER_PANE_ID) }, [layout.fitVisibleWindows])
   const renderBrowser = useMemo(() => layout.detached ? null : <WorkspaceBrowser
     layoutKey={`${layoutRevision}\0${layout.browserVisible ? '1' : '0'}`} visible={layout.browserVisible}
     occluded={layoutDragging || browserHeld || browserCovered}
     savedSites={savedSites} dragHandle={browserDragHandle} windowControls={browserControls}
+    onHeaderDoubleClick={onBrowserHeaderDoubleClick}
     onReveal={revealBrowser} onShow={layout.showBrowser} />,
   [layout.detached, layoutRevision, layout.browserVisible, layoutDragging, browserHeld, browserCovered, savedSites, browserDragHandle,
-    browserControls, revealBrowser, layout.showBrowser])
+    browserControls, onBrowserHeaderDoubleClick, revealBrowser, layout.showBrowser])
   // The browser lives in the main window: a detached window's Browser control brings that forward.
   const toggleBrowserHere = useCallback(() => {
     if (layout.detached) { void window.closedai.windows.showBrowser(); return }
@@ -252,15 +263,12 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, on
       setBrowserRevealVersion((value) => value + 1)
       layout.windows.tileAll()
     },
-    restoreFloatingPair: () => {
-      setBrowserRevealVersion((value) => value + 1)
-      layout.restoreFloatingPair()
-    },
+    fitVisibleWindows: (focusId) => { layout.fitVisibleWindows(focusId) },
     sendToChat,
     startAgent: (chatId, options) => startAgentRef.current(chatId, options),
     openNotepad: notepad.openNotepad,
     newChatWindow: layout.newChatWindow
-  }), [toggleFiles, notepad.openNotepad, layout.newChatWindow, layout.windows, layout.dock, layout.activateTab, layout.openView, layout.toggleView, toggleBrowserHere, revealBrowser, savedSites, layout.closeFocused, layout.focusedCloseTarget, layout.arrange, chat.selectedPaneId, sendToChat])
+  }), [toggleFiles, notepad.openNotepad, layout.newChatWindow, layout.windows, layout.dock, layout.activateTab, layout.openView, layout.toggleView, toggleBrowserHere, revealBrowser, savedSites, layout.closeFocused, layout.focusedCloseTarget, layout.arrange, layout.fitVisibleWindows, chat.selectedPaneId, sendToChat])
   const select = useCallback((id: string): void => { void layout.focusPane(id) }, [layout.focusPane])
   const onDock = useCallback((id: string | null, target: string, edge: import('./layout-tree.js').DockEdge | null, singleTab?: boolean) => {
     return layout.dock(id, target, edge, singleTab)
@@ -324,12 +332,16 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, on
     toggleBrowser: toggleBrowserHere,
     openFile,
     newChat: (paneId) => { void layout.newChat(paneId) },
+    newChatWindow: () => { void layout.newChatWindow() },
+    continueChat: (paneId) => continueChatRef.current(paneId),
+    canPromoteStackMonitorLead: (paneId) => layout.stackMonitorLeadPromotable(paneId),
+    promoteStackMonitorIfCompact: (paneId) => layout.maybePromoteStackMonitorLead(paneId),
     openAgentsView: setAgentsAnchor,
     focusChatTab,
     startAgentFromPane: (paneId, options) => startAgentRef.current(paneId, options),
     agentsMenuPaneId,
     setAgentsMenuPaneId
-  }), [toggleBrowserHere, openFile, layout.newChat, focusChatTab, agentsMenuPaneId])
+  }), [toggleBrowserHere, openFile, layout.newChat, layout.newChatWindow, focusChatTab, agentsMenuPaneId])
   const viewContext = useMemo<WorkspaceViewContextValue>(() => ({
     tree: layout.tree, views: layout.views, selectedPaneId: chat.selectedPaneId, chats: chat.chats, title: chatTitle,
     listChats: chat.listChats, archiveChat: archiveChat ?? chat.archiveChat, activateChat: layout.activateTab,
@@ -359,9 +371,10 @@ export function DesktopWorkspace({ chat, savedSites, reviewQueue, appearance, on
         onSelect={select} onDock={onDock} onSelectTab={onSelectTab} onCloseTab={onCloseTab} onNewChat={onNewChat}
         onRenameChat={onRename} onTogglePin={onTogglePin}
         onPauseTab={onPauseTab} onResumeTab={onResumeTab} onOpenPresets={onOpenPresets} onSizeChange={onSizeChange}
-        onHide={onHide} onResize={layout.resize} windows={layout.windows} onBrowserCovered={setBrowserCovered}
+        onHide={onHide} onResize={layout.resize} windows={layout.windows} onFitVisibleWindows={layout.fitVisibleWindows}
+        onBrowserCovered={setBrowserCovered}
         backdrop={appearance.backdrop} onBackdropChange={onBackdropChange} onOpenWallpaper={onOpenWallpaper}
-        threadSearch={threadSearch}
+        threadSearch={cardThreadSearch} chatZoom={appearance.chatZoom} onChatZoomChange={onChatZoomChange}
         renderPane={renderPane}
       renderBrowser={renderBrowser}
     />

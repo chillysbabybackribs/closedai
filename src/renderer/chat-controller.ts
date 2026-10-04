@@ -1,3 +1,4 @@
+import { observeResponsePaint } from './performance/response-paint.js'
 import { startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useState, type Dispatch } from 'react'
 import { setWorkspaceSnapshot } from './chat-layout/workspace-snapshot-store.js'
 import type { ChatAttachment, ChatSnapshot } from '../shared/chat.js'
@@ -81,6 +82,7 @@ export function useChatController(enabled = true) {
     }
     const enqueue = (event: ChatWorkspaceEvent): void => {
       if (!active) return
+      observeResponsePaint(event)
       queue.push(event)
       frame ??= window.requestAnimationFrame(flush)
     }

@@ -19,15 +19,12 @@ import { shrinkPastedImages } from '../chat-attachment-images.js'
 import {
   buildThreadHandoff,
   continuationFromThreadHandoff,
-  handoffAdditionalContext,
   type ThreadHandoffSource
 } from '../chat-context/thread-handoff.js'
-import { buildRuntimeAdditionalContext } from '../chat-context/runtime-context.js'
-import { buildResearchRoutingAdditionalContext } from '../chat-context/research-routing.js'
+import { toolSliceTurnInput } from '../chat-context/chat-self-development.js'
+import { buildTurnSendContext } from '../chat-context/session-guide.js'
 import {
-  buildClockAdditionalContext,
   buildTurnAdditionalContext,
-  mergeTurnAdditionalContext,
   type TurnSurfaceContext
 } from '../chat-context/turn-context.js'
 import { reasoningEffortForModel } from '../chat-model-catalog.js'
@@ -160,23 +157,22 @@ export class CursorChatService extends EventEmitter {
       await session.warm()
       const sessionId = session.sessionId
       const pendingHandoff = this.settings.get().chatContinuation?.handoff ?? null
-      // Keep Cursor's native session/context policy separate from the other provider lanes.
-      // No shared guide or workspace ledger; runtime includes the shared development first-read rule.
-      // ACP reports no usage; transcript size must not automatically discard its live session.
       const settings = this.settings.get()
-      const context = mergeTurnAdditionalContext(
-        buildClockAdditionalContext(),
-        buildRuntimeAdditionalContext({
+      const { context } = buildTurnSendContext({
+        prompt: text,
+        threadKey: `cursor:${this.paneId ?? 'pane'}`,
+        state: { lastDeliveredThreadKey: 'cursor:thin-harness' },
+        transcriptWasEmpty: false,
+        pendingHandoff,
+        runtime: {
           paneId: this.paneId,
           provider: 'cursor',
           cwd: this.cwd,
           chatMemoryIndexEnabled: settings.chatMemoryIndexEnabled !== false,
           sessionGuideOnTurn: false
-        }),
-        buildResearchRoutingAdditionalContext(text),
-        pendingHandoff ? handoffAdditionalContext(pendingHandoff) : undefined,
-        this.turnAdditionalContext(text)
-      )
+        },
+        browserContext: this.turnAdditionalContext(text)
+      })
       const turn = await buildCursorPrompt(
         text,
         shrunk,
@@ -416,10 +412,11 @@ export class CursorChatService extends EventEmitter {
   }
 
   private async prepareCursorToolAttach(prompt: string): Promise<void> {
-    const bundle = await resolveCursorToolCatalog(this.tools, this.settings.get(), {
-      prompt,
-      surface: this.surfaceContext()
-    })
+    const bundle = await resolveCursorToolCatalog(
+      this.tools,
+      this.settings.get(),
+      toolSliceTurnInput(prompt, this.surfaceContext(), this.cwd)
+    )
     this.cursorAttachNamespaces = bundle.namespaces
     if (!bundle.sliceId) return
     traceLog.record({ paneId: this.paneId, provider: 'cursor', turnId: this.activeTurnId }, {
@@ -435,6 +432,7 @@ export class CursorChatService extends EventEmitter {
 
   private createSession(): CursorSession {
     return new CursorSession({
+      idleMs: () => (this.settings.get().performance?.warmMinutes ?? 5) * 4 * 60_000,
       cwd: this.cwd,
       // The bridge is started here rather than at the call sites that open sessions: a session is
       // told about the ClosedAI tools exactly once, when it opens, so a pane that warmed or

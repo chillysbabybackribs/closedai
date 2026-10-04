@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { AGENT_RUN_MAX_FAILURES, emptyAgentRunStats, type AgentRun } from '../../shared/agent-runs.js'
+import { AGENT_RUN_MAX_FAILURES, AGENT_RUN_REVIEW_REASON, emptyAgentRunStats, type AgentRun } from '../../shared/agent-runs.js'
 import { dockSummary, dockTiles } from './agent-run-overview-model.ts'
 
-const run = (patch: Partial<AgentRun> = {}): AgentRun => ({ chatId: 'c1', prompt: 'Go.', status: 'running', cycle: 3, maxCycles: null,
+const run = (patch: Partial<AgentRun> = {}): AgentRun => ({ chatId: 'c1', prompt: 'Go.', status: 'running', cycle: 3, maxCycles: null, maxMinutes: null, activeMs: 0, activeSince: null, autonomous: true,
   startedAt: 1, updatedAt: 10, lastTurnEndedAt: null, reason: null, failures: 0, threadId: null, agentId: null, name: 'Brief', stats: emptyAgentRunStats(), ...patch })
 
 test('a running tile shows the live activity of its chat, or that the next cycle is starting', () => {
@@ -39,4 +39,23 @@ test('failure pauses, finished limits, and credential approvals need the user; r
   assert.equal(byId.held!.attentionKey, null)
   assert.equal(dockSummary(tiles), '1 running · 3 need you · 1 paused')
   assert.equal(dockSummary([]), 'No agents running')
+})
+
+test('a supervised run waiting for review needs the user; a spent time limit reads as finished with the time on the tile', () => {
+  const MINUTE = 60_000
+  const tiles = dockTiles([
+    run({ chatId: 'timed', maxMinutes: 60, activeMs: 10 * MINUTE, activeSince: 1_000 }),
+    run({ chatId: 'spent', status: 'paused', maxMinutes: 60, activeMs: 60 * MINUTE, reason: 'Reached 1 h' }),
+    run({ chatId: 'review', status: 'paused', autonomous: false, reason: AGENT_RUN_REVIEW_REASON }),
+    run({ chatId: 'held', status: 'paused', autonomous: false, reason: 'Paused by you' })
+  ], [], [], 1_000 + 20 * MINUTE)
+  const byId = Object.fromEntries(tiles.map((tile) => [tile.chatId, tile]))
+  assert.deepEqual(tiles.map((tile) => tile.chatId), ['review', 'spent', 'timed', 'held'])
+  assert.equal(byId.timed!.timeLabel, '30 min left')
+  assert.equal(byId.spent!.state, 'finished')
+  assert.equal(byId.spent!.timeLabel, 'time limit reached')
+  assert.equal(byId.review!.state, 'review')
+  assert.ok(byId.review!.attentionKey)
+  assert.equal(byId.held!.state, 'paused', 'a supervised run the user paused is just paused')
+  assert.equal(byId.held!.timeLabel, null)
 })

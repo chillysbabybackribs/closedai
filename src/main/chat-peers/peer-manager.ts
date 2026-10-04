@@ -113,7 +113,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
       memoryIndex,
       () => this.settings.get().chatMemoryIndexEnabled
     )
-    this.parking = new PeerIdleParking((paneId) => this.lifecycle.get(paneId), () => this.selectedPaneId, idleParkMs)
+    this.parking = new PeerIdleParking((paneId) => this.lifecycle.get(paneId), () => this.selectedPaneId, idleParkMs ?? (() => (this.settings.get().performance?.warmMinutes ?? 5) * 60_000))
     this.lifecycle = new PeerLifecycle(store, settings, createSurface, this.parking, (entry, event) => this.onPaneEvent(entry, event), cancelPaneWork,
       (paneId) => this.browserAssignmentIdle?.detach(paneId))
     this.projectChanges = new PeerProjectChanges({
@@ -286,7 +286,7 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
     this.projectSwitch.cancel('A new message superseded the queued continuation', paneId)
     const entry = this.lifecycle.require(paneId)
     const cancelTiming = text.trim() || attachments.length
-      ? traceLog.responses.begin({ paneId, provider: entry.display.current.provider, turnId: null })
+      ? traceLog.responses.begin({ paneId, provider: entry.display.current.provider, turnId: null }, this.settings.get().chatCursorBaselineEnabled)
       : null
     try {
       await this.withAwake(paneId, (surface) => surface.send(text, attachments))
@@ -327,8 +327,8 @@ export class ChatPeerManager extends EventEmitter implements ChatWorkspaceSurfac
   /** Register one window's tiles without changing focus or stopping hidden turns. */
   async setVisiblePanes(cwd: string, paneIds: ChatPaneId[], retainedTabIds: ChatPaneId[] = [], windowId = MAIN_WINDOW_ID): Promise<void> {
     if (this.stopped || cwd !== this.workspace().cwd) return
-    if (!Array.isArray(paneIds) || paneIds.length > 32 || paneIds.some((id) => typeof id !== 'string')) {
-      throw new Error('Choose up to 32 visible chats')
+    if (!Array.isArray(paneIds) || paneIds.some((id) => typeof id !== 'string')) {
+      throw new Error('Choose valid visible chat ids')
     }
     const records = [...new Set(paneIds)].map((id) => this.store.get(id))
     if (records.some((record) => !record || record.archived)) {

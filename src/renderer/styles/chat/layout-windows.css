@@ -69,23 +69,6 @@
 .chat-window-resize[data-edge='nw'] { top: -4px; left: -4px; width: 14px; height: 14px; cursor: nwse-resize; }
 .chat-window-resize[data-edge='se'] { bottom: -4px; right: -4px; width: 14px; height: 14px; cursor: nwse-resize; }
 
-.chat-floating-pair-chrome {
-  position: absolute;
-  z-index: 12;
-  pointer-events: none;
-}
-.chat-floating-pair-chrome > * {
-  pointer-events: auto;
-}
-.chat-floating-pair-divider {
-  position: absolute;
-  cursor: col-resize;
-}
-.chat-floating-pair-resize[data-edge='nw'] { top: -4px; left: -4px; }
-.chat-floating-pair-resize[data-edge='ne'] { top: -4px; right: -4px; }
-.chat-floating-pair-resize[data-edge='sw'] { bottom: -4px; left: -4px; }
-.chat-floating-pair-resize[data-edge='se'] { bottom: -4px; right: -4px; }
-
 /* Where the window lands if released now: a filled outline for a place, a ring for a window to join. */
 .chat-layout-snap-preview {
   position: absolute;

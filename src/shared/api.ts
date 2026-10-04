@@ -1,5 +1,7 @@
+import type { PerformanceSettings, ResponsePerformanceSummary, ResponsePaint } from './performance.js'
 import type { AgentRun, AgentRunStartOptions, AgentRunsEvent } from './agent-runs.js'
 import type { SavedAgent, SavedAgentDraft, SavedAgentPatch } from './agent-library.js'
+import type { AgentOptimizeRequest, AgentOptimizeResult } from './agent-optimizer.js'
 import type { BrowserHistoryMatch } from './browser-history.js'
 import type { BrowserBounds, BrowserDownload, BrowserShot, BrowserState, BrowserTabInfo } from './types.js'
 import type { SavedSite, SavedSiteDraft, SavedSitePatch } from './saved-sites.js'
@@ -42,6 +44,8 @@ export type ClosedaiApi = {
   }
   window: {
     minimize: () => Promise<void>
+    /** Frameless title-bar drag from a no-drag hit target (shell gap between menus and window controls). */
+    moveBy: (delta: { dx: number; dy: number }) => Promise<void>
     maximize: () => Promise<void>
     toggleFullscreen: () => Promise<void>
     close: () => Promise<void>
@@ -225,6 +229,13 @@ export type ClosedaiApi = {
     save: (draft: SavedAgentDraft) => Promise<SavedAgent>
     update: (id: string, patch: SavedAgentPatch) => Promise<SavedAgent | null>
     remove: (id: string) => Promise<void>
+    /**
+     * Turn a description into standing instructions with the launching pane's model. Nothing is
+     * saved; rejects with the reason when the model fails, times out, or the request is cancelled.
+     */
+    optimize: (request: AgentOptimizeRequest) => Promise<AgentOptimizeResult>
+    /** Abandon an optimize request by the id it was started with. */
+    cancelOptimize: (requestId: string) => Promise<void>
     /** The full list, sent whenever it changes, including run bookkeeping after a start. */
     onChanged: (listener: (agents: SavedAgent[]) => void) => Unsubscribe
   }
@@ -260,6 +271,7 @@ export type ClosedaiApi = {
     /** Many switches, one persisted write; the caller refreshes the manifest afterwards. */
     setEnabledMany: (switches: import('./tools.js').ToolSwitch[]) => Promise<void>
     /** Codex task-slice catalog; takes effect on the next Codex send or thread rotation. */
+    setChatCursorBaselineEnabled: (enabled: boolean) => Promise<void>
     setChatToolSliceEnabled: (enabled: boolean) => Promise<void>
     /** Host-verified workspace ledger on send; takes effect on the next message. */
     setChatWorkspaceLedgerEnabled: (enabled: boolean) => Promise<void>
@@ -273,6 +285,13 @@ export type ClosedaiApi = {
     onEvent: (listener: (event: ModelsEvent) => void) => Unsubscribe
   }
   /** The live turn trace: in-memory, every pane, cleared at restart or on request. */
+  performance: {
+    settings: () => Promise<PerformanceSettings>
+    update: (patch: Partial<PerformanceSettings>) => Promise<PerformanceSettings>
+    summary: () => Promise<ResponsePerformanceSummary>
+    paint: (report: ResponsePaint) => Promise<void>
+    onSettingsChanged: (listener: (settings: PerformanceSettings) => void) => Unsubscribe
+  }
   trace: {
     setActive: (active: boolean) => Promise<void>
     snapshot: (options?: TraceSnapshotOptions) => Promise<TraceSnapshot>

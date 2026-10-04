@@ -21,17 +21,20 @@ import { useWebPermissionRequests } from './use-security-requests.js'
 import { WebPermissionBar } from './web-permission-bar.js'
 import { FileViewToggle } from './file-viewer/file-view-toggle.js'
 import { renderableFilePath } from '../shared/local-files.js'
+import { handleHeaderDoubleClickFit } from './chat-layout/header-double-click-fit.js'
 
 // Memoized: the pane stays mounted, and its native-view host ref and ResizeObserver must
 // survive re-renders of the shell around it.
 export const BrowserPane = memo(function BrowserPane({
-  controller, savedSites, dragHandle, windowControls
+  controller, savedSites, dragHandle, windowControls, onHeaderDoubleClick
 }: {
   controller: BrowserController
   savedSites: BrowserSavedSitesController
   dragHandle?: ReactNode
   /** A window's minimize and maximize buttons, beside the tab strip rather than scrolling in it. */
   windowControls?: ReactNode
+  /** Same desk fit / solo-maximize cycle as chat window headers. */
+  onHeaderDoubleClick?: () => void
 }): JSX.Element {
   const downloads = useBrowserDownloadsController()
   // Whichever panel opens last wins. Keep the callbacks current without treating their changing
@@ -65,7 +68,10 @@ export const BrowserPane = memo(function BrowserPane({
     <section className="browser-pane" aria-label="Browser" data-ui-surface="browser">
       <div className={`browser-shell ${downloads.isOpen && !appViewer ? 'has-downloads' : ''} ${controller.browser.image ? 'has-image-viewer' : ''} ${controller.browser.video ? 'has-video-viewer' : ''} ${controller.browser.videoHub ? 'has-video-home' : ''} ${showVideoCompare ? 'has-video-compare' : ''} ${controller.browser.file ? 'has-file-viewer' : ''}`}>
         <div className="browser-tabstrip-host">
-          <div className="browser-tabstrip-row">
+          <div className="browser-tabstrip-row"
+            onDoubleClickCapture={onHeaderDoubleClick
+              ? (event) => handleHeaderDoubleClickFit(event, onHeaderDoubleClick)
+              : undefined}>
             <BrowserTabs controller={controller} savedSites={savedSites} dragHandle={dragHandle} onError={report}
               videoCompare={compare} />
             {windowControls}

@@ -10,6 +10,7 @@ import { ChatTranscript } from './chat-transcript.js'
 import type { ContextCompactor } from './chat-context/context-compaction.js'
 import type { SessionRotator } from './chat-context/session-rotation.js'
 import type { ChatModelState } from './chat-model-state.js'
+import { toolSliceTurnInput } from './chat-context/chat-self-development.js'
 import { resolveCodexToolCatalog } from './tools/codex-tool-catalog.js'
 import type { ToolRegistry } from './tools/registry.js'
 import type { CodexRuntimeSession } from './codex-workspace-runtime.js'
@@ -144,10 +145,11 @@ export async function rotateCodexProviderSession(
 
 export async function ensureCodexThread(host: ChatServiceThreadHost, clientUserMessageId?: string): Promise<string> {
   const prompt = clientUserMessageId ? host.transcript.optimisticUserText(clientUserMessageId) : null
-  const bundle = await resolveCodexToolCatalog(host.tools, host.settings.get(), {
-    prompt,
-    surface: host.surfaceContext()
-  })
+  const bundle = await resolveCodexToolCatalog(
+    host.tools,
+    host.settings.get(),
+    toolSliceTurnInput(prompt, host.surfaceContext(), host.cwd)
+  )
   const catalog = bundle.dynamicTools
   if (bundle.sliceId) {
     traceLog.record({ paneId: host.paneId, provider: 'codex', turnId: null }, {

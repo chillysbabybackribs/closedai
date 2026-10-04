@@ -1,0 +1,40 @@
+.performance-panel {
+  overflow: auto;
+  min-height: 0;
+  padding: 16px 24px 24px;
+}
+.performance-setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.performance-setting > div { min-width: 0; }
+.performance-setting label { font-size: 14px; font-weight: 500; }
+.performance-setting p,
+.performance-results > p {
+  margin: 5px 0 0;
+  font-size: 12px;
+  color: var(--muted-foreground);
+  line-height: 1.5;
+}
+.performance-setting select {
+  flex-shrink: 0;
+  width: 88px;
+  padding: 7px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--background);
+  color: var(--foreground);
+}
+.performance-setting select:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.performance-results { margin-top: 24px; }
+.performance-results h3 { margin: 0; font-size: 14px; font-weight: 600; }
+.performance-table-scroll { overflow-x: auto; margin: 12px 0; }
+.performance-results table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.performance-results th,
+.performance-results td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.performance-results th { font-weight: 500; }
+.performance-results th span { display: block; font-size: 11px; font-weight: 400; color: var(--muted-foreground); }

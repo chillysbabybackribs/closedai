@@ -11,6 +11,8 @@ export type ToolsController = {
   setEnabled: (toolId: string, enabled: boolean) => Promise<void>
   /** One row, one group, or a preset: applied optimistically, persisted once, then re-read. */
   setEnabledMany: (switches: ToolSwitch[]) => Promise<void>
+  chatCursorBaselineEnabled: boolean
+  setChatCursorBaselineEnabled: (enabled: boolean) => Promise<void>
   chatToolSliceEnabled: boolean
   setChatToolSliceEnabled: (enabled: boolean) => Promise<void>
   chatWorkspaceLedgerEnabled: boolean
@@ -97,6 +99,16 @@ export function useToolsController(active: boolean): ToolsController {
     await refresh()
   }, [refresh])
 
+  const setChatCursorBaselineEnabled = useCallback(async (enabled: boolean) => {
+    setManifest((current) => current ? { ...current, chatCursorBaselineEnabled: enabled } : current)
+    try {
+      await window.closedai.tools.setChatCursorBaselineEnabled(enabled)
+    } catch (caught) {
+      setError(errorMessage(caught))
+      await refresh()
+    }
+  }, [refresh])
+
   const setChatToolSliceEnabled = useCallback(async (enabled: boolean) => {
     setManifest((current) => current ? { ...current, chatToolSliceEnabled: enabled } : current)
     try {
@@ -125,6 +137,8 @@ export function useToolsController(active: boolean): ToolsController {
     clearTelemetry,
     setEnabled,
     setEnabledMany,
+    chatCursorBaselineEnabled: manifest?.chatCursorBaselineEnabled === true,
+    setChatCursorBaselineEnabled,
     chatToolSliceEnabled: manifest?.chatToolSliceEnabled !== false,
     setChatToolSliceEnabled,
     chatWorkspaceLedgerEnabled: manifest?.chatWorkspaceLedgerEnabled !== false,

@@ -155,12 +155,25 @@ export function ToolsPanel({ active: open, onSendToChat }: ToolsPanelProps): JSX
             <div className="tools-rail-foot">
               <div className="tools-rail-slice">
                 <div className="min-w-0">
+                  <p className="tools-rail-slice-label" id="tools-cursor-baseline-label">Cursor baseline</p>
+                  <p className="tools-rail-slice-note">Experimental for Codex, Claude and Antigravity. Native sessions, stable tools, no guide or ledger. Start a new chat for a clean comparison.</p>
+                </div>
+                <Switch
+                  checked={tools.chatCursorBaselineEnabled}
+                  disabled={!tools.manifest}
+                  aria-labelledby="tools-cursor-baseline-label"
+                  data-ui="tools.cursor-baseline"
+                  onCheckedChange={(checked) => void tools.setChatCursorBaselineEnabled(checked)}
+                />
+              </div>
+              <div className="tools-rail-slice">
+                <div className="min-w-0">
                   <p className="tools-rail-slice-label" id="tools-task-slice-label">Task tool slices</p>
                   <p className="tools-rail-slice-note">Task-scoped eager tools; Cursor keeps all enabled tools</p>
                 </div>
                 <Switch
                   checked={tools.chatToolSliceEnabled}
-                  disabled={!tools.manifest}
+                  disabled={!tools.manifest || tools.chatCursorBaselineEnabled}
                   aria-labelledby="tools-task-slice-label"
                   data-ui="tools.task-slice"
                   onCheckedChange={(checked) => void tools.setChatToolSliceEnabled(checked)}
@@ -173,7 +186,7 @@ export function ToolsPanel({ active: open, onSendToChat }: ToolsPanelProps): JSX
                 </div>
                 <Switch
                   checked={tools.chatWorkspaceLedgerEnabled}
-                  disabled={!tools.manifest}
+                  disabled={!tools.manifest || tools.chatCursorBaselineEnabled}
                   aria-labelledby="tools-workspace-ledger-label"
                   data-ui="tools.workspace-ledger"
                   onCheckedChange={(checked) => void tools.setChatWorkspaceLedgerEnabled(checked)}

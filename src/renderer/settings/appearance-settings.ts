@@ -8,7 +8,7 @@ import {
 export type { WorkspaceBackdrop }
 export { WORKSPACE_BACKDROP_DEFAULT }
 
-export const CHAT_FONT_SIZE_DEFAULT = 14
+export const CHAT_FONT_SIZE_DEFAULT = 15
 export const CHAT_FONT_SIZE_MIN = 13
 export const CHAT_FONT_SIZE_MAX = 22
 /* The composer used to render one step above the transcript. It now carries its

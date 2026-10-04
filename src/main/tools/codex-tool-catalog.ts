@@ -14,7 +14,7 @@ export type CodexToolCatalogBundle = {
 
 export async function resolveCodexToolCatalog(
   registry: ToolRegistry,
-  settings: Pick<AppSettings, 'chatToolSliceEnabled'>,
+  settings: Pick<AppSettings, 'chatToolSliceEnabled'> & Partial<Pick<AppSettings, 'chatCursorBaselineEnabled'>>,
   turn: ToolSliceTurnInput
 ): Promise<CodexToolCatalogBundle> {
   const bundle = await resolveSlicedToolRegistry(registry, settings, turn)

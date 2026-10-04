@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import type { DockTile } from './agent-run-overview-model.ts'
 import { AgentRunCard } from './agent-run-card.tsx'
 
-const tile: DockTile = { chatId: 'c1', name: 'Daily brief', state: 'running', running: true, cycleLabel: 'Cycle 2 of 4',
+const tile: DockTile = { chatId: 'c1', name: 'Daily brief', state: 'running', running: true, cycleLabel: 'Cycle 2 of 4', timeLabel: null,
   detail: 'Reading lethain.com', attentionKey: null,
   brief: [{ kind: 'progress', text: 'Cycle 2 of 4 has been working 40s.' }, { kind: 'cost', text: 'Each cycle re-sends 61.0k tokens.' }, { kind: 'error', text: '1 error across 3 steps.' }] }
 const noop = async (): Promise<void> => {}

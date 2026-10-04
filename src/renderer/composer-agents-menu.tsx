@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef } from 'react'
 import { Users } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover.js'
 import { cn } from '../lib/utils.js'
-import type { SavedAgent } from '../shared/agent-library.js'
+import { savedAgentStartOptions, type SavedAgent } from '../shared/agent-library.js'
 import type { AgentRunStartOptions } from '../shared/agent-runs.js'
 import { useWorkspacePaneActions } from './chat-layout/workspace-pane-actions.js'
 import { useAgentLibrary } from './agent-library/agent-library-store.js'
@@ -60,12 +60,7 @@ export function ComposerAgentsMenu({ paneId, startEnabled, runningTurn, onStart,
         await onOpenRun(liveChatId)
         return
       }
-      await onStart(paneId, {
-        prompt: agent.prompt,
-        maxCycles: agent.maxCycles,
-        agentId: agent.id,
-        name: agent.name
-      })
+      await onStart(paneId, savedAgentStartOptions(agent))
     })
   }
 

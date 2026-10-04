@@ -7,11 +7,11 @@ import type { DockTile } from '../agent-runs/agent-run-overview-model.ts'
 import { AgentLibraryCards, liveTilesByAgent, orderAgents, runsLabel, type AgentLibraryCardsProps } from './agent-library-cards.tsx'
 
 const HOUR = 3_600_000
-const repair: SavedAgent = { id: 'a1', name: 'Repair agent', prompt: 'Fix things.', maxCycles: null, createdAt: 1, updatedAt: 1, lastRunAt: 5 * HOUR, runCount: 3 }
-const triage: SavedAgent = { id: 'a2', name: 'Triage bot', prompt: 'Sort issues.', maxCycles: 4, createdAt: 1, updatedAt: 1, lastRunAt: null, runCount: 0 }
-const docs: SavedAgent = { id: 'a3', name: 'Docs sweep', prompt: 'Fix one stale paragraph.', maxCycles: 10, createdAt: 1, updatedAt: 1, lastRunAt: null, runCount: 0 }
-const running: DockTile = { chatId: 'c1', name: 'Triage bot', state: 'running', running: true, cycleLabel: 'Cycle 2 of 4', detail: 'Working', attentionKey: null, brief: [] }
-const failed: DockTile = { chatId: 'c2', name: 'Docs sweep', state: 'failed', running: false, cycleLabel: 'Cycle 1 of 10', detail: 'Paused', attentionKey: 'c2:failed:1', brief: [] }
+const repair: SavedAgent = { id: 'a1', name: 'Repair agent', description: '', maxMinutes: null, autonomous: true, prompt: 'Fix things.', maxCycles: null, createdAt: 1, updatedAt: 1, lastRunAt: 5 * HOUR, runCount: 3 }
+const triage: SavedAgent = { id: 'a2', name: 'Triage bot', description: '', maxMinutes: null, autonomous: true, prompt: 'Sort issues.', maxCycles: 4, createdAt: 1, updatedAt: 1, lastRunAt: null, runCount: 0 }
+const docs: SavedAgent = { id: 'a3', name: 'Docs sweep', description: '', maxMinutes: null, autonomous: true, prompt: 'Fix one stale paragraph.', maxCycles: 10, createdAt: 1, updatedAt: 1, lastRunAt: null, runCount: 0 }
+const running: DockTile = { chatId: 'c1', name: 'Triage bot', state: 'running', running: true, cycleLabel: 'Cycle 2 of 4', timeLabel: null, detail: 'Working', attentionKey: null, brief: [] }
+const failed: DockTile = { chatId: 'c2', name: 'Docs sweep', state: 'failed', running: false, cycleLabel: 'Cycle 1 of 10', timeLabel: null, detail: 'Paused', attentionKey: 'c2:failed:1', brief: [] }
 
 function render(overrides: Partial<AgentLibraryCardsProps> = {}): string {
   const props: AgentLibraryCardsProps = {
@@ -55,4 +55,15 @@ test('start is off while the launching pane cannot run, and an empty library off
   assert.match(empty, /No saved agents/)
   assert.match(empty, /data-ui="agents\.new"/)
   assert.doesNotMatch(empty, /data-ui="agents\.card"/)
+})
+
+test('a card leads with the description when the agent has one, and its use line names the limits and supervision', () => {
+  const described: SavedAgent = { ...docs, id: 'a4', name: 'Coverage', description: 'raise coverage in services/billing', prompt: 'You are the coverage agent.', maxMinutes: 90, autonomous: false }
+  const html = render({ agents: [described, repair] })
+  assert.match(html, /raise coverage in services\/billing/)
+  assert.doesNotMatch(html, /You are the coverage agent\./)
+  assert.match(html, /Never run · 10 max · 1 h 30 min · supervised/)
+  assert.match(html, /Fix things\./, 'an agent without a description still shows its instructions')
+  const timed: DockTile = { ...running, timeLabel: '42 min left' }
+  assert.match(render({ agents: [triage], tiles: [timed], live: new Map([['a2', timed]]) }), /Running · Cycle 2 of 4 · 42 min left/)
 })

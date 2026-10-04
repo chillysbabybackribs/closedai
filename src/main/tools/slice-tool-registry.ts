@@ -13,10 +13,10 @@ export type SlicedToolRegistryBundle = {
 
 export async function resolveSlicedToolRegistry(
   registry: ToolRegistry,
-  settings: Pick<AppSettings, 'chatToolSliceEnabled'>,
+  settings: Pick<AppSettings, 'chatToolSliceEnabled'> & Partial<Pick<AppSettings, 'chatCursorBaselineEnabled'>>,
   turn: ToolSliceTurnInput
 ): Promise<SlicedToolRegistryBundle> {
-  if (!settings.chatToolSliceEnabled) {
+  if (settings.chatCursorBaselineEnabled === true || !settings.chatToolSliceEnabled) {
     return { sliceId: null, promotedIds: [], advertisement: null }
   }
   const catalog = await loadToolSliceCatalog()

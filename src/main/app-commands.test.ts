@@ -147,8 +147,13 @@ function access(workspace = new FakeWorkspace(), tabs = browser(), ui: AppUiHost
     pressKey: async () => ({}),
     scroll: async () => ({}),
     waitFor: async (options) => ({ ...options, targetVisible: null, targetEnabled: null, textMatched: null, reached: true, elapsedMs: 0 }),
+    consoleMessages: () => ({ matched: 0, returned: 0, nextCursor: 0, lastNavigationAt: null, entries: [] }),
     revealChatTab: async (paneId) => { revealCalls.push(paneId) },
     revealBrowser: async () => {},
+    newChatWindow: async () => {
+      const paneId = await workspace.newPeer()
+      return { paneId }
+    },
     runMenu: async (key) => ({ key, ran: true })
   }
   return {
@@ -158,6 +163,39 @@ function access(workspace = new FakeWorkspace(), tabs = browser(), ui: AppUiHost
     })
   }
 }
+
+test('newChat opens a desk window through the ui host when available', async () => {
+  const workspace = new FakeWorkspace()
+  let uiCalls = 0
+  const host = new AppCommandAccess({
+    chat: () => workspace,
+    browser: () => null,
+    downloads: () => null,
+    window: () => null,
+    ui: () => ({
+      consoleMessages: () => ({ matched: 0, returned: 0, nextCursor: 0, lastNavigationAt: null, entries: [] }),
+      controls: async () => ({ surfaces: [], controls: [], total: 0, omitted: 0 }),
+      uiState: async () => ({
+        fullScreen: false, chatZoom: 100, overviewOpen: false, chatSearchOpen: false, historyOpen: false, downloadsOpen: false,
+        dialogs: [], menus: [], composer: null, focused: null, viewport: { width: 0, height: 0 }
+      }),
+      click: async () => ({}),
+      typeText: async () => ({}),
+      pressKey: async () => ({}),
+      scroll: async () => ({}),
+      waitFor: async (options) => ({
+        ...options, targetVisible: null, targetEnabled: null, textMatched: null, reached: true, elapsedMs: 0
+      }),
+      revealChatTab: async () => {},
+      revealBrowser: async () => {},
+      newChatWindow: async () => { uiCalls += 1; return { paneId: 'pane-ui' } },
+      runMenu: async (key) => ({ key, ran: true })
+    })
+  })
+  assert.deepEqual(await host.newChat(), { paneId: 'pane-ui' })
+  assert.equal(uiCalls, 1)
+  assert.equal(workspace.panes.has('pane-3'), false, 'bare newPeer is not used when ui is available')
+})
 
 test('state projects the workspace and a chat pane compactly', () => {
   const { host } = access()
@@ -361,4 +399,37 @@ test('finish pauses the caller\'s own running run without interrupting its turn'
   await assert.rejects(host.agentRun({ op: 'finish', paneId, summary: 'again' }), /no running agent run/)
   status = null
   await assert.rejects(host.agentRun({ op: 'finish', paneId, summary: 'none' }), /no running agent run/)
+})
+
+test('a start from a saved agent applies its limits and autonomy; a caller can ask for supervision but not lift it', async () => {
+  const workspace = new FakeWorkspace()
+  const paneId = workspace.snapshot().selectedPaneId
+  const started: unknown[] = []
+  const runs = {
+    get: () => null,
+    startRun: async (_chatId: string, options: unknown) => { started.push(options); return {} as AgentRun },
+    pauseRun: async () => null, resumeRun: async () => null, stopRun: async () => {}
+  }
+  const base = { prompt: 'Go.', description: '', maxCycles: 5, createdAt: 1, updatedAt: 1, lastRunAt: null, runCount: 0 }
+  const agents = [
+    { ...base, id: 'free', name: 'Free', maxMinutes: 120, autonomous: true },
+    { ...base, id: 'watched', name: 'Watched', maxMinutes: null, autonomous: false }
+  ]
+  const library = { get: (id: string) => agents.find((agent) => agent.id === id) ?? null, list: () => agents }
+  const host = new AppCommandAccess({
+    chat: () => workspace, browser: () => browser(), downloads: () => ({ list: () => [] }), window: () => null,
+    agentRuns: () => runs, agentLibrary: () => library
+  })
+  await host.agentRun({ op: 'start', paneId, agentId: 'free', options: {} })
+  await host.agentRun({ op: 'start', paneId, agentId: 'free', options: { maxMinutes: 30, autonomous: false } })
+  await host.agentRun({ op: 'start', paneId, agentId: 'watched', options: { autonomous: true } })
+  await host.agentRun({ op: 'start', paneId, agentId: null, options: { prompt: 'One-off.' } })
+  assert.deepEqual(started, [
+    { prompt: 'Go.', maxCycles: 5, maxMinutes: 120, autonomous: true, agentId: 'free', name: 'Free' },
+    { prompt: 'Go.', maxCycles: 5, maxMinutes: 30, autonomous: false, agentId: 'free', name: 'Free' },
+    { prompt: 'Go.', maxCycles: 5, maxMinutes: null, autonomous: false, agentId: 'watched', name: 'Watched' },
+    { prompt: 'One-off.', maxCycles: null, maxMinutes: null, autonomous: true, agentId: null, name: null }
+  ])
+  const projected = host.state(['workspace'], undefined, paneId).workspace as { savedAgents: Array<Record<string, unknown>> }
+  assert.deepEqual(projected.savedAgents[1], { id: 'watched', name: 'Watched', maxCycles: 5, maxMinutes: null, autonomous: false, runCount: 0, lastRunAt: null })
 })

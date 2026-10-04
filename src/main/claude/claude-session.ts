@@ -38,7 +38,7 @@ export type ClaudeSessionDeps = {
   traceScope?: () => TraceScope
   seamlessRotation?: () => boolean
   precomputeCompaction?: () => boolean
-  idleMs?: number
+  idleMs?: number | (() => number)
 }
 
 export class ClaudeSession {

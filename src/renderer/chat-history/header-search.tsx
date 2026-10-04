@@ -6,6 +6,7 @@ import type { HistoryController } from './history-controller.js'
 import { closesOnFocusOut, closesOnPointerDown } from './header-search-dismiss.js'
 import { ChatSearchFooter, ChatSearchResults, useChatSearchList } from './chat-search-results.js'
 import { useChatSearchActions } from './use-chat-search-actions.js'
+import type { ChatReviewQueue } from './review-queue.js'
 
 const SHEET_EXIT_MS = 160
 
@@ -17,9 +18,14 @@ type Phase = 'closed' | 'open' | 'closing'
  * what a click on the native browser view looks like from here). Nothing is inferred from pointer
  * position. Ranking and the keyboard cursor live in `useChatSearchList`, shared with Start.
  */
-export const HeaderChatSearch = memo(function HeaderChatSearch({ chats, controller, inputRef, onOpened, variant = 'titlebar', paneKey }: {
+export const HeaderChatSearch = memo(function HeaderChatSearch({ chats, controller, activeChatId, openDeskChatIds = [], reviewQueue, busy = false, inputRef, onOpened, variant = 'titlebar', paneKey }: {
   chats: ChatRowSummary[]
   controller: HistoryController
+  activeChatId: string | null
+  /** Desk tabs in stable newest-opened order for the palette's top section. */
+  openDeskChatIds?: readonly string[]
+  reviewQueue?: ChatReviewQueue
+  busy?: boolean
   inputRef?: RefObject<HTMLInputElement | null>
   onOpened?: () => void
   variant?: 'titlebar' | 'card'
@@ -44,7 +50,7 @@ export const HeaderChatSearch = memo(function HeaderChatSearch({ chats, controll
   }, [])
   const sheetOpen = phase !== 'closed'
   const expanded = phase === 'open'
-  const list = useChatSearchList(chats, query, controller.reviewQueue, sheetOpen)
+  const list = useChatSearchList(chats, query, sheetOpen, openDeskChatIds)
   const { setHighlightId } = list
   const show = useCallback((): void => {
     if (phaseRef.current === 'closed') setHighlightId(null)
@@ -69,7 +75,7 @@ export const HeaderChatSearch = memo(function HeaderChatSearch({ chats, controll
   const dockCardSheet = useCallback((): void => {
     if (variant !== 'card' || !fieldRef.current) return
     const rect = fieldRef.current.getBoundingClientRect()
-    const width = Math.min(420, window.innerWidth - 32)
+    const width = Math.min(520, window.innerWidth - 32)
     const left = Math.max(16, Math.min(rect.left + rect.width / 2 - width / 2, window.innerWidth - width - 16))
     setSheetDock({
       position: 'fixed',
@@ -87,11 +93,16 @@ export const HeaderChatSearch = memo(function HeaderChatSearch({ chats, controll
       return
     }
     dockCardSheet()
+    // Scrolling the result list itself never moves the field; re-docking on it re-rendered every row per frame.
+    const onScroll = (event: Event): void => {
+      if (event.target instanceof Node && sheetRef.current?.contains(event.target)) return
+      dockCardSheet()
+    }
     window.addEventListener('resize', dockCardSheet)
-    window.addEventListener('scroll', dockCardSheet, true)
+    window.addEventListener('scroll', onScroll, true)
     return () => {
       window.removeEventListener('resize', dockCardSheet)
-      window.removeEventListener('scroll', dockCardSheet, true)
+      window.removeEventListener('scroll', onScroll, true)
     }
   }, [variant, sheetOpen, dockCardSheet, query, phase])
 
@@ -110,7 +121,7 @@ export const HeaderChatSearch = memo(function HeaderChatSearch({ chats, controll
     }
   }, [expanded, hide])
 
-  const { open, remove, toggleTurn, changingTurn, busy } = useChatSearchActions(controller, {
+  const { open, archive, archiving, busy: actionBusy } = useChatSearchActions(controller, {
     onOpened: () => {
       onOpened?.()
       setQuery('')
@@ -121,7 +132,6 @@ export const HeaderChatSearch = memo(function HeaderChatSearch({ chats, controll
     // Keep keyboard focus in the search when a row's control disappears.
     keepFocus: () => resolvedInputRef.current?.focus()
   })
-  const searching = query.trim() !== ''
 
   const sheet = sheetOpen && <div ref={sheetRef} className={`header-chat-search-sheet${variant === 'card' ? ' header-chat-search header-chat-search-sheet-dock' : ''}`}
       style={variant === 'card' ? sheetDock : undefined}
@@ -131,10 +141,10 @@ export const HeaderChatSearch = memo(function HeaderChatSearch({ chats, controll
         if (event.currentTarget !== event.target || event.animationName !== 'header-chat-search-exit') return
         finish()
       }}>
-        <ChatSearchResults list={list} query={query} busy={busy} changingTurn={changingTurn}
-          onOpen={(hit) => { void open(hit) }} onToggleTurn={(hit) => { void toggleTurn(hit) }}
-          onDelete={(hit) => { void remove(hit) }} />
-        <ChatSearchFooter list={list} searching={searching} escape="Close" />
+        <ChatSearchResults list={list} query={query} busy={busy || actionBusy} pendingId={archiving}
+          activeChatId={activeChatId} reviewQueue={reviewQueue ?? controller.reviewQueue}
+          onOpen={(hit) => { void open(hit) }} onArchive={(hit) => { void archive(hit) }} />
+        <ChatSearchFooter escape="Close" />
       </div>
     </div>
 
@@ -152,8 +162,8 @@ export const HeaderChatSearch = memo(function HeaderChatSearch({ chats, controll
   }}>
     <div ref={fieldRef} className="header-chat-search-field">
       <Search size={15} aria-hidden="true" />
-      <input ref={resolvedInputRef} type="text" value={query} placeholder="Search threads"
-        aria-label="Search threads" role="combobox" aria-autocomplete="list" aria-haspopup="grid"
+      <input ref={resolvedInputRef} type="text" value={query} placeholder="Search chats"
+        aria-label="Search chats" role="combobox" aria-autocomplete="list" aria-haspopup="grid"
         aria-expanded={expanded} aria-controls={sheetOpen ? list.listId : undefined}
         aria-activedescendant={expanded ? list.activeDescendant : undefined}
         autoComplete="off" spellCheck={false} data-ui="titlebar.chat-search" data-ui-key={paneKey}
@@ -171,15 +181,13 @@ export const HeaderChatSearch = memo(function HeaderChatSearch({ chats, controll
             if (expanded) void open(list.current)
           }
         }} />
-      {query
-        ? <button type="button" className="header-chat-search-clear" aria-label="Clear chat search"
-          data-ui="titlebar.chat-search-clear" onMouseDown={event => event.preventDefault()}
-          onClick={() => { setQuery(''); setHighlightId(null); resolvedInputRef.current?.focus() }}>
-          <X size={14} aria-hidden="true" />
-        </button>
-        : <span className="header-chat-search-hint" aria-hidden="true"><kbd>Ctrl</kbd><kbd>H</kbd></span>}
+      {query && <button type="button" className="header-chat-search-clear" aria-label="Clear chat search"
+        data-ui="titlebar.chat-search-clear" onMouseDown={event => event.preventDefault()}
+        onClick={() => { setQuery(''); setHighlightId(null); resolvedInputRef.current?.focus() }}>
+        <X size={14} aria-hidden="true" />
+      </button>}
     </div>
-    {variant === 'card' ? createPortal(sheet, document.body) : sheet}
+    {variant === 'card' && sheet ? createPortal(sheet, document.body) : sheet}
     {controller.error && <div className="header-chat-search-error" role="alert">{controller.error}</div>}
   </div>
 })

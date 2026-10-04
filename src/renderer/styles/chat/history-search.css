@@ -35,9 +35,10 @@
 }
 
 .header-chat-search-card .header-chat-search-field {
-  height: 28px;
-  padding: 0 8px 0 10px;
-  font-size: 13px;
+  height: 26px;
+  padding: 0 6px 0 9px;
+  gap: 6px;
+  font-size: 12px;
   background: rgb(255 255 255 / 4%);
   border: 1px solid rgb(255 255 255 / 6%);
 }
@@ -120,17 +121,9 @@
   opacity: 1;
 }
 
+.header-chat-search-card .header-chat-search-field input { font-size: 12px; }
+
 .header-chat-search-field:focus-within input::placeholder { opacity: 0.45; }
-
-/* Shortcut chips yield their space to the input while it has focus. */
-.header-chat-search-hint {
-  display: flex;
-  flex-shrink: 0;
-  gap: 3px;
-  opacity: 0.75;
-}
-
-.header-chat-search-field:focus-within .header-chat-search-hint { display: none; }
 
 .header-chat-search-clear {
   display: grid;
@@ -147,7 +140,7 @@
 
 .header-chat-search-clear:hover { background: var(--chrome-control-hover); color: var(--chrome-fg-strong); }
 
-/* One kbd treatment for the pill hint and the palette footer. */
+/* One kbd treatment for the palette footer. */
 .header-chat-search kbd {
   display: inline-grid;
   place-items: center;
@@ -233,12 +226,117 @@
    an invisible pseudo-element: the popup clips its overflow for the rounded frame. */
 
 .header-chat-search-list {
-  max-height: min(520px, calc(100vh - 120px));
-  padding: 4px;
+  max-height: min(560px, calc(100vh - 120px));
+  padding: 6px;
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--popover-foreground) 18%, transparent) transparent;
+  scrollbar-color: color-mix(in srgb, var(--popover-foreground) 28%, transparent) transparent;
+  scroll-padding-block: 6px;
+}
+
+/* Same row chrome as the History view, adapted to the header palette. */
+.header-chat-search-history-list {
+  margin: 0;
+  padding: 0;
+  gap: 2px;
+  overflow: visible;
+}
+
+.header-chat-search-history-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  border-radius: 8px;
+}
+
+.header-chat-search-history-row[aria-selected='true'],
+.header-chat-search-history-row:hover {
+  background: var(--search-row-selected);
+}
+
+/* The open button sits inside a gridcell, so it must be told to fill it; otherwise it sizes to
+   its title and long titles run past the popup edge instead of ellipsing. */
+.header-chat-search-history-row .chat-history-open {
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 8px 6px 10px;
+}
+
+/* Two lines: title with the time on the right, project folder beneath in quieter ink. */
+.header-chat-search-history-row .chat-history-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  column-gap: 12px;
+  row-gap: 3px;
+  width: 100%;
+}
+
+.header-chat-search-history-row .chat-history-title {
+  grid-area: 1 / 1;
+  color: var(--search-ink);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.header-chat-search-history-row .chat-history-meta { display: contents; }
+
+.header-chat-search-history-row .chat-history-folder {
+  grid-area: 2 / 1;
+  color: var(--search-ink-quiet);
+  font-size: 11.5px;
+  line-height: 1.3;
+}
+
+.header-chat-search-history-row .chat-history-folder::after { content: none; }
+
+.header-chat-search-history-row .chat-history-when {
+  grid-area: 1 / 2;
+  color: var(--search-ink-quiet);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.header-chat-search-history-row .chat-history-leading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  flex-shrink: 0;
+}
+
+.header-chat-search-history-row[data-desk] .chat-history-when {
+  color: var(--search-ink-muted);
+}
+
+.header-chat-search-history-row[data-desk][data-current] .chat-history-when {
+  color: var(--tab-accent);
+}
+
+.header-chat-search-history-row[data-current] .chat-history-when {
+  color: var(--tab-accent);
+  font-weight: 500;
+}
+
+.header-chat-search-actions-history {
+  flex: none;
+  padding-right: 2px;
+  opacity: 1;
+}
+
+.header-chat-search-history-row[aria-selected='true'] .chat-history-archive,
+.header-chat-search-history-row:hover .chat-history-archive,
+.header-chat-search-actions-history:focus-within .chat-history-archive {
+  opacity: 1;
+}
+
+.header-chat-search-more {
+  padding: 2px 0 0;
 }
 
 .header-chat-search-section + .header-chat-search-section {

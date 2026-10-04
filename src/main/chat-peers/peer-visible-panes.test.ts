@@ -49,3 +49,15 @@ test('inactive empty tabs survive switching without receiving display subscripti
     await assert.rejects(manager.setVisiblePanes(HARNESS_CWD, ['pane-a'], ['missing']), /tab is no longer available/)
   } finally { manager.stop() }
 })
+
+test('scrollable workspaces retain more than 32 visible chats when another chat opens', async () => {
+  const ids = Array.from({ length: 40 }, (_, index) => `pane-${index}`)
+  const { manager } = harnessWith(ids.map((id) => chatRecord(id, null)), ids[0]!)
+  try {
+    await manager.setVisiblePanes(HARNESS_CWD, ids, ids)
+    const added = await manager.newPeer()
+    await manager.setVisiblePanes(HARNESS_CWD, [...ids, added], [...ids, added])
+    assert.equal(Object.keys(manager.snapshot({ limit: 200 }).panes!).length, 41)
+    assert.ok(ids.every((id) => manager.snapshot().chats.some((chat) => chat.paneId === id)))
+  } finally { manager.stop() }
+})

@@ -5,7 +5,7 @@
 
 export const APP_MENU_KEYS = [
   'new-chat', 'search-chats', 'manage-chat-history', 'settings', 'connect-providers', 'sign-out', 'close-tab', 'close-window',
-  'toggle-browser-pane', 'notepad', 'overview', 'restore-floating-pair', 'tile-windows',
+  'toggle-browser-pane', 'notepad', 'overview', 'tile-windows',
   'layout-preset-browser-side', 'layout-preset-browser-between', 'layout-preset-browser-centre',
   'layout-preset-six', 'layout-preset-four', 'workspace-layout',
   'zoom-in', 'zoom-out', 'reset-zoom', 'toggle-full-screen',

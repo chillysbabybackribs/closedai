@@ -142,3 +142,25 @@ test('parallel panes retain independent dispatch times', () => {
   h.timing.event('q', assistant('q'))
   assert.deepEqual(h.entries.map((entry) => [entry.paneId, entry.durationMs]), [['p', 500], ['q', 400]])
 })
+
+test('retains bounded numeric samples, validates paint, and captures the mode at send', () => {
+  const h = harness()
+  h.cancel!()
+  for (let i = 0; i < 205; i++) {
+    h.timing.begin(h.scope, i % 2 === 0)
+    h.at(i * 100)
+    h.dispatch()
+    h.timing.event('p', assistant('Answer', 'a', `t${i}`))
+    h.timing.paint({ paneId: 'wrong', turnId: `t${i}`, rendererMs: 20 })
+    h.timing.paint({ paneId: 'p', turnId: `t${i}`, rendererMs: NaN })
+    h.timing.paint({ paneId: 'p', turnId: `t${i}`, rendererMs: 20 })
+    h.timing.paint({ paneId: 'p', turnId: `t${i}`, rendererMs: 40 })
+    h.timing.event('p', { type: 'turn', turnId: null })
+  }
+  const result = h.timing.summary()
+  assert.equal(result.samples, 200)
+  assert.equal(result.groups.length, 2)
+  assert.ok(result.groups.every((row) => row.turns === 100 && row.rendererMs === 20 && row.completed === 100))
+  h.timing.clear()
+  assert.deepEqual(h.timing.summary(), { capacity: 200, samples: 0, groups: [] })
+})

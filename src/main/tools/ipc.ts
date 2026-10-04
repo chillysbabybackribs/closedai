@@ -28,6 +28,7 @@ export function registerToolsIpc(ipcMain: IpcMain, deps: ToolsIpcDeps): void {
     const settings = deps.settings()?.get()
     return {
       ...manifest,
+      chatCursorBaselineEnabled: settings?.chatCursorBaselineEnabled === true,
       chatToolSliceEnabled: settings?.chatToolSliceEnabled !== false,
       chatWorkspaceLedgerEnabled: settings?.chatWorkspaceLedgerEnabled !== false
     }
@@ -55,6 +56,13 @@ export function registerToolsIpc(ipcMain: IpcMain, deps: ToolsIpcDeps): void {
       throw new Error('Invalid tool switches')
     }
     await deps.onEnabledManyChanged(registry.setEnabledMany(switches as ToolSwitch[]))
+  })
+  ipcMain.handle(IPC.invoke.tools.setChatCursorBaselineEnabled, async (_event, enabled: unknown) => {
+    const settings = deps.settings()
+    if (!settings) throw new Error('Settings are not available')
+    if (typeof enabled !== 'boolean') throw new Error('Invalid Cursor baseline toggle')
+    await settings.set({ chatCursorBaselineEnabled: enabled })
+    deps.notifyEvent({ type: 'changed' })
   })
   ipcMain.handle(IPC.invoke.tools.setChatToolSliceEnabled, async (_event, enabled: unknown) => {
     const settings = deps.settings()

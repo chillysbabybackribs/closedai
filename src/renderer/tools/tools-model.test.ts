@@ -23,6 +23,7 @@ const manifest = (tools: ToolInfo[]): ToolManifest => ({
   ],
   advertisedTokens: 0,
   readOnlyIds: ['embedded_browser.page', 'search.query'],
+  chatCursorBaselineEnabled: false,
   chatToolSliceEnabled: false,
   chatWorkspaceLedgerEnabled: true
 })

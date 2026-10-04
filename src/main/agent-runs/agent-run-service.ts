@@ -1,7 +1,8 @@
 import { EventEmitter } from 'node:events'
 import {
-  AGENT_RUN_CONTINUE_DELAY_MS, AGENT_RUN_MAX_FAILURES, AGENT_RUN_MAX_PROMPT_CHARS, AGENT_RUN_TURN_START_TIMEOUT_MS,
-  agentCycleMessage, agentRunExcerpt, agentRunRetryDelay, emptyAgentRunStats,
+  AGENT_RUN_CONTINUE_DELAY_MS, AGENT_RUN_MAX_FAILURES, AGENT_RUN_MAX_MINUTES, AGENT_RUN_MAX_PROMPT_CHARS, AGENT_RUN_REVIEW_REASON,
+  AGENT_RUN_TURN_START_TIMEOUT_MS, agentCycleMessage, agentRunActiveMs, agentRunCycleCapReason, agentRunExcerpt, agentRunRemainingMs,
+  agentRunRetryDelay, agentRunTimeLimitReason, emptyAgentRunStats,
   type AgentRun, type AgentRunStartOptions, type AgentRunStats, type AgentRunsEvent
 } from '../../shared/agent-runs.js'
 import { activityPhase, type ChatEvent, type ChatSnapshot, type ChatTranscriptItem } from '../../shared/chat.js'
@@ -17,6 +18,12 @@ import type { ChatStore, ChatStoreChange } from '../chat-store/chat-store.js'
 // signed out, disconnected, or rejecting the send ends turns immediately, and re-sending on
 // every one of those would loop as fast as the provider fails. Failures back off and finally
 // pause the run with the reason on the strip.
+//
+// Two settings narrow the loop. A time limit counts running time only (a paused run's clock
+// stands still). It never interrupts work: a turn in flight when the time runs out is left to
+// finish and the run pauses as that turn ends, the way the cycle cap does; between turns a
+// deadline timer pauses it at once, so no further cycle is sent. A supervised run pauses after
+// every cycle it was sent and waits for Resume.
 //
 // The same event stream feeds the run's tallies (`AgentRun.stats`): steps and failures are
 // counted once per item id as items settle, the reply excerpt is the last completed assistant
@@ -34,7 +41,11 @@ export type AgentRunChatHost = {
 type LiveState = {
   /** The pending next-cycle send or the turn-start watchdog; only one is ever armed. */
   timer: NodeJS.Timeout | null
+  /** Fires when a running run's time limit runs out, to pause it if no turn is in flight; armed only while it runs under one. */
+  deadline: NodeJS.Timeout | null
   turnActive: boolean
+  /** A cycle was sent and no turn has answered it yet; a turn the user typed while paused answers none. */
+  cyclePending: boolean
   /** Whether the current turn has produced anything besides the user message and notices. */
   sawOutput: boolean
   /** A driven send is out and no turn has started for it yet. */
@@ -46,6 +57,8 @@ type LiveState = {
 }
 
 export const AGENT_RUN_RELAUNCH_REASON = 'App relaunched'
+/** setTimeout's ceiling; a longer wait is re-armed when it fires. */
+const MAX_TIMER_MS = 2_000_000_000
 
 export class AgentRunService extends EventEmitter {
   private readonly live = new Map<string, LiveState>()
@@ -67,7 +80,10 @@ export class AgentRunService extends EventEmitter {
     this.started = true
     for (const id of this.store.ids()) {
       const run = this.store.get(id)?.agentRun
-      if (run?.status === 'running') this.patch(id, { status: 'paused', reason: AGENT_RUN_RELAUNCH_REASON })
+      // The app's exit is not on record, so the open span is banked up to the run's last write.
+      if (run?.status === 'running') {
+        this.patch(id, { status: 'paused', reason: AGENT_RUN_RELAUNCH_REASON, activeMs: agentRunActiveMs(run, run.updatedAt), activeSince: null })
+      }
     }
     this.chat.on('event', this.onChatEvent)
     this.store.on('change', this.onStoreChange)
@@ -79,7 +95,7 @@ export class AgentRunService extends EventEmitter {
     this.started = false
     this.chat.off('event', this.onChatEvent)
     this.store.off('change', this.onStoreChange)
-    for (const live of this.live.values()) this.clearTimer(live)
+    for (const live of this.live.values()) this.clearTimers(live)
     this.live.clear()
   }
 
@@ -102,18 +118,24 @@ export class AgentRunService extends EventEmitter {
     if (prompt.length > AGENT_RUN_MAX_PROMPT_CHARS) throw new Error(`Agent instructions are limited to ${AGENT_RUN_MAX_PROMPT_CHARS} characters`)
     const maxCycles = options.maxCycles ?? null
     if (maxCycles !== null && (!Number.isInteger(maxCycles) || maxCycles < 1)) throw new Error('maxCycles must be a whole number of at least 1')
+    const maxMinutes = options.maxMinutes ?? null
+    if (maxMinutes !== null && (!Number.isInteger(maxMinutes) || maxMinutes < 1 || maxMinutes > AGENT_RUN_MAX_MINUTES)) {
+      throw new Error(`maxMinutes must be a whole number from 1 to ${AGENT_RUN_MAX_MINUTES}`)
+    }
     this.store.require(chatId)
     if (!this.chat.paneSnapshot(chatId)) throw new Error('Open the chat before starting an agent in it')
     if (this.get(chatId)?.status === 'running') throw new Error('This chat already has a running agent; pause or stop it first')
     const at = this.now()
     const name = typeof options.name === 'string' && options.name.trim() ? options.name.trim() : null
     const run: AgentRun = {
-      chatId, prompt, status: 'running', cycle: 0, maxCycles, startedAt: at, updatedAt: at,
+      chatId, prompt, status: 'running', cycle: 0, maxCycles, maxMinutes, activeMs: 0, activeSince: at,
+      autonomous: options.autonomous !== false, startedAt: at, updatedAt: at,
       lastTurnEndedAt: null, reason: null, failures: 0, threadId: null,
       agentId: typeof options.agentId === 'string' && options.agentId ? options.agentId : null, name,
       stats: emptyAgentRunStats()
     }
     this.store.update(chatId, { agentRun: run })
+    this.armDeadline(chatId, run)
     this.emitChange()
     try {
       await this.sendCycle(chatId)
@@ -145,7 +167,9 @@ export class AgentRunService extends EventEmitter {
     if (!run) return null
     if (!this.chat.paneSnapshot(chatId)) throw new Error('Open the chat before resuming its agent')
     if (run.status === 'running') return run
-    const resumed = this.patch(chatId, { status: 'running', reason: null, failures: 0 })
+    // Resuming a run whose time ran out is the user granting it the same allowance again.
+    const spent = agentRunRemainingMs(run, this.now()) === 0
+    const resumed = this.patch(chatId, { status: 'running', reason: null, failures: 0, ...(spent ? { activeMs: 0 } : {}) })
     this.schedule(chatId, 0)
     return resumed
   }
@@ -253,13 +277,26 @@ export class AgentRunService extends EventEmitter {
       return
     }
     if (live.sawOutput) {
-      const done = run.maxCycles !== null && run.cycle >= run.maxCycles
-      this.patch(chatId, { lastTurnEndedAt: at, stats, failures: 0, reason: done ? `Reached ${run.maxCycles} cycles` : null,
-        ...(done ? { status: 'paused' as const } : {}) })
-      if (!done) this.schedule(chatId, AGENT_RUN_CONTINUE_DELAY_MS)
+      // A supervised run waits after each cycle it was sent; a turn the user typed is theirs, not a cycle.
+      const answered = live.cyclePending
+      live.cyclePending = false
+      const reason = run.maxCycles !== null && run.cycle >= run.maxCycles ? agentRunCycleCapReason(run.maxCycles)
+        : this.timeSpent(run, at) ? agentRunTimeLimitReason(run.maxMinutes!)
+        : !run.autonomous && answered ? AGENT_RUN_REVIEW_REASON : null
+      this.patch(chatId, { lastTurnEndedAt: at, stats, failures: 0, reason, ...(reason ? { status: 'paused' as const } : {}) })
+      if (!reason) this.schedule(chatId, AGENT_RUN_CONTINUE_DELAY_MS)
+      return
+    }
+    // Out of time is a reason to stop, not to retry.
+    if (this.timeSpent(run, at)) {
+      this.patch(chatId, { lastTurnEndedAt: at, stats, status: 'paused', reason: agentRunTimeLimitReason(run.maxMinutes!) })
       return
     }
     this.noteFailure(chatId, 'The turn ended without a response', { lastTurnEndedAt: at, stats })
+  }
+
+  private timeSpent(run: AgentRun, at: number): boolean {
+    return run.maxMinutes !== null && agentRunRemainingMs(run, at) === 0
   }
 
   private noteFailure(chatId: string, detail: string, extra: Partial<AgentRun> = {}): void {
@@ -300,12 +337,18 @@ export class AgentRunService extends EventEmitter {
       live.turnActive = true
       return
     }
+    // The deadline timer normally gets here first; a timer delayed by system sleep must not buy another cycle.
+    if (this.timeSpent(run, this.now())) {
+      this.patch(chatId, { status: 'paused', reason: agentRunTimeLimitReason(run.maxMinutes!) })
+      return
+    }
     const rotated = run.threadId !== null && snapshot.threadId !== null && snapshot.threadId !== run.threadId
     const threadChanged = live.reseed || rotated
-    const text = agentCycleMessage(run, threadChanged)
+    const text = agentCycleMessage(run, threadChanged, this.now())
     this.patch(chatId, { cycle: run.cycle + 1, threadId: snapshot.threadId ?? run.threadId, reason: null,
       ...(rotated ? { stats: { ...run.stats, rotations: run.stats.rotations + 1 } } : {}) })
     live.reseed = false
+    live.cyclePending = true
     live.awaitingStart = true
     live.sawOutput = false
     this.clearTimer(live)
@@ -332,7 +375,7 @@ export class AgentRunService extends EventEmitter {
       if (record && !record.archived) continue
       const live = this.live.get(id)
       if (!live) continue
-      this.clearTimer(live)
+      this.clearTimers(live)
       this.live.delete(id)
       if (record?.agentRun?.status === 'running') this.patch(id, { status: 'paused', reason: 'Chat archived' })
       else this.emitChange()
@@ -342,10 +385,48 @@ export class AgentRunService extends EventEmitter {
   private patch(chatId: string, patch: Partial<Omit<AgentRun, 'chatId'>>): AgentRun {
     const current = this.store.require(chatId).agentRun
     if (!current) throw new Error(`Chat ${chatId} has no agent run`)
-    const next: AgentRun = { ...current, ...patch, chatId, updatedAt: this.now() }
+    const at = this.now()
+    const next: AgentRun = { ...current, ...patch, chatId, updatedAt: at }
+    const statusChanged = next.status !== current.status
+    // The running clock follows the status: a pause banks the open span, a resume opens a new one.
+    if (statusChanged && patch.activeSince === undefined) {
+      if (next.status === 'running') next.activeSince = at
+      else {
+        next.activeMs = agentRunActiveMs(current, at)
+        next.activeSince = null
+      }
+    }
     this.store.update(chatId, { agentRun: next })
+    if (statusChanged) this.armDeadline(chatId, next)
     this.emitChange()
     return next
+  }
+
+  /** Arm, or clear, the timer that ends a running run when its time limit runs out. */
+  private armDeadline(chatId: string, run: AgentRun): void {
+    const remaining = run.status === 'running' ? agentRunRemainingMs(run, this.now()) : null
+    const live = remaining === null ? this.live.get(chatId) : this.liveFor(chatId)
+    if (!live) return
+    if (live.deadline) clearTimeout(live.deadline)
+    live.deadline = null
+    if (remaining === null) return
+    live.deadline = setTimeout(() => {
+      live.deadline = null
+      this.checkDeadline(chatId)
+    }, Math.min(remaining, MAX_TIMER_MS))
+    live.deadline.unref?.()
+  }
+
+  private checkDeadline(chatId: string): void {
+    const run = this.get(chatId)
+    if (!run || run.status !== 'running' || run.maxMinutes === null) return
+    if (agentRunRemainingMs(run, this.now()) !== 0) {
+      this.armDeadline(chatId, run)
+      return
+    }
+    // A turn in flight is never cut short: it finishes, and its end pauses the run (noteTurnEnded).
+    if (this.live.get(chatId)?.turnActive || this.chat.paneSnapshot(chatId)?.activeTurnId) return
+    void this.pauseRun(chatId, agentRunTimeLimitReason(run.maxMinutes))
   }
 
   private patchStats(chatId: string, patch: Partial<AgentRunStats>): void {
@@ -357,7 +438,7 @@ export class AgentRunService extends EventEmitter {
 
   private forget(chatId: string): void {
     const live = this.live.get(chatId)
-    if (live) this.clearTimer(live)
+    if (live) this.clearTimers(live)
     this.live.delete(chatId)
     if (this.store.has(chatId)) this.store.update(chatId, { agentRun: null })
     this.emitChange()
@@ -366,7 +447,10 @@ export class AgentRunService extends EventEmitter {
   private liveFor(chatId: string): LiveState {
     let live = this.live.get(chatId)
     if (!live) {
-      live = { timer: null, turnActive: Boolean(this.chat.paneSnapshot(chatId)?.activeTurnId), sawOutput: false, awaitingStart: false, reseed: false, counted: new Map() }
+      live = {
+        timer: null, deadline: null, turnActive: Boolean(this.chat.paneSnapshot(chatId)?.activeTurnId), cyclePending: false,
+        sawOutput: false, awaitingStart: false, reseed: false, counted: new Map()
+      }
       this.live.set(chatId, live)
     }
     return live
@@ -375,6 +459,12 @@ export class AgentRunService extends EventEmitter {
   private clearTimer(live: LiveState): void {
     if (live.timer) clearTimeout(live.timer)
     live.timer = null
+  }
+
+  private clearTimers(live: LiveState): void {
+    this.clearTimer(live)
+    if (live.deadline) clearTimeout(live.deadline)
+    live.deadline = null
   }
 
   private emitChange(): void {

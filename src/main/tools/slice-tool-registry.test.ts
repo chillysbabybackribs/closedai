@@ -6,7 +6,8 @@ import { createToolRegistry } from './index.ts'
 import { peerChatTools } from './peer-chats/index.ts'
 import { searchTools } from './search/index.ts'
 import { browserTools } from './browser/index.ts'
-import { resolveSlicedToolRegistry, toolAdvertisedEager } from './slice-tool-registry.ts'
+import { attachToolSliceForTurn } from './provider-tool-slice-turn.ts'
+import { resolveSlicedToolRegistry, slicedToolRegistryKey, toolAdvertisedEager } from './slice-tool-registry.ts'
 
 function stubHost(): null {
   return null
@@ -46,4 +47,23 @@ test('toolAdvertisedEager follows browser slice promotions', async () => {
   assert.equal(bundle.sliceId, 'browser')
   const page = registry().enabledNamespaces().find((ns) => ns.name === 'embedded_browser')!.tools.find((tool) => tool.name === 'page')!
   assert.equal(toolAdvertisedEager(bundle.advertisement, 'embedded_browser', page), true)
+})
+
+
+test('baseline task changes keep Claude and Antigravity processes, but switching modes reapplies policy', async () => {
+  for (const provider of ['claude', 'antigravity'] as const) {
+    let applied = 0
+    const state = { cacheKey: null as string | null }
+    const settings = { chatToolSliceEnabled: false, chatCursorBaselineEnabled: true }
+    const deps = { provider, paneId: 'pane', activeTurnId: null, registry: registry(), settings,
+      prompt: 'Fix tests', surface: null, chatProjectPath: '/external-project', state,
+      cacheKeyOf: slicedToolRegistryKey, onApplied: async () => { applied++ } }
+    await attachToolSliceForTurn(deps)
+    await attachToolSliceForTurn({ ...deps, prompt: 'Summarize this page' })
+    await attachToolSliceForTurn({ ...deps, prompt: 'Research the latest browser release' })
+    assert.equal(applied, 1)
+    settings.chatCursorBaselineEnabled = false
+    await attachToolSliceForTurn(deps)
+    assert.equal(applied, 2, 'mode change refreshes spawn-time settings even with slices already off')
+  }
 })

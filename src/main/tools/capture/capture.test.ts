@@ -6,6 +6,7 @@ import type { UiCaptureHost } from './host.js'
 import { CaptureBudget, captureTools } from './index.js'
 import { ScreenshotStore } from './screenshot-store.js'
 import { EXEC_IMAGE_HINT } from './result.js'
+import { controlCrop } from './crop.js'
 
 const image = {
   dataUrl: 'data:image/png;base64,cG5n', width: 1920, height: 1080, capturedAt: '2026-09-02T12:00:00.000Z',
@@ -27,7 +28,7 @@ function harness(overrides: Partial<UiCaptureHost> = {}, budget = new CaptureBud
   const calls: unknown[] = []
   const host: UiCaptureHost = {
     listTabs: () => [],
-    captureAppWindow: async () => { calls.push(['app']); return image },
+    captureAppWindow: async (target) => { calls.push(target ? ['app', target] : ['app']); return image },
     captureBrowserPage: async (tabId, readiness) => {
       calls.push(['page', tabId, readiness])
       return { image, tabId: tabId ?? 'tab-1', url: ready.url, title: ready.title, ready }
@@ -218,4 +219,37 @@ test('a heavily scaled capture tells the model to crop rather than re-capture', 
   assert.match(textOf(result), /Scaled to 50%: small text may be unreadable\. Use crop with zoom/)
   const mild = await harness().call({ action: 'app_window' })
   assert.doesNotMatch(textOf(mild), /Scaled to/)
+})
+
+test('app_window crops to a named control and dedups per element', async () => {
+  const { call, calls } = harness()
+  const whole = await call({ action: 'app_window' }, 'w1', 'turn-1')
+  const control = await call({ action: 'app_window', control: 'composer.input' }, 'w2', 'turn-1')
+  const row = await call({ action: 'app_window', control: 'layout.tab', item: 'tab-2' }, 'w3', 'turn-1')
+  assert.equal(whole.content.length, 2)
+  assert.equal(control.content.length, 2, 'a control crop is not a duplicate of the whole window')
+  assert.match(textOf(control), /Element: composer\.input/)
+  assert.match(textOf(row), /Element: layout\.tab tab-2/)
+  assert.deepEqual(calls, [
+    ['app'],
+    ['app', { control: 'composer.input', item: undefined, match: undefined, selector: undefined }],
+    ['app', { control: 'layout.tab', item: 'tab-2', match: undefined, selector: undefined }]
+  ])
+
+  const orphan = await call({ action: 'app_window', item: 'tab-2' })
+  assert.equal(orphan.isError, true)
+  assert.match(textOf(orphan), /item and match need control/)
+})
+
+test('controlCrop scales viewport CSS px onto the bitmap with padding, clamped to the image', () => {
+  const viewport = { width: 960, height: 540 }
+  assert.deepEqual(
+    controlCrop({ width: 1920, height: 1080 }, { bounds: { x: 100, y: 50, width: 200, height: 30 }, viewport }),
+    { x: 184, y: 84, width: 432, height: 92 }
+  )
+  assert.deepEqual(
+    controlCrop({ width: 960, height: 540 }, { bounds: { x: 0, y: 520, width: 960, height: 40 }, viewport }),
+    { x: 0, y: 512, width: 960, height: 28 }
+  )
+  assert.equal(controlCrop({ width: 960, height: 540 }, { bounds: { x: 2000, y: 0, width: 10, height: 10 }, viewport }), null)
 })

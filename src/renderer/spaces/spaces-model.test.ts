@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   IDENTITY_CAMERA, LABEL_HEIGHT, OVERVIEW_GAP, anchorChat, createZoomGesture, dropMissingStops, focusCamera, liveTransform, overviewSlots,
-  newSpace, readSpaces, resolveCurrent, saveSpaces, slotAt, spaceName, stepStop, visitStop, type Space, type SpaceHistory
+  closeSpace, newSpace, readSpaces, resolveCurrent, saveSpaces, slotAt, spaceName, stepStop, visitStop, type Space, type SpaceHistory
 } from './spaces-model.ts'
 
 const size = { width: 1200, height: 800 }
@@ -10,6 +10,30 @@ const size = { width: 1200, height: 800 }
 const a: Space = { id: '/p/a', cwd: '/p/a', projectPath: '/p/a', name: 'a' }
 const a2: Space = { id: 'space:2', cwd: '/p/a', projectPath: '/p/a', name: 'a 2' }
 const b: Space = { id: '/p/b', cwd: '/p/b', projectPath: '/p/b', name: 'b' }
+
+test('closing workspaces preserves the current one or selects the nearest remaining neighbour', () => {
+  const saved = { spaces: [a, a2, b], current: a2.id }
+  assert.deepEqual(closeSpace(saved, a.id), { spaces: [a2, b], current: a2.id })
+  assert.deepEqual(closeSpace(saved, a2.id), { spaces: [a, b], current: b.id })
+  assert.deepEqual(closeSpace({ ...saved, current: b.id }, b.id), { spaces: [a, a2], current: a2.id })
+  assert.equal(closeSpace(saved, 'missing'), saved)
+  const last = { spaces: [a], current: a.id }
+  assert.equal(closeSpace(last, a.id), last)
+  assert.deepEqual(saved.spaces, [a, a2, b])
+})
+
+test('a closed workspace stays out of saved spaces and navigation history', () => {
+  const next = closeSpace({ spaces: [a, a2, b], current: a.id }, a2.id)
+  let raw = ''
+  saveSpaces({ setItem: (_key, value) => { raw = value } }, next)
+  assert.deepEqual(readSpaces({ getItem: () => raw }), next)
+  const history: SpaceHistory = {
+    stops: [{ kind: 'space', id: a.id }, { kind: 'space', id: a2.id }, { kind: 'overview' }], index: 2
+  }
+  const pruned = dropMissingStops(history, new Set(next.spaces.map((space) => space.id)))
+  assert.deepEqual(stepStop(pruned, -1)?.stops, [{ kind: 'space', id: a.id }, { kind: 'overview' }])
+  assert.equal(stepStop(pruned, -1)?.index, 0)
+})
 
 test('the current space is the remembered one in main\'s folder, else the first there, else a new one', () => {
   assert.equal(resolveCurrent([a, a2, b], 'space:2', { cwd: '/p/a', projectPath: '/p/a' }).current, a2)

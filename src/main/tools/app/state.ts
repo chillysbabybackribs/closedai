@@ -11,7 +11,9 @@ export function appStateTool(app: () => AppCommandHost | null, ui: () => AppUiHo
     name: 'state',
     description:
       'Plain tool (no action field). Compact app state without DOM: workspace, chat, browser, downloads, window, ui. ' +
-      'workspace.appVersion is the running Electron build; chat.memory.chatMemoryIndexEnabled mirrors closedai.runtime for probe-time cross-check. ' +
+      'workspace.appCheckoutPath is the ClosedAI host checkout (app.getAppPath); workspace.project is the overview selection; chat cwd is the pane working folder. ' +
+      'workspace.appVersion is the running Electron build; workspace.build says whether the running process still matches the code on disk (mainStale/preloadStale true: restart needed; rendererStale true: renderer reload pending; null: not applicable; basis source-mtime is a dev-server heuristic). ' +
+      'chat.memory.chatMemoryIndexEnabled mirrors closedai.runtime for probe-time cross-check. ' +
       'window.detached lists windows the user moved chats into, with their chat ids; ui, capture and controls see the main window only. ' +
       'ui.fullScreen reports the native window mode. ui.overviewOpen reports workspace overview visibility; ui.chatZoom is the rendered chat zoom percentage, or null without a visible chat. Optional include array lists section names to return (property is include, not sections). UI waits: closedai_app.ui wait_for.',
     inputSchema: objectSchema({
@@ -27,6 +29,10 @@ export function appStateTool(app: () => AppCommandHost | null, ui: () => AppUiHo
       const host = requireHost(app, 'app state')
       const mainSections = include.filter((section): section is AppStateSection => section !== 'ui')
       const result = host.state(mainSections, stringArg(input, 'pane_id'), context.paneId ?? null)
+      if (result.workspace && typeof result.workspace === 'object') {
+        const build = await host.buildFreshness()
+        if (build) (result.workspace as Record<string, unknown>).build = build
+      }
       if (include.includes('ui')) result.ui = await requireHost(ui, 'app automation').uiState()
       return jsonResult(result)
     }

@@ -1,3 +1,4 @@
+import { titleQueue } from './title-queue.js'
 import type { ChatSnapshot } from '../../shared/chat.js'
 import type { ChatStore } from '../chat-store/chat-store.js'
 import { cleanGeneratedTitle, titleRequest, type TitleGenerator } from './title-policy.js'
@@ -6,9 +7,11 @@ import { cleanGeneratedTitle, titleRequest, type TitleGenerator } from './title-
 export class ChatTitles {
   private readonly pending = new Map<string, AbortController>()
 
-  constructor(private readonly store: ChatStore, private readonly changed: (id: string) => void) {}
+  constructor(private readonly store: ChatStore, private readonly changed: (id: string) => void,
+    private readonly autoEnabled: () => boolean = () => true) {}
 
-  async generate(id: string, snapshot: ChatSnapshot, generate: TitleGenerator): Promise<void> {
+  async generate(id: string, snapshot: ChatSnapshot, generate: TitleGenerator, automatic = true): Promise<void> {
+    if (automatic && !this.autoEnabled()) return
     const record = this.store.get(id)
     const threadId = record?.threadId ?? snapshot.threadId
     if (!record || record.archived || record.titleGenerationAttempted || record.titleSource === 'generated' ||
@@ -17,10 +20,16 @@ export class ChatTitles {
     if (!request) return
     const controller = new AbortController()
     this.pending.set(id, controller)
-    this.store.update(id, { titleGenerationAttempted: true })
-    const timer = setTimeout(() => controller.abort(), 45_000)
     try {
-      const title = cleanGeneratedTitle(await generate(request, controller.signal))
+      const result = await titleQueue.run(async () => {
+        const current = this.store.get(id)
+        if (!current || current.archived || current.modelId !== record.modelId || current.threadId !== record.threadId
+          || current.titleSource === 'manual' || (automatic && !this.autoEnabled())) return null
+        this.store.update(id, { titleGenerationAttempted: true })
+        const timer = setTimeout(() => controller.abort(), 45_000)
+        try { return await generate(request, controller.signal) } finally { clearTimeout(timer) }
+      }, controller.signal)
+      const title = cleanGeneratedTitle(result)
       const current = this.store.get(id)
       if (!title || controller.signal.aborted || !current || current.archived ||
         (threadId && current.threadId && current.threadId !== threadId) ||
@@ -30,7 +39,6 @@ export class ChatTitles {
     } catch {
       // Naming is best-effort; a failed request keeps the existing title and does not retry every turn.
     } finally {
-      clearTimeout(timer)
       if (this.pending.get(id) === controller) this.pending.delete(id)
     }
   }
@@ -53,7 +61,7 @@ export class ChatTitles {
     if (!record || record.archived || !record.threadId) return
     this.cancel(id)
     this.store.update(id, { titleGenerationAttempted: false, titleSource: null })
-    return this.generate(id, snapshot, generate)
+    return this.generate(id, snapshot, generate, false)
   }
 
   cancel(id: string): void {

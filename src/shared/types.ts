@@ -1,3 +1,4 @@
+import type { PerformanceSettings } from './performance.js'
 import type { ChatProvider } from './chat.js'
 
 export type BrowserBounds = {
@@ -234,10 +235,11 @@ export type AppSettings = {
    * commands through `.closedai/work.lock`. Default on.
    */
   chatWorkLockEnabled: boolean
-  /**
-   * When true, Codex thread/start advertises a task-scoped eager tool slice instead of the
-   * registry default pair. Slice changes rotate the thread like a catalog drift.
-   */
+  /** Profile-wide streaming, idle-process and automatic-title settings. */
+  performance: PerformanceSettings
+  /** Experimental Cursor baseline for non-Cursor lanes: native sessions, stable tools, no guide/ledger. Default off. */
+  chatCursorBaselineEnabled: boolean
+  /** Task-scoped eager tools; baseline mode overrides this without changing the saved value. */
   chatToolSliceEnabled: boolean
   /**
    * When true (default), coding turns may attach `closedai.workspace.ledger` with host-verified

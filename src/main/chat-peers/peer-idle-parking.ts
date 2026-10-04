@@ -21,8 +21,8 @@ export class PeerIdleParking {
   constructor(
     private readonly peer: (paneId: ChatPaneId) => ParkablePeer | undefined,
     private readonly selectedPaneId: () => ChatPaneId,
-    private readonly idleMs = DEFAULT_IDLE_PARK_MS,
-    private readonly selectedIdleMs = idleMs * SELECTED_IDLE_PARK_MULTIPLIER
+    private readonly idleMs: number | (() => number) = DEFAULT_IDLE_PARK_MS,
+    private readonly selectedIdleMs?: number
   ) {}
 
   async wake(paneId: ChatPaneId): Promise<ParkablePeer> {
@@ -48,6 +48,7 @@ export class PeerIdleParking {
     const snapshot = entry.surface.snapshot({ limit: 0 })
     if (paneSurfaceBusy(snapshot, entry.surface.hasRunningBackground?.bind(entry.surface))) return
     const selected = paneId === this.selectedPaneId()
+    const idleMs = typeof this.idleMs === 'function' ? this.idleMs() : this.idleMs
     entry.idleTimer = setTimeout(() => {
       entry.idleTimer = null
       if (paneSurfaceBusy(entry.surface.snapshot({ limit: 0 }), entry.surface.hasRunningBackground?.bind(entry.surface))) return
@@ -58,7 +59,7 @@ export class PeerIdleParking {
       }
       entry.parked = true
       entry.surface.stop()
-    }, selected ? this.selectedIdleMs : this.idleMs)
+    }, selected ? (this.selectedIdleMs ?? idleMs * SELECTED_IDLE_PARK_MULTIPLIER) : idleMs)
     entry.idleTimer.unref?.()
   }
 

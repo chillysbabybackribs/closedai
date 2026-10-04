@@ -5,7 +5,7 @@ import { agentRunBrief } from './agent-run-brief.ts'
 
 const NOW = 1_000_000
 const run = (patch: Partial<AgentRun> = {}, stats: Partial<AgentRunStats> = {}): AgentRun => ({
-  chatId: 'c1', prompt: 'Go.', status: 'running', cycle: 4, maxCycles: 10, startedAt: NOW - 3_600_000, updatedAt: NOW,
+  chatId: 'c1', prompt: 'Go.', status: 'running', cycle: 4, maxCycles: 10, maxMinutes: null, activeMs: 0, activeSince: null, autonomous: true, startedAt: NOW - 3_600_000, updatedAt: NOW,
   lastTurnEndedAt: NOW - 95_000, reason: null, failures: 0, threadId: 't', agentId: null, name: 'Repair agent',
   stats: { ...emptyAgentRunStats(), ...stats }, ...patch })
 const texts = (lines: ReturnType<typeof agentRunBrief>): Record<string, string> => Object.fromEntries(lines.map((line) => [line.kind, line.text]))

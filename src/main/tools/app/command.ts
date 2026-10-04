@@ -40,7 +40,7 @@ export function appCommandActions(
     },
     {
       action: 'new_chat',
-      description: 'Create a chat and return its pane id; selects the new chat like File → New chat.',
+      description: 'Create a chat in its own desk window (tile or float like File → New chat and layout.card-new-chat) and return its pane id; selects the new chat.',
       inputSchema: objectSchema({}),
       run: async (_input, context) => {
         const host = requireHost(app, 'app commands')

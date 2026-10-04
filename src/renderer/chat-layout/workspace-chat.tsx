@@ -7,13 +7,11 @@ import { stabilizePaneSnapshot } from '../chat-composer-layout.js'
 import { getWorkspaceSnapshot } from './workspace-snapshot-store.js'
 import { useWorkspacePaneSlice } from './workspace-pane-subscription.js'
 
-export const WorkspaceChat = memo(function WorkspaceChat({ paneId, dispatch, appearance, panelVisible = true, onNewChat, onContinueInNewChat }: {
+export const WorkspaceChat = memo(function WorkspaceChat({ paneId, dispatch, appearance, panelVisible = true }: {
   paneId: string
   dispatch: Dispatch<ChatWorkspaceAction>
   appearance: AppearanceSettings
   panelVisible?: boolean
-  onNewChat: () => void
-  onContinueInNewChat?: () => Promise<void>
 }) {
   const slice = useWorkspacePaneSlice(paneId)
   const retained = useRef(initialChatState())
@@ -27,6 +25,5 @@ export const WorkspaceChat = memo(function WorkspaceChat({ paneId, dispatch, app
   const controller = usePaneChatController(getWorkspaceSnapshot(), paneId, state, dispatch)
   const isSelected = slice.selectedPaneId === paneId
   return <ChatPane controller={controller} zoom={appearance.chatZoom} fontSize={appearance.chatFontSize}
-    composerFontSize={appearance.composerFontSize} selected={isSelected} panelVisible={panelVisible}
-    onNewChat={onNewChat} onContinueInNewChat={onContinueInNewChat} />
+    composerFontSize={appearance.composerFontSize} selected={isSelected} panelVisible={panelVisible} />
 })

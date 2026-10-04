@@ -26,7 +26,7 @@ type CreateSessionRotatorInput = {
 export function createSessionRotator(input: CreateSessionRotatorInput): SessionRotator {
   const thresholds = (): RotationPressureThresholds => rotationPressureThresholds(input.settings.get())
   return new SessionRotator({
-    enabled: () => input.settings.get().chatSeamlessRotation === true,
+    enabled: () => input.settings.get().chatCursorBaselineEnabled !== true && input.settings.get().chatSeamlessRotation === true,
     thresholdPercent: () => input.settings.get().chatCompactAtPercent,
     thresholdTokens: () => input.settings.get().chatCompactAtTokens,
     threadId: input.threadId,

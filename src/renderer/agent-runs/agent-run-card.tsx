@@ -15,6 +15,7 @@ export const DOCK_STATE_TONE: Record<DockTileState, string> = {
   paused: 'bg-muted-foreground',
   finished: 'bg-(--link-ink)',
   approval: 'bg-(--link-ink) animate-pulse',
+  review: 'bg-(--link-ink)',
   failed: 'bg-destructive animate-pulse'
 }
 
@@ -30,7 +31,7 @@ export function AgentRunCard({ tile, onOpenChat, onPause, onResume, onStop }: Ag
   const { busy, error, act } = useAgentRunAction()
   const review = tile.state === 'approval'
   const finished = tile.state === 'finished'
-  const detailTone = tile.state === 'failed' ? 'text-destructive' : review || finished ? 'text-(--link-ink)' : 'text-muted-foreground'
+  const detailTone = tile.state === 'failed' ? 'text-destructive' : review || finished || tile.state === 'review' ? 'text-(--link-ink)' : 'text-muted-foreground'
   const detail = error || tile.detail
   return (
     <Fragment>
@@ -40,7 +41,7 @@ export function AgentRunCard({ tile, onOpenChat, onPause, onResume, onStop }: Ag
         <span className="truncate font-medium" title={tile.name}>{tile.name}</span>
       </td>
       <td className="agent-run-table-meta text-muted-foreground">
-        {DOCK_STATE_LABEL[tile.state]} · {tile.cycleLabel}
+        {DOCK_STATE_LABEL[tile.state]} · {tile.cycleLabel}{tile.timeLabel ? ` · ${tile.timeLabel}` : ''}
       </td>
       <td className={cn('agent-run-table-detail truncate', error ? 'text-destructive' : detailTone)} title={detail}>
         {detail}

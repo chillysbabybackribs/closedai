@@ -240,3 +240,26 @@ test('handoff soft target is configurable, persists, and accepts zero without a 
   }
   assert.equal((await storeWith('{"chatHandoffTargetChars":"bad"}')).store.get().chatHandoffTargetChars, 24_000)
 })
+
+test('Cursor baseline defaults off, persists, and leaves other preferences intact', async () => {
+  assert.equal((await storeWith('{}')).store.get().chatCursorBaselineEnabled, false)
+  assert.equal((await storeWith('{"chatCursorBaselineEnabled":"true"}')).store.get().chatCursorBaselineEnabled, false)
+  const { store, file } = await storeWith(null)
+  await store.set({ chatCursorBaselineEnabled: true })
+  const reopened = await AppSettingsStore.open(file)
+  assert.equal(reopened.get().chatCursorBaselineEnabled, true)
+  assert.equal(reopened.get().chatToolSliceEnabled, true)
+  assert.equal(reopened.get().chatWorkspaceLedgerEnabled, true)
+  assert.equal(reopened.get().chatSeamlessRotation, true)
+  await reopened.set({ chatCursorBaselineEnabled: false })
+  assert.equal((await AppSettingsStore.open(file)).get().chatCursorBaselineEnabled, false)
+})
+
+
+test('performance settings persist without changing the provider baseline', async () => {
+  const { store, file } = await storeWith('{"chatCursorBaselineEnabled":true}')
+  await store.set({ performance: { instantStreaming: true, warmMinutes: 15, warmIdleChats: 4, autoTitles: false } })
+  const reopened = await AppSettingsStore.open(file)
+  assert.deepEqual(reopened.get().performance, store.get().performance)
+  assert.equal(reopened.get().chatCursorBaselineEnabled, true)
+})

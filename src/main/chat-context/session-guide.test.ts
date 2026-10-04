@@ -154,3 +154,39 @@ test('buildTurnSendContext attaches research routing on compare prompts', () => 
     'closedai.research.routing'
   ])
 })
+
+test('Cursor profile omits guide and ledger even on a fresh thread', () => {
+  const ledger = {
+    [WORKSPACE_LEDGER_CONTEXT]: { kind: 'untrusted' as const, value: '{"fresh":[]}' }
+  }
+  const { context, attachGuide } = buildTurnSendContext({
+    prompt: 'Implement scroll in the history dropdown',
+    threadKey: 'cursor:pane',
+    state: { lastDeliveredThreadKey: null },
+    transcriptWasEmpty: true,
+    pendingHandoff: null,
+    runtime: { paneId: 'p', provider: 'cursor', cwd: '/w', chatMemoryIndexEnabled: true, sessionGuideOnTurn: false },
+    workspaceLedgerContext: ledger,
+    browserContext: undefined
+  })
+  assert.equal(attachGuide, false)
+  assert.deepEqual(Object.keys(context!), ['closedai.clock', 'closedai.runtime'])
+})
+
+test('Cursor baseline keeps clock, runtime and explicit handoffs while omitting guide and ledger', () => {
+  for (const provider of ['codex', 'claude', 'antigravity'] as const) {
+    const { context, attachGuide } = buildTurnSendContext({
+      prompt: 'Fix the code', threadKey: 'new', state: { lastDeliveredThreadKey: null },
+      transcriptWasEmpty: true, pendingHandoff: 'Keep this continuation', browserContext: undefined,
+      workspaceLedgerContext: { [WORKSPACE_LEDGER_CONTEXT]: { kind: 'untrusted', value: 'ledger' } },
+      runtime: { paneId: 'p', provider, cwd: '/w', chatMemoryIndexEnabled: true,
+        sessionGuideOnTurn: false, chatCursorBaselineEnabled: true }
+    })
+    assert.equal(attachGuide, false)
+    assert.equal(context?.[SESSION_GUIDE_CONTEXT], undefined)
+    assert.equal(context?.[WORKSPACE_LEDGER_CONTEXT], undefined)
+    assert.ok(context?.['closedai.clock'])
+    assert.equal(context?.['closedai.chat.handoff']?.value, 'Keep this continuation')
+    assert.equal(JSON.parse(context!['closedai.runtime']!.value).cursorBaselineEnabled, true)
+  }
+})

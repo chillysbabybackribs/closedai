@@ -38,6 +38,7 @@ const api: ClosedaiApi = {
   },
   window: {
     minimize: () => invoke(IPC.invoke.window.minimize),
+    moveBy: (delta) => invoke(IPC.invoke.window.moveBy, delta),
     maximize: () => invoke(IPC.invoke.window.maximize),
     toggleFullscreen: () => invoke(IPC.invoke.window.toggleFullscreen),
     close: () => invoke(IPC.invoke.window.close),
@@ -170,6 +171,8 @@ const api: ClosedaiApi = {
     save: (draft) => invoke(IPC.invoke.agentLibrary.save, draft),
     update: (id, patch) => invoke(IPC.invoke.agentLibrary.update, id, patch),
     remove: (id) => invoke(IPC.invoke.agentLibrary.remove, id),
+    optimize: (request) => invoke(IPC.invoke.agentLibrary.optimize, request),
+    cancelOptimize: (requestId) => invoke(IPC.invoke.agentLibrary.cancelOptimize, requestId),
     onChanged: (listener) => subscribe(IPC.event.agentLibraryChanged, listener)
   },
   credentials: {
@@ -194,6 +197,7 @@ const api: ClosedaiApi = {
     clearTelemetry: () => invoke(IPC.invoke.tools.clearTelemetry),
     setEnabled: (toolId: string, enabled: boolean) => invoke(IPC.invoke.tools.setEnabled, toolId, enabled),
     setEnabledMany: (switches) => invoke(IPC.invoke.tools.setEnabledMany, switches),
+    setChatCursorBaselineEnabled: (enabled: boolean) => invoke(IPC.invoke.tools.setChatCursorBaselineEnabled, enabled),
     setChatToolSliceEnabled: (enabled: boolean) => invoke(IPC.invoke.tools.setChatToolSliceEnabled, enabled),
     setChatWorkspaceLedgerEnabled: (enabled: boolean) => invoke(IPC.invoke.tools.setChatWorkspaceLedgerEnabled, enabled),
     onEvent: (listener) => subscribe(IPC.event.toolsEvent, listener)
@@ -203,6 +207,13 @@ const api: ClosedaiApi = {
     setEnabled: (modelId: string, enabled: boolean) => invoke(IPC.invoke.models.setEnabled, modelId, enabled),
     setEnabledMany: (switches) => invoke(IPC.invoke.models.setEnabledMany, switches),
     onEvent: (listener) => subscribe(IPC.event.modelsEvent, listener)
+  },
+  performance: {
+    settings: () => invoke(IPC.invoke.performance.settings),
+    update: (patch) => invoke(IPC.invoke.performance.update, patch),
+    summary: () => invoke(IPC.invoke.performance.summary),
+    paint: (report) => invoke(IPC.invoke.performance.paint, report),
+    onSettingsChanged: (listener) => subscribe(IPC.event.performanceSettingsChanged, listener)
   },
   trace: {
     setActive: (active: boolean) => invoke(IPC.invoke.trace.setActive, active),

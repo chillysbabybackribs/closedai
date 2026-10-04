@@ -16,6 +16,12 @@ export function applyChatZoomCommand(value: number, command: ChatZoomCommand): n
   return clampChatZoom(value + (command === 'in' ? CHAT_ZOOM_STEP : -CHAT_ZOOM_STEP))
 }
 
+export function chatZoomCommandDisabled(command: ChatZoomCommand, chatZoom: number): boolean {
+  if (command === 'in') return chatZoom >= CHAT_ZOOM_MAX
+  if (command === 'out') return chatZoom <= CHAT_ZOOM_MIN
+  return chatZoom === CHAT_ZOOM_DEFAULT
+}
+
 /** Match the shortcuts shown in View while accepting Cmd on macOS as well as Ctrl. */
 export function chatZoomCommandForKey(event: Pick<KeyboardEvent, 'altKey' | 'ctrlKey' | 'key' | 'metaKey'>): ChatZoomCommand | null {
   if (event.altKey || (!event.ctrlKey && !event.metaKey)) return null

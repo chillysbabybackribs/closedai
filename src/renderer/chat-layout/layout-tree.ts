@@ -1,3 +1,4 @@
+import { isSidebarStack, sidebarScrollArea, type SidebarScrollArea } from './sidebar-stack.js'
 import { layoutGroups, tiledTree } from './layout-docking.js'
 import { MAIN_WINDOW_ID } from '../../shared/app-windows.js'
 import { VIEW_TAB_PREFIX } from '../../shared/app-ui-events.js'
@@ -9,15 +10,14 @@ export type FloatRect = { x: number; y: number; width: number; height: number; z
  * `onTop` keeps the window above every window without it (Keep on top).
  */
 export type ChatLayout = {
-  kind: 'pane'; id: string; tabs?: string[]; docked?: boolean; dockNumber?: number; float?: FloatRect
-  /** When set to a chat id, this pane and the browser move and resize as one floating pair. */
-  floatPair?: string
-  onTop?: boolean
+  kind: 'pane'; id: string; tabs?: string[]; docked?: boolean; dockNumber?: number; float?: FloatRect; onTop?: boolean
   /** A notepad window's chat (renderer notepad/): one per window, kept when its notes change. */
   notepadChat?: string
 } | {
   kind: 'split'; id: string; axis: 'horizontal' | 'vertical'; ratio: number
   first: ChatLayout; second: ChatLayout
+  /** Persistent tall main chat and independently scrolling side cards. */
+  sidebarStack?: boolean
 }
 export type Rect = { x: number; y: number; width: number; height: number }
 // Reserve the entire grab target: native browser views paint above renderer overlays.
@@ -37,12 +37,9 @@ export function isViewTabId(id: string): boolean {
   return id.startsWith(VIEW_TAB_PREFIX)
 }
 
-/** Chat share in the default browser split; kept in sync with workspace-default-float. */
-export const DEFAULT_BROWSER_SPLIT_RATIO = 0.6
-
 export function withBrowser(tree: ChatLayout): ChatLayout {
   if (layoutIds(tree).includes(BROWSER_PANE_ID)) return tree
-  return { kind: 'split', id: 'closedai:browser-split', axis: 'horizontal', ratio: DEFAULT_BROWSER_SPLIT_RATIO,
+  return { kind: 'split', id: 'closedai:browser-split', axis: 'horizontal', ratio: 0.6,
     first: tree, second: { kind: 'pane', id: BROWSER_PANE_ID } }
 }
 
@@ -116,7 +113,7 @@ export function resizeSplit(tree: ChatLayout, id: string, ratio: number): ChatLa
 export function minimumSize(tree: ChatLayout): { width: number; height: number } {
   if (tree.kind === 'pane') return { width: tree.id === BROWSER_PANE_ID ? 384 : 300, height: 280 }
   const a = minimumSize(tree.first)
-  const b = minimumSize(tree.second)
+  const b = isSidebarStack(tree) ? { width: 300, height: 280 } : minimumSize(tree.second)
   return tree.axis === 'horizontal'
     ? { width: a.width + b.width + DIVIDER_SIZE, height: Math.max(a.height, b.height) }
     : { width: Math.max(a.width, b.width), height: a.height + b.height + DIVIDER_SIZE }
@@ -135,6 +132,7 @@ function visitLayout(
   dividers: LayoutDivider[],
   splitRatios: SplitRatioOverrides | undefined,
   clampMinimums: boolean,
+  scrollAreas: SidebarScrollArea[],
 ): void {
   if (node.kind === 'pane') {
     panes.push({ id: node.id, tabs: node.tabs ?? [node.id], rect })
@@ -148,7 +146,7 @@ function visitLayout(
   let max = 1
   if (clampMinimums) {
     min = minimumSize(node.first)[dimension] / available
-    max = 1 - minimumSize(node.second)[dimension] / available
+    max = 1 - (isSidebarStack(node) ? 300 : minimumSize(node.second)[dimension]) / available
     ratio = Math.max(min, Math.min(max, ratio))
   }
   const size = available * ratio
@@ -158,8 +156,15 @@ function visitLayout(
   const divider = { ...rect, [dimension]: DIVIDER_SIZE,
     [horizontal ? 'x' : 'y']: (horizontal ? rect.x : rect.y) + size }
   dividers.push({ id: node.id, axis: node.axis, rect: divider, parent: rect, ratio, min, max })
-  visitLayout(node.first, first, panes, dividers, splitRatios, clampMinimums)
-  visitLayout(node.second, second, panes, dividers, splitRatios, clampMinimums)
+  visitLayout(node.first, first, panes, dividers, splitRatios, clampMinimums, scrollAreas)
+  if (isSidebarStack(node)) {
+    const area = sidebarScrollArea(node, second)
+    scrollAreas.push(area)
+    const groups = layoutGroups(node.second)
+    const tileHeight = (area.contentHeight - (groups.length - 1) * DIVIDER_SIZE) / groups.length
+    groups.forEach((pane, index) => panes.push({ id: pane.id, tabs: pane.tabs ?? [pane.id],
+      rect: { ...second, y: second.y + index * (tileHeight + DIVIDER_SIZE), height: tileHeight } }))
+  } else visitLayout(node.second, second, panes, dividers, splitRatios, clampMinimums, scrollAreas)
 }
 
 /**
@@ -172,8 +177,9 @@ export function layoutGeometry(tree: ChatLayout | null, width: number, height: n
   const canvas = { x: 0, y: 0, width: Math.max(width, minimum.width), height: Math.max(height, minimum.height) }
   const panes: LayoutPane[] = []
   const dividers: LayoutDivider[] = []
-  if (tiled) visitLayout(tiled, canvas, panes, dividers, splitRatios, true)
-  return { panes, dividers, minimum }
+  const scrollAreas: SidebarScrollArea[] = []
+  if (tiled) visitLayout(tiled, canvas, panes, dividers, splitRatios, true, scrollAreas)
+  return { panes, dividers, minimum, scrollAreas }
 }
 
 /** A view pinned to one chat; unpinned views follow their tile and are absent here. */
@@ -220,15 +226,12 @@ export function readLayout(storage: Pick<Storage, 'getItem'>, key: string, windo
     const validate = (node: ChatLayout | null, depth = 0): boolean => {
       if (!node || depth > 32 || typeof node.id !== 'string' || !node.id || seen.has(node.id)) return false
       seen.add(node.id)
-      if (seen.size > 65) return false
       if (node.kind === 'pane') {
         if (node.float !== undefined && !validFloat(node.float)) return false
         if (node.id === BROWSER_PANE_ID) return node.tabs === undefined && !node.docked && !node.onTop
         if (node.onTop !== undefined && typeof node.onTop !== 'boolean') return false
         if (node.docked !== undefined && typeof node.docked !== 'boolean') return false
         if (node.dockNumber !== undefined && (!Number.isSafeInteger(node.dockNumber) || node.dockNumber < 1)) return false
-        if (node.floatPair !== undefined && (typeof node.floatPair !== 'string' || !node.floatPair
-          || isViewTabId(node.floatPair) || isReservedPaneId(node.floatPair))) return false
         if (node.notepadChat !== undefined && (typeof node.notepadChat !== 'string' || !node.notepadChat
           || isViewTabId(node.notepadChat) || isReservedPaneId(node.notepadChat))) return false
         const tabs = node.tabs ?? [node.id]
@@ -239,6 +242,7 @@ export function readLayout(storage: Pick<Storage, 'getItem'>, key: string, windo
         }
         return true
       }
+      if (node.sidebarStack !== undefined && typeof node.sidebarStack !== 'boolean') return false
       return (node.kind === 'split' && ['horizontal', 'vertical'].includes(node.axis)
         && Number.isFinite(node.ratio) && node.ratio >= 0.05 && node.ratio <= 0.95
         && validate(node.first, depth + 1) && validate(node.second, depth + 1))

@@ -9,9 +9,9 @@ import type { AppSettings } from '../../shared/types.js'
 const AUTO_COMPACT_TOKEN_LIMIT = 'model_auto_compact_token_limit'
 
 /** `-c key=value` pairs for `codex app-server`, derived from the app settings. */
-export function appServerConfigArgs(settings: Pick<AppSettings, 'chatMidTurnCompactTokens' | 'chatSeamlessRotation'>): string[] {
+export function appServerConfigArgs(settings: Pick<AppSettings, 'chatMidTurnCompactTokens' | 'chatSeamlessRotation'> & Partial<Pick<AppSettings, 'chatCursorBaselineEnabled'>>): string[] {
   const args: string[] = []
-  if (settings.chatSeamlessRotation) return args
+  if (settings.chatCursorBaselineEnabled || settings.chatSeamlessRotation) return args
   if (settings.chatMidTurnCompactTokens > 0) {
     args.push('-c', `${AUTO_COMPACT_TOKEN_LIMIT}=${Math.round(settings.chatMidTurnCompactTokens)}`)
   }

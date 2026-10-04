@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { emptyAgentRunStats, type AgentRun } from '../../shared/agent-runs.js'
 import { AgentRunStrip } from './agent-run-strip.tsx'
 
-const base: AgentRun = { chatId: 'c1', prompt: 'Go.', status: 'running', cycle: 3, maxCycles: 10, startedAt: 1, updatedAt: 1,
+const base: AgentRun = { chatId: 'c1', prompt: 'Go.', status: 'running', cycle: 3, maxCycles: 10, maxMinutes: null, activeMs: 0, activeSince: null, autonomous: true, startedAt: 1, updatedAt: 1,
   lastTurnEndedAt: null, reason: null, failures: 0, threadId: null, agentId: null, name: null, stats: emptyAgentRunStats() }
 const noop = async (): Promise<void> => {}
 
@@ -41,4 +41,18 @@ test('a run started from the library is named on the strip', () => {
   const html = renderToStaticMarkup(createElement(AgentRunStrip, { run, onPause: noop, onResume: noop, onStop: noop }))
   assert.match(html, /Repair agent running/)
   assert.doesNotMatch(html, /Agent running/)
+})
+
+test('a time limit shows the running time left, and a supervised run says so', () => {
+  const MINUTE = 60_000
+  const paused: AgentRun = { ...base, status: 'paused', reason: 'Paused by you', maxMinutes: 120, activeMs: 48 * MINUTE, autonomous: false }
+  const html = renderToStaticMarkup(createElement(AgentRunStrip, { run: paused, onPause: noop, onResume: noop, onStop: noop }))
+  assert.match(html, /1 h 12 min left/)
+  assert.match(html, /supervised/)
+  const spent: AgentRun = { ...paused, activeMs: 120 * MINUTE, reason: 'Reached 2 h', autonomous: true }
+  const done = renderToStaticMarkup(createElement(AgentRunStrip, { run: spent, onPause: noop, onResume: noop, onStop: noop }))
+  assert.match(done, /time limit reached/)
+  assert.match(done, /Reached 2 h/)
+  assert.doesNotMatch(done, /supervised/)
+  assert.doesNotMatch(renderToStaticMarkup(createElement(AgentRunStrip, { run: base, onPause: noop, onResume: noop, onStop: noop })), / left|supervised/)
 })

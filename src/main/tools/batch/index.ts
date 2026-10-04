@@ -176,7 +176,7 @@ function isRealInputCall(call: BatchCall): boolean {
 function isVerificationCall(call: BatchCall): boolean {
   const action = typeof call.arguments.action === 'string' ? call.arguments.action : ''
   if (call.namespace === 'closedai_app' && call.tool === 'state') return true
-  if (call.namespace === 'closedai_app' && call.tool === 'ui') return ['controls', 'wait_for'].includes(action)
+  if (call.namespace === 'closedai_app' && call.tool === 'ui') return ['controls', 'wait_for', 'console'].includes(action)
   if (call.namespace === 'browser_cdp' && call.tool === 'page') return action === 'inspect_page'
   if (call.namespace === 'browser_cdp' && call.tool === 'protocol') {
     return ['targets', 'events', 'requests', 'body'].includes(action)

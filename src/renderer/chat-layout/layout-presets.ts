@@ -1,4 +1,5 @@
-import { BROWSER_PANE_ID, DIVIDER_SIZE, type ChatLayout } from './layout-tree.js'
+import { sideChatTree } from './sidebar-stack.js'
+import { BROWSER_PANE_ID, DIVIDER_SIZE, withBrowser, type ChatLayout } from './layout-tree.js'
 
 export type LayoutPreset = { kind: 'browser-centre' } | { kind: 'grid'; count: number } | { kind: 'browser-side' } | { kind: 'browser-between' }
 export type CanvasSize = { width: number; height: number }
@@ -50,6 +51,148 @@ export function clampGridCount(count: number, size: CanvasSize): number {
   return Math.min(gridCapacity(size), Math.max(1, Math.floor(Number.isFinite(count) ? count : 1)))
 }
 
+/** Every expanded window (not minimized), in tree order; the browser is excluded. */
+export function assignExpandedGroups(tree: ChatLayout | null): TileGroup[] {
+  const groups: TileGroup[] = []
+  const visit = (node: ChatLayout): void => {
+    if (node.kind === 'split') { visit(node.first); visit(node.second); return }
+    if (node.id === BROWSER_PANE_ID || node.docked) return
+    const tabs = node.tabs ?? [node.id]
+    groups.push({ active: node.id, tabs: [...tabs] })
+  }
+  if (tree) visit(tree)
+  return groups
+}
+
+/** Put the group containing `focusId` first so it lands in the primary tile. */
+export function rotateGroupsToFront(groups: readonly TileGroup[], focusId: string): TileGroup[] {
+  const index = groups.findIndex((group) => group.active === focusId || group.tabs.includes(focusId))
+  if (index <= 0) return [...groups]
+  return [...groups.slice(index), ...groups.slice(0, index)]
+}
+
+export type FitLayoutBuilder = (groups: readonly TileGroup[], size: CanvasSize, newId: () => string) => ChatLayout
+
+/** Stable key for the expanded desk: which windows are out of the dock and whether the browser shows. */
+export function fitDeskSignature(groups: readonly TileGroup[], browserVisible: boolean): string {
+  return `${[...groups].map((group) => group.active).sort().join('\0')}\0${browserVisible ? '1' : '0'}`
+}
+
+function chatPairLayout(groups: readonly TileGroup[], size: CanvasSize, axis: 'horizontal' | 'vertical', newId: () => string): ChatLayout {
+  const nodes = groups.map(pane)
+  return strip(nodes, axis, axis === 'horizontal' ? size.width : size.height, newId)
+}
+
+function stripFits(count: number, size: CanvasSize, axis: 'horizontal' | 'vertical'): boolean {
+  if (count <= 1) return false
+  const extent = axis === 'horizontal' ? size.width : size.height
+  const tile = (extent - (count - 1) * DIVIDER_SIZE) / count
+  return tile >= (axis === 'horizontal' ? MIN_TILE.width : MIN_TILE.height)
+}
+
+/** Equal tiles in one row or one column (browser excluded). */
+export function chatStripLayout(groups: readonly TileGroup[], size: CanvasSize, axis: 'horizontal' | 'vertical', newId: () => string): ChatLayout {
+  return strip(groups.map(pane), axis, axis === 'horizontal' ? size.width : size.height, newId)
+}
+
+function sidebarStackFits(count: number, size: CanvasSize): boolean {
+  if (count < 3) return false
+  const leadWidth = Math.max(MIN_TILE.width, Math.round(size.width * 0.38))
+  const tailWidth = size.width - leadWidth - DIVIDER_SIZE
+  if (tailWidth < MIN_TILE.width) return false
+  return size.height >= MIN_TILE.height
+}
+
+/** One full-height chat beside the rest in a vertical column (when a single column of all chats cannot fit). */
+export function sidebarStackLayout(groups: readonly TileGroup[], size: CanvasSize, newId: () => string): ChatLayout {
+  const [lead, ...tail] = groups
+  const leadWidth = Math.max(MIN_TILE.width, Math.round(size.width * 0.38))
+  const tailTree = sideChatTree(tail.map((group) => ({ kind: 'pane', id: group.active, tabs: group.tabs })), newId)
+  return { kind: 'split', id: newId(), axis: 'horizontal', ratio: clampRatio(leadWidth / (size.width - DIVIDER_SIZE)),
+    first: pane(lead!), second: tailTree, sidebarStack: true }
+}
+
+export function canUseSidebarStackLayout(groupCount: number, size: CanvasSize): boolean {
+  return sidebarStackFits(groupCount, size)
+}
+
+/** Tall lead tile for `leadId`, remaining chats in a vertical stack (browser excluded from groups). */
+export function sidebarStackForLead(
+  groups: readonly TileGroup[],
+  size: CanvasSize,
+  leadId: string,
+  newId: () => string
+): ChatLayout | null {
+  if (!sidebarStackFits(groups.length, size)) return null
+  return sidebarStackLayout(rotateGroupsToFront(groups, leadId), size, newId)
+}
+
+function noBrowserDeskVariants(count: number, size: CanvasSize): FitLayoutBuilder[] {
+  const variants: FitLayoutBuilder[] = [(g, s, id) => gridLayout(g, s, id)]
+  if (stripFits(count, size, 'vertical')) variants.push((g, s, id) => chatStripLayout(g, s, 'vertical', id))
+  else if (sidebarStackFits(count, size)) variants.push((g, s, id) => sidebarStackLayout(g, s, id))
+  if (stripFits(count, size, 'horizontal')) variants.push((g, s, id) => chatStripLayout(g, s, 'horizontal', id))
+  return variants
+}
+
+/**
+ * Layout variants double-click cycles through for the same set of expanded windows. Two-window desks
+ * get horizontal vs vertical (or browser-between vs stacked-left); larger desks alternate presets.
+ */
+export function fitLayoutVariants(groups: readonly TileGroup[], size: CanvasSize, browserVisible: boolean): readonly FitLayoutBuilder[] {
+  const count = groups.length
+  if (count <= 1) return []
+  if (!browserVisible) {
+    if (count === 2) {
+      return [
+        (g, s, id) => chatPairLayout(g, s, 'horizontal', id),
+        (g, s, id) => chatPairLayout(g, s, 'vertical', id)
+      ]
+    }
+    return noBrowserDeskVariants(count, size)
+  }
+  if (count === 2) {
+    return [
+      (g, s, id) => browserBetweenLayout(g, s, id),
+      (g, s, id) => withBrowser(chatPairLayout(g, s, 'vertical', id))
+    ]
+  }
+  if (count === 3) {
+    return [
+      (g, s, id) => browserThreeLayout(g, s, id),
+      (g, s, id) => withBrowser(gridLayout(g, s, id))
+    ]
+  }
+  if (count === 4) {
+    return [
+      (g, s, id) => browserCentreLayout(g, s, id),
+      (g, s, id) => withBrowser(gridLayout(g, s, id))
+    ]
+  }
+  return [(g, s, id) => withBrowser(gridLayout(g, s, id))]
+}
+
+/** First variant from {@link fitLayoutVariants}; used in tests and one-shot fit helpers. */
+export function fitExpandedWindowsTree(tree: ChatLayout, size: CanvasSize, browserVisible: boolean, focusId: string, newId: () => string): ChatLayout | null {
+  const groups = rotateGroupsToFront(assignExpandedGroups(tree), focusId)
+  const variants = fitLayoutVariants(groups, size, browserVisible)
+  if (!variants.length) return null
+  return variants[0]!(groups, size, newId)
+}
+
+/** One chat, the browser, and two stacked chats; expects exactly three groups. */
+export function browserThreeLayout(groups: readonly TileGroup[], size: CanvasSize, newId: () => string): ChatLayout {
+  const [a, b, c] = groups.map(pane) as [ChatLayout, ChatLayout, ChatLayout]
+  const browserWidth = Math.round(size.width * BROWSER_CENTRE_RATIO)
+  const sideWidth = (size.width - browserWidth - 2 * DIVIDER_SIZE) / 2
+  const right = strip([b, c], 'vertical', size.height, newId)
+  const browserAndRight: ChatLayout = { kind: 'split', id: newId(), axis: 'horizontal',
+    ratio: clampRatio(browserWidth / (size.width - sideWidth - 2 * DIVIDER_SIZE)),
+    first: { kind: 'pane', id: BROWSER_PANE_ID }, second: right }
+  return { kind: 'split', id: newId(), axis: 'horizontal', ratio: clampRatio(sideWidth / (size.width - DIVIDER_SIZE)),
+    first: a, second: browserAndRight }
+}
+
 /** Each visible tile keeps its tab group; groups beyond `slots` merge into the last kept group. */
 export function assignGroups(tree: ChatLayout | null, slots: number): { groups: TileGroup[]; missing: number } {
   const groups: TileGroup[] = []
@@ -81,7 +224,7 @@ function strip(nodes: ChatLayout[], axis: 'horizontal' | 'vertical', extent: num
 const clampRatio = (ratio: number): number => Math.max(0.05, Math.min(0.95, Number.isFinite(ratio) ? ratio : 0.5))
 
 /** Rows of equal tiles; a short last row spreads its tiles across the full width. Browser excluded. */
-export function gridLayout(groups: TileGroup[], size: CanvasSize, newId: () => string): ChatLayout {
+export function gridLayout(groups: readonly TileGroup[], size: CanvasSize, newId: () => string): ChatLayout {
   const grid = chooseGrid(groups.length, size) ?? { cols: Math.ceil(Math.sqrt(groups.length)), rows: 0, tileWidth: 0, tileHeight: 0 }
   const rows: ChatLayout[] = []
   for (let start = 0; start < groups.length; start += grid.cols) {
@@ -91,7 +234,7 @@ export function gridLayout(groups: TileGroup[], size: CanvasSize, newId: () => s
 }
 
 /** Browser column in the middle, two stacked chats on each side; expects exactly four groups. */
-export function browserCentreLayout(groups: TileGroup[], size: CanvasSize, newId: () => string): ChatLayout {
+export function browserCentreLayout(groups: readonly TileGroup[], size: CanvasSize, newId: () => string): ChatLayout {
   const [a, b, c, d] = groups.map(pane) as [ChatLayout, ChatLayout, ChatLayout, ChatLayout]
   const browserWidth = Math.round(size.width * BROWSER_CENTRE_RATIO)
   const columnWidth = (size.width - browserWidth - 2 * DIVIDER_SIZE) / 2
@@ -111,7 +254,7 @@ export function browserSideLayout(groups: TileGroup[], newId: () => string): Cha
 }
 
 /** A chat on each side of the browser, the browser as wide as in the centre preset; expects exactly two groups. */
-export function browserBetweenLayout(groups: TileGroup[], size: CanvasSize, newId: () => string): ChatLayout {
+export function browserBetweenLayout(groups: readonly TileGroup[], size: CanvasSize, newId: () => string): ChatLayout {
   const [a, b] = groups.map(pane) as [ChatLayout, ChatLayout]
   const browserWidth = Math.round(size.width * BROWSER_CENTRE_RATIO)
   const sideWidth = (size.width - browserWidth - 2 * DIVIDER_SIZE) / 2

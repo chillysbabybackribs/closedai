@@ -15,6 +15,7 @@ export type TracePerformance = {
     compactionWaitMs: number
     afterDispatchMs: number
   } | null
+  rendererMs: number | null
   modelPasses: number
   tokens: TraceTokenTotals | null
   lastContext: { used: number; window: number; percent: number } | null
@@ -42,6 +43,7 @@ export function summarizeTracePerformance(
   entries: TraceEntry[],
   durationMs: number | null
 ): TracePerformance {
+  let rendererMs: number | null = null
   let modelPasses = 0
   let tokens: TraceTokenTotals | null = null
   let lastContext: TracePerformance['lastContext'] = null
@@ -55,6 +57,10 @@ export function summarizeTracePerformance(
   let ipc: TracePerformance['ipc'] = null
 
   for (const entry of entries) {
+    if (entry.label === 'response.renderer') {
+      const value = parseRecord(entry.detail)?.rendererMs
+      if (typeof value === 'number' && Number.isFinite(value) && value >= 0) rendererMs ??= value
+    }
     if (entry.label === 'response.first_text') response ??= responseTiming(entry.detail)
     if (entry.label === 'chat.ipc') ipc = ipcTiming(entry.detail) ?? ipc
     if (entry.kind === 'event') transcriptEvents += 1
@@ -91,6 +97,7 @@ export function summarizeTracePerformance(
 
   return {
     response,
+    rendererMs,
     modelPasses,
     tokens,
     lastContext,

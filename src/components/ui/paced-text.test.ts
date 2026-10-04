@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
+import { usePacedText } from './paced-text.js'
 
 import {
   extendsShownText,
@@ -105,4 +108,11 @@ test('appended text extends the shown prefix; replaced text does not', () => {
   assert.equal(extendsShownText('draft answer', 'final answer', 5), false)
   // Only the displayed prefix has to survive: unseen text may be rewritten freely.
   assert.equal(extendsShownText('draft answer', 'draft reply', 6), true)
+})
+
+
+test('instant streaming renders all text on the first render while pacing stays opt-in', () => {
+  const View = ({ instant }: { instant: boolean }) => createElement('span', null, usePacedText('Immediate answer', false, instant))
+  assert.equal(renderToStaticMarkup(createElement(View, { instant: true })), '<span>Immediate answer</span>')
+  assert.equal(renderToStaticMarkup(createElement(View, { instant: false })), '<span></span>')
 })

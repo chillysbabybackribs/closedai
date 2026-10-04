@@ -1,3 +1,5 @@
+import type { ResponsePaint, ResponseSample } from '../../shared/performance.js'
+import { summarizeResponsePerformance } from './response-performance.js'
 import type { ChatEvent, ChatTranscriptItem } from '../../shared/chat.js'
 import type { TraceInput, TraceScope } from './trace-log.js'
 
@@ -17,11 +19,15 @@ type Request = {
   firstText: boolean
   firstTextAt: number | null
   stats: TurnStats
+  baselineEnabled: boolean
+  sample: ResponseSample | null
   countedItems: Set<string>
 }
 
 /** Main-process receipt timing, not provider token-generation or renderer-paint timing. */
 export class ResponseLatency {
+  private readonly samples: ResponseSample[] = []
+  private readonly capacity = 200
   private readonly requests = new Map<string, Request>()
 
   constructor(
@@ -29,7 +35,7 @@ export class ResponseLatency {
     private readonly now: () => number = () => performance.now()
   ) {}
 
-  begin(scope: TraceScope): (() => void) | null {
+  begin(scope: TraceScope, baselineEnabled = false): (() => void) | null {
     if (!scope.paneId || this.requests.has(scope.paneId)) return null
     // Abandoned requests must not turn this diagnostic into an unbounded session store.
     if (this.requests.size >= 256) this.requests.delete(this.requests.keys().next().value!)
@@ -37,6 +43,7 @@ export class ResponseLatency {
       scope: { ...scope, turnId: null }, startedAt: this.now(), dispatchedAt: null,
       compactionWaitMs: 0, assistantIds: new Set(), firstText: false, firstTextAt: null,
       stats: { toolCalls: 0, commands: 0, commandMs: 0, backgroundTasks: 0 },
+      baselineEnabled: scope.provider === 'cursor' || baselineEnabled, sample: null,
       countedItems: new Set()
     }
     const paneId = scope.paneId
@@ -102,6 +109,7 @@ export class ResponseLatency {
 
   clear(): void {
     this.requests.clear()
+    this.samples.length = 0
   }
 
   forget(paneId: string): void {
@@ -112,6 +120,7 @@ export class ResponseLatency {
     request.firstText = true
     request.firstTextAt = this.now()
     request.assistantIds.clear()
+    this.sampleFor(request)
     this.report(request, 'response.first_text')
   }
 
@@ -138,8 +147,42 @@ export class ResponseLatency {
     }
   }
 
+  summary() {
+    return summarizeResponsePerformance(this.samples, this.capacity)
+  }
+
+  /** Renderer-local receipt → first visible frame estimate, reported once per live turn. */
+  paint(value: ResponsePaint): void {
+    if (!Number.isFinite(value.rendererMs) || value.rendererMs < 0 || value.rendererMs > 120_000) return
+    const sample = [...this.samples].reverse().find((row) => row.paneId === value.paneId && row.turnId === value.turnId)
+    if (!sample || sample.rendererMs !== null || sample.firstTextMs === null) return
+    sample.rendererMs = value.rendererMs
+    this.record({ paneId: value.paneId, provider: sample.provider, turnId: value.turnId }, {
+      kind: 'turn', label: 'response.renderer', summary: `Visible text after ${Math.round(value.rendererMs)}ms in renderer`,
+      detail: { rendererMs: value.rendererMs, measurement: 'renderer receipt → two animation frames after visible text commit; estimate, not display hardware timing' }
+    })
+  }
+
+  private sampleFor(request: Request): ResponseSample | null {
+    if (request.sample) return request.sample
+    if (!request.scope.paneId || !request.scope.provider || request.dispatchedAt === null) return null
+    const sample: ResponseSample = {
+      paneId: request.scope.paneId, turnId: request.scope.turnId, provider: request.scope.provider,
+      baselineEnabled: request.baselineEnabled,
+      preparationMs: Math.max(0, request.dispatchedAt - request.startedAt),
+      firstTextMs: request.firstTextAt === null ? null : Math.max(0, request.firstTextAt - request.startedAt),
+      totalMs: null, rendererMs: null
+    }
+    request.sample = sample
+    this.samples.push(sample)
+    if (this.samples.length > this.capacity) this.samples.shift()
+    return sample
+  }
+
   private reportTurnComplete(request: Request): void {
     const elapsedMs = Math.max(0, this.now() - request.startedAt)
+    const sample = this.sampleFor(request)
+    if (sample) sample.totalMs = elapsedMs
     const preparationMs = Math.max(0, request.dispatchedAt! - request.startedAt)
     const firstTextMs = request.firstTextAt === null ? null : Math.max(0, request.firstTextAt - request.startedAt)
     this.record(request.scope, {
@@ -164,6 +207,10 @@ export class ResponseLatency {
 
   private report(request: Request, label: 'response.first_text' | 'response.no_text'): void {
     const elapsedMs = Math.max(0, this.now() - request.startedAt)
+    if (label === 'response.no_text') {
+      const sample = this.sampleFor(request)
+      if (sample) sample.totalMs = elapsedMs
+    }
     const preparationMs = Math.max(0, request.dispatchedAt! - request.startedAt)
     this.record(request.scope, {
       kind: 'turn', label,

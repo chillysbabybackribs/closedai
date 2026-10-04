@@ -4,6 +4,8 @@ import type { ProjectSwitchRequest, ProjectSwitchStatus } from '../../../shared/
 import type { ChatAttachment, ChatSnapshot, ChatThreadSummary } from '../../../shared/chat.js'
 import type { BrowserDownload, BrowserState, BrowserTabInfo } from '../../../shared/types.js'
 import type { AppMenuRunResult } from '../../../shared/app-menu-run.js'
+import type { ConsoleFilter, ConsoleListing } from '../../browser-network/console-log.js'
+import type { BuildFreshness } from '../../renderer-build-reload.js'
 
 // Three hosts back the closedai_app namespace: deterministic state and commands come from the
 // main process (the same services the renderer's IPC uses); the ui host drives real controls in
@@ -23,7 +25,16 @@ export type AppClickTarget = AppUiTarget & { x?: number; y?: number }
 export type AppTypeTarget = AppUiTarget & { text: string; clear: boolean }
 export type AppScrollTarget = AppUiTarget & { deltaX: number; deltaY: number }
 
-export type AppControlFilter = { surface?: string; query?: string; maxControls: number }
+export type AppControlFilter = { surface?: string; query?: string; maxControls: number; layout?: boolean }
+
+/** Viewport CSS-pixel layout facts, only when controls is asked for layout. */
+export type AppControlLayout = {
+  bounds: { x: number; y: number; width: number; height: number }
+  /** Content larger than the box, in CSS px: clipped, truncated, or scrolling. */
+  overflow?: { x: number; y: number }
+  /** Part of the box lies outside the window viewport. */
+  partlyOffscreen?: boolean
+}
 
 export type AppControl = {
   id: string
@@ -40,6 +51,15 @@ export type AppControl = {
   pressed?: boolean
   current?: boolean
   value?: string
+  bounds?: AppControlLayout['bounds']
+  overflow?: AppControlLayout['overflow']
+  partlyOffscreen?: boolean
+}
+
+/** Where one resolved target sits in its window, for cropping a capture to it. */
+export type AppTargetBounds = {
+  bounds: AppControlLayout['bounds']
+  viewport: { width: number; height: number }
 }
 
 export type AppControlsResult = {
@@ -91,8 +111,12 @@ export type AppUiHost = {
   revealChatTab(paneId: string): Promise<void>
   /** Show the browser pane; it keeps its saved position and tabs. */
   revealBrowser(): Promise<void>
+  /** Open a blank chat in its own desk window, matching File → New chat / layout.card-new-chat. */
+  newChatWindow(): Promise<{ paneId: string }>
   /** Run an application menu row by key through the menu's own handler and eligibility. */
   runMenu(key: string, callerPaneId: string | null): Promise<AppMenuRunResult>
+  /** The app shell's console for one app window (`tabId` is the window id: main or a detached id). */
+  consoleMessages(filter: ConsoleFilter): ConsoleListing
 }
 
 export type AppStateSection = 'workspace' | 'chat' | 'browser' | 'downloads' | 'window'
@@ -138,8 +162,8 @@ export type AppBrowserTabRequest = {
 
 /**
  * Drive the agent run of a pane: start attaches one, pause/resume/stop act on the existing run.
- * A start names a saved library agent (`agentId`, prompt and cap come from the entry unless
- * overridden) or carries its own prompt; one of the two is required.
+ * A start names a saved library agent (`agentId`; prompt, limits, and autonomy come from the entry
+ * unless overridden) or carries its own prompt; one of the two is required.
  */
 export type AppAgentRunRequest =
   | { op: 'start'; paneId: string; agentId: string | null; options: Partial<AgentRunStartOptions> }
@@ -149,6 +173,8 @@ export type AppAgentRunRequest =
 
 export type AppCommandHost = {
   state(sections: readonly AppStateSection[], paneId: string | undefined, callerPaneId: string | null): Record<string, unknown>
+  /** Whether the running process matches the code on disk (state.workspace.build); null when unknown. */
+  buildFreshness(): Promise<BuildFreshness | null>
   selectedPaneId(): string
   newChat(): Promise<{ paneId: string }>
   queueProjectSwitch(request: ProjectSwitchRequest, signal: AbortSignal): Promise<ProjectSwitchStatus>

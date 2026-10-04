@@ -12,6 +12,14 @@ export type WorkspacePaneActions = {
   openFile: (href: string, options?: LocalFileOpenOptions) => Promise<void>
   /** Add and select a fresh chat tab in the tile that owns `paneId`. */
   newChat: (paneId: string) => void
+  /** A blank chat in a window of its own (File → New chat). */
+  newChatWindow: () => void
+  /** Replace `paneId` with a digest-seeded chat on a fresh context window. */
+  continueChat: (paneId: string) => Promise<void>
+  /** A side card in the persistent stack, or a short tile that can enter that arrangement. */
+  canPromoteStackMonitorLead: (paneId: string) => boolean
+  /** Swap a side card with the main card, or enter sidebar-stack; never changes pin status. */
+  promoteStackMonitorIfCompact: (paneId: string) => void
   /** Focus the workspace Agents tab, creating it beside `anchorPaneId` when missing. */
   openAgentsView: (anchorPaneId: string) => void
   /** Show an open chat tab, adding it to the tile that owns `anchorPaneId` when needed. */

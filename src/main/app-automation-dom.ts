@@ -2,11 +2,17 @@ import type {
   AppConditionProbe,
   AppControl,
   AppControlFilter,
+  AppControlLayout,
   AppUiState,
   AppUiTarget,
   AppWaitOptions
 } from './tools/app/host.js'
-import { APP_REVEAL_BROWSER_EVENT, APP_REVEAL_CHAT_TAB_EVENT, VIEW_TAB_PREFIX } from '../shared/app-ui-events.js'
+import {
+  APP_NEW_CHAT_WINDOW_EVENT,
+  APP_REVEAL_BROWSER_EVENT,
+  APP_REVEAL_CHAT_TAB_EVENT,
+  VIEW_TAB_PREFIX
+} from '../shared/app-ui-events.js'
 import { APP_MENU_RUN_EVENT, type AppMenuRunDetail } from '../shared/app-menu-run.js'
 
 // Renderer-side expressions for the ui host. Every function below that runs in the page is
@@ -32,6 +38,7 @@ export function controlsExpression(filter: AppControlFilter): string {
   return `(() => {
     ${helpers()}
     const filter = ${JSON.stringify(filter)};
+    const layoutOf = (${layoutOfElement.toString()});
     const query = (filter.query || '').toLowerCase();
     const surfaces = Array.from(new Set(Array.from(document.querySelectorAll('[data-ui-surface]'))
       .filter(visible).map((element) => element.getAttribute('data-ui-surface'))));
@@ -48,7 +55,7 @@ export function controlsExpression(filter: AppControlFilter): string {
         if (!haystack.includes(query)) continue;
       }
       total += 1;
-      if (controls.length < filter.maxControls) controls.push(item);
+      if (controls.length < filter.maxControls) controls.push(filter.layout ? Object.assign(item, layoutOf(element)) : item);
     }
     return { surfaces, controls, total, omitted: total - controls.length };
   })()`
@@ -59,7 +66,7 @@ export function uiStateExpression(): string {
   return `(() => {
     ${helpers()}
     const byId = (id) => Array.from(document.querySelectorAll('[data-ui="' + id + '"]'))
-      .find((element) => visible(element) && (!element.closest('[data-pane-id]') || element.closest('[data-pane-id]').getAttribute('data-selected') === 'true')) || null;
+      .find((element) => visible(element) && (!element.closest('[data-pane-id][data-selected]') || element.closest('[data-pane-id][data-selected]').getAttribute('data-selected') === 'true')) || null;
     // Portalled popovers (Radix menu/listbox content) carry no data-ui; name them by their trigger,
     // else by the labelled container around them (a cmdk listbox only says "Suggestions").
     const labelledBy = (element) => {
@@ -122,25 +129,38 @@ export function targetClickExpression(target: AppUiTarget): string {
 }
 
 export function targetTypeExpression(target: AppUiTarget, clear: boolean): string {
-  return `(() => {
+  // Async so a renderer throw rejects with its message; a sync throw reaches main as "Script failed to execute".
+  return `(async () => {
     ${helpers()}
     return (${prepareSelectedType.toString()})(select(${JSON.stringify(target)}, visible, nameOf), ${clear});
   })()`
 }
 
 export function targetValueExpression(target: AppUiTarget): string {
-  return `(() => {
+  return `(async () => {
     ${helpers()}
     return (${readSelectedValue.toString()})(select(${JSON.stringify(target)}, visible, nameOf));
   })()`
 }
 
 export function targetScrollExpression(target: AppUiTarget): string {
-  return `(() => {
+  return `(async () => {
     ${helpers()}
     const element = select(${JSON.stringify(target)}, visible, nameOf);
     element.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     return { scrolled: 'into_view', control: element.getAttribute('data-ui') || undefined };
+  })()`
+}
+
+/** The resolved target's box and the viewport it sits in; capture scales one onto the other. */
+export function targetBoundsExpression(target: AppUiTarget): string {
+  return `(async () => {
+    ${helpers()}
+    const element = select(${JSON.stringify(target)}, visible, nameOf);
+    return {
+      bounds: (${layoutOfElement.toString()})(element).bounds,
+      viewport: { width: window.innerWidth, height: window.innerHeight }
+    };
   })()`
 }
 
@@ -226,7 +246,8 @@ function selectRenderedElement(target: AppUiTarget, visible: Visible, nameOf: Na
     if (!target.selector && /^(chat|composer)\./.test(target.control ?? '')) {
       // Agent strip controls sit in a visible tile that may not carry data-selected=true in multi-tab headers.
       if (/^chat\.agent-/.test(target.control ?? '')) return true
-      const pane = element.closest?.('[data-pane-id]')
+      // The layout tile carries data-selected; the chat-pane aside inside it also has data-pane-id but no selection.
+      const pane = element.closest?.('[data-pane-id][data-selected]')
       if (pane && pane.getAttribute('data-selected') !== 'true') return false
     }
     return true
@@ -238,7 +259,7 @@ function selectRenderedElement(target: AppUiTarget, visible: Visible, nameOf: Na
     if (all.length === 0) throw new Error(`Control ${where} is not rendered now (open its surface or menu first)`)
     if (rendered.length === 0) {
       const inOtherPane = all.find((element) => {
-        const pane = element.closest?.('[data-pane-id]')
+        const pane = element.closest?.('[data-pane-id][data-selected]')
         return pane && pane.getAttribute('data-selected') !== 'true'
       })
       if (inOtherPane) {
@@ -351,6 +372,19 @@ function viewportVisible(element: Element): boolean {
   ))
 }
 
+function layoutOfElement(element: Element): AppControlLayout {
+  const rect = element.getBoundingClientRect()
+  const layout: AppControlLayout = {
+    bounds: { x: Math.round(rect.left), y: Math.round(rect.top), width: Math.round(rect.width), height: Math.round(rect.height) }
+  }
+  // Content wider or taller than its box is the usual "does not fit" bug (truncation, clipping, stray scroll).
+  const overflowX = element.clientWidth > 0 ? element.scrollWidth - element.clientWidth : 0
+  const overflowY = element.clientHeight > 0 ? element.scrollHeight - element.clientHeight : 0
+  if (overflowX > 1 || overflowY > 1) layout.overflow = { x: Math.max(0, overflowX), y: Math.max(0, overflowY) }
+  if (rect.left < 0 || rect.top < 0 || rect.right > window.innerWidth || rect.bottom > window.innerHeight) layout.partlyOffscreen = true
+  return layout
+}
+
 function accessibleName(element: Element): string {
   const labelledBy = element.getAttribute('aria-labelledby')
   const labelledText = labelledBy?.split(/\s+/)
@@ -405,6 +439,19 @@ export function revealChatTabExpression(paneId: string): string {
 /** Ask the renderer to show the browser pane in its saved position, the way the dock's Browser icon does. */
 export function revealBrowserExpression(): string {
   return `window.dispatchEvent(new CustomEvent(${JSON.stringify(APP_REVEAL_BROWSER_EVENT)}))`
+}
+
+/** Ask the renderer to run the same new-chat-window path as File → New chat; resolves with the new pane id. */
+export function newChatWindowExpression(): string {
+  return `(() => new Promise((resolve, reject) => {
+    const detail = { settle: (result) => {
+      if (result instanceof Error) reject(result)
+      else if (result && typeof result === 'object' && 'message' in result && !('paneId' in result)) reject(result)
+      else resolve(result)
+    } }
+    window.dispatchEvent(new CustomEvent(${JSON.stringify(APP_NEW_CHAT_WINDOW_EVENT)}, { detail }))
+    if (!detail.started) reject(new Error('The app window has no chat workspace yet; open a chat first'))
+  }))()`
 }
 
 /** Run an application menu row by key; the renderer's listener fills the event detail synchronously. */

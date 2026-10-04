@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict'
 import { EventEmitter } from 'node:events'
 import test from 'node:test'
-import { AGENT_RUN_CONTINUE_DELAY_MS, AGENT_RUN_MAX_FAILURES, AGENT_RUN_RETRY_DELAYS_MS, AGENT_RUN_TURN_START_TIMEOUT_MS, emptyAgentRunStats } from '../../shared/agent-runs.js'
+import {
+  AGENT_RUN_CONTINUE_DELAY_MS, AGENT_RUN_MAX_FAILURES, AGENT_RUN_RETRY_DELAYS_MS, AGENT_RUN_REVIEW_REASON, AGENT_RUN_TURN_START_TIMEOUT_MS,
+  agentRunRemainingMs, emptyAgentRunStats
+} from '../../shared/agent-runs.js'
 import type { ChatEvent, ChatSnapshot } from '../../shared/chat.js'
 import { ChatStore } from '../chat-store/chat-store.js'
 import { AGENT_RUN_RELAUNCH_REASON, AgentRunService, type AgentRunChatHost } from './agent-run-service.js'
@@ -242,7 +245,8 @@ test('runs that were running at quit come back paused; archiving pauses and hide
   const h = harness()
   const id = openChat(h)
   const at = Date.now()
-  h.store.update(id, { agentRun: { chatId: id, prompt: 'Go.', status: 'running', cycle: 4, maxCycles: null, startedAt: at, updatedAt: at,
+  h.store.update(id, { agentRun: { chatId: id, prompt: 'Go.', status: 'running', cycle: 4, maxCycles: null, maxMinutes: null, activeMs: 0,
+    activeSince: at, autonomous: true, startedAt: at, updatedAt: at,
     lastTurnEndedAt: at, reason: null, failures: 0, threadId: 'thread-a', agentId: null, name: null, stats: emptyAgentRunStats() } })
   const events: number[] = []
   h.service.on('change', (event: { runs: unknown[] }) => events.push(event.runs.length))
@@ -335,5 +339,138 @@ test('the run tallies steps, edits, failures, replies, rotations, turn time and 
   h.turn(id, { thread: 'thread-b' })
   assert.equal(h.service.get(id)?.stats.rotations, 1, 'a thread change at turn start is a rotation')
   assert.equal(h.service.get(id)?.stats.steps, 3, 'the tallies survive across cycles')
+  h.service.stop()
+})
+
+const MINUTE = 60_000
+
+test('a time limit lets the turn in flight finish, then pauses with the reason; only running time counts', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1_000 })
+  const h = harness()
+  h.service.start()
+  const id = openChat(h)
+  await h.service.startRun(id, { prompt: 'Go.', maxMinutes: 30 })
+  h.emit(id, { type: 'turn', turnId: 't1' })
+  t.mock.timers.tick(10 * MINUTE)
+  await h.service.pauseRun(id, 'Paused by you', { interrupt: true })
+  h.emit(id, { type: 'turn', turnId: null })
+  assert.equal(h.service.get(id)?.activeMs, 10 * MINUTE)
+  t.mock.timers.tick(90 * MINUTE)
+  assert.equal(h.service.get(id)?.reason, 'Paused by you', 'a paused run is not timed out')
+  assert.equal(agentRunRemainingMs(h.service.get(id)!, Date.now()), 20 * MINUTE, 'the pause cost nothing')
+  await h.service.resumeRun(id)
+  t.mock.timers.tick(0)
+  await h.flush()
+  // One long turn outlasts the limit: it is not interrupted, and its end pauses the run.
+  h.emit(id, { type: 'turn', turnId: 't2' })
+  h.emit(id, { type: 'item', item: { type: 'assistant', id: 'a2', turnId: 't2', text: 'working' } as never })
+  t.mock.timers.tick(45 * MINUTE)
+  await h.flush()
+  assert.equal(h.service.get(id)?.status, 'running', 'the turn in flight is left to finish')
+  assert.deepEqual(h.interrupted, [id], 'only the user\'s own pause interrupted anything')
+  h.emit(id, { type: 'turn', turnId: null })
+  const paused = h.service.get(id)!
+  assert.equal(paused.status, 'paused')
+  assert.equal(paused.reason, 'Reached 30 min')
+  t.mock.timers.tick(AGENT_RUN_CONTINUE_DELAY_MS)
+  await h.flush()
+  assert.equal(h.sent.length, 2, 'no cycle follows the limit')
+  // Resume after the limit is a fresh allowance, not an instant re-pause.
+  await h.service.resumeRun(id)
+  assert.equal(agentRunRemainingMs(h.service.get(id)!, Date.now()), 30 * MINUTE)
+  h.service.stop()
+})
+
+test('a time limit that runs out between turns pauses at once, and a failed turn out of time is not retried', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1_000 })
+  const h = harness()
+  h.service.start()
+  const id = openChat(h)
+  await h.service.startRun(id, { prompt: 'Go.', maxMinutes: 1 })
+  h.turn(id, { empty: true })
+  assert.match(h.service.get(id)?.reason ?? '', /^Retry 1/)
+  // The limit runs out inside the retry backoff: the deadline pauses the run, so the retry is never sent.
+  t.mock.timers.tick(MINUTE)
+  await h.flush()
+  assert.equal(h.service.get(id)?.status, 'paused')
+  assert.equal(h.service.get(id)?.reason, 'Reached 1 min')
+  assert.deepEqual(h.interrupted, [])
+  t.mock.timers.tick(AGENT_RUN_RETRY_DELAYS_MS[0]! * 4)
+  await h.flush()
+  assert.equal(h.sent.length, 1)
+  const other = openChat(h, 'chat-2')
+  await h.service.startRun(other, { prompt: 'Go.', maxMinutes: 1 })
+  h.emit(other, { type: 'turn', turnId: 'long' })
+  t.mock.timers.tick(5 * MINUTE)
+  h.emit(other, { type: 'turn', turnId: null })
+  assert.equal(h.service.get(other)?.reason, 'Reached 1 min', 'an empty turn that ran out the clock stops the run instead of retrying')
+  assert.equal(h.service.get(other)?.failures, 0)
+  h.service.stop()
+})
+
+test('a relaunch banks the running time up to the last write and keeps the limit', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 50 * MINUTE })
+  const h = harness()
+  const id = openChat(h)
+  h.store.update(id, { agentRun: { chatId: id, prompt: 'Go.', status: 'running', cycle: 2, maxCycles: null, maxMinutes: 60, activeMs: 5 * MINUTE,
+    activeSince: 10 * MINUTE, autonomous: true, startedAt: 1, updatedAt: 25 * MINUTE,
+    lastTurnEndedAt: null, reason: null, failures: 0, threadId: null, agentId: null, name: null, stats: emptyAgentRunStats() } })
+  h.service.start()
+  const run = h.service.get(id)!
+  assert.equal(run.status, 'paused')
+  assert.equal(run.activeMs, 20 * MINUTE, 'five banked plus the fifteen on record; the time the app was closed is not counted')
+  assert.equal(run.activeSince, null)
+  assert.equal(agentRunRemainingMs(run, Date.now()), 40 * MINUTE)
+  h.service.stop()
+})
+
+test('a supervised run pauses after every cycle and waits for Resume; a turn the user types is not a cycle', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const h = harness()
+  h.service.start()
+  const id = openChat(h)
+  await h.service.startRun(id, { prompt: 'Go.', autonomous: false })
+  assert.match(h.sent[0]!, /^chat-1:Go\.\n\nRun settings[\s\S]*supervised/, 'the agent is told its own settings')
+  h.turn(id)
+  assert.equal(h.service.get(id)?.status, 'paused')
+  assert.equal(h.service.get(id)?.reason, AGENT_RUN_REVIEW_REASON)
+  t.mock.timers.tick(AGENT_RUN_CONTINUE_DELAY_MS * 4)
+  await h.flush()
+  assert.equal(h.sent.length, 1, 'nothing is sent until the user resumes')
+  // The user asks a question while it waits, then resumes before the answer ends.
+  h.emit(id, { type: 'turn', turnId: 'user-turn' })
+  await h.service.resumeRun(id)
+  t.mock.timers.tick(0)
+  await h.flush()
+  h.emit(id, { type: 'item', item: { type: 'assistant', id: 'u1', turnId: 'user-turn', text: 'answer' } as never })
+  h.emit(id, { type: 'turn', turnId: null })
+  assert.equal(h.service.get(id)?.status, 'running', 'the user turn did not use up the resume')
+  t.mock.timers.tick(AGENT_RUN_CONTINUE_DELAY_MS)
+  await h.flush()
+  assert.equal(h.sent.length, 2)
+  assert.match(h.sent[1]!, /^chat-1:Cycle 2\./)
+  h.turn(id)
+  assert.equal(h.service.get(id)?.reason, AGENT_RUN_REVIEW_REASON)
+  assert.equal(h.service.get(id)?.cycle, 2)
+  h.service.stop()
+})
+
+test('limits are validated at start, and a rotation re-sends the settings with the instructions', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1_000 })
+  const h = harness()
+  h.service.start()
+  const id = openChat(h)
+  await assert.rejects(h.service.startRun(id, { prompt: 'Go.', maxMinutes: 0 }), /maxMinutes/)
+  await assert.rejects(h.service.startRun(id, { prompt: 'Go.', maxMinutes: 1.5 }), /maxMinutes/)
+  await h.service.startRun(id, { prompt: 'Go.', maxCycles: 9, maxMinutes: 120 })
+  assert.match(h.sent[0]!, /cycle 9 ends[\s\S]*running for 2 h, the app lets the turn in flight finish[\s\S]*2 h left[\s\S]*autonomous/)
+  h.turn(id, { thread: 'thread-a' })
+  t.mock.timers.tick(30 * MINUTE)
+  await h.flush()
+  assert.match(h.sent[1]!, /^chat-1:Cycle 2\..*The time limit has 1 h 30 min left\.$/)
+  h.turn(id, { thread: 'thread-b' })
+  t.mock.timers.tick(AGENT_RUN_CONTINUE_DELAY_MS)
+  await h.flush()
+  assert.match(h.sent[2]!, /context was rotated[\s\S]*Go\.\n\nRun settings[\s\S]*1 h 30 min left[\s\S]*Start cycle 3 now/)
   h.service.stop()
 })

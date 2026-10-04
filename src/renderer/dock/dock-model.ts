@@ -72,23 +72,24 @@ export function saveDockPrefs(storage: Pick<Storage, 'setItem'>, prefs: DockPref
 
 /** Floating dock band: 68 px targets in an 82 px wrapper, with 7 px above and below. */
 export const DOCK_HEIGHT = 96
-/** Pointer-hit and hide band for the auto-revealing footer. */
+/** Layout reserve for the footer overlay (browser bounds, canvas math). */
 export const DOCK_REST = DOCK_HEIGHT
-export const DOCK_REACH = DOCK_HEIGHT + 4
-/** The entire dock-height band at the bottom of the window reveals the dock. */
-export const REVEAL_EDGE = DOCK_HEIGHT
-/** Above this the pointer has left the dock, so a shown dock starts its hide delay. */
-export const HOLD_BAND = DOCK_REACH + 16
-export const HIDE_DELAY_MS = 380
+export const HIDE_DELAY_MS = 220
+
+export type DockBounds = { left: number; top: number; right: number; bottom: number }
+
+export function pointerInDockBounds(x: number, y: number, bounds: DockBounds | null): boolean {
+  if (!bounds) return false
+  return x >= bounds.left && x <= bounds.right && y >= bounds.top && y <= bounds.bottom
+}
 
 /**
- * What the pointer at `y` (window pixels, `height` tall) asks of an auto-hiding dock: `show` at the
- * bottom edge, `hold` near a shown dock, `leave` anywhere else.
+ * Whether an auto-hiding dock should stay open for the pointer: only inside the painted control
+ * cluster (`dock-bar-controls`), not the full window width or footer band.
  */
-export function pointerReveal(y: number, height: number, shown: boolean): 'show' | 'hold' | 'leave' {
-  if (y >= height - REVEAL_EDGE) return 'show'
-  if (shown && y >= height - HOLD_BAND) return 'hold'
-  return 'leave'
+export function pointerReveal(x: number, y: number, bounds: DockBounds | null, shown: boolean): 'show' | 'hold' | 'leave' {
+  if (!pointerInDockBounds(x, y, bounds)) return 'leave'
+  return shown ? 'hold' : 'show'
 }
 
 export type TrayAppId = Extract<AppIconId, 'chats' | 'browser' | 'video' | 'files' | 'note' | 'agents' | 'saved-sites' | 'downloads'>

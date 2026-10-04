@@ -1,10 +1,13 @@
-import { AGENT_RUN_MAX_FAILURES, type AgentRun } from '../../shared/agent-runs.js'
+import {
+  AGENT_RUN_MAX_FAILURES, AGENT_RUN_REVIEW_REASON, agentRunLimitReached, describeAgentRunRemaining, type AgentRun
+} from '../../shared/agent-runs.js'
 import { agentRunBrief, type AgentRunBriefLine } from './agent-run-brief.js'
 
 // What the Agents view shows: one card per run, ordered so runs that need the
-// user (an approval, a failure pause, a finished limit) come first. Pure so the rules are testable.
+// user (an approval, a failure pause, a supervised run waiting for review, a finished limit) come
+// first. Pure so the rules are testable.
 
-export type DockTileState = 'running' | 'retrying' | 'paused' | 'finished' | 'failed' | 'approval'
+export type DockTileState = 'running' | 'retrying' | 'paused' | 'finished' | 'failed' | 'approval' | 'review'
 
 /** The slice of a chat row the overview reads: whether a turn is live and what it is doing. */
 export type DockChatActivity = { paneId: string; running: boolean; activity: string | null }
@@ -19,6 +22,8 @@ export type DockTile = {
   /** The run's own status, which decides Pause versus Resume. */
   running: boolean
   cycleLabel: string
+  /** Running time left under the run's time limit ("42 min left"); null without one. */
+  timeLabel: string | null
   detail: string
   /** Set while the tile needs the user; changes when the reason changes, so it re-announces. */
   attentionKey: string | null
@@ -29,17 +34,18 @@ export type DockTile = {
 /** How each state reads in the run card. */
 export const DOCK_STATE_LABEL: Record<DockTileState, string> = {
   running: 'Running', retrying: 'Retrying', paused: 'Paused', finished: 'Finished',
-  failed: 'Paused by failures', approval: 'Needs your approval'
+  failed: 'Paused by failures', approval: 'Needs your approval', review: 'Waiting for you'
 }
 
-const ATTENTION: ReadonlySet<DockTileState> = new Set(['approval', 'failed', 'finished'])
-const ORDER: Record<DockTileState, number> = { approval: 0, failed: 1, finished: 2, retrying: 3, running: 4, paused: 5 }
+const ATTENTION: ReadonlySet<DockTileState> = new Set(['approval', 'failed', 'review', 'finished'])
+const ORDER: Record<DockTileState, number> = { approval: 0, failed: 1, review: 2, finished: 3, retrying: 4, running: 5, paused: 6 }
 
 export function dockTileState(run: AgentRun, approvals: number): DockTileState {
   if (approvals > 0) return 'approval'
   if (run.status === 'running') return run.failures > 0 ? 'retrying' : 'running'
   if (run.failures >= AGENT_RUN_MAX_FAILURES) return 'failed'
-  if (run.maxCycles !== null && run.cycle >= run.maxCycles && run.reason?.startsWith('Reached ')) return 'finished'
+  if (agentRunLimitReached(run)) return 'finished'
+  if (!run.autonomous && run.reason === AGENT_RUN_REVIEW_REASON) return 'review'
   return 'paused'
 }
 
@@ -70,6 +76,7 @@ export function dockTiles(runs: readonly AgentRun[], chats: readonly DockChatAct
       state,
       running: run.status === 'running',
       cycleLabel: run.maxCycles === null ? `Cycle ${run.cycle}` : `Cycle ${run.cycle} of ${run.maxCycles}`,
+      timeLabel: describeAgentRunRemaining(run, now),
       detail: tileDetail(run, state, chatById.get(run.chatId), waiting),
       attentionKey,
       brief: agentRunBrief(run, now)

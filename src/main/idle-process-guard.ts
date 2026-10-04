@@ -6,7 +6,7 @@ export class IdleProcessGuard {
 
   constructor(
     private readonly onIdle: () => void,
-    private readonly idleMs = DEFAULT_IDLE_MS
+    private readonly idleMs: number | (() => number) = DEFAULT_IDLE_MS
   ) {}
 
   /** Arm the idle timer when `armed` is true; always clears any prior timer first. */
@@ -16,7 +16,7 @@ export class IdleProcessGuard {
     this.timer = setTimeout(() => {
       this.timer = null
       this.onIdle()
-    }, this.idleMs)
+    }, typeof this.idleMs === 'function' ? this.idleMs() : this.idleMs)
     this.timer.unref?.()
   }
 

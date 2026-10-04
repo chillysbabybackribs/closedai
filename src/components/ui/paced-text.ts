@@ -82,7 +82,7 @@ export function extendsShownText(previous: string, next: string, shown: number):
  * becoming visible mid-turn, or a whole-answer chunk — sweeps in over the catch-up window instead
  * of popping.
  */
-export function usePacedText(text: string, settled: boolean): string {
+export function usePacedText(text: string, settled: boolean, instant = false): string {
   const [shown, setShown] = useState(() => (settled ? text.length : 0))
   const shownRef = useRef(shown)
   // The rate and the tracked cadence survive catching up between chunks. Restarting either for
@@ -108,7 +108,7 @@ export function usePacedText(text: string, settled: boolean): string {
       }
       arrivedAtRef.current = now
     }
-    if (settled || prefersReducedMotion() || !extendsShownText(previous, text, shownRef.current)) {
+    if (instant || settled || prefersReducedMotion() || !extendsShownText(previous, text, shownRef.current)) {
       rateRef.current = 0
       if (shownRef.current !== text.length) show(text.length)
       return
@@ -136,9 +136,9 @@ export function usePacedText(text: string, settled: boolean): string {
     return () => {
       if (frameRef.current !== null) window.cancelAnimationFrame(frameRef.current)
     }
-  }, [text, settled])
+  }, [text, settled, instant])
 
-  return shown >= text.length ? text : text.slice(0, shown)
+  return instant || settled || shown >= text.length ? text : text.slice(0, shown)
 }
 
 function isHighSurrogate(code: number): boolean {

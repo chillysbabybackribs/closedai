@@ -33,11 +33,132 @@
   display: flex;
   flex-direction: column;
   pointer-events: none;
+  isolation: isolate;
+}
+
+/* Opaque band behind the dock so scaled transcript cannot show through gaps at high zoom. */
+.chat-composer-dock::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: var(--chat-pane-fill, var(--surface-card, #19191a));
+  pointer-events: none;
+}
+
+.chat-composer-dock > * {
+  position: relative;
+  z-index: 1;
 }
 
 .chat-composer-dock > *:not(.composer),
 .composer > * {
   pointer-events: auto;
+}
+
+/* Model picker (left) and working folder (right), under the composer capsule. */
+.chat-composer-meta {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: min(calc(var(--chat-column-width) + 64px), calc(100% - var(--chat-column-gutter, 16px) * 2));
+  margin: 6px auto 0;
+  pointer-events: none;
+}
+.chat-pane-model-slot {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-width: 0;
+  pointer-events: none;
+}
+.chat-pane-model-slot .composer-chip-model-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #9a9da3;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+  box-shadow: none;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.chat-pane-model-slot .composer-chip-model-trigger:not(:disabled):hover,
+.chat-pane-model-slot .composer-chip-model-trigger[data-state='open'] {
+  background: rgba(255, 255, 255, 0.06);
+  color: #d4d6da;
+}
+.chat-pane-model-slot .composer-chip-model-trigger:focus-visible {
+  outline: 2px solid var(--composer-accent);
+  outline-offset: 2px;
+}
+.chat-pane-model-slot .composer-chip-model-trigger:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.chat-pane-model-slot .composer-chip-model-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chat-pane-model-slot .composer-chip-chevron { display: none; }
+
+.chat-pane-folder-slot {
+  flex: 0 1 auto;
+  display: flex;
+  justify-content: flex-end;
+  min-width: 0;
+  pointer-events: none;
+}
+.chat-pane-folder-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: min(280px, 100%);
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #9a9da3;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.chat-pane-folder-trigger:not(:disabled):hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #d4d6da;
+}
+.chat-pane-folder-trigger:focus-visible {
+  outline: 2px solid var(--composer-accent);
+  outline-offset: 2px;
+}
+.chat-pane-folder-trigger:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.chat-pane-folder-icon { flex-shrink: 0; opacity: 0.9; }
+.chat-pane-folder-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chat-pane-folder-pending {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: #7c7f85;
 }
 
 /* Before the first message the capsule sits in the middle of the empty pane. */

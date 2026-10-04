@@ -1,7 +1,7 @@
 import type { ToolAction } from '../action-tool.js'
 import { jsonResult, objectSchema } from '../json-result.js'
 import { stringArg, type JsonObject, type ToolContext } from '../tool.js'
-import { AGENT_RUN_MAX_PROMPT_CHARS } from '../../../shared/agent-runs.js'
+import { AGENT_RUN_MAX_MINUTES, AGENT_RUN_MAX_PROMPT_CHARS } from '../../../shared/agent-runs.js'
 import { requireHost, type AppCommandHost } from './host.js'
 
 const paneField: JsonObject = {
@@ -32,19 +32,26 @@ export function appAgentActions(app: () => AppCommandHost | null): ToolAction[] 
     {
       action: 'start',
       description:
-        'Attach a run to another pane and send its standing prompt now. Name a saved agent with agent_id (ids under state.workspace.savedAgents; its prompt and cycle cap apply) or pass prompt for a one-off. After every finished turn the app sends the next Cycle N message until the run is paused or stopped; a turn already in flight is folded in. Refused for the calling pane and for a pane whose run is running.',
+        'Attach a run to another pane and send its standing prompt now. Name a saved agent with agent_id (ids under state.workspace.savedAgents; its prompt, limits, and autonomy apply) or pass prompt for a one-off. After every finished turn the app sends the next Cycle N message until the run is paused, stopped, or reaches a limit; a supervised run instead pauses after every cycle until the user resumes it. A turn already in flight is folded in. Refused for the calling pane and for a pane whose run is running.',
       inputSchema: objectSchema({
         pane_id: paneField,
-        agent_id: { type: 'string', minLength: 1, description: 'Saved agent to start; supplies the prompt, cycle cap, and name. Required unless prompt is given.' },
+        agent_id: { type: 'string', minLength: 1, description: 'Saved agent to start; supplies the prompt, cycle cap, time limit, autonomy, and name. Required unless prompt is given.' },
         prompt: { type: 'string', minLength: 1, maxLength: AGENT_RUN_MAX_PROMPT_CHARS, description: 'Standing instructions for a one-off run; re-sent whenever the provider thread changes. Required unless agent_id is given.' },
-        max_cycles: { type: 'integer', minimum: 1, description: 'Pause after this many cycles; omit to use the saved cap, or to run until paused.' }
+        max_cycles: { type: 'integer', minimum: 1, description: 'Pause after this many cycles; omit to use the saved cap, or to run until paused.' },
+        max_minutes: { type: 'integer', minimum: 1, maximum: AGENT_RUN_MAX_MINUTES, description: 'Pause once the run has been running this many minutes (paused time is not counted); a turn in flight then is left to finish and no further cycle is sent. Omit to use the saved limit, or to run without one.' },
+        supervised: { type: 'boolean', description: 'true pauses the run after every cycle until the user resumes it. A saved agent that is supervised stays supervised; false cannot lift that.' }
       }, ['pane_id']),
       run: async (input, context) => {
         const { host, paneId } = target(input, context, 'start an agent in')
         const prompt = stringArg(input, 'prompt')
         const agentId = stringArg(input, 'agent_id')
         if (!prompt && !agentId) throw new Error('agent start needs agent_id (a saved agent from state.workspace.savedAgents) or prompt (standing instructions)')
-        const options = { ...(prompt ? { prompt } : {}), ...(typeof input.max_cycles === 'number' ? { maxCycles: input.max_cycles } : {}) }
+        const options = {
+          ...(prompt ? { prompt } : {}),
+          ...(typeof input.max_cycles === 'number' ? { maxCycles: input.max_cycles } : {}),
+          ...(typeof input.max_minutes === 'number' ? { maxMinutes: input.max_minutes } : {}),
+          ...(input.supervised === true ? { autonomous: false } : {})
+        }
         const run = await host.agentRun({ op: 'start', paneId, agentId: agentId ?? null, options })
         return respond(host, paneId, context, run)
       }

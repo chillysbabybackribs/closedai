@@ -33,6 +33,7 @@ import {
 } from '../chat-context/thread-handoff.js'
 import {
   buildTurnSendContext,
+  providerTurnProfile,
   markSessionGuideDelivered,
   sessionGuideThreadKey,
   type SessionGuideDeliveryState
@@ -176,11 +177,14 @@ export class ClaudeChatService extends EventEmitter {
         session.sessionId,
         this.paneId ?? 'pane'
       )
-      const workspaceLedgerContext = await workspaceLedgerContextForTurn({
-        settings: this.settings.get(),
-        prompt,
-        cwd: this.cwd
-      })
+      const claudeProfile = providerTurnProfile('claude', this.settings.get())
+      const workspaceLedgerContext = claudeProfile.workspaceLedger
+        ? await workspaceLedgerContextForTurn({
+            settings: this.settings.get(),
+            prompt,
+            cwd: this.cwd
+          })
+        : undefined
       const settings = this.settings.get()
       const { context, attachGuide } = buildTurnSendContext({
         prompt: text,
@@ -188,12 +192,14 @@ export class ClaudeChatService extends EventEmitter {
         state: this.sessionGuideState,
         transcriptWasEmpty,
         pendingHandoff,
+        profile: claudeProfile,
         runtime: {
           paneId: this.paneId,
           provider: 'claude',
           cwd: this.cwd,
           chatMemoryIndexEnabled: settings.chatMemoryIndexEnabled !== false,
-          sessionGuideOnTurn: false
+          sessionGuideOnTurn: false,
+          chatCursorBaselineEnabled: settings.chatCursorBaselineEnabled
         },
         workspaceLedgerContext,
         browserContext: this.turnAdditionalContext(text)
@@ -314,7 +320,7 @@ export class ClaudeChatService extends EventEmitter {
   /** Re-seed the SDK session from a bounded transcript summary; the visible transcript is unchanged. */
   async compactConversation(): Promise<void> {
     if (this.activeTurnId) throw new Error('Stop the current turn before compacting')
-    if (!this.seamlessRotation()) throw new Error('The active provider does not support compaction')
+    if (!this.settings.get().chatSeamlessRotation) throw new Error('The active provider does not support compaction')
     if (!buildThreadHandoff(this.transcript.snapshot(), this.threadName, null, { maxChars: this.settings.get().chatHandoffTargetChars })) {
       throw new Error('There is no conversation to compact yet')
     }
@@ -399,6 +405,7 @@ export class ClaudeChatService extends EventEmitter {
       settings: this.settings.get(),
       prompt,
       surface: this.surfaceContext(),
+      chatProjectPath: this.cwd,
       state: this.toolSliceState,
       cacheKeyOf: (bundle) => `${this.tools.disabledIds().join('\0')}\0${slicedToolRegistryKey(bundle)}`,
       onApplied: async (bundle) => {
@@ -423,6 +430,7 @@ export class ClaudeChatService extends EventEmitter {
 
   private createSession(sdk: ClaudeSdk): ClaudeSession {
     const session = new ClaudeSession({
+      idleMs: () => (this.settings.get().performance?.warmMinutes ?? 5) * 4 * 60_000,
       sdk,
       cwd: this.cwd,
       mcpServers: () => this.mcpServersFor(sdk),
@@ -459,7 +467,7 @@ export class ClaudeChatService extends EventEmitter {
   }
 
   private seamlessRotation(): boolean {
-    return this.settings.get().chatSeamlessRotation === true
+    return this.settings.get().chatCursorBaselineEnabled !== true && this.settings.get().chatSeamlessRotation === true
   }
 
   private claudePrecomputeCompaction(): boolean {
